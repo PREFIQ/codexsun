@@ -1,36 +1,35 @@
 import type { ReactNode } from "react";
 
-type NavItem = {
-  href: string;
-  label: string;
-};
-
-type AppShellProps = {
+type AdminLayoutProps = {
   actions?: ReactNode;
   children: ReactNode;
-  navItems: NavItem[];
-  subtitle?: string;
-  title: string;
+  subtitle?: ReactNode;
+  title?: ReactNode;
 };
 
-export function AppShell({ actions, children, navItems, subtitle, title }: AppShellProps) {
+export function AdminLayout({
+  actions,
+  children,
+  subtitle = "Internal staff workspace for support and operations.",
+  title = "Staff Admin Desk"
+}: AdminLayoutProps) {
   return (
     <div className="grid min-h-screen grid-cols-1 bg-background text-foreground md:grid-cols-[248px_minmax(0,1fr)]">
       <aside className="flex flex-col gap-5 bg-[#17201c] p-4 text-white md:min-h-screen md:gap-7 md:p-6">
         <a className="grid gap-0.5" href="/">
           <span className="text-base font-bold">CODEXSUN</span>
-          <small className="text-[#a6b5ae]">Platform</small>
+          <small className="text-[#a6b5ae]">Staff</small>
         </a>
         <nav className="flex gap-2 overflow-x-auto md:grid md:gap-1.5">
-          {navItems.map((item) => (
-            <a
-              className="rounded-md px-3 py-2 text-sm font-semibold text-[#d8e2dd] hover:bg-white/10 hover:text-white"
-              href={item.href}
-              key={item.href}
-            >
-              {item.label}
-            </a>
-          ))}
+          <a className="rounded-md px-3 py-2 text-sm font-semibold text-[#d8e2dd] hover:bg-white/10 hover:text-white" href="/admin">
+            Overview
+          </a>
+          <a className="rounded-md px-3 py-2 text-sm font-semibold text-[#d8e2dd] hover:bg-white/10 hover:text-white" href="/status">
+            System Status
+          </a>
+          <a className="rounded-md px-3 py-2 text-sm font-semibold text-[#d8e2dd] hover:bg-white/10 hover:text-white" href="/login">
+            Tenant Login
+          </a>
         </nav>
       </aside>
       <main className="min-w-0">

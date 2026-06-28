@@ -3,26 +3,14 @@ import { hashPassword } from "@codexsun/platform/auth";
 import { env } from "../env.js";
 
 type DbStatus = {
+  error?: {
+    code: string;
+    message: string;
+    hint: string;
+  };
   masterDatabase: string;
   ready: boolean;
   tenantTestDatabase: string;
-};
-
-const superAdmin = {
-  displayName: "SUNDAR",
-  email: "sundar@sundar.com",
-  password: "Kalarani1@@"
-};
-
-const tenantAdmin = {
-  email: "admin@tenant.com",
-  password: "admin@123"
-};
-
-const staffAdmin = {
-  displayName: "Staff Admin",
-  email: "admin@codexsun.com",
-  password: "admin@123"
 };
 
 export async function createServerConnection(database?: string) {
@@ -38,19 +26,56 @@ export async function createServerConnection(database?: string) {
 }
 
 export async function bootstrapDatabases(): Promise<DbStatus> {
-  const server = await createServerConnection();
+  try {
+    const server = await createServerConnection();
 
-  await server.execute(`CREATE DATABASE IF NOT EXISTS \`${env.DB_MASTER_NAME}\``);
-  await server.execute(`CREATE DATABASE IF NOT EXISTS \`${env.TENANT_TEST_DB_NAME}\``);
-  await server.end();
+    await server.execute(`CREATE DATABASE IF NOT EXISTS \`${env.DB_MASTER_NAME}\``);
+    await server.execute(`CREATE DATABASE IF NOT EXISTS \`${env.TENANT_TEST_DB_NAME}\``);
+    await server.end();
 
-  await migrateMasterDatabase();
-  await migrateTenantDatabase();
+    await migrateMasterDatabase();
+    await migrateTenantDatabase();
+
+    return {
+      masterDatabase: env.DB_MASTER_NAME,
+      ready: true,
+      tenantTestDatabase: env.TENANT_TEST_DB_NAME
+    };
+  } catch (error) {
+    return {
+      error: describeDatabaseBootstrapError(error),
+      masterDatabase: env.DB_MASTER_NAME,
+      ready: false,
+      tenantTestDatabase: env.TENANT_TEST_DB_NAME
+    };
+  }
+}
+
+export function describeDatabaseBootstrapError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const maybeCode =
+    typeof error === "object" && error && "code" in error ? String(error.code) : "DB_BOOTSTRAP_FAILED";
+
+  if (message.includes("auth_gssapi_client")) {
+    return {
+      code: "DB_AUTH_PLUGIN_UNSUPPORTED",
+      message,
+      hint: "MariaDB is asking for auth_gssapi_client. Create a normal password user such as codexsun_app, then set DB_USER and DB_PASSWORD to that account."
+    };
+  }
+
+  if (maybeCode === "ER_ACCESS_DENIED_ERROR" || message.includes("Access denied")) {
+    return {
+      code: "DB_ACCESS_DENIED",
+      message,
+      hint: "The configured MariaDB username/password was rejected. Check DB_USER and DB_PASSWORD or run the database user setup helper."
+    };
+  }
 
   return {
-    masterDatabase: env.DB_MASTER_NAME,
-    ready: true,
-    tenantTestDatabase: env.TENANT_TEST_DB_NAME
+    code: maybeCode,
+    message,
+    hint: "MariaDB bootstrap failed. Check DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, and DB_DRIVER."
   };
 }
 
@@ -134,29 +159,41 @@ async function migrateMasterDatabase() {
     )
   `);
 
-  await db.execute(
-    `
-    INSERT INTO super_admin_users (display_name, email, password_hash)
-    VALUES (?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-      display_name = VALUES(display_name),
-      password_hash = VALUES(password_hash),
-      status = 'active'
-  `,
-    [superAdmin.displayName, superAdmin.email, hashPassword(superAdmin.password, "codexsun-super-admin")]
-  );
+  if (hasSeedUser(env.SUPER_ADMIN_NAME, env.SUPER_ADMIN_EMAIL, env.SUPER_ADMIN_PASSWORD)) {
+    await db.execute(
+      `
+      INSERT INTO super_admin_users (display_name, email, password_hash)
+      VALUES (?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        display_name = VALUES(display_name),
+        password_hash = VALUES(password_hash),
+        status = 'active'
+    `,
+      [
+        env.SUPER_ADMIN_NAME,
+        env.SUPER_ADMIN_EMAIL,
+        hashPassword(env.SUPER_ADMIN_PASSWORD, "codexsun-super-admin")
+      ]
+    );
+  }
 
-  await db.execute(
-    `
-    INSERT INTO staff_users (display_name, email, password_hash)
-    VALUES (?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-      display_name = VALUES(display_name),
-      password_hash = VALUES(password_hash),
-      status = 'active'
-  `,
-    [staffAdmin.displayName, staffAdmin.email, hashPassword(staffAdmin.password, "codexsun-staff-admin")]
-  );
+  if (hasSeedUser(env.SOFTWARE_ADMIN_NAME, env.SOFTWARE_ADMIN_EMAIL, env.SOFTWARE_ADMIN_PASSWORD)) {
+    await db.execute(
+      `
+      INSERT INTO staff_users (display_name, email, password_hash)
+      VALUES (?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        display_name = VALUES(display_name),
+        password_hash = VALUES(password_hash),
+        status = 'active'
+    `,
+      [
+        env.SOFTWARE_ADMIN_NAME,
+        env.SOFTWARE_ADMIN_EMAIL,
+        hashPassword(env.SOFTWARE_ADMIN_PASSWORD, "codexsun-software-admin")
+      ]
+    );
+  }
 
   await db.execute(
     `
@@ -233,17 +270,24 @@ async function migrateTenantDatabase() {
     )
   `);
 
-  await db.execute(
-    `
-    INSERT INTO tenant_users (display_name, email, password_hash, role_key)
-    VALUES ('Tenant Admin', ?, ?, 'owner')
-    ON DUPLICATE KEY UPDATE
-      password_hash = VALUES(password_hash),
-      role_key = 'owner',
-      status = 'active'
-  `,
-    [tenantAdmin.email, hashPassword(tenantAdmin.password, "codexsun-tenant-admin")]
-  );
+  if (hasSeedUser(env.TENANT_ADMIN_NAME, env.TENANT_ADMIN_EMAIL, env.TENANT_ADMIN_PASSWORD)) {
+    await db.execute(
+      `
+      INSERT INTO tenant_users (display_name, email, password_hash, role_key)
+      VALUES (?, ?, ?, 'owner')
+      ON DUPLICATE KEY UPDATE
+        display_name = VALUES(display_name),
+        password_hash = VALUES(password_hash),
+        role_key = 'owner',
+        status = 'active'
+    `,
+      [
+        env.TENANT_ADMIN_NAME,
+        env.TENANT_ADMIN_EMAIL,
+        hashPassword(env.TENANT_ADMIN_PASSWORD, "codexsun-tenant-admin")
+      ]
+    );
+  }
 
   await db.execute(
     `
@@ -254,4 +298,8 @@ async function migrateTenantDatabase() {
   );
 
   await db.end();
+}
+
+function hasSeedUser(name: string, email: string, password: string) {
+  return Boolean(name.trim() && email.trim() && password.trim());
 }

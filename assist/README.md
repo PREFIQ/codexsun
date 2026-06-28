@@ -227,6 +227,12 @@ Preferred technology stack:
 
 Technology choices should support modular development, type safety, clean boundaries, scalable deployment, offline workflows, and developer productivity.
 
+## Technology Change Discipline
+
+Agents must not silently override the selected technology stack, package manager, runtime, framework, database, UI system, or tooling. If a user command appears to conflict with the current stack, uses the wrong tool name, or creates doubt about the intended technology choice, the agent must ask the user before changing direction.
+
+Do not substitute package managers. Use the package manager requested by the user for that task, and use the repository's declared package manager when the user does not specify one.
+
 ## Enterprise Standard
 
 CODEXSUN should be enterprise-ready without becoming heavy for small customers.

@@ -1,19 +1,15 @@
-import { AppShell, Card, StatusBadge } from "@codexsun/ui";
+import { AppLayout, Card, StatusBadge } from "@codexsun/ui";
 import { AuthGate } from "../components/AuthGate";
 
 export function TenantDesk() {
   return (
     <AuthGate desk="tenant">
-      <AppShell
-        navItems={[
-          { href: "/tenant", label: "Dashboard" },
-          { href: "/status", label: "Status" },
-          { href: "/", label: "Public" }
-        ]}
+      <AppLayout
+        headerTitle="Tenant"
         subtitle="Customer-facing workspace for the test tenant."
         title="Tenant Desk"
       >
-        <div className="desk-grid">
+        <div className="desk-grid p-5 md:p-7">
           <Card title="Tenant" description="Seeded local tenant">
             <StatusBadge tone="green">test</StatusBadge>
             <p>The first tenant user is seeded inside the tenant test database.</p>
@@ -22,7 +18,7 @@ export function TenantDesk() {
             <p>Customers, items, billing, accounting, and sync will attach here after foundation checks pass.</p>
           </Card>
         </div>
-      </AppShell>
+      </AppLayout>
     </AuthGate>
   );
 }

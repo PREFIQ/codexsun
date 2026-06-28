@@ -114,6 +114,33 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     );
   });
 
+  app.get("/auth/session", async (request) => {
+    const session = sessions.get(request.cookies.codexsun_session);
+
+    if (!session) {
+      return ok(
+        {
+          authenticated: false
+        },
+        {
+          requestId: request.id
+        }
+      );
+    }
+
+    return ok(
+      {
+        authenticated: true,
+        email: session.email,
+        tenantCode: session.tenantCode,
+        userType: session.userType
+      },
+      {
+        requestId: request.id
+      }
+    );
+  });
+
   app.post("/auth/logout", async (request) => {
     sessions.destroy(request.cookies.codexsun_session);
 

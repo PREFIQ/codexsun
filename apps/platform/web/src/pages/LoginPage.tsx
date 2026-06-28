@@ -1,6 +1,6 @@
-import { Button, Card, Field } from "@codexsun/ui";
+import { AuthLayout, Button, Field } from "@codexsun/ui";
 import { LogIn } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import { type Desk, login } from "../api";
 
 type LoginPageProps = {
@@ -8,25 +8,9 @@ type LoginPageProps = {
   title: string;
 };
 
-const defaults = {
-  admin: {
-    email: "admin@codexsun.com",
-    password: "admin@123"
-  },
-  sa: {
-    email: "sundar@sundar.com",
-    password: "Kalarani1@@"
-  },
-  tenant: {
-    email: "admin@tenant.com",
-    password: "admin@123"
-  }
-};
-
 export function LoginPage({ desk, title }: LoginPageProps) {
-  const defaultLogin = defaults[desk];
-  const [email, setEmail] = useState(defaultLogin.email);
-  const [password, setPassword] = useState(defaultLogin.password);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -67,32 +51,30 @@ export function LoginPage({ desk, title }: LoginPageProps) {
   }
 
   return (
-    <main className="auth-page">
-      <Card description="Use the seeded credentials for this first scaffold." title={title}>
-        <form className="auth-form" onSubmit={submit}>
-          <Field
-            autoComplete="email"
-            label="Email"
-            name="email"
-            onChange={(event) => setEmail(event.target.value)}
-            type="email"
-            value={email}
-          />
-          <Field
-            autoComplete="current-password"
-            label="Password"
-            name="password"
-            onChange={(event) => setPassword(event.target.value)}
-            type="password"
-            value={password}
-          />
-          {desk === "tenant" ? <Field label="Tenant code" name="tenantCode" readOnly value="test" /> : null}
-          {message ? <p className="form-error">{message}</p> : null}
-          <Button disabled={loading} icon={<LogIn size={16} />} type="submit">
-            {loading ? "Signing in" : "Sign in"}
-          </Button>
-        </form>
-      </Card>
-    </main>
+    <AuthLayout title={title}>
+      <form className="auth-form" onSubmit={submit}>
+        <Field
+          autoComplete="email"
+          label="Email"
+          name="email"
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setEmail(event.target.value)}
+          type="email"
+          value={email}
+        />
+        <Field
+          autoComplete="current-password"
+          label="Password"
+          name="password"
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value)}
+          type="password"
+          value={password}
+        />
+        {desk === "tenant" ? <Field label="Tenant code" name="tenantCode" readOnly value="test" /> : null}
+        {message ? <p className="form-error">{message}</p> : null}
+        <Button disabled={loading} icon={<LogIn size={16} />} type="submit">
+          {loading ? "Signing in" : "Sign in"}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

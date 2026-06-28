@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance } from "fastify";
 import { isAppError } from "../errors/index.js";
 import { fail, ok } from "../http/index.js";
+import { registerShutdownHooks, type ShutdownHook } from "./graceful-shutdown.js";
 
 export type CreateApiAppOptions = {
   appName: string;
@@ -10,6 +11,7 @@ export type CreateApiAppOptions = {
   corsOrigins: string[];
   environment: string;
   onReady?: () => Promise<void> | void;
+  shutdownHooks?: ShutdownHook[];
 };
 
 export async function createApiApp(options: CreateApiAppOptions): Promise<FastifyInstance> {
@@ -61,6 +63,10 @@ export async function createApiApp(options: CreateApiAppOptions): Promise<Fastif
 
   if (options.onReady) {
     app.addHook("onReady", options.onReady);
+  }
+
+  if (options.shutdownHooks?.length) {
+    registerShutdownHooks(app, options.shutdownHooks);
   }
 
   app.get("/", async (request) =>

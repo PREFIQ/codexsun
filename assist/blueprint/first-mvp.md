@@ -38,27 +38,11 @@ The first server boot must:
 - Create `codexsun_master_db` if it does not exist.
 - Create the first test tenant database if it does not exist.
 - Run foundation migrations automatically.
-- Seed Super Admin in the master database.
-- Seed Staff Admin in the master database for local staff-desk testing.
-- Seed Tenant Admin in the test tenant database.
+- Seed Super Admin in the master database only when `SUPER_ADMIN_*` env values are present.
+- Seed Software Admin in the master database only when `SOFTWARE_ADMIN_*` env values are present.
+- Seed Tenant Admin in the test tenant database only when `TENANT_ADMIN_*` env values are present.
 
-Seed users:
-
-```text
-Super Admin
-Name: SUNDAR
-Email: sundar@sundar.com
-Password: Kalarani1@@
-
-Staff Admin
-Email: admin@codexsun.com
-Password: admin@123
-
-Tenant Admin
-Tenant code: test
-Email: admin@tenant.com
-Password: admin@123
-```
+Live deployments should leave seed user env values blank and create users manually through the platform workflow.
 
 The first database order is:
 

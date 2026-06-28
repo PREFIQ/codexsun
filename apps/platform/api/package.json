@@ -1,18 +1,18 @@
 {
   "name": "@codexsun/platform-api",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "type": "module",
   "scripts": {
     "predev": "npm run build -w @codexsun/framework && npm run build -w @codexsun/platform",
-    "dev": "tsx watch src/server.ts",
+    "dev": "node ../../../tools/preflight.mjs platform-api",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@codexsun/framework": "1.0.0",
-    "@codexsun/platform": "1.0.0",
+    "@codexsun/framework": "1.0.1",
+    "@codexsun/platform": "1.0.1",
     "@fastify/cookie": "^11.0.1",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",

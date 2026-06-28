@@ -1,9 +1,11 @@
 import { RouterProvider, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import { Dashboard01 } from "@codexsun/ui";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import "@codexsun/ui/styles.css";
 import "./styles.css";
 import { AdminDesk } from "./pages/AdminDesk";
+import { PageTitle } from "./components/PageTitle";
 import { HealthPage } from "./pages/HealthPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
@@ -60,6 +62,12 @@ const tenantRoute = createRoute({
   path: "/tenant"
 });
 
+const workspaceRoute = createRoute({
+  component: Dashboard01,
+  getParentRoute: () => rootRoute,
+  path: "/workspace"
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   healthRoute,
@@ -68,7 +76,8 @@ const routeTree = rootRoute.addChildren([
   adminLoginRoute,
   saRoute,
   adminRoute,
-  tenantRoute
+  tenantRoute,
+  workspaceRoute
 ]);
 
 const router = createRouter({ routeTree });
@@ -81,6 +90,7 @@ declare module "@tanstack/react-router" {
 
 createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
+    <PageTitle />
     <RouterProvider router={router} />
   </React.StrictMode>
 );

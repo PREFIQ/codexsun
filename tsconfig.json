@@ -1,0 +1,36 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["packages/ui/src/*"],
+      "components": ["packages/ui/src/components"],
+      "components/*": ["packages/ui/src/components/*"],
+      "hooks": ["packages/ui/src/hooks"],
+      "hooks/*": ["packages/ui/src/hooks/*"],
+      "lib": ["packages/ui/src/lib"],
+      "lib/*": ["packages/ui/src/lib/*"],
+      "ui": ["packages/ui/src/components/ui"],
+      "ui/*": ["packages/ui/src/components/ui/*"],
+      "utils": ["packages/ui/src/lib/utils.ts"]
+    }
+  },
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/platform/api"
+    },
+    {
+      "path": "./apps/platform/web"
+    },
+    {
+      "path": "./packages/framework"
+    },
+    {
+      "path": "./packages/platform"
+    },
+    {
+      "path": "./packages/ui"
+    }
+  ]
+}

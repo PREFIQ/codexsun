@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.1
+Current version: 1.0.2
 
-Release tag: v-1.0.1
+Release tag: v-1.0.2
 
-Changelog label: v 1.0.1
+Changelog label: v 1.0.2
 
 Historical changelog entries are immutable. A version bump may update this Version State block and add a new entry, but it must not rewrite old entry labels.
 
@@ -20,7 +20,303 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 
 Records UI, API, service logic, tooling, and documentation changes.
 
+## v-1.0.2
+
+### [v 1.0.2] 2026-06-28 9:47 pm - sidebar trigger bar icon
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Bumped workspace version to 1.0.2.
+- Changed the shared sidebar trigger icon from the panel glyph to the bar menu glyph used by the workspace top bar.
+- Replaced the workspace switcher active mark with the shared Lucide check icon.
+
 ## v-1.0.1
+
+### [v 1.0.1] 2026-06-28 11:15 pm - dynamic browser page title
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Changed the Platform Web fallback browser title to `Codexsun | Dashboard`.
+- Added route-aware document title updates so the text after `|` follows the open page.
+- Added `VITE_TENANT_NAME` so the title prefix can come from the tenant display name.
+
+### [v 1.0.1] 2026-06-28 11:05 pm - branded billing desk shell
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Wired the platform web app to the stored CODEXSUN logo, dark logo, and favicon assets.
+- Added a Billing Desk top menu with sidebar toggle, workspace switcher dropdown, and right-side desk actions.
+- Reworked the inset sidemenu branding, version footer, and signed-in user dropdown to match the super-admin desk references.
+- Added the Billing Desk overview card above the dashboard content.
+
+### [v 1.0.1] 2026-06-28 10:45 pm - consistent sidebar gutter
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Fixed inset sidebar collapsed width so the sidebar-to-workspace gutter remains consistent while toggling.
+- Made the sidebar rail indicator transparent by default and removed the native rail tooltip title.
+
+### [v 1.0.1] 2026-06-28 10:35 pm - matched inset panel surfaces
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Matched the inset sidemenu and workspace panel border, radius, and shadow treatments.
+- Moved inset sidemenu panel styling into the shared sidebar primitive so shell surfaces stay consistent.
+
+### [v 1.0.1] 2026-06-28 10:25 pm - shadcn b26 default theme
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Generated the shadcn b26 Vite preset with `npx shadcn@latest init --preset b26 --template vite` in a scratch folder.
+- Reset `@codexsun/ui` theme tokens to the b26 default OKLCH neutral palette.
+- Updated chart and sidebar token references to support direct OKLCH CSS variables.
+- Aligned `components.json` with the b26 preset metadata.
+- Added an assist rule requiring agents to ask before changing technology choices when commands are doubtful or conflicting.
+
+### [v 1.0.1] 2026-06-28 10:15 pm - clearer neutral shell borders
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Darkened the shared neutral border tokens for clearer sidebar and workspace separation.
+- Added an inset workspace panel border so it visually matches the bordered sidemenu.
+
+### [v 1.0.1] 2026-06-28 10:10 pm - medium sidemenu radius
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Rounded the visible inset sidemenu panel corners with the design system medium radius.
+
+### [v 1.0.1] 2026-06-28 10:05 pm - bordered inset sidemenu
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Added a border around the visible inset sidemenu panel in both expanded and collapsed states.
+
+### [v 1.0.1] 2026-06-28 9:55 pm - inset sidemenu rail toggle
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Made the sidemenu default to the inset sidebar variant.
+- Restored `SidebarRail` so the inset sidemenu can collapse and expand from the sidebar edge.
+
+### [v 1.0.1] 2026-06-28 9:45 pm - inset workspace shell
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Changed the workspace `AppLayout` sidebar usage from floating to inset while preserving icon collapse.
+- Removed the sidemenu boundary rail so the workspace no longer shows the rail hover tooltip target.
+
+### [v 1.0.1] 2026-06-28 9:35 pm - icon-collapsing sidemenu
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Rebuilt the sidemenu block from the temp shadcn reference into the active `AppSidebar`.
+- Added a `sidemenu/sub` renderer for grouped menu sections with collapsible submenu support.
+- Changed the floating app sidebar to collapse into an icon rail instead of hiding off-canvas.
+- Removed raw temp sidemenu sample files with unresolved `@/` imports from the compiled UI package.
+
+### [v 1.0.1] 2026-06-28 9:20 pm - floating app sidebar layout
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Changed `AppLayout` to use the shadcn floating sidebar shell with a 19rem sidebar width.
+- Replaced the app header title with a sidebar trigger, separator, and workspace breadcrumb.
+- Kept the workspace dashboard content composition unchanged while updating the surrounding shell.
+
+### [v 1.0.1] 2026-06-28 9:05 pm - warning-free dev preflight
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Updated the root npm package manager metadata to npm 11.17.0.
+- Removed the Windows shell-based dev process launch from `tools/preflight.mjs` to clear Node DEP0190 startup warnings.
+- Made the preflight launcher prefer workspace-local CLI binaries so Platform Web starts with its declared Vite version.
+
+### [v 1.0.1] 2026-06-28 8:55 pm - quiet protected route session check
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Added `/auth/session` as a non-error session probe for protected frontend desks.
+- Updated `AuthGate` to use the quiet session endpoint so expected unauthenticated visits no longer emit `/auth/me` 401 console noise.
+
+### [v 1.0.1] 2026-06-28 8:45 pm - Tailwind v4 styling foundation
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Migrated Platform Web styling to Tailwind v4 using the `@tailwindcss/vite` plugin.
+- Replaced the old Tailwind/PostCSS config-driven setup with CSS-first theme tokens in `@codexsun/ui/styles.css`.
+- Removed Tailwind v3 `tailwind.config.cjs`, PostCSS config files, and unused PostCSS/autoprefixer dependencies.
+- Updated sidebar utilities to Tailwind v4 custom-property shorthand and restored `--spacing` based layout sizing.
+- Aligned Platform Web to the current Vite toolchain and removed unused Vite tooling from `@codexsun/ui`.
+
+### [v 1.0.1] 2026-06-28 8:20 pm - named ui layouts
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Replaced the generic `AppShell` layout with named UI layouts: `WebLayout`, `AuthLayout`, `AppLayout`, `AdminLayout`, and `SuperLayout`.
+- Centralized the shadcn dashboard sidebar frame inside `AppLayout` and simplified the workspace dashboard to content-only composition.
+- Moved dashboard metric cards back into the sidemenu dashboard block and removed stale layout exports.
+- Wired public, auth, tenant, admin, and super-admin pages to their specific layout modules.
+- Replaced placeholder sidebar menu links with real app routes.
+
+### [v 1.0.1] 2026-06-28 8:05 pm - ui layouts folder
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Moved shared shell/layout files from `@codexsun/ui` components into `src/layouts`.
+- Rewired dashboard workspace imports to consume `SiteHeader` and `SectionCards` from the layouts folder.
+- Kept public `@codexsun/ui` exports stable while separating primitive components from page/layout composition.
+
+### [v 1.0.1] 2026-06-28 7:55 pm - shadcn component foundation
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Installed the available shadcn component primitives into `@codexsun/ui` under `src/components`.
+- Rewired generated component imports to package-local paths and exported the component set from `@codexsun/ui`.
+- Removed duplicated reusable component copies from the dashboard block folder, leaving only block-specific sidemenu files.
+- Kept CODEXSUN compatibility behavior on shared `Button`, `Card`, and `Field` while preserving shadcn component APIs.
+- Moved generated component dependencies onto the `@codexsun/ui` workspace package and kept the root package dependency list clean.
+
+### [v 1.0.1] 2026-06-28 7:35 pm - shadcn dashboard block
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Added shadcn `dashboard-01` under `@codexsun/ui` at `blocks/menu/sidemenu`.
+- Added the provided dashboard table data as the block data source.
+- Exported the dashboard block from `@codexsun/ui` and mounted it at Platform Web `/workspace`.
+- Added standard shadcn aliases and a root TypeScript config for shadcn CLI workspace resolution.
+- Moved reusable shadcn primitives into shared `@codexsun/ui` components and rewired the sidemenu block to consume them.
+- Split dashboard-heavy frontend vendor chunks so the Platform Web production build stays warning-free.
+
+### [v 1.0.1] 2026-06-28 7:20 pm - npm install cleanup
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Aligned internal workspace dependency versions to `1.0.1` so npm install resolves local packages instead of querying the public registry.
+- Approved expected esbuild install scripts used by Vite and tsx so npm install runs without allow-scripts warnings.
+
+### [v 1.0.1] 2026-06-28 7:15 pm - dev port preflight
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Added a dev preflight launcher that checks configured Platform API and Web ports before startup.
+- Automatically stops existing local listener processes on dev ports unless `CODEXSUN_DEV_PORT_POLICY=abort` is set.
+- Wired Platform API and Web dev scripts through the preflight launcher to avoid `EADDRINUSE` restarts.
+
+### [v 1.0.1] 2026-06-28 7:05 pm - env driven seed auth
+
+#### Database Changes
+
+- Database update: Yes.
+- Changed first user seeding to read optional `SUPER_ADMIN_*`, `SOFTWARE_ADMIN_*`, and `TENANT_ADMIN_*` values from environment configuration.
+- Existing seeded user rows are updated only when their matching environment values are present.
+
+#### App Codebase Changes
+
+- Replaced `SESSION_SECRET` with required `JWT_SECRET` with no code fallback.
+- Removed hardcoded seeded login credentials from the Platform Web login forms.
+- Updated environment examples and MVP notes so live deployments can leave seed users blank.
+
+### [v 1.0.1] 2026-06-28 6:55 pm - mariadb auth recovery
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Changed Platform API database bootstrap to start in degraded mode instead of crashing when MariaDB rejects the configured account.
+- Added explicit `auth_gssapi_client` diagnostics in the API health details.
+- Added `npm run db:create-user` helper to create a normal password-based `codexsun_app` MariaDB user when an admin login is available.
+- Updated Framework env loading to find the root `.env` when workspace dev commands run from nested app folders.
+- Updated environment example to prefer the dedicated app database user instead of `root`.
 
 ### [v 1.0.1] 2026-06-28 6:11 pm - root dist and shadcn ui wiring
 

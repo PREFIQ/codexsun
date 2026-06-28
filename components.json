@@ -1,21 +1,25 @@
 {
   "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "new-york",
+  "style": "radix-nova",
   "rsc": false,
   "tsx": true,
   "tailwind": {
-    "config": "tailwind.config.cjs",
+    "config": "",
     "css": "packages/ui/src/styles.css",
-    "baseColor": "slate",
+    "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "components": "@codexsun/ui/components",
-    "utils": "@codexsun/ui/lib/utils",
-    "ui": "@codexsun/ui/components",
-    "lib": "@codexsun/ui/lib",
-    "hooks": "@codexsun/ui/hooks"
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
   },
-  "iconLibrary": "lucide"
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "menuColor": "default-translucent",
+  "menuAccent": "subtle",
+  "registries": {}
 }

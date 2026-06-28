@@ -5,11 +5,16 @@ import { apiGet, type Desk } from "../api";
 
 type MeResponse = {
   success: boolean;
-  data?: {
-    email: string;
-    tenantCode?: string;
-    userType: string;
-  };
+  data?:
+    | {
+        authenticated: false;
+      }
+    | {
+        authenticated: true;
+        email: string;
+        tenantCode?: string;
+        userType: string;
+      };
 };
 
 const expectedUserType = {
@@ -24,8 +29,12 @@ export function AuthGate({ children, desk }: { children: ReactElement; desk: Des
   useEffect(() => {
     async function checkSession() {
       try {
-        const result = await apiGet<MeResponse>("/auth/me");
-        setState(result.data?.userType === expectedUserType[desk] ? "allowed" : "blocked");
+        const result = await apiGet<MeResponse>("/auth/session");
+        setState(
+          result.data?.authenticated && result.data.userType === expectedUserType[desk]
+            ? "allowed"
+            : "blocked"
+        );
       } catch {
         setState("blocked");
       }

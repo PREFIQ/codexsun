@@ -1,3 +1,4 @@
+import { registerGracefulShutdown } from "@codexsun/framework/api";
 import { createApp } from "./app.js";
 import { env } from "./env.js";
 
@@ -8,6 +9,8 @@ try {
     host: env.PLATFORM_API_HOST,
     port: env.PLATFORM_API_PORT
   });
+
+  registerGracefulShutdown(app);
 } catch (error) {
   app.log.error(error);
   process.exit(1);

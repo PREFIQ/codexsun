@@ -1,20 +1,9 @@
-import { Button, Card, StatusBadge } from "@codexsun/ui";
+import { Button, Card, StatusBadge, WebLayout } from "@codexsun/ui";
 import { ArrowRight, ShieldCheck, Stethoscope, UserRoundCog } from "lucide-react";
 
 export function HomePage() {
   return (
-    <main className="public-page">
-      <nav className="public-nav">
-        <a className="public-brand" href="/">
-          CODEXSUN
-        </a>
-        <div>
-          <a href="/status">Status</a>
-          <a href="/login">Tenant Login</a>
-          <a href="/sa/login">Super Admin</a>
-        </div>
-      </nav>
-
+    <WebLayout>
       <section className="public-hero">
         <div>
           <StatusBadge tone="green">Foundation active</StatusBadge>
@@ -46,6 +35,6 @@ export function HomePage() {
           <p>Super Admin, Staff Admin, and Tenant desks have separate login pages and shells.</p>
         </Card>
       </section>
-    </main>
+    </WebLayout>
   );
 }

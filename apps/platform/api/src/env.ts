@@ -12,8 +12,17 @@ const envSchema = z.object({
   DB_PASSWORD: z.string().default(""),
   DB_DRIVER: z.enum(["mariadb", "mysql2"]).default("mariadb"),
   DB_MASTER_NAME: z.string().default("codexsun_master_db"),
+  JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
+  SOFTWARE_ADMIN_EMAIL: z.string().default(""),
+  SOFTWARE_ADMIN_NAME: z.string().default(""),
+  SOFTWARE_ADMIN_PASSWORD: z.string().default(""),
+  SUPER_ADMIN_EMAIL: z.string().default(""),
+  SUPER_ADMIN_NAME: z.string().default(""),
+  SUPER_ADMIN_PASSWORD: z.string().default(""),
   TENANT_TEST_DB_NAME: z.string().default("tenant_test_001_db"),
-  SESSION_SECRET: z.string().min(12).default("change-this-development-secret")
+  TENANT_ADMIN_EMAIL: z.string().default(""),
+  TENANT_ADMIN_NAME: z.string().default(""),
+  TENANT_ADMIN_PASSWORD: z.string().default("")
 });
 
 export const env = loadEnv(envSchema);

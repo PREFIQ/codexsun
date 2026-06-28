@@ -1,0 +1,180 @@
+#!/usr/bin/env node
+
+import { execFileSync, spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const root = resolve(import.meta.dirname, "..");
+const app = process.argv[2];
+
+const apps = {
+  "platform-api": {
+    cwd: "apps/platform/api",
+    envKey: "PLATFORM_API_PORT",
+    fallbackPort: 4100,
+    command: process.execPath,
+    args: [nodePackageBin("tsx", "dist/cli.mjs", "apps/platform/api"), "watch", "src/server.ts"]
+  },
+  "platform-web": {
+    cwd: "apps/platform/web",
+    envKey: "PLATFORM_WEB_PORT",
+    fallbackPort: 4200,
+    command: process.execPath,
+    args: [nodePackageBin("vite", "bin/vite.js", "apps/platform/web"), "--host", "127.0.0.1", "--strictPort"]
+  }
+};
+
+if (!app || !apps[app]) {
+  console.log(`Usage: node tools/preflight.mjs <${Object.keys(apps).join("|")}>`);
+  process.exit(1);
+}
+
+const config = apps[app];
+const env = loadDotEnv();
+const port = Number(process.env[config.envKey] || env[config.envKey]) || config.fallbackPort;
+
+await freePort(port);
+
+const child = spawn(config.command, [...config.args, ...(app === "platform-web" ? ["--port", String(port)] : [])], {
+  cwd: resolve(root, config.cwd),
+  env: {
+    ...process.env,
+    ...env,
+    [config.envKey]: String(port)
+  },
+  stdio: "inherit"
+});
+
+child.on("exit", (code) => process.exit(code ?? 0));
+
+function loadDotEnv() {
+  const envPath = resolve(root, ".env");
+
+  if (!existsSync(envPath)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    readFileSync(envPath, "utf8")
+      .split(/\r?\n/)
+      .map((line) => line.match(/^\s*([^#=]+?)\s*=\s*(.*?)\s*$/))
+      .filter(Boolean)
+      .map((match) => [match[1].trim(), parseEnvValue(match[2])])
+  );
+}
+
+function parseEnvValue(value) {
+  const trimmed = String(value ?? "").trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const quote = trimmed[0];
+
+  if ((quote === "\"" || quote === "'") && trimmed.endsWith(quote)) {
+    return trimmed.slice(1, -1);
+  }
+
+  return trimmed.replace(/\s+#.*$/, "").trim();
+}
+
+async function freePort(port) {
+  console.log(`\n  > ${app} preflight`);
+  console.log(`  - Checking port ${port}`);
+
+  const pids = getPidsOnPort(port);
+
+  if (!pids.length) {
+    console.log(`  ok Port ${port} is ready\n`);
+    return;
+  }
+
+  console.log(`  ! Port ${port} is already in use by PID ${pids.join(", ")}`);
+
+  if (process.env.CODEXSUN_DEV_PORT_POLICY === "abort") {
+    console.error("  x Port policy is abort. Stop the existing process or change CODEXSUN_DEV_PORT_POLICY.\n");
+    process.exit(1);
+  }
+
+  for (const pid of pids) {
+    killPid(pid);
+    console.log(`  ok Stopped PID ${pid}`);
+  }
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (!getPidsOnPort(port).length) {
+      console.log(`  ok Port ${port} is ready\n`);
+      return;
+    }
+
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+  }
+
+  console.error(`  x Port ${port} was not released after stopping PID ${pids.join(", ")}.\n`);
+  process.exit(1);
+}
+
+function getPidsOnPort(port) {
+  try {
+    if (process.platform === "win32") {
+      const out = execFileSync("netstat", ["-ano", "-p", "tcp"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+
+      return Array.from(
+        new Set(
+          out
+            .split(/\r?\n/)
+            .map((line) => line.trim().split(/\s+/))
+            .filter((parts) => parts.length >= 5 && parts[3] === "LISTENING" && portFromAddress(parts[1]) === port)
+            .map((parts) => Number(parts[4]))
+            .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid)
+        )
+      );
+    }
+
+    const out = execFileSync("lsof", ["-ti", `:${port}`], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    });
+
+    return Array.from(
+      new Set(
+        out
+          .split(/\s+/)
+          .map(Number)
+          .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid)
+      )
+    );
+  } catch {
+    return [];
+  }
+}
+
+function portFromAddress(address) {
+  const match = String(address).match(/:(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+
+function killPid(pid) {
+  if (process.platform === "win32") {
+    execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], {
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    return;
+  }
+
+  process.kill(pid, "SIGTERM");
+}
+
+function nodePackageBin(packageName, binPath, workspacePath) {
+  const workspaceBin = resolve(root, workspacePath, "node_modules", packageName, binPath);
+
+  if (existsSync(workspaceBin)) {
+    return workspaceBin;
+  }
+
+  return resolve(root, "node_modules", packageName, binPath);
+}

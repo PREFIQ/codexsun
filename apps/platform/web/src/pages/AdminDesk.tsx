@@ -1,18 +1,10 @@
-import { AppShell, Card, StatusBadge } from "@codexsun/ui";
+import { AdminLayout, Card, StatusBadge } from "@codexsun/ui";
 import { AuthGate } from "../components/AuthGate";
 
 export function AdminDesk() {
   return (
     <AuthGate desk="admin">
-      <AppShell
-        navItems={[
-          { href: "/admin", label: "Overview" },
-          { href: "/status", label: "System Status" },
-          { href: "/login", label: "Tenant Login" }
-        ]}
-        subtitle="Internal staff workspace for support and operations."
-        title="Staff Admin Desk"
-      >
+      <AdminLayout>
         <div className="desk-grid">
           <Card title="Support Queue" description="Prepared for tenant operations">
             <StatusBadge tone="amber">Scaffold</StatusBadge>
@@ -22,7 +14,7 @@ export function AdminDesk() {
             <p>High-risk activation changes belong here with approval and audit history.</p>
           </Card>
         </div>
-      </AppShell>
+      </AdminLayout>
     </AuthGate>
   );
 }

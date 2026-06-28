@@ -1,4 +1,4 @@
-import { Button, Card, StatusBadge } from "@codexsun/ui";
+import { Button, Card, StatusBadge, WebLayout } from "@codexsun/ui";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiGet } from "../api";
@@ -42,29 +42,31 @@ export function HealthPage() {
   const database = health?.data?.checks["platform-api"]?.details?.database;
 
   return (
-    <main className="simple-page">
-      <Card
-        action={
-          <Button disabled={loading} icon={<RefreshCw size={16} />} onClick={loadHealth}>
-            Refresh
-          </Button>
-        }
-        description="Live API and database bootstrap status."
-        title="Platform Status"
-      >
-        <div className="status-list">
-          <span>API</span>
-          <strong>platform-api</strong>
-          <span>Status</span>
-          <StatusBadge tone={health?.data?.status === "ok" ? "green" : "amber"}>
-            {health?.data?.status ?? "loading"}
-          </StatusBadge>
-          <span>Master DB</span>
-          <strong>{database?.masterDatabase ?? "Unknown"}</strong>
-          <span>Tenant Test DB</span>
-          <strong>{database?.tenantTestDatabase ?? "Unknown"}</strong>
-        </div>
-      </Card>
-    </main>
+    <WebLayout>
+      <section className="simple-page">
+        <Card
+          action={
+            <Button disabled={loading} icon={<RefreshCw size={16} />} onClick={loadHealth}>
+              Refresh
+            </Button>
+          }
+          description="Live API and database bootstrap status."
+          title="Platform Status"
+        >
+          <div className="status-list">
+            <span>API</span>
+            <strong>platform-api</strong>
+            <span>Status</span>
+            <StatusBadge tone={health?.data?.status === "ok" ? "green" : "amber"}>
+              {health?.data?.status ?? "loading"}
+            </StatusBadge>
+            <span>Master DB</span>
+            <strong>{database?.masterDatabase ?? "Unknown"}</strong>
+            <span>Tenant Test DB</span>
+            <strong>{database?.tenantTestDatabase ?? "Unknown"}</strong>
+          </div>
+        </Card>
+      </section>
+    </WebLayout>
   );
 }

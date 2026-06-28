@@ -1,18 +1,10 @@
-import { AppShell, Card, StatusBadge } from "@codexsun/ui";
+import { Card, StatusBadge, SuperLayout } from "@codexsun/ui";
 import { AuthGate } from "../components/AuthGate";
 
 export function SaDesk() {
   return (
     <AuthGate desk="sa">
-      <AppShell
-        navItems={[
-          { href: "/sa", label: "Overview" },
-          { href: "/status", label: "Status" },
-          { href: "/admin/login", label: "Staff Login" }
-        ]}
-        subtitle="Founder and platform control surface."
-        title="Super Admin Desk"
-      >
+      <SuperLayout>
         <div className="desk-grid">
           <Card title="Foundation" description="Fresh scaffold status">
             <StatusBadge tone="green">Ready</StatusBadge>
@@ -23,7 +15,7 @@ export function SaDesk() {
             <p>Connected to the seeded tenant database for early local testing.</p>
           </Card>
         </div>
-      </AppShell>
+      </SuperLayout>
     </AuthGate>
   );
 }
