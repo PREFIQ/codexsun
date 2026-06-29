@@ -71,6 +71,10 @@
     "./api-client": {
       "types": "./dist/api-client/index.d.ts",
       "default": "./dist/api-client/index.js"
+    },
+    "./master-data": {
+      "types": "./dist/master-data/index.d.ts",
+      "default": "./dist/master-data/index.js"
     }
   },
   "scripts": {

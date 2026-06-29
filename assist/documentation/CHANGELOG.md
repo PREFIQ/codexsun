@@ -20,6 +20,61 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 
 Records UI, API, service logic, tooling, and documentation changes.
 
+## v-1.0.11
+
+### [v 1.0.11] 2026-06-29  - Platform Super Admin Closure And App Boundary Verification
+
+#### Database Changes
+
+- Database update: No schema changes.
+- Removed `business.master-data` module key from `platformModuleCatalog`; added `core.contact`, `core.company`, `core.product` keys.
+- Removed `business.master-data.view` and `business.master-data.manage` permissions from role-permission map.
+
+#### App Codebase Changes
+
+- **Task 14 artifact removal**: Deleted `packages/platform/src/master-data/` (contracts, service, repository, index), `apps/platform/api/src/master-data/routes.ts`, and `apps/platform/api/src/__tests__/master-data.test.ts`.
+- **app.ts cleanup**: Removed all master-data imports, service instantiation, Fastify decoration, and route registration from `apps/platform/api/src/app.ts`.
+- **Platform package**: Removed `master-data` export from `packages/platform/src/index.ts`. Updated permission types in `packages/platform/src/permissions/contracts.ts`.
+- **Tenant Domains API**: Added `GET/POST/DELETE /admin/tenants/:tenantId/domains` routes in `apps/platform/api/src/admin/routes.ts` for CRUD against existing `tenant_domain_mappings` table.
+- **Migration Runner API**: Added `POST /admin/migrations/run` endpoint to trigger pending master migrations.
+- **Tenant Database API**: Added `GET /admin/databases` endpoint to list tenant database records.
+- **Super Admin UI**: Created 9 new SA page components under `apps/platform/web/src/pages/sa/`: `TenantDomains` (domain CRUD with tenant selector), `Subscriptions` (plan scaffold), `Industries` (vertical scaffold), `QueueManager` (job queue scaffold), `DatabaseManager` (migration status + tenant DB list), `DevDocs` (architecture reference with sidebar nav), `Support` (helpdesk scaffold), `ZetroSetup` (AI assistant scaffold), `GstSetup` (tax compliance scaffold).
+- **Admin Desk**: Enhanced `AdminDesk.tsx` with 4 nav views (Dashboard, Support Queue, Activation Review, Helpdesk).
+- **SA Desk**: Extended `SaDesk.tsx` nav with Domains, Subscriptions, Industries, DB Manager, Queue, Support, Dev Docs, ZETRO, GST entries — 22 total navigation items.
+- **Tenant Desk**: Removed obsolete master-data and master-records nav items from `TenantDesk.tsx`; kept Contacts, Item Categories, Units, Tax Categories.
+- **Core Route Tests**: Created `apps/platform/api/src/__tests__/core-routes.test.ts` with 28 tests covering `/core/common/*` definitions/records, `/core/contacts/*`, `/core/companies/*`, and `/core/products/*` CRUD and archive/restore.
+- **Boundary Review**: Updated `assist/architecture/module-boundaries.md` with comprehensive app boundary table, table ownership, package dependency direction, migration verification, Task 14 artifact cleanup checklist, and 8 boundary decisions.
+- Updated catalog test to reflect new module key names (`core.contact`, `core.company`, `core.product`).
+- All 10 workspace packages pass typecheck and lint; **102 API tests + 30 framework tests + 11 platform tests = 143 total passing**.
+
+## v-1.0.10
+
+### [v 1.0.10] 2026-06-29 11:15 am - Core App Common And Master Module Foundation
+
+#### Database Changes
+
+- Database update: No (in-memory repositories; DB-backed pending future task).
+- Added `core` module key to `platformModuleCatalog` in `packages/platform/src/catalog/contracts.ts`.
+- Added `corePermissions` (8 permission keys) to `packages/platform/src/permissions/contracts.ts`, assigned to `super_admin` and `tenant` user types.
+
+#### App Codebase Changes
+
+- Bumped root workspace pattern to include `apps/*` so single-level app packages are recognised.
+- Created `apps/core` (`@codexsun/core`) with subpath exports for common, master/*, shared, api, and testing modules.
+- **Common Definition Registry** (`apps/core/src/common/contracts.ts`): 30 definition types (countries, states, districts, cities, pincodes, contact groups/types, address types, bank names, product groups/categories/types, units, HSN codes, tax categories, brands, colours, sizes, styles, currencies, priorities, payment terms, accounting years, months, sales account types, order types, transports, warehouses, destinations, stock rejection types) with scope, seedable flag, fields, permissions, and feature key. 30+ default seed records for countries, contact types, address types, units, bank names, currencies, payment terms, months, priorities, accounting years.
+- **Common Record Service** (`apps/core/src/common/service.ts`): `CoreDefinitionService` and `CoreRecordService` with CRUD, archive/restore, duplicate-code detection, seedDefaults.
+- **In-Memory Repository** (`apps/core/src/common/repository.ts`): `CoreRecordRepository` interface + `InMemoryCoreRecordRepository` with tenant-scoped filter, archive/restore.
+- **Contact Master Module** (`apps/core/src/master/contacts/`): `ContactProfile` with phone/email/address/social/bank/tax child blocks, CRUD, archive/restore.
+- **Company Master Module** (`apps/core/src/master/companies/`): `CompanyProfile` with legal/trade name, addresses, bank accounts, tax identities, CRUD, archive/restore.
+- **Product/Item Master Module** (`apps/core/src/master/products/`): `ProductItem` with code/name/group/category/type/unit/HSN/tax/attributes, CRUD, archive/restore.
+- **Shared Blocks** (`apps/core/src/shared/`): `AddressBlock`, `PhoneBlock`, `EmailBlock`, `BankAccountBlock`, `TaxIdentityBlock` reusable value-object types.
+- **Core API Routes** (`apps/core/src/api/`): 26+ endpoints under `/core/common/*`, `/core/contacts/*`, `/core/companies/*`, `/core/products/*` with session, tenant context, active tenant, feature activation (`core`), permission (`core.*.view`/`core.*.manage`), and audit guards (correlationId in response meta and audit events).
+- **Route Registration** (`apps/core/src/api/index.ts`): `registerAllCoreRoutes()` accepts a `CoreRouteContext` for injecting platform guard functions, enabling loose coupling between core routes and platform API.
+- **Platform API Wiring** (`apps/platform/api/src/app.ts`): Core services (`CoreDefinitionService`, `CoreRecordService`, `CoreContactService`, `CoreCompanyService`, `CoreProductService`) created, decorated on FastifyInstance, and routes registered via `registerAllCoreRoutes` with `requireSession`, `requireActiveTenant`, `requireFeatureEnabled`, `requirePermission` from existing guards.
+- **Fastify Augmentation**: Added `@codexsun/framework/api` import in core api module for `correlationId`/`tenantId` request properties; custom `auditRecordEvent()` helper casts through `(app as any)` to avoid type conflicts with platform's `AuditService`.
+- **Existing Task 14 master-data** (platform-owned) retained for backward compatibility; core routes use separate `/core/*` prefix with enhanced definitions (30 vs 11) and richer child blocks.
+- All 7 workspace packages pass typecheck, lint, build, and 129 tests (30 framework + 74 existing API + 25 master-data).
+
 ## v-1.0.9
 
 ### [v 1.0.9] 2026-06-29 10:30 am - Foundation Closure Audit And Business Readiness Gate

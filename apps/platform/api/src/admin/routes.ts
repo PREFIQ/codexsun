@@ -1,3 +1,4 @@
+import { AppError } from "@codexsun/framework/errors";
 import { ok } from "@codexsun/framework/http";
 import { requirePermission, requireSuperAdmin } from "../auth/guards.js";
 import type { FastifyInstance } from "fastify";
@@ -417,5 +418,99 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       payload: { revokedToken: token }
     });
     return ok({ revoked: true }, responseMeta(request));
+  });
+
+  // ── Tenant Domain Mappings ─────────────────────────────────────
+  app.get("/admin/tenants/:tenantId/domains", async (request) => {
+    const session = await requireSuperAdmin(app, request);
+    requirePermission(session, "platform.tenant.profile.view");
+    const { tenantId } = request.params as { tenantId: string };
+    const [rows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>(
+      "SELECT id, tenant_id, domain_name, status, created_at FROM tenant_domain_mappings WHERE tenant_id = ? ORDER BY created_at ASC",
+      [tenantId]
+    );
+    return ok(rows.map(convertRow), responseMeta(request));
+  });
+
+  app.post("/admin/tenants/:tenantId/domains", async (request) => {
+    const session = await requireSuperAdmin(app, request);
+    requirePermission(session, "platform.tenant.profile.manage");
+    const { tenantId } = request.params as { tenantId: string };
+    const body = request.body as { domainName: string };
+    if (!body.domainName?.trim()) throw AppError.validation("domainName is required");
+    await app.masterDbPool.execute(
+      "INSERT INTO tenant_domain_mappings (tenant_id, domain_name, status) VALUES (?, ?, 'active')",
+      [tenantId, body.domainName.trim()]
+    );
+    await app.auditService.write({
+      actorType: "super_admin",
+      actorEmail: session.email,
+      ...(request.correlationId ? { correlationId: request.correlationId } : {}),
+      eventName: "tenant.domain.added",
+      tenantId,
+      payload: { domainName: body.domainName }
+    });
+    return ok({ domainName: body.domainName }, responseMeta(request));
+  });
+
+  app.delete("/admin/tenants/:tenantId/domains/:id", async (request) => {
+    const session = await requireSuperAdmin(app, request);
+    requirePermission(session, "platform.tenant.profile.manage");
+    const { tenantId, id } = request.params as { tenantId: string; id: string };
+    await app.masterDbPool.execute(
+      "DELETE FROM tenant_domain_mappings WHERE id = ? AND tenant_id = ?",
+      [id, tenantId]
+    );
+    await app.auditService.write({
+      actorType: "super_admin",
+      actorEmail: session.email,
+      ...(request.correlationId ? { correlationId: request.correlationId } : {}),
+      eventName: "tenant.domain.removed",
+      tenantId,
+      payload: { domainId: id }
+    });
+    return ok({ removed: true }, responseMeta(request));
+  });
+
+  // ── Migration Runner (Database Manager) ────────────────────────
+  app.post("/admin/migrations/run", async (request) => {
+    const session = await requireSuperAdmin(app, request);
+    requirePermission(session, "platform.migration.status.view");
+    const { MigrationRunner } = await import("../db/migration-runner.js");
+    const { masterMigrations } = await import("../db/migrations/master-index.js");
+    const runner = new MigrationRunner(app.masterDbPool);
+    await runner.initialize();
+    const pending = runner.listPending(masterMigrations);
+    const results: Array<{ id: string; status: string }> = [];
+    for (const migration of pending) {
+      try {
+        await runner.run(migration);
+        results.push({ id: migration.id, status: "applied" });
+      } catch {
+        results.push({ id: migration.id, status: "error" });
+      }
+    }
+    await app.auditService.write({
+      actorType: "super_admin",
+      actorEmail: session.email,
+      ...(request.correlationId ? { correlationId: request.correlationId } : {}),
+      eventName: "migration.run",
+      payload: { results }
+    });
+    return ok({ applied: results.length, results }, responseMeta(request));
+  });
+
+  // ── Database Connection Status ────────────────────────────────
+  app.get("/admin/databases", async (request) => {
+    const session = await requireSuperAdmin(app, request);
+    requirePermission(session, "platform.migration.status.view");
+    const [dbRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>(
+      "SELECT id, tenant_id, database_name, status, created_at FROM tenant_databases ORDER BY created_at ASC"
+    );
+    const databases = dbRows.map(convertRow).map((r) => ({
+      ...r,
+      dbStatus: "unknown"
+    }));
+    return ok(databases, responseMeta(request));
   });
 }

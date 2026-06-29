@@ -37,12 +37,28 @@ export const platformBasePermissions = [
   buildPermissionName({ action: "view", module: "migration", resource: "status", scope: "platform" })
 ] as const;
 
+export const businessPermissions = [
+  "business.contact.view",
+  "business.contact.manage"
+] as const;
+
+export const corePermissions = [
+  "core.common.view",
+  "core.common.manage",
+  "core.contact.view",
+  "core.contact.manage",
+  "core.company.view",
+  "core.company.manage",
+  "core.product.view",
+  "core.product.manage"
+] as const;
+
 export const platformPermissionsAll = [...platformBasePermissions];
 
 export type UserType = "staff" | "super_admin" | "system" | "tenant";
 
 export const rolePermissionMap: Record<UserType, string[]> = {
-  super_admin: [...platformPermissionsAll],
+  super_admin: [...platformPermissionsAll, ...businessPermissions, ...corePermissions],
   staff: [
     buildPermissionName({ action: "view", module: "tenant", resource: "profile", scope: "platform" }),
     buildPermissionName({ action: "view", module: "audit", resource: "activity", scope: "platform" }),
@@ -50,7 +66,7 @@ export const rolePermissionMap: Record<UserType, string[]> = {
     buildPermissionName({ action: "view", module: "module", resource: "catalog", scope: "platform" }),
     buildPermissionName({ action: "view", module: "migration", resource: "status", scope: "platform" })
   ],
-  tenant: [],
+  tenant: [...businessPermissions, ...corePermissions],
   system: []
 };
 

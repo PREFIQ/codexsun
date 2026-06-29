@@ -1,0 +1,52 @@
+{
+  "name": "@codexsun/core",
+  "version": "1.0.9",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./common": {
+      "types": "./dist/common/index.d.ts",
+      "default": "./dist/common/index.js"
+    },
+    "./master/contacts": {
+      "types": "./dist/master/contacts/index.d.ts",
+      "default": "./dist/master/contacts/index.js"
+    },
+    "./master/companies": {
+      "types": "./dist/master/companies/index.d.ts",
+      "default": "./dist/master/companies/index.js"
+    },
+    "./master/products": {
+      "types": "./dist/master/products/index.d.ts",
+      "default": "./dist/master/products/index.js"
+    },
+    "./shared": {
+      "types": "./dist/shared/index.d.ts",
+      "default": "./dist/shared/index.js"
+    },
+    "./api": {
+      "types": "./dist/api/index.d.ts",
+      "default": "./dist/api/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json --emitDeclarationOnly false",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@codexsun/framework": "^1.0.9"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

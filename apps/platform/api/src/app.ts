@@ -16,6 +16,14 @@ import { FileService, InMemoryFileRepository } from "@codexsun/platform/files";
 import { NotificationService, InMemoryNotificationRepository } from "@codexsun/platform/notifications";
 import { TemplateService, InMemoryTemplateRepository } from "@codexsun/platform/templates";
 import { AgentService, InMemoryAgentRepository } from "@codexsun/platform/agents";
+import {
+  CoreDefinitionService, CoreRecordService, InMemoryCoreRecordRepository,
+  ContactService as CoreContactService, InMemoryContactRepository as CoreInMemoryContactRepository,
+  CompanyService, InMemoryCompanyRepository,
+  ProductService, InMemoryProductRepository,
+  registerAllCoreRoutes
+} from "@codexsun/core";
+import type { CoreRouteContext } from "@codexsun/core";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { registerTenantRoutes } from "./tenant/routes.js";
 import { registerAdminRoutes } from "./admin/routes.js";
@@ -25,6 +33,7 @@ import { registerFileRoutes } from "./files/routes.js";
 import { registerNotificationRoutes } from "./notifications/routes.js";
 import { registerTemplateRoutes } from "./templates/routes.js";
 import { registerAgentRoutes } from "./agents/routes.js";
+import { requireSession, requireActiveTenant, requireFeatureEnabled, requirePermission } from "./auth/guards.js";
 import { bootstrapDatabases, createServerConnection } from "./db/bootstrap.js";
 import { getDatabaseShutdownHooks } from "./db/shutdown.js";
 import { env } from "./env.js";
@@ -36,6 +45,11 @@ declare module "fastify" {
     agentService: AgentService;
     auditService: AuditService;
     authService: AuthService;
+    coreDefinitionService: CoreDefinitionService;
+    coreRecordService: CoreRecordService;
+    coreContactService: CoreContactService;
+    coreCompanyService: CompanyService;
+    coreProductService: ProductService;
     fileService: FileService;
     masterDbPool: CompatibleDbPool;
     moduleCatalog: ModuleCatalogService;
@@ -144,6 +158,17 @@ export async function createApp() {
   const agentRepository = new InMemoryAgentRepository();
   const agentService = new AgentService(agentRepository);
 
+  // Core services
+  const coreDefinitionService = new CoreDefinitionService();
+  const coreRecordRepository = new InMemoryCoreRecordRepository();
+  const coreRecordService = new CoreRecordService(coreRecordRepository);
+  const coreContactRepository = new CoreInMemoryContactRepository();
+  const coreContactService = new CoreContactService(coreContactRepository);
+  const coreCompanyRepository = new InMemoryCompanyRepository();
+  const coreCompanyService = new CompanyService(coreCompanyRepository);
+  const coreProductRepository = new InMemoryProductRepository();
+  const coreProductService = new ProductService(coreProductRepository);
+
   const app = await createApiApp({
     appName: "CODEXSUN Platform API",
     cookieSecret: env.JWT_SECRET,
@@ -182,6 +207,11 @@ export async function createApp() {
   app.decorate("notificationService", notificationService);
   app.decorate("templateService", templateService);
   app.decorate("agentService", agentService);
+  app.decorate("coreDefinitionService", coreDefinitionService);
+  app.decorate("coreRecordService", coreRecordService);
+  app.decorate("coreContactService", coreContactService);
+  app.decorate("coreCompanyService", coreCompanyService);
+  app.decorate("coreProductService", coreProductService);
 
   const healthChecks: HealthCheck[] = [
     {
@@ -207,6 +237,15 @@ export async function createApp() {
   await registerNotificationRoutes(app);
   await registerTemplateRoutes(app);
   await registerAgentRoutes(app);
+
+  // Core routes
+  const coreCtx: CoreRouteContext = {
+    guardSession: (app, request) => requireSession(app, request),
+    guardActiveTenant: (app, tenantId) => requireActiveTenant(app, tenantId),
+    guardFeatureEnabled: (app, tenantId, featureKey) => requireFeatureEnabled(app, tenantId, featureKey),
+    guardPermission: (session, permission) => requirePermission(session, permission)
+  };
+  await registerAllCoreRoutes(app, coreCtx);
 
   return app;
 }

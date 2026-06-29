@@ -248,7 +248,31 @@ These are intentionally deferred until a specific module or deployment need requ
 The foundation is ready. The next active execution task is:
 
 ```text
-Task 14 - Common Master Data Foundation
+Task 15 - Core App Common And Master Module Foundation
 ```
 
-Task 14 should begin the first business-adjacent foundation layer while still keeping the scope conservative and reusable.
+Task 14 captured the first common master direction. Task 15 refines that direction into a separate `apps/core` ownership model so common, shared, and master modules are reusable across all future apps instead of living directly inside platform.
+
+Platform also has one remaining non-business closure task:
+
+```text
+Task 16 - Platform Super Admin And Non-Business Module Closure
+```
+
+Task 16 uses the CXSUN super-admin/platform scan to finish tenant, domain, subscription, apps, industry, admin users, queue, database, dev docs, support, ZETRO setup, and GST provider setup surfaces while keeping common/master/business modules out of platform.
+
+Before implementing further modules, run the boundary verification task:
+
+```text
+Task 17 - App Boundary Table And Migration Verification
+```
+
+Task 17 segregates all platform, core, billing, mail, sites/blog, ZETRO, compliance, and framework/runtime tables into proper app-level ownership and verifies migrations are registered at the owning app boundary.
+
+Verification found tenant and industry flow blockers that must be closed before more platform pages are considered complete:
+
+```text
+Task 18 - E2E Verification Closure For Tenant And Industry
+```
+
+Task 18 records the Vitest failures, Playwright setup gap, blank-web runtime issue, super-admin layout overlap, tenant design mismatch, missing industry API, missing stable routes, and startup/page performance measurement requirements.

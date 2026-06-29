@@ -14,9 +14,12 @@ describe("Module Catalog Contracts", () => {
     expect(keys).toContain("platform.notifications");
   });
 
-  it("should return future tenant module keys", () => {
+  it("should return core and future tenant module keys", () => {
     const keys = platformModuleCatalog.map((m) => m.moduleKey);
-    expect(keys).toContain("business.contacts");
+    expect(keys).toContain("core");
+    expect(keys).toContain("core.contact");
+    expect(keys).toContain("core.company");
+    expect(keys).toContain("core.product");
     expect(keys).toContain("business.items");
     expect(keys).toContain("business.billing");
     expect(keys).toContain("business.accounting");
