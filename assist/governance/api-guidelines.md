@@ -148,6 +148,7 @@ Error:
 
 | Field | Required | Description |
 | --- | --- | --- |
+| `correlationId` | optional | Echoes `x-correlation-id` header. Auto-generated if client omits it. |
 | `requestId` | always | Fastify request ID, used as internal trace value |
 | `timestamp` | always | ISO 8601 timestamp of response generation |
 | `tenantId` | optional | Present when the request carried a validated `x-tenant-id` header |
@@ -157,7 +158,7 @@ Error:
 | Header | When to send | Description |
 | --- | --- | --- |
 | `x-tenant-id` | Tenant-scoped API calls | Validated database tenant ID from session/JWT. Never used alone for auth. |
-| `x-correlation-id` | Removed | Superseded by `requestId` for trace and `tenantId` for tenant context. |
+| `x-correlation-id` | All API calls | Restored in v1.0.4. Echoed in envelope meta as `correlationId`. Task 1 proposes deprecating in favor of `requestId` + `tenantId` separation. |
 
 ## API Guard Pattern
 
