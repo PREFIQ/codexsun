@@ -51,12 +51,17 @@ export class InMemorySessionStore {
 
     return this.sessions.get(token);
   }
+
+  async listAsync(): Promise<PlatformSessionRecord[]> {
+    return Array.from(this.sessions.values());
+  }
 }
 
 export interface SessionStore {
   createAsync(input: Omit<PlatformSessionRecord, "createdAt" | "token">): Promise<PlatformSessionRecord>;
   getAsync(token?: string): Promise<PlatformSessionRecord | undefined>;
   destroyAsync(token?: string): Promise<void>;
+  listAsync(): Promise<PlatformSessionRecord[]>;
 }
 
 export class DatabaseSessionStore implements SessionStore {
@@ -125,5 +130,28 @@ export class DatabaseSessionStore implements SessionStore {
   async destroyAsync(token?: string): Promise<void> {
     if (!token) return;
     await this.pool.execute("DELETE FROM sessions WHERE token = ?", [token]);
+  }
+
+  async listAsync(): Promise<PlatformSessionRecord[]> {
+    const [rows] = await this.pool.execute<Array<{
+      created_at: Date | string;
+      email: string;
+      expires_at: Date | string;
+      tenant_code: string | null;
+      tenant_id: string | null;
+      token: string;
+      user_type: string;
+    }>>(
+      "SELECT token, email, user_type, tenant_id, tenant_code, created_at, expires_at FROM sessions WHERE expires_at > ? ORDER BY created_at DESC",
+      [new Date()]
+    );
+    return rows.map((row) => ({
+      token: row.token,
+      email: row.email,
+      userType: row.user_type as PlatformSessionUserType,
+      createdAt: new Date(row.created_at).toISOString(),
+      ...(row.tenant_id ? { tenantId: row.tenant_id } : {}),
+      ...(row.tenant_code ? { tenantCode: row.tenant_code } : {})
+    }));
   }
 }

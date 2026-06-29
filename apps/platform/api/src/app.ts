@@ -8,9 +8,23 @@ import { ActivationService } from "@codexsun/platform/activation";
 import { ModuleCatalogService } from "@codexsun/platform/catalog";
 import { PermissionService } from "@codexsun/platform/permissions";
 import { SubscriptionService } from "@codexsun/platform/subscription";
+import { MasterDbUserRepository, UserService } from "@codexsun/platform/users";
+import { InMemoryRoleRepository, RoleService } from "@codexsun/platform/roles";
+import { SettingsService, MasterDbSettingsRepository } from "@codexsun/platform/settings";
+import { ActivityService, InMemoryActivityRepository } from "@codexsun/platform/activity";
+import { FileService, InMemoryFileRepository } from "@codexsun/platform/files";
+import { NotificationService, InMemoryNotificationRepository } from "@codexsun/platform/notifications";
+import { TemplateService, InMemoryTemplateRepository } from "@codexsun/platform/templates";
+import { AgentService, InMemoryAgentRepository } from "@codexsun/platform/agents";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { registerTenantRoutes } from "./tenant/routes.js";
 import { registerAdminRoutes } from "./admin/routes.js";
+import { registerSettingsRoutes } from "./settings/routes.js";
+import { registerActivityRoutes } from "./activity/routes.js";
+import { registerFileRoutes } from "./files/routes.js";
+import { registerNotificationRoutes } from "./notifications/routes.js";
+import { registerTemplateRoutes } from "./templates/routes.js";
+import { registerAgentRoutes } from "./agents/routes.js";
 import { bootstrapDatabases, createServerConnection } from "./db/bootstrap.js";
 import { getDatabaseShutdownHooks } from "./db/shutdown.js";
 import { env } from "./env.js";
@@ -18,14 +32,22 @@ import { env } from "./env.js";
 declare module "fastify" {
   interface FastifyInstance {
     activationService: ActivationService;
+    activityService: ActivityService;
+    agentService: AgentService;
     auditService: AuditService;
     authService: AuthService;
+    fileService: FileService;
     masterDbPool: CompatibleDbPool;
     moduleCatalog: ModuleCatalogService;
+    notificationService: NotificationService;
     permissionService: PermissionService;
+    roleService: RoleService;
+    settingsService: SettingsService;
     subscriptionService: SubscriptionService;
+    templateService: TemplateService;
     tenantLookup: TenantLookupService;
     tenantService: TenantService;
+    userService: UserService;
   }
 }
 
@@ -91,6 +113,36 @@ export async function createApp() {
   const moduleCatalog = new ModuleCatalogService(masterDbPool);
   const permissionService = new PermissionService();
   const subscriptionService = new SubscriptionService();
+  const userRepository = new MasterDbUserRepository(masterDbPool);
+  const userService = new UserService(userRepository);
+  const roleRepository = new InMemoryRoleRepository();
+  const roleService = new RoleService(roleRepository);
+  // Seed initial system roles
+  for (const r of roleService.getAllSystemRoles()) {
+    const existing = await roleRepository.getByKey(r.key);
+    if (!existing) {
+      await roleRepository.create({
+        key: r.key,
+        label: r.label,
+        description: `System ${r.userType} role`,
+        permissions: [],
+        userType: r.userType
+      });
+    }
+  }
+
+  const settingsRepository = new MasterDbSettingsRepository(masterDbPool);
+  const settingsService = new SettingsService(settingsRepository);
+  const activityRepository = new InMemoryActivityRepository();
+  const activityService = new ActivityService(activityRepository);
+  const fileRepository = new InMemoryFileRepository();
+  const fileService = new FileService(fileRepository);
+  const notificationRepository = new InMemoryNotificationRepository();
+  const notificationService = new NotificationService(notificationRepository);
+  const templateRepository = new InMemoryTemplateRepository();
+  const templateService = new TemplateService(templateRepository);
+  const agentRepository = new InMemoryAgentRepository();
+  const agentService = new AgentService(agentRepository);
 
   const app = await createApiApp({
     appName: "CODEXSUN Platform API",
@@ -122,6 +174,14 @@ export async function createApp() {
   app.decorate("subscriptionService", subscriptionService);
   app.decorate("tenantLookup", tenantLookup);
   app.decorate("tenantService", tenantService);
+  app.decorate("userService", userService);
+  app.decorate("roleService", roleService);
+  app.decorate("settingsService", settingsService);
+  app.decorate("activityService", activityService);
+  app.decorate("fileService", fileService);
+  app.decorate("notificationService", notificationService);
+  app.decorate("templateService", templateService);
+  app.decorate("agentService", agentService);
 
   const healthChecks: HealthCheck[] = [
     {
@@ -141,6 +201,12 @@ export async function createApp() {
   await registerAuthRoutes(app);
   await registerTenantRoutes(app);
   await registerAdminRoutes(app);
+  await registerSettingsRoutes(app);
+  await registerActivityRoutes(app);
+  await registerFileRoutes(app);
+  await registerNotificationRoutes(app);
+  await registerTemplateRoutes(app);
+  await registerAgentRoutes(app);
 
   return app;
 }

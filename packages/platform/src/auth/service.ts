@@ -144,4 +144,8 @@ export class AuthService {
     }
     // JWT mode: stateless, no server-side invalidation
   }
+
+  getSessionStore(): SessionStore {
+    return this.sessionStore;
+  }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/platform",
-  "version": "1.0.4",
+  "version": "1.0.8",
   "private": true,
   "type": "module",
   "exports": {
@@ -11,6 +11,22 @@
     "./activation": {
       "types": "./dist/activation/index.d.ts",
       "default": "./dist/activation/index.js"
+    },
+    "./activity": {
+      "types": "./dist/activity/index.d.ts",
+      "default": "./dist/activity/index.js"
+    },
+    "./agents": {
+      "types": "./dist/agents/index.d.ts",
+      "default": "./dist/agents/index.js"
+    },
+    "./files": {
+      "types": "./dist/files/index.d.ts",
+      "default": "./dist/files/index.js"
+    },
+    "./templates": {
+      "types": "./dist/templates/index.d.ts",
+      "default": "./dist/templates/index.js"
     },
     "./catalog": {
       "types": "./dist/catalog/index.d.ts",
@@ -71,3 +87,5 @@
     "typescript": "^5.7.2"
   }
 }
+
+

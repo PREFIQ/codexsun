@@ -49,6 +49,21 @@ export class AuditService {
     });
   }
 
+  async recordEvent(input: {
+    actorType: AuditEvent["actorType"]; actorEmail: string;
+    eventName: string; payload?: Record<string, unknown>;
+    correlationId?: string; tenantId?: string;
+  }): Promise<void> {
+    await this.write({
+      actorType: input.actorType,
+      actorEmail: input.actorEmail,
+      eventName: input.eventName,
+      ...(input.correlationId ? { correlationId: input.correlationId } : {}),
+      ...(input.tenantId ? { tenantId: input.tenantId } : {}),
+      ...(input.payload ? { payload: input.payload } : {})
+    });
+  }
+
   async tenantCreated(input: { actorEmail: string; correlationId?: string; tenantId: string; tenantCode: string }): Promise<void> {
     await this.write({
       actorType: "super_admin",

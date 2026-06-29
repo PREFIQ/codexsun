@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.6
+Current version: 1.0.8
 
-Release tag: v-1.0.6
+Release tag: v-1.0.8
 
-Changelog label: v 1.0.6
+Changelog label: v 1.0.8
 
 Historical changelog entries are immutable. A version bump may update this Version State block and add a new entry, but it must not rewrite old entry labels.
 
@@ -19,6 +19,59 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, and documentation changes.
+
+## v-1.0.8
+
+### [v 1.0.8] 2026-06-29 10:20 am - Settings, Files, Notifications, Activity, And Agent Workbench Foundation
+
+#### Database Changes
+
+- Database update: Yes (auto-check).
+- Added `004_master_settings_files_notifications` migration with 7 new tables: `platform_settings`, `platform_feature_flags`, `file_metadata`, `notification_records`, `agent_action_audits`, `activity_timeline`, `comments`.
+
+#### App Codebase Changes
+
+- Bumped workspace version to 1.0.8.
+- Implemented Task 9 (Settings & Configuration Foundation), Task 10 (Document File & Print Template Foundation), Task 11 (Notification, Mail & Activity Foundation), and Task 12 (Developer & Agent Workbench Foundation).
+- **Settings (Task 9):** Created `SettingsService` + `MasterDbSettingsRepository` in `packages/platform/src/settings/` for CRUD, secret masking, feature flag management, and console setting sections.
+- **Files (Task 10):** Created `FileService` + `InMemoryFileRepository` in `packages/platform/src/files/` for file metadata CRUD, tenant isolation, and storage adapter wiring.
+- **Templates (Task 10):** Created `TemplateService` + `InMemoryTemplateRepository` in `packages/platform/src/templates/` for print template registry with seeded defaults (invoice, quote, receipt).
+- **Notifications (Task 11):** Created `NotificationService` + `InMemoryNotificationRepository` in `packages/platform/src/notifications/` for notification CRUD, mail template list, and mail queue job placeholder.
+- **Activity (Task 11):** Created `ActivityService` + `InMemoryActivityRepository` in `packages/platform/src/activity/` for activity timeline and comment system with tenant isolation.
+- **Agents (Task 12):** Created `AgentService` + `InMemoryAgentRepository` in `packages/platform/src/agents/` for agent permission model, tool registry, prompt template registry, agent action audit, and provider settings.
+- Added generic `recordEvent()` method to `AuditService` for custom audit events.
+- Added subpath exports in `@codexsun/platform/package.json` for activity, agents, files, and templates modules.
+- Created 9 new route files (settings, activity, files, notifications, templates, agents) with 30+ endpoints covering all foundation modules.
+- Added `004_master_settings_files_notifications.ts` migration with 7 new tables.
+- Wired all 7 new services in `apps/platform/api/src/app.ts` with Fastify decoration and route registration.
+- Created 3 new UI pages: `PlatformSettings.tsx` (runtime, auth, mail, system defaults, support), `FeatureFlags.tsx` (enable/disable per tenant with audit), `WorkbenchPage.tsx` (4-tab shell: Tool Registry, Prompt Templates, Action Audit, Provider Settings).
+- Added 31 integration tests for all foundation endpoints; total 74 tests pass across 4 test files.
+- All six workspace packages pass typecheck and lint cleanly.
+
+## v-1.0.7
+
+### [v 1.0.7] 2026-06-29 10:05 am - Platform Admin Console And User Role & Permission UI
+
+#### Database Changes
+
+- Database update: No schema changes.
+
+#### App Codebase Changes
+
+- Bumped workspace version to 1.0.7.
+- Implemented Task 7 (Platform Admin Console) and Task 8 (User Role & Permission UI).
+- Created `UserService` with `MasterDbUserRepository` in `packages/platform/src/users/service.ts` for CRUD, suspend, activate on super_admin_users and staff_users.
+- Created `RoleService` with `InMemoryRoleRepository` in `packages/platform/src/roles/service.ts` for role CRUD, permission matrix, system role definitions.
+- Extended `SessionStore` interface and both implementations (`InMemorySessionStore`, `DatabaseSessionStore`) with `listAsync()`.
+- Added `getSessionStore()` to `AuthService`.
+- Rewrote `apps/platform/api/src/admin/routes.ts` with 20+ admin endpoints: console dashboard, tenant CRUD + suspend/restore, module catalog + enable/disable, audit viewer, migration status, health check, platform users CRUD, role management, permission matrix, session list + revoke.
+- Wired `userService`, `roleService` in api `app.ts`; seeded system roles from contracts.
+- Created 10 admin sub-pages under `apps/platform/web/src/pages/sa/` using `@codexsun/ui` components and TanStack Query: ConsoleHome, TenantList, ModuleActivation, AuditViewer, MigrationStatus, HealthView, UserList, RoleList, PermissionMatrix, SessionList.
+- Refactored `SaDesk.tsx` with state-based page routing and navigation bar.
+- Fixed BigInt serialization with `toNumber()` helper for MariaDB COUNT/SUM.
+- Fixed `audit_events` INSERT to omit `tenant_id` column (schema compatibility).
+- Added 25 admin integration tests; all 43 tests pass (18 existing + 25 new).
+- All six workspace packages pass typecheck and lint cleanly.
 
 ## v-1.0.6
 

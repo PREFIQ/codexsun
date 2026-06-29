@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/platform-api",
-  "version": "1.0.3",
+  "version": "1.0.8",
   "private": true,
   "type": "module",
   "scripts": {
@@ -25,3 +25,5 @@
     "typescript": "^5.7.2"
   }
 }
+
+
