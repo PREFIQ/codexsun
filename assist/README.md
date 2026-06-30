@@ -20,6 +20,14 @@ E:\Workspace\cxsun
 
 Agents should inspect this reference before changing authentication screens, global loading states, workspace shell behavior, super-admin flows, tenant desk flows, and shared design-system primitives. Copy the intent and interaction rhythm into CODEXSUN through `@codexsun/ui`; do not paste unrelated business logic or old module boundaries blindly.
 
+## Development Standards
+
+Agents must read and follow these standards before changing module UI, backend contracts, or release notes:
+
+- UI and backend module standard: `assist/documentation/design-system-helper.md`
+- Governance rule book: `assist/governance/rules.md`
+- Changelog and version state: `assist/documentation/CHANGELOG.md`
+
 ## Product Vision
 
 CODEXSUN should become a business operating platform where each customer receives an isolated, customizable system that matches their industry, billing flow, compliance needs, and growth stage.

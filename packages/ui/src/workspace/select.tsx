@@ -18,12 +18,14 @@ export function WorkspaceSelect({
   onValueChange,
   options,
   placeholder = "Select",
+  required: _required,
   value,
 }: {
   ariaLabel?: string
   onValueChange: (value: string) => void
   options: WorkspaceSelectOption[]
   placeholder?: string
+  required?: boolean
   value: string
 }) {
   return (

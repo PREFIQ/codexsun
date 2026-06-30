@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { ArrowLeft } from "lucide-react"
+import { AlertCircle, AlertTriangle, ArrowLeft, Info } from "lucide-react"
 import { Button } from "../components/button"
 import { Label } from "../components/label"
 import { cn } from "../lib/utils"
@@ -78,6 +78,39 @@ export function WorkspaceFormPanel({
   )
 }
 
+export function WorkspaceFormBanner({
+  children,
+  className,
+  title,
+  tone = "error",
+}: {
+  children: ReactNode
+  className?: string
+  title: string
+  tone?: "error" | "info" | "warning"
+}) {
+  const Icon = tone === "warning" ? AlertTriangle : tone === "info" ? Info : AlertCircle
+
+  return (
+    <div
+      className={cn(
+        "mb-4 flex gap-3 rounded-md border px-3 py-2.5 text-sm",
+        tone === "error" && "border-destructive/30 bg-destructive/10 text-destructive",
+        tone === "warning" && "border-amber-300 bg-amber-50 text-amber-900",
+        tone === "info" && "border-sky-300 bg-sky-50 text-sky-900",
+        className,
+      )}
+      role={tone === "error" ? "alert" : "status"}
+    >
+      <Icon className="mt-0.5 size-4 shrink-0" />
+      <div className="min-w-0">
+        <p className="font-medium">{title}</p>
+        <div className="mt-0.5 text-current/80">{children}</div>
+      </div>
+    </div>
+  )
+}
+
 export function WorkspaceFormGrid({
   children,
   className,
@@ -106,14 +139,19 @@ export function WorkspaceFormField({
   children,
   className,
   label,
+  required,
 }: {
   children: ReactNode
   className?: string
   label: ReactNode
+  required?: boolean
 }) {
   return (
     <div className={cn("grid gap-2", className)}>
-      <Label className="text-sm font-medium text-muted-foreground">{label}</Label>
+      <Label className="text-sm font-medium text-muted-foreground">
+        {label}
+        {required ? <span className="ml-1 text-destructive">*</span> : null}
+      </Label>
       {children}
     </div>
   )

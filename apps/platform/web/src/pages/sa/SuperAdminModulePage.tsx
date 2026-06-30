@@ -23,7 +23,7 @@ import { WorkspaceSelect } from "@codexsun/ui/workspace/select"
 import { WorkspaceDetailTable, WorkspaceShowCard, WorkspaceShowLayout } from "@codexsun/ui/workspace/show"
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status"
 import { WorkspaceTableEmptyState, WorkspaceTableHeaderCell, WorkspaceTablePanel } from "@codexsun/ui/workspace/table"
-import { WorkspaceFormField, WorkspaceFormGrid, WorkspaceFormPanel, WorkspaceUpsertPage } from "@codexsun/ui/workspace/upsert"
+import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormGrid, WorkspaceFormPanel, WorkspaceUpsertPage } from "@codexsun/ui/workspace/upsert"
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils"
 import { apiDelete, apiGet, apiPost, apiPut } from "../../api"
 
@@ -140,6 +140,14 @@ type PlatformIndustryDTO = {
   defaultTemplate: string
   status: string
   updatedAt?: string
+}
+
+type AuditEventDTO = {
+  actor_email?: string | null
+  created_at?: string
+  event_name: string
+  event_payload?: unknown
+  id: number | string
 }
 
 const statusOptions = ["active", "inactive", "pending", "configured", "planned", "review"]
@@ -365,6 +373,7 @@ export function SuperAdminModulePage({
   const usesTenantLookup = isDomainModule || isSubscriptionModule
   const usesPlanLookup = isSubscriptionModule
   const usesApiRecords = isDomainModule || isSubscriptionModule || isPlanModule || isAppModule || isIndustryModule
+  const canForceDelete = usesApiRecords
   const queryClient = useQueryClient()
   const storageKey = `codexsun.sa.module.${config.actionLabel.replace(/\s+/g, "-")}.records`
   const [localRecords, setLocalRecords] = useState<ModuleRecord[]>(() => loadModuleRecords(storageKey, config.records))
@@ -412,6 +421,11 @@ export function SuperAdminModulePage({
     enabled: isIndustryModule,
     queryKey: ["admin", "industries"],
     queryFn: () => apiGet<PlatformIndustryDTO[]>("/admin/industries", "sa"),
+  })
+  const activityQuery = useQuery<AuditEventDTO[]>({
+    enabled: view.mode === "show" && usesApiRecords,
+    queryKey: ["admin", "activity", config.actionLabel, view.mode === "show" ? activityRecordKey(config.actionLabel, view.record) : ""],
+    queryFn: () => apiGet<AuditEventDTO[]>(`/admin/activity/${config.actionLabel}/${encodeURIComponent(view.mode === "show" ? activityRecordKey(config.actionLabel, view.record) : "")}`, "sa"),
   })
   const createTenantMutation = useMutation({
     mutationFn: (name: string) => {
@@ -465,6 +479,16 @@ export function SuperAdminModulePage({
     },
     onError: (error) => toast.error("Domain delete failed", { description: error instanceof Error ? error.message : "Unable to delete domain." }),
   })
+  const deleteSubscriptionMutation = useMutation({
+    mutationFn: (recordItem: ModuleRecord) => apiDelete<{ deleted: boolean; id: string; planName: string }>(`/admin/subscriptions/${recordItem.id}`, "sa"),
+    onSuccess: async (_data, recordItem) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "subscriptions"] })
+      setPendingForceDelete(null)
+      setView({ mode: "list" })
+      toast.success("Subscription deleted", { description: `${recordItem.name} was permanently removed.` })
+    },
+    onError: (error) => toast.error("Subscription delete failed", { description: error instanceof Error ? error.message : "Unable to delete subscription." }),
+  })
   const createSubscriptionMutation = useMutation({
     mutationFn: (recordItem: ModuleRecord) => apiPost<SubscriptionDTO>("/admin/subscriptions", toSubscriptionApiPayload(recordItem, tenantsQuery.data ?? []), "sa"),
     onSuccess: async (subscription) => {
@@ -513,6 +537,16 @@ export function SuperAdminModulePage({
     },
     onError: (error) => toast.error("Plan update failed", { description: error instanceof Error ? error.message : "Unable to update plan." }),
   })
+  const deletePlanMutation = useMutation({
+    mutationFn: (recordItem: ModuleRecord) => apiDelete<{ deleted: boolean; id: string; planName: string }>(`/admin/subscription-plans/${recordItem.id}`, "sa"),
+    onSuccess: async (_data, recordItem) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "subscription-plans"] })
+      setPendingForceDelete(null)
+      setView({ mode: "list" })
+      toast.success("Plan deleted", { description: `${recordItem.name} was permanently removed.` })
+    },
+    onError: (error) => toast.error("Plan delete failed", { description: error instanceof Error ? error.message : "Unable to delete plan." }),
+  })
   const createAppMutation = useMutation({
     mutationFn: (recordItem: ModuleRecord) => apiPost<PlatformAppDTO>("/admin/platform-apps", toPlatformAppApiPayload(recordItem), "sa"),
     onSuccess: async (appRecord) => {
@@ -536,6 +570,16 @@ export function SuperAdminModulePage({
       setView({ mode: "show", record: savedRecord })
     },
     onError: (error) => toast.error("App update failed", { description: error instanceof Error ? error.message : "Unable to update app." }),
+  })
+  const deleteAppMutation = useMutation({
+    mutationFn: (recordItem: ModuleRecord) => apiDelete<{ deleted: boolean; displayName: string; moduleKey: string }>(`/admin/platform-apps/${encodeURIComponent(recordItem.id)}`, "sa"),
+    onSuccess: async (_data, recordItem) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "platform-apps"] })
+      setPendingForceDelete(null)
+      setView({ mode: "list" })
+      toast.success("App deleted", { description: `${recordItem.name} was permanently removed.` })
+    },
+    onError: (error) => toast.error("App delete failed", { description: error instanceof Error ? error.message : "Unable to delete app." }),
   })
   const createIndustryMutation = useMutation({
     mutationFn: (recordItem: ModuleRecord) => apiPost<PlatformIndustryDTO>("/admin/industries", toPlatformIndustryApiPayload(recordItem), "sa"),
@@ -561,6 +605,17 @@ export function SuperAdminModulePage({
     },
     onError: (error) => toast.error("Industry update failed", { description: error instanceof Error ? error.message : "Unable to update industry." }),
   })
+  const deleteIndustryMutation = useMutation({
+    mutationFn: (recordItem: ModuleRecord) => apiDelete<{ deleted: boolean; id: string; industryName: string }>(`/admin/industries/${recordItem.id}`, "sa"),
+    onSuccess: async (_data, recordItem) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin", "industries"] })
+      setPendingForceDelete(null)
+      setView({ mode: "list" })
+      toast.success("Industry deleted", { description: `${recordItem.name} was permanently removed.` })
+    },
+    onError: (error) => toast.error("Industry delete failed", { description: error instanceof Error ? error.message : "Unable to delete industry." }),
+  })
+  const forceDeletePending = deleteDomainMutation.isPending || deleteSubscriptionMutation.isPending || deletePlanMutation.isPending || deleteAppMutation.isPending || deleteIndustryMutation.isPending
   const records = isDomainModule
     ? (domainsQuery.data ?? []).map(domainMappingToRecord)
     : isSubscriptionModule
@@ -638,12 +693,13 @@ export function SuperAdminModulePage({
               <Pencil className="size-4" />
               Edit
             </Button>
-            {isDomainModule ? (
+            {canForceDelete ? (
               <Button type="button" variant="outline" className="h-9 rounded-md text-destructive hover:text-destructive" onClick={() => setPendingForceDelete(view.record)}>
                 <Trash2 className="size-4" />
                 Force delete
               </Button>
-            ) : (
+            ) : null}
+            {!isDomainModule ? (
               <Button
                 type="button"
                 variant="outline"
@@ -673,7 +729,7 @@ export function SuperAdminModulePage({
               >
                 {suspended ? "Restore" : "Suspend"}
               </Button>
-            )}
+            ) : null}
           </>
         }
       >
@@ -699,12 +755,14 @@ export function SuperAdminModulePage({
               ]}
             />
           </WorkspaceShowCard>
+          <ActivityCard events={activityQuery.data ?? []} loading={activityQuery.isFetching} />
         </WorkspaceShowLayout>
-        <DomainForceDeleteDialog
-          deleting={deleteDomainMutation.isPending}
+        <ForceDeleteDialog
+          actionLabel={config.actionLabel}
+          deleting={forceDeletePending}
           record={pendingForceDelete}
           onClose={() => setPendingForceDelete(null)}
-          onConfirm={(recordItem) => deleteDomainMutation.mutate(recordItem)}
+          onConfirm={forceDeleteRecord}
         />
       </WorkspacePage>
     )
@@ -713,6 +771,7 @@ export function SuperAdminModulePage({
   if (view.mode === "upsert") {
     return (
       <ModuleUpsertPage
+        bannerMessage={upsertErrorMessage()}
         config={config}
         planLookupOptions={planLookupOptions}
         records={records}
@@ -882,7 +941,18 @@ export function SuperAdminModulePage({
                       }}
                       onEdit={() => setView({ mode: "upsert", record: recordItem, returnTo: "list" })}
                       onView={() => setView({ mode: "show", record: recordItem })}
-                      {...(!isDomainModule ? { onRestore: () => toggleRecordStatus(recordItem, "active") } : {})}
+                      {...(!isDomainModule ? {
+                        actions: [
+                          {
+                            id: "force-delete",
+                            icon: <Trash2 className="size-4" />,
+                            label: "Force delete",
+                            tone: "destructive" as const,
+                            onSelect: () => setPendingForceDelete(recordItem),
+                          },
+                        ],
+                        onRestore: () => toggleRecordStatus(recordItem, "active"),
+                      } : {})}
                     />
                   </td>
                 </tr>
@@ -907,11 +977,12 @@ export function SuperAdminModulePage({
           setCurrentPage(1)
         }}
       />
-      <DomainForceDeleteDialog
-        deleting={deleteDomainMutation.isPending}
+      <ForceDeleteDialog
+        actionLabel={config.actionLabel}
+        deleting={forceDeletePending}
         record={pendingForceDelete}
         onClose={() => setPendingForceDelete(null)}
-        onConfirm={(recordItem) => deleteDomainMutation.mutate(recordItem)}
+        onConfirm={forceDeleteRecord}
       />
     </WorkspacePage>
   )
@@ -941,9 +1012,41 @@ export function SuperAdminModulePage({
     setLocalRecords((current) => current.map((item) => (item.id === recordItem.id ? updated : item)))
     toast.info(`${config.title} updated`, { description: `${updated.name} is now ${updated.status}.` })
   }
+
+  function forceDeleteRecord(recordItem: ModuleRecord) {
+    if (isDomainModule) {
+      deleteDomainMutation.mutate(recordItem)
+      return
+    }
+    if (isSubscriptionModule) {
+      deleteSubscriptionMutation.mutate(recordItem)
+      return
+    }
+    if (isPlanModule) {
+      deletePlanMutation.mutate(recordItem)
+      return
+    }
+    if (isAppModule) {
+      deleteAppMutation.mutate(recordItem)
+      return
+    }
+    if (isIndustryModule) {
+      deleteIndustryMutation.mutate(recordItem)
+    }
+  }
+
+  function upsertErrorMessage() {
+    if (isDomainModule) return errorMessage(createDomainMutation.error ?? updateDomainMutation.error)
+    if (isSubscriptionModule) return errorMessage(createSubscriptionMutation.error ?? updateSubscriptionMutation.error)
+    if (isPlanModule) return errorMessage(createPlanMutation.error ?? updatePlanMutation.error)
+    if (isAppModule) return errorMessage(createAppMutation.error ?? updateAppMutation.error)
+    if (isIndustryModule) return errorMessage(createIndustryMutation.error ?? updateIndustryMutation.error)
+    return ""
+  }
 }
 
 function ModuleUpsertPage({
+  bannerMessage,
   config,
   onBack,
   onLookupCreate,
@@ -953,6 +1056,7 @@ function ModuleUpsertPage({
   record,
   tenantLookupOptions,
 }: {
+  bannerMessage?: string
   config: ModuleConfig
   onBack: () => void
   onLookupCreate?: ((field: ModuleField, value: string) => Promise<WorkspaceLookupOption | undefined>) | undefined
@@ -963,6 +1067,7 @@ function ModuleUpsertPage({
   tenantLookupOptions: WorkspaceLookupOption[]
 }) {
   const isEdit = Boolean(record)
+  const [localBanner, setLocalBanner] = useState("")
   const [form, setForm] = useState<Record<string, string | boolean>>(() => ({
     category: record?.category ?? "",
     code: record?.code ?? "",
@@ -974,6 +1079,14 @@ function ModuleUpsertPage({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const missingField = config.fields.find((field) => field.required && !hasValue(form[field.key]))
+    if (missingField) {
+      const message = `${missingField.label} is required.`
+      setLocalBanner(message)
+      toast.error("Required field missing", { description: message })
+      return
+    }
+    setLocalBanner("")
     const saved: ModuleRecord = {
       category: String(form.category ?? ""),
       code: String(form.code ?? ""),
@@ -998,7 +1111,7 @@ function ModuleUpsertPage({
         </Button>
       }
     >
-      <form onSubmit={submit}>
+      <form noValidate onSubmit={submit}>
         <WorkspaceFormPanel
           title={`${toTitle(config.actionLabel)} details`}
           description="Keep identity, status, and operational context in the same structure across modules."
@@ -1015,9 +1128,14 @@ function ModuleUpsertPage({
             </>
           }
         >
+          {localBanner || bannerMessage ? (
+            <WorkspaceFormBanner title={localBanner ? "Missing required field" : "Could not save"}>
+              {localBanner || bannerMessage}
+            </WorkspaceFormBanner>
+          ) : null}
           <WorkspaceFormGrid columns={2}>
             {config.fields.map((field) => (
-              <WorkspaceFormField key={field.key} label={field.label}>
+              <WorkspaceFormField key={field.key} label={field.label} required={Boolean(field.required)}>
                 <FieldInput
                   field={field}
                   onLookupCreate={onLookupCreate}
@@ -1025,7 +1143,10 @@ function ModuleUpsertPage({
                   records={records}
                   tenantLookupOptions={tenantLookupOptions}
                   value={form[field.key] ?? ""}
-                  onChange={(value) => setForm((current) => ({ ...current, [field.key]: value }))}
+                  onChange={(value) => {
+                    setLocalBanner("")
+                    setForm((current) => ({ ...current, [field.key]: value }))
+                  }}
                 />
               </WorkspaceFormField>
             ))}
@@ -1034,6 +1155,10 @@ function ModuleUpsertPage({
       </form>
     </WorkspaceUpsertPage>
   )
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : ""
 }
 
 function FieldInput({
@@ -1076,6 +1201,7 @@ function FieldInput({
           value: option,
         }))}
         placeholder={`Select ${field.label.toLowerCase()}`}
+        required={Boolean(field.required)}
         value={String(value)}
         onValueChange={onChange}
       />
@@ -1098,6 +1224,7 @@ function FieldInput({
         }
         placeholder={`Search ${field.label.toLowerCase()}`}
         allowTextValue={field.allowTextValue}
+        required={Boolean(field.required)}
         value={String(value)}
         onCreate={onLookupCreate ? (createdValue) => onLookupCreate(field, createdValue) : undefined}
         onValueChange={(nextValue) => onChange(nextValue)}
@@ -1110,6 +1237,7 @@ function FieldInput({
       <WorkspaceDatePicker
         ariaLabel={field.label}
         placeholder={`Select ${field.label.toLowerCase()}`}
+        required={Boolean(field.required)}
         value={String(value)}
         onValueChange={onChange}
       />
@@ -1127,16 +1255,38 @@ function FieldInput({
   )
 }
 
+function ActivityCard({ events, loading }: { events: AuditEventDTO[]; loading: boolean }) {
+  return (
+    <WorkspaceShowCard title="Activity">
+      <div className="divide-y divide-border/60">
+        {loading ? <p className="px-4 py-3 text-sm text-muted-foreground">Loading activity...</p> : null}
+        {!loading && events.length === 0 ? <p className="px-4 py-3 text-sm text-muted-foreground">No activity yet.</p> : null}
+        {events.slice(0, 6).map((event) => (
+          <div key={String(event.id)} className="px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-foreground">{toTitle(event.event_name)}</p>
+              <span className="text-xs text-muted-foreground">{formatApiDate(event.created_at)}</span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{event.actor_email || "system"}</p>
+          </div>
+        ))}
+      </div>
+    </WorkspaceShowCard>
+  )
+}
+
 function Header({ children, className }: { children: ReactNode; className?: string }) {
   return <WorkspaceTableHeaderCell className={className}>{children}</WorkspaceTableHeaderCell>
 }
 
-function DomainForceDeleteDialog({
+function ForceDeleteDialog({
+  actionLabel,
   deleting,
   onClose,
   onConfirm,
   record,
 }: {
+  actionLabel: string
   deleting: boolean
   onClose: () => void
   onConfirm: (record: ModuleRecord) => void
@@ -1156,9 +1306,9 @@ function DomainForceDeleteDialog({
     }}>
       <DialogContent className="rounded-md border-border/70 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Permanently delete domain</DialogTitle>
+          <DialogTitle>Permanently delete {actionLabel}</DialogTitle>
           <DialogDescription>
-            This will remove the domain mapping from the database. Type the domain name to confirm.
+            This will remove the {actionLabel} from the database. Type the record name to confirm.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -1167,10 +1317,10 @@ function DomainForceDeleteDialog({
           </div>
           <Input
             autoFocus
-            aria-label="Confirm domain name"
+            aria-label="Confirm record name"
             className="h-10 rounded-md"
             disabled={deleting}
-            placeholder="Type domain name"
+            placeholder="Type record name"
             value={confirmation}
             onChange={(event) => setConfirmation(event.target.value)}
           />
@@ -1453,6 +1603,17 @@ function emptyToNull(value: string | boolean | undefined) {
   if (typeof value !== "string") return null
   const trimmed = value.trim()
   return trimmed ? trimmed : null
+}
+
+function hasValue(value: string | boolean | undefined) {
+  if (typeof value === "boolean") return true
+  return typeof value === "string" && value.trim().length > 0
+}
+
+function activityRecordKey(actionLabel: string, recordItem: ModuleRecord) {
+  if (actionLabel === "app" || actionLabel === "industry") return recordItem.code
+  if (actionLabel === "domain") return recordItem.id || recordItem.name
+  return recordItem.id
 }
 
 function normalizeTenantCode(value: string) {

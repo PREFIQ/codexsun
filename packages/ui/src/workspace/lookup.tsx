@@ -42,6 +42,7 @@ export function WorkspaceLookup({
   options,
   placeholder = "Search...",
   renderCreateForm,
+  required = false,
   value,
 }: {
   allowTextValue?: boolean | undefined
@@ -58,6 +59,7 @@ export function WorkspaceLookup({
   onValueChange: (value: string, option?: WorkspaceLookupOption | null) => void
   options: WorkspaceLookupOption[]
   placeholder?: string
+  required?: boolean
   renderCreateForm?: ((context: {
     initialName: string
     onCancel: () => void
@@ -201,8 +203,9 @@ export function WorkspaceLookup({
             aria-expanded={isOpen}
             className="h-11 w-full rounded-md bg-background pl-9 pr-9"
             disabled={disabled}
-            placeholder={placeholder}
-            role="combobox"
+          placeholder={placeholder}
+          required={required}
+          role="combobox"
             value={query}
             onBlur={() => {
               if (exactOption) {

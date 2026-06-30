@@ -13,7 +13,7 @@ import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions"
 import { WorkspaceShowCard, WorkspaceShowLayout, WorkspaceDetailTable } from "@codexsun/ui/workspace/show"
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status"
 import { WorkspaceTableEmptyState, WorkspaceTableHeaderCell, WorkspaceTablePanel, WorkspaceTableSkeletonRows } from "@codexsun/ui/workspace/table"
-import { WorkspaceFormField, WorkspaceFormGrid, WorkspaceFormPanel, WorkspaceUpsertPage } from "@codexsun/ui/workspace/upsert"
+import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormGrid, WorkspaceFormPanel, WorkspaceUpsertPage } from "@codexsun/ui/workspace/upsert"
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils"
 import { cn } from "@codexsun/ui/lib/utils"
 import { apiGet, apiPost, apiPut } from "../../api"
@@ -56,6 +56,13 @@ type TenantSavePayload = {
   status: string
   tenantCode: string
   tenantName: string
+}
+
+type AuditEventDTO = {
+  actor_email?: string | null
+  created_at?: string
+  event_name: string
+  id: number | string
 }
 
 const statusOptions = ["active", "inactive", "provisioning", "suspended"]
@@ -152,6 +159,11 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
     },
     onError: (error) => showTenantError("Tenant restore failed", error)
   })
+  const tenantActivityQuery = useQuery<AuditEventDTO[]>({
+    enabled: view.mode === "show",
+    queryKey: ["admin", "activity", "tenant", view.mode === "show" ? view.tenant.id : ""],
+    queryFn: () => apiGet<AuditEventDTO[]>(`/admin/activity/tenant/${view.mode === "show" ? view.tenant.id : ""}`, "sa")
+  })
 
   const tenants = tenantsQuery.data ?? []
   const filteredTenants = useMemo(() => {
@@ -195,6 +207,11 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
     restoreMutation.mutate(tenant.id)
   }
 
+  function tenantSaveErrorMessage() {
+    const error = createMutation.error ?? updateMutation.error
+    return error instanceof Error ? error.message : ""
+  }
+
   if (view.mode === "show") {
     return (
       <TenantShowPage
@@ -203,6 +220,8 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
         onEdit={() => setView({ mode: "upsert", tenant: view.tenant, returnTo: "show" })}
         onRestore={() => restoreTenant(view.tenant)}
         onSuspend={() => suspendTenant(view.tenant)}
+        activity={tenantActivityQuery.data ?? []}
+        activityLoading={tenantActivityQuery.isFetching}
       />
     )
   }
@@ -210,6 +229,7 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
   if (view.mode === "upsert") {
     return (
       <TenantUpsertPage
+        errorMessage={tenantSaveErrorMessage()}
         loading={createMutation.isPending || updateMutation.isPending}
         tenant={view.tenant}
         onBack={() => setView(view.returnTo === "show" && view.tenant ? { mode: "show", tenant: view.tenant } : { mode: "list" })}
@@ -347,12 +367,16 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
 }
 
 function TenantShowPage({
+  activity,
+  activityLoading,
   tenant,
   onBack,
   onEdit,
   onRestore,
   onSuspend
 }: {
+  activity: AuditEventDTO[]
+  activityLoading: boolean
   tenant: Tenant
   onBack: () => void
   onEdit: () => void
@@ -412,9 +436,30 @@ function TenantShowPage({
               ]}
             />
           </WorkspaceShowCard>
+          <TenantActivityCard events={activity} loading={activityLoading} />
         </div>
       </WorkspaceShowLayout>
     </WorkspacePage>
+  )
+}
+
+function TenantActivityCard({ events, loading }: { events: AuditEventDTO[]; loading: boolean }) {
+  return (
+    <WorkspaceShowCard title="Activity">
+      <div className="divide-y divide-border/60">
+        {loading ? <p className="px-4 py-3 text-sm text-muted-foreground">Loading activity...</p> : null}
+        {!loading && events.length === 0 ? <p className="px-4 py-3 text-sm text-muted-foreground">No activity yet.</p> : null}
+        {events.slice(0, 6).map((event) => (
+          <div key={String(event.id)} className="px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-foreground">{event.event_name.replace(/[._-]+/g, " ")}</p>
+              <span className="text-xs text-muted-foreground">{formatDate(event.created_at)}</span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{event.actor_email || "system"}</p>
+          </div>
+        ))}
+      </div>
+    </WorkspaceShowCard>
   )
 }
 
@@ -496,11 +541,13 @@ const tenantAppAccess: TenantAppAccess[] = [
 ]
 
 function TenantUpsertPage({
+  errorMessage,
   loading,
   tenant,
   onBack,
   onSubmit
 }: {
+  errorMessage?: string
   loading: boolean
   tenant: Tenant | null
   onBack: () => void
@@ -524,6 +571,7 @@ function TenantUpsertPage({
     tenantName: tenant?.tenantName ?? ""
   })
   const [activeTab, setActiveTab] = useState("details")
+  const [localBanner, setLocalBanner] = useState("")
   const [appAccess, setAppAccess] = useState(() =>
     tenantAppAccess.map((app) => ({
       ...app,
@@ -552,20 +600,24 @@ function TenantUpsertPage({
           }
         >
           <WorkspaceFormGrid columns={2}>
-            <WorkspaceFormField label="Tenant name">
+            <WorkspaceFormField label="Tenant name" required>
               <Input
                 className="h-11 rounded-md"
                 value={form.tenantName}
-                onChange={(event) => setForm((current) => ({ ...current, tenantName: event.target.value }))}
+                onChange={(event) => {
+                  setLocalBanner("")
+                  setForm((current) => ({ ...current, tenantName: event.target.value }))
+                }}
                 required
               />
             </WorkspaceFormField>
-            <WorkspaceFormField label="Tenant code">
+            <WorkspaceFormField label="Tenant code" required>
               <div className="flex gap-2">
                 <Input
                   className="h-11 rounded-md font-mono uppercase"
                   value={form.tenantCode}
                   onChange={(event) => {
+                    setLocalBanner("")
                     const tenantCode = event.target.value
                     setForm((current) => ({
                       ...current,
@@ -759,9 +811,19 @@ function TenantUpsertPage({
       }
     >
       <form
+        noValidate
         onSubmit={(event) => {
           event.preventDefault()
           if (activeTab === "details") {
+            if (!form.tenantName.trim()) {
+              setLocalBanner("Tenant name is required.")
+              return
+            }
+            if (!form.tenantCode.trim()) {
+              setLocalBanner("Tenant code is required.")
+              return
+            }
+            setLocalBanner("")
             setActiveTab("database")
             return
           }
@@ -769,15 +831,29 @@ function TenantUpsertPage({
             setActiveTab("settings")
             return
           }
-          if (form.tenantCode.trim() && form.tenantName.trim()) {
-            onSubmit({
-              ...form,
-              enabledModuleKeys: appAccess.filter((app) => app.enabled).map((app) => app.moduleKey)
-            })
+          if (!form.tenantName.trim()) {
+            setActiveTab("details")
+            setLocalBanner("Tenant name is required.")
+            return
           }
+          if (!form.tenantCode.trim()) {
+            setActiveTab("details")
+            setLocalBanner("Tenant code is required.")
+            return
+          }
+          setLocalBanner("")
+          onSubmit({
+            ...form,
+            enabledModuleKeys: appAccess.filter((app) => app.enabled).map((app) => app.moduleKey)
+          })
         }}
       >
         <div className="rounded-md border border-border/70 bg-card/95 p-5 shadow-sm">
+          {localBanner || errorMessage ? (
+            <WorkspaceFormBanner title={localBanner ? "Missing required field" : "Could not save"}>
+              {localBanner || errorMessage}
+            </WorkspaceFormBanner>
+          ) : null}
           <WorkspaceAnimatedTabs tabs={tabs} value={activeTab} onValueChange={setActiveTab} />
         </div>
       </form>
@@ -872,6 +948,12 @@ function statusTone(status: string) {
   if (status === "provisioning") return "info"
   if (status === "suspended" || status === "inactive") return "danger"
   return "neutral"
+}
+
+function formatDate(value: string | undefined) {
+  if (!value) return "Today"
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? "Today" : date.toLocaleDateString()
 }
 
 function showTenantError(title: string, error: unknown) {

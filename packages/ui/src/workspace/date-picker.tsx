@@ -23,11 +23,13 @@ export function WorkspaceDatePicker({
   ariaLabel,
   onValueChange,
   placeholder = "Select date",
+  required: _required,
   value,
 }: {
   ariaLabel?: string
   onValueChange: (value: string) => void
   placeholder?: string
+  required?: boolean
   value: string
 }) {
   const [open, setOpen] = useState(false)

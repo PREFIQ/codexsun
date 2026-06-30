@@ -47,7 +47,7 @@ test("domain tenant autocomplete can create, persist after refresh, and force de
   const deleteDialog = page.getByRole("dialog", { name: "Permanently delete domain" })
   await expect(deleteDialog).toBeVisible()
   await expect(deleteDialog.getByRole("button", { name: /Delete permanently/i })).toBeDisabled()
-  await deleteDialog.getByLabel("Confirm domain name").fill(domainName)
+  await deleteDialog.getByLabel("Confirm record name").fill(domainName)
   await deleteDialog.getByRole("button", { name: /Delete permanently/i }).click()
   await expect(page.getByRole("button", { name: domainName, exact: true })).toHaveCount(0)
 
@@ -56,6 +56,20 @@ test("domain tenant autocomplete can create, persist after refresh, and force de
   await expect(page.getByRole("button", { name: domainName, exact: true })).toHaveCount(0)
 
   expect(browserErrors).toEqual([])
+})
+
+test("domain upsert shows inline banner for missing required fields", async ({ page }) => {
+  await page.goto("/sa/login")
+  await page.getByLabel("Email").fill("sundar@sundar.com")
+  await page.getByLabel("Password").fill("Kalarani1")
+  await page.getByRole("button", { name: /Sign in/i }).click()
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible()
+  await page.goto("/sa/domains")
+
+  await page.getByRole("button", { name: /New domain/i }).click()
+  await page.getByRole("button", { name: /^Save$/ }).click()
+  await expect(page.getByRole("alert")).toContainText("Missing required field")
+  await expect(page.getByRole("alert")).toContainText("Domain is required.")
 })
 
 test("subscription tenant lookup can create, save, and persist after refresh", async ({ page }) => {

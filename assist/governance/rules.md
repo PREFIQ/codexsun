@@ -25,11 +25,15 @@
 
 ## UI Rules
 
-- Use the centralized design system.
+- Use the centralized design system and follow `assist/documentation/design-system-helper.md` before creating or changing workspace modules.
 - Keep layouts clear, dense, and work-focused for business users.
-- Use consistent form, table, filter, modal, and action patterns.
+- Use the shared workspace list, table, pagination, show, upsert, banner, autocomplete, select, date, tab, toast, and status components from `@codexsun/ui`.
 - Use the shadcn/Radix themed design-system select (`WorkspaceSelect` or `Select` from `@codexsun/ui`) for all form selects; do not use raw native `<select>` in workspace/list/upsert screens.
 - Use the workspace lookup (`WorkspaceLookup`) for master/reference autocomplete fields. Use inline create for small common masters such as colour/label, and popup create for heavier masters such as contact/tenant.
+- Lookup/autocomplete options must come from API/database data and must refresh after creating a new option.
+- Upsert forms must use shared required markers, `WorkspaceFormBanner`, and frontend validation before submit.
+- Lists must use database-backed data, shared table headers, shared status badges, shared row actions, and shared pagination.
+- Show pages must use shared detail cards and include record activity where the backend supports it.
 - Avoid custom one-off UI unless a module has a real domain need.
 - Screens should make tenant, module, status, and action context clear.
 - All clickable buttons and button-like controls must show a pointer cursor; disabled actions must show a disabled/not-allowed cursor.
@@ -37,6 +41,11 @@
 ## Data Rules
 
 - Tenant data is never global data.
+- Super Admin modules must be DB/API-backed; do not use hardcoded business records, frontend seed rows, localStorage module data, or assumptions as final behavior.
+- Backend validation is required for required fields, duplicate records, status values, relationship references, safe delete blockers, and tenant/platform boundaries.
+- Frontend validation must mirror required backend checks enough to show clear missing-field banners before submit.
+- Every create, update, delete, force delete, suspend, restore, enable, disable, and high-risk lifecycle action must be audited.
+- Show pages should expose activity/history for the selected record.
 - Financial records must be auditable.
 - Compliance records must be traceable.
 - Deletions should usually be soft deletes for business records.

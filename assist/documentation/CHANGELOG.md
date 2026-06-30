@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.13
+Current version: 1.0.17
 
-Release tag: v-1.0.13
+Release tag: v-1.0.17
 
-Changelog label: v 1.0.13
+Changelog label: v 1.0.17
 
 Historical changelog entries are immutable. A version bump may update this Version State block and add a new entry, but it must not rewrite old entry labels.
 
@@ -19,6 +19,78 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, and documentation changes.
+
+## v-1.0.17
+
+### [v 1.0.17] 2026-06-30 2:39 pm - Design System Helper And Module Standards
+
+#### Database Changes
+
+- Database update: No schema changes.
+
+#### App Codebase Changes
+
+- Bumped workspace packages and lockfile to `1.0.17`.
+- Added `assist/documentation/design-system-helper.md` as the standard for upcoming list, show, upsert, select, autocomplete, date, status, toast, sidebar, and backend module patterns.
+- Updated the governance rule book to require design-system workspace components, DB/API-backed module data, shared validation banners, required markers, activity history, audit logging, and relationship safety.
+- Linked the design-system helper from the assist README so future agents can find the UI/backend module standard on load.
+
+## v-1.0.16
+
+### [v 1.0.16] 2026-06-30 2:30 pm - Upsert Validation Banners
+
+#### Database Changes
+
+- Database update: No schema changes.
+
+#### App Codebase Changes
+
+- Bumped workspace packages and lockfile to `1.0.16`.
+- Added reusable `WorkspaceFormBanner` for compact form-level error, warning, and info messages.
+- Wired inline validation banners into Tenant and shared Super Admin upsert forms.
+- Disabled native browser validation on workspace upsert forms so missing fields, duplicate errors, and server/database errors use the design-system banner.
+- Added Playwright coverage for missing required-field banner behavior on Domain upsert.
+
+## v-1.0.15
+
+### [v 1.0.15] 2026-06-30 2:00 pm - Validation Relationship Safety And Activity Timeline
+
+#### Database Changes
+
+- Database update: No schema changes.
+- Added API-level validation for Domain, Subscription, Plan, Apps, and Industry before database writes.
+- Added relationship safety checks that block deleting Plans used by Subscriptions and Apps assigned to tenants.
+- Added tenantId into new tenant audit payloads so activity timelines can resolve tenant records without schema changes.
+
+#### App Codebase Changes
+
+- Bumped workspace packages and lockfile to `1.0.15`.
+- Added shared red required `*` marker support in workspace form fields.
+- Marked required fields in Tenant and shared Super Admin module upsert forms.
+- Added frontend required-field validation before submitting shared module forms.
+- Added `/admin/activity/:module/:recordId` for record-level activity timelines from audit events.
+- Added Activity cards on Tenant, Domain, Plan, Subscription, Apps, and Industry show pages.
+- Added API tests for relationship safety and record activity.
+
+## v-1.0.14
+
+### [v 1.0.14] 2026-06-30 1:45 pm - Super Admin Lifecycle Hardening
+
+#### Database Changes
+
+- Database update: No new tables.
+- Added permanent delete behavior against existing DB-backed module tables for Subscription, Plan, Apps, and Industry.
+- Preserved Tenant lifecycle as suspend/restore only because tenant records own related database, domain, module, and subscription state.
+
+#### App Codebase Changes
+
+- Bumped workspace packages and lockfile to `1.0.14`.
+- Fixed platform API preflight on Windows/Node by avoiding direct `npm.cmd` spawning during dependency builds.
+- Added audited delete APIs for `/admin/subscriptions/:id`, `/admin/subscription-plans/:id`, `/admin/platform-apps/:moduleKey`, and `/admin/industries/:id`.
+- Added shared typed force-delete confirmation for Domain, Subscription, Plan, Apps, and Industry.
+- Kept archive/suspend and restore actions available for Tenant, Plan, Subscription, Apps, and Industry status lifecycle.
+- Extended API tests to verify permanent delete for Subscription, Plan, Apps, and Industry.
+- Extended Playwright coverage to verify Apps and Industry force-delete behavior after database persistence.
 
 ## v-1.0.13
 

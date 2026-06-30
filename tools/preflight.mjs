@@ -143,10 +143,7 @@ function ensureWorkspacePackageBuild(workspaceName, packagePath) {
 function buildWorkspacePackage(workspaceName, reason) {
   const startedAt = Date.now();
   console.log(`  build ${workspaceName} (${reason})`);
-  execFileSync(npmCommand(), ["run", "build", "-w", workspaceName], {
-    cwd: root,
-    stdio: "inherit"
-  });
+  runNpm(["run", "build", "-w", workspaceName]);
   console.log(`  ok ${workspaceName} built in ${Date.now() - startedAt}ms`);
 }
 
@@ -170,8 +167,27 @@ function newestMtime(paths) {
   return newest;
 }
 
-function npmCommand() {
-  return process.platform === "win32" ? "npm.cmd" : "npm";
+function runNpm(args) {
+  if (process.env.npm_execpath) {
+    execFileSync(process.execPath, [process.env.npm_execpath, ...args], {
+      cwd: root,
+      stdio: "inherit"
+    });
+    return;
+  }
+
+  if (process.platform === "win32") {
+    execFileSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", ["npm", ...args].join(" ")], {
+      cwd: root,
+      stdio: "inherit"
+    });
+    return;
+  }
+
+  execFileSync("npm", args, {
+    cwd: root,
+    stdio: "inherit"
+  });
 }
 
 async function freePort(port, host) {

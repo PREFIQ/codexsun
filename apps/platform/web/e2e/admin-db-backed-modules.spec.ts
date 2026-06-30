@@ -33,6 +33,19 @@ test("apps module creates and reloads database-backed records", async ({ page })
   await expect(page.getByRole("button", { name: appName, exact: true })).toBeVisible()
   await expect(page.getByText(moduleKey, { exact: true }).first()).toBeVisible()
 
+  await page.getByRole("button", { name: `${appName} actions` }).click()
+  await page.getByRole("menuitem", { name: /Force delete/i }).click()
+  const deleteDialog = page.getByRole("dialog", { name: "Permanently delete app" })
+  await expect(deleteDialog).toBeVisible()
+  await expect(deleteDialog.getByRole("button", { name: /Delete permanently/i })).toBeDisabled()
+  await deleteDialog.getByLabel("Confirm record name").fill(appName)
+  await deleteDialog.getByRole("button", { name: /Delete permanently/i }).click()
+  await expect(page.getByRole("button", { name: appName, exact: true })).toHaveCount(0)
+
+  await page.reload()
+  await expect(page.getByRole("heading", { name: "Apps" })).toBeVisible()
+  await expect(page.getByRole("button", { name: appName, exact: true })).toHaveCount(0)
+
   expect(browserErrors).toEqual([])
 })
 
@@ -67,6 +80,19 @@ test("industry module creates and reloads database-backed records", async ({ pag
   await expect(page.getByRole("heading", { name: "Industries" })).toBeVisible()
   await expect(page.getByRole("button", { name: industryName, exact: true })).toBeVisible()
   await expect(page.getByText(industryCode, { exact: true }).first()).toBeVisible()
+
+  await page.getByRole("button", { name: `${industryName} actions` }).click()
+  await page.getByRole("menuitem", { name: /Force delete/i }).click()
+  const deleteDialog = page.getByRole("dialog", { name: "Permanently delete industry" })
+  await expect(deleteDialog).toBeVisible()
+  await expect(deleteDialog.getByRole("button", { name: /Delete permanently/i })).toBeDisabled()
+  await deleteDialog.getByLabel("Confirm record name").fill(industryName)
+  await deleteDialog.getByRole("button", { name: /Delete permanently/i }).click()
+  await expect(page.getByRole("button", { name: industryName, exact: true })).toHaveCount(0)
+
+  await page.reload()
+  await expect(page.getByRole("heading", { name: "Industries" })).toBeVisible()
+  await expect(page.getByRole("button", { name: industryName, exact: true })).toHaveCount(0)
 
   expect(browserErrors).toEqual([])
 })

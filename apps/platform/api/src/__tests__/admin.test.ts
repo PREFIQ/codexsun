@@ -230,6 +230,14 @@ describe("Admin Endpoints", () => {
     expect(listRes.statusCode).toBe(200);
     const subscriptions = JSON.parse(listRes.body).data;
     expect(subscriptions.some((item: { id: string }) => item.id === created.id)).toBe(true);
+
+    const deleteRes = await app.inject({
+      method: "DELETE",
+      url: `/admin/subscriptions/${created.id}`,
+      headers: { Authorization: `Bearer ${saToken}` }
+    });
+    expect(deleteRes.statusCode).toBe(200);
+    expect(JSON.parse(deleteRes.body).data.deleted).toBe(true);
   });
 
   it("POST and PUT /admin/subscription-plans persist reusable plans", async () => {
@@ -279,6 +287,51 @@ describe("Admin Endpoints", () => {
     expect(listRes.statusCode).toBe(200);
     const plans = JSON.parse(listRes.body).data;
     expect(plans.some((item: { id: string }) => item.id === created.id)).toBe(true);
+
+    const deleteRes = await app.inject({
+      method: "DELETE",
+      url: `/admin/subscription-plans/${created.id}`,
+      headers: { Authorization: `Bearer ${saToken}` }
+    });
+    expect(deleteRes.statusCode).toBe(200);
+    expect(JSON.parse(deleteRes.body).data.deleted).toBe(true);
+  });
+
+  it("DELETE /admin/subscription-plans blocks plans used by subscriptions", async () => {
+    const planName = "Protected Plan " + Date.now();
+    const planRes = await app.inject({
+      method: "POST",
+      url: "/admin/subscription-plans",
+      headers: { Authorization: `Bearer ${saToken}` },
+      body: { billingCycle: "Monthly", planName, seats: 5, status: "active" }
+    });
+    expect(planRes.statusCode).toBe(200);
+    const plan = JSON.parse(planRes.body).data;
+
+    const code = "protected-sub-" + Date.now();
+    const tenantRes = await app.inject({
+      method: "POST",
+      url: "/admin/tenants",
+      headers: { Authorization: `Bearer ${saToken}` },
+      body: { tenantCode: code, tenantName: "Protected Subscription Tenant" }
+    });
+    expect(tenantRes.statusCode).toBe(200);
+    const tenant = JSON.parse(tenantRes.body).data;
+
+    const subRes = await app.inject({
+      method: "POST",
+      url: "/admin/subscriptions",
+      headers: { Authorization: `Bearer ${saToken}` },
+      body: { billingCycle: "Monthly", planName, seats: 5, status: "active", tenantId: tenant.id }
+    });
+    expect(subRes.statusCode).toBe(200);
+
+    const blockedDeleteRes = await app.inject({
+      method: "DELETE",
+      url: `/admin/subscription-plans/${plan.id}`,
+      headers: { Authorization: `Bearer ${saToken}` }
+    });
+    expect(blockedDeleteRes.statusCode).toBe(409);
   });
 
   it("POST and PUT /admin/platform-apps persist platform app records", async () => {
@@ -328,6 +381,46 @@ describe("Admin Endpoints", () => {
     expect(listRes.statusCode).toBe(200);
     const appRecords = JSON.parse(listRes.body).data;
     expect(appRecords.some((item: { moduleKey: string }) => item.moduleKey === moduleKey)).toBe(true);
+
+    const deleteRes = await app.inject({
+      method: "DELETE",
+      url: `/admin/platform-apps/${encodeURIComponent(moduleKey)}`,
+      headers: { Authorization: `Bearer ${saToken}` }
+    });
+    expect(deleteRes.statusCode).toBe(200);
+    expect(JSON.parse(deleteRes.body).data.deleted).toBe(true);
+  });
+
+  it("GET /admin/activity/:module/:recordId returns matching audit events", async () => {
+    const moduleKey = "activity.app." + Date.now();
+    const createRes = await app.inject({
+      method: "POST",
+      url: "/admin/platform-apps",
+      headers: { Authorization: `Bearer ${saToken}` },
+      body: {
+        displayName: "Activity App",
+        moduleKey,
+        scope: "tenant",
+        status: "active",
+        version: "1.0.0"
+      }
+    });
+    expect(createRes.statusCode).toBe(200);
+
+    const activityRes = await app.inject({
+      method: "GET",
+      url: `/admin/activity/app/${encodeURIComponent(moduleKey)}`,
+      headers: { Authorization: `Bearer ${saToken}` }
+    });
+    expect(activityRes.statusCode).toBe(200);
+    const activity = JSON.parse(activityRes.body).data;
+    expect(activity.some((item: { event_name: string }) => item.event_name === "platform.app.added")).toBe(true);
+
+    await app.inject({
+      method: "DELETE",
+      url: `/admin/platform-apps/${encodeURIComponent(moduleKey)}`,
+      headers: { Authorization: `Bearer ${saToken}` }
+    });
   });
 
   it("POST and PUT /admin/industries persist industry records", async () => {
@@ -375,6 +468,14 @@ describe("Admin Endpoints", () => {
     expect(listRes.statusCode).toBe(200);
     const industries = JSON.parse(listRes.body).data;
     expect(industries.some((item: { industryCode: string }) => item.industryCode === code)).toBe(true);
+
+    const deleteRes = await app.inject({
+      method: "DELETE",
+      url: `/admin/industries/${created.id}`,
+      headers: { Authorization: `Bearer ${saToken}` }
+    });
+    expect(deleteRes.statusCode).toBe(200);
+    expect(JSON.parse(deleteRes.body).data.deleted).toBe(true);
   });
 
   it("GET /admin/modules/catalog returns module catalog", async () => {

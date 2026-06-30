@@ -255,6 +255,36 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
+function requireOneOf(value: unknown, allowed: string[], fieldName: string) {
+  if (typeof value === "string" && value && !allowed.includes(value)) {
+    throw AppError.validation(`${fieldName} must be one of: ${allowed.join(", ")}`);
+  }
+}
+
+function requireSlugLike(value: string, fieldName: string) {
+  if (!/^[a-z0-9][a-z0-9._-]*[a-z0-9]$|^[a-z0-9]$/i.test(value)) {
+    throw AppError.validation(`${fieldName} can use letters, numbers, dot, dash, and underscore only`);
+  }
+}
+
+function requireDomainName(value: string) {
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(value)) {
+    throw AppError.validation("Domain must be a valid host name such as example.com");
+  }
+}
+
+function activityEventNames(module: string) {
+  const names: Record<string, string[]> = {
+    app: ["platform.app.added", "platform.app.updated", "platform.app.deleted"],
+    domain: ["tenant.domain.added", "tenant.domain.updated", "tenant.domain.deleted"],
+    industry: ["platform.industry.added", "platform.industry.updated", "platform.industry.deleted"],
+    plan: ["tenant.subscription.plan.added", "tenant.subscription.plan.updated", "tenant.subscription.plan.deleted"],
+    subscription: ["tenant.subscription.added", "tenant.subscription.updated", "tenant.subscription.deleted"],
+    tenant: ["tenant.created", "tenant.updated", "tenant.deleted"],
+  };
+  return names[module] ?? [];
+}
+
 export async function registerAdminRoutes(app: FastifyInstance) {
   // ── Console Dashboard ──────────────────────────────────────────
   app.get("/admin/console", async (request) => {
@@ -399,6 +429,12 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     const body = request.body as Record<string, unknown>;
     const input = domainInputFromBody(body, true);
     const tenantId = String(input.tenantId);
+    requireDomainName(String(input.domainName));
+    requireOneOf(input.status, ["active", "inactive", "pending"], "status");
+    const [tenantRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT id FROM tenants WHERE id = ? LIMIT 1", [tenantId]);
+    if (!tenantRows[0]) throw AppError.validation("Select a valid tenant before saving the domain");
+    const [duplicateRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT id FROM tenant_domain_mappings WHERE domain_name = ? LIMIT 1", [input.domainName]);
+    if (duplicateRows[0]) throw AppError.conflict("Domain already exists");
     if (input.isPrimary) {
       await app.masterDbPool.execute("UPDATE tenant_domain_mappings SET is_primary = 0 WHERE tenant_id = ?", [tenantId]);
     }
@@ -446,6 +482,14 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     const existing = existingRows[0];
     if (!existing) throw AppError.notFound("Domain mapping not found");
     const tenantId = String(input.tenantId ?? existing.tenant_id);
+    if (typeof input.domainName === "string") requireDomainName(input.domainName);
+    requireOneOf(input.status, ["active", "inactive", "pending"], "status");
+    const [tenantRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT id FROM tenants WHERE id = ? LIMIT 1", [tenantId]);
+    if (!tenantRows[0]) throw AppError.validation("Select a valid tenant before saving the domain");
+    if (typeof input.domainName === "string") {
+      const [duplicateRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT id FROM tenant_domain_mappings WHERE domain_name = ? AND id <> ? LIMIT 1", [input.domainName, id]);
+      if (duplicateRows[0]) throw AppError.conflict("Domain already exists");
+    }
     if (input.isPrimary) {
       await app.masterDbPool.execute("UPDATE tenant_domain_mappings SET is_primary = 0 WHERE tenant_id = ? AND id <> ?", [tenantId, id]);
     }
@@ -527,6 +571,11 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     const body = request.body as Record<string, unknown>;
     const input = subscriptionInputFromBody(body, true);
     const tenantId = String(input.tenantId);
+    requireOneOf(input.billingCycle, ["Monthly", "Quarterly", "Half yearly", "Yearly"], "billingCycle");
+    requireOneOf(input.status, ["active", "trial", "pending", "expired", "suspended", "inactive"], "status");
+    if (Number(input.seats ?? 1) < 1) throw AppError.validation("seats must be at least 1");
+    const [tenantRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT id FROM tenants WHERE id = ? LIMIT 1", [tenantId]);
+    if (!tenantRows[0]) throw AppError.validation("Select a valid tenant before saving the subscription");
     const [result] = await app.masterDbPool.execute<{ insertId: number | string }>(
       `INSERT INTO tenant_subscriptions
          (tenant_id, plan_name, billing_cycle, seats, starts_on, renews_on, amount, currency, status, notes)
@@ -578,6 +627,11 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     const existing = existingRows[0];
     if (!existing) throw AppError.notFound("Subscription not found");
     const tenantId = String(input.tenantId ?? existing.tenant_id);
+    requireOneOf(input.billingCycle, ["Monthly", "Quarterly", "Half yearly", "Yearly"], "billingCycle");
+    requireOneOf(input.status, ["active", "trial", "pending", "expired", "suspended", "inactive"], "status");
+    if (input.seats !== undefined && Number(input.seats) < 1) throw AppError.validation("seats must be at least 1");
+    const [tenantRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT id FROM tenants WHERE id = ? LIMIT 1", [tenantId]);
+    if (!tenantRows[0]) throw AppError.validation("Select a valid tenant before saving the subscription");
     await app.masterDbPool.execute(
       `UPDATE tenant_subscriptions
        SET tenant_id = ?,
@@ -626,6 +680,28 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     return ok(toTenantSubscription(rows[0] ?? {}), responseMeta(request));
   });
 
+  app.delete("/admin/subscriptions/:id", async (request) => {
+    const session = await requireSuperAdmin(app, request);
+    requirePermission(session, "platform.tenant.profile.manage");
+    const { id } = request.params as { id: string };
+    const [existingRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>(
+      "SELECT id, tenant_id, plan_name FROM tenant_subscriptions WHERE id = ? LIMIT 1",
+      [id]
+    );
+    const existing = existingRows[0];
+    if (!existing) throw AppError.notFound("Subscription not found");
+    await app.masterDbPool.execute("DELETE FROM tenant_subscriptions WHERE id = ?", [id]);
+    await app.auditService.write({
+      actorType: "super_admin",
+      actorEmail: session.email,
+      ...(request.correlationId ? { correlationId: request.correlationId } : {}),
+      eventName: "tenant.subscription.deleted",
+      tenantId: String(existing.tenant_id),
+      payload: { subscriptionId: id, planName: existing.plan_name }
+    });
+    return ok({ deleted: true, id, planName: existing.plan_name }, responseMeta(request));
+  });
+
   app.get("/admin/subscription-plans", async (request) => {
     const session = await requireSuperAdmin(app, request);
     requirePermission(session, "platform.tenant.profile.view");
@@ -641,6 +717,11 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     const session = await requireSuperAdmin(app, request);
     requirePermission(session, "platform.tenant.profile.manage");
     const input = subscriptionPlanInputFromBody(request.body as Record<string, unknown>, true);
+    requireOneOf(input.billingCycle, ["Monthly", "Quarterly", "Half yearly", "Yearly"], "billingCycle");
+    requireOneOf(input.status, ["active", "trial", "inactive"], "status");
+    if (Number(input.seats ?? 1) < 1) throw AppError.validation("seats must be at least 1");
+    const [duplicateRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT id FROM subscription_plans WHERE plan_name = ? LIMIT 1", [input.planName]);
+    if (duplicateRows[0]) throw AppError.conflict("Plan already exists");
     const [result] = await app.masterDbPool.execute<{ insertId: number | string }>(
       `INSERT INTO subscription_plans (plan_name, billing_cycle, seats, amount, currency, status, description)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -680,6 +761,13 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       [id]
     );
     if (!existingRows[0]) throw AppError.notFound("Subscription plan not found");
+    requireOneOf(input.billingCycle, ["Monthly", "Quarterly", "Half yearly", "Yearly"], "billingCycle");
+    requireOneOf(input.status, ["active", "trial", "inactive"], "status");
+    if (input.seats !== undefined && Number(input.seats) < 1) throw AppError.validation("seats must be at least 1");
+    if (typeof input.planName === "string") {
+      const [duplicateRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT id FROM subscription_plans WHERE plan_name = ? AND id <> ? LIMIT 1", [input.planName, id]);
+      if (duplicateRows[0]) throw AppError.conflict("Plan already exists");
+    }
     await app.masterDbPool.execute(
       `UPDATE subscription_plans
        SET plan_name = COALESCE(?, plan_name),
@@ -717,6 +805,34 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     return ok(toSubscriptionPlan(rows[0] ?? {}), responseMeta(request));
   });
 
+  app.delete("/admin/subscription-plans/:id", async (request) => {
+    const session = await requireSuperAdmin(app, request);
+    requirePermission(session, "platform.tenant.profile.manage");
+    const { id } = request.params as { id: string };
+    const [existingRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>(
+      "SELECT id, plan_name FROM subscription_plans WHERE id = ? LIMIT 1",
+      [id]
+    );
+    const existing = existingRows[0];
+    if (!existing) throw AppError.notFound("Subscription plan not found");
+    const [subscriptionRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>(
+      "SELECT COUNT(*) AS total FROM tenant_subscriptions WHERE plan_name = ?",
+      [existing.plan_name]
+    );
+    if (toNumber(subscriptionRows[0]?.total) > 0) {
+      throw AppError.conflict("Plan is used by subscriptions. Archive it instead of deleting.");
+    }
+    await app.masterDbPool.execute("DELETE FROM subscription_plans WHERE id = ?", [id]);
+    await app.auditService.write({
+      actorType: "super_admin",
+      actorEmail: session.email,
+      ...(request.correlationId ? { correlationId: request.correlationId } : {}),
+      eventName: "tenant.subscription.plan.deleted",
+      payload: { planId: id, planName: existing.plan_name }
+    });
+    return ok({ deleted: true, id, planName: existing.plan_name }, responseMeta(request));
+  });
+
   app.get("/admin/platform-apps", async (request) => {
     const session = await requireSuperAdmin(app, request);
     requirePermission(session, "platform.module.catalog.view");
@@ -732,6 +848,11 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     const session = await requireSuperAdmin(app, request);
     requirePermission(session, "platform.module.catalog.view");
     const input = platformAppInputFromBody(request.body as Record<string, unknown>, true);
+    requireSlugLike(String(input.moduleKey), "moduleKey");
+    requireOneOf(input.scope, ["Platform", "Tenant", "Industry", "platform", "tenant", "industry"], "scope");
+    requireOneOf(input.status, ["active", "inactive", "planned"], "status");
+    const [duplicateRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT module_key FROM platform_modules WHERE module_key = ? LIMIT 1", [input.moduleKey]);
+    if (duplicateRows[0]) throw AppError.conflict("App module key already exists");
     await app.masterDbPool.execute(
       `INSERT INTO platform_modules (module_key, display_name, scope, version, default_enabled, status)
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -772,6 +893,13 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     const existing = existingRows[0];
     if (!existing) throw AppError.notFound("Platform app not found");
     const nextModuleKey = typeof input.moduleKey === "string" && input.moduleKey ? input.moduleKey : moduleKey;
+    requireSlugLike(nextModuleKey, "moduleKey");
+    requireOneOf(input.scope, ["Platform", "Tenant", "Industry", "platform", "tenant", "industry"], "scope");
+    requireOneOf(input.status, ["active", "inactive", "planned"], "status");
+    if (nextModuleKey !== moduleKey) {
+      const [duplicateRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT module_key FROM platform_modules WHERE module_key = ? LIMIT 1", [nextModuleKey]);
+      if (duplicateRows[0]) throw AppError.conflict("App module key already exists");
+    }
     const nextDefaultEnabled = input.defaultEnabled === undefined ? Boolean(Number(existing.default_enabled ?? 0)) : Boolean(input.defaultEnabled);
     await app.masterDbPool.execute(
       `UPDATE platform_modules
@@ -808,6 +936,35 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     return ok(toPlatformApp(rows[0] ?? {}), responseMeta(request));
   });
 
+  app.delete("/admin/platform-apps/:moduleKey", async (request) => {
+    const session = await requireSuperAdmin(app, request);
+    requirePermission(session, "platform.module.catalog.view");
+    const { moduleKey } = request.params as { moduleKey: string };
+    const [existingRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>(
+      "SELECT module_key, display_name FROM platform_modules WHERE module_key = ? LIMIT 1",
+      [moduleKey]
+    );
+    const existing = existingRows[0];
+    if (!existing) throw AppError.notFound("Platform app not found");
+    const [activationRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>(
+      "SELECT COUNT(*) AS total FROM tenant_module_activation WHERE module_key = ?",
+      [moduleKey]
+    );
+    if (toNumber(activationRows[0]?.total) > 0) {
+      throw AppError.conflict("App is assigned to tenants. Archive it instead of deleting.");
+    }
+    await app.masterDbPool.execute("DELETE FROM tenant_module_activation WHERE module_key = ?", [moduleKey]);
+    await app.masterDbPool.execute("DELETE FROM platform_modules WHERE module_key = ?", [moduleKey]);
+    await app.auditService.write({
+      actorType: "super_admin",
+      actorEmail: session.email,
+      ...(request.correlationId ? { correlationId: request.correlationId } : {}),
+      eventName: "platform.app.deleted",
+      payload: { moduleKey, displayName: existing.display_name }
+    });
+    return ok({ deleted: true, displayName: existing.display_name, moduleKey }, responseMeta(request));
+  });
+
   app.get("/admin/industries", async (request) => {
     const session = await requireSuperAdmin(app, request);
     requirePermission(session, "platform.module.catalog.view");
@@ -823,6 +980,11 @@ export async function registerAdminRoutes(app: FastifyInstance) {
     const session = await requireSuperAdmin(app, request);
     requirePermission(session, "platform.module.catalog.view");
     const input = platformIndustryInputFromBody(request.body as Record<string, unknown>, true);
+    requireSlugLike(String(input.industryCode), "industryCode");
+    requireOneOf(input.segment, ["Retail", "Manufacturing", "Services", "Logistics", "General"], "segment");
+    requireOneOf(input.status, ["active", "planned", "inactive"], "status");
+    const [duplicateRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT id FROM platform_industries WHERE industry_code = ? LIMIT 1", [input.industryCode]);
+    if (duplicateRows[0]) throw AppError.conflict("Industry code already exists");
     const [result] = await app.masterDbPool.execute<{ insertId: number | string }>(
       `INSERT INTO platform_industries (industry_name, industry_code, segment, default_template, status)
        VALUES (?, ?, ?, ?, ?)`,
@@ -860,6 +1022,13 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       [id]
     );
     if (!existingRows[0]) throw AppError.notFound("Industry not found");
+    if (typeof input.industryCode === "string") requireSlugLike(input.industryCode, "industryCode");
+    requireOneOf(input.segment, ["Retail", "Manufacturing", "Services", "Logistics", "General"], "segment");
+    requireOneOf(input.status, ["active", "planned", "inactive"], "status");
+    if (typeof input.industryCode === "string") {
+      const [duplicateRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>("SELECT id FROM platform_industries WHERE industry_code = ? AND id <> ? LIMIT 1", [input.industryCode, id]);
+      if (duplicateRows[0]) throw AppError.conflict("Industry code already exists");
+    }
     await app.masterDbPool.execute(
       `UPDATE platform_industries
        SET industry_name = COALESCE(?, industry_name),
@@ -891,6 +1060,27 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       [id]
     );
     return ok(toPlatformIndustry(rows[0] ?? {}), responseMeta(request));
+  });
+
+  app.delete("/admin/industries/:id", async (request) => {
+    const session = await requireSuperAdmin(app, request);
+    requirePermission(session, "platform.module.catalog.view");
+    const { id } = request.params as { id: string };
+    const [existingRows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>(
+      "SELECT id, industry_name, industry_code FROM platform_industries WHERE id = ? LIMIT 1",
+      [id]
+    );
+    const existing = existingRows[0];
+    if (!existing) throw AppError.notFound("Industry not found");
+    await app.masterDbPool.execute("DELETE FROM platform_industries WHERE id = ?", [id]);
+    await app.auditService.write({
+      actorType: "super_admin",
+      actorEmail: session.email,
+      ...(request.correlationId ? { correlationId: request.correlationId } : {}),
+      eventName: "platform.industry.deleted",
+      payload: { industryId: id, industryCode: existing.industry_code }
+    });
+    return ok({ deleted: true, id, industryName: existing.industry_name }, responseMeta(request));
   });
 
   app.get("/admin/modules/catalog", async (request) => {
@@ -985,6 +1175,27 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       "SELECT DISTINCT actor_email FROM audit_events WHERE actor_email IS NOT NULL ORDER BY actor_email"
     );
     return ok(rows.map((r) => r.actor_email), responseMeta(request));
+  });
+
+  app.get("/admin/activity/:module/:recordId", async (request) => {
+    const session = await requireSuperAdmin(app, request);
+    requirePermission(session, "platform.audit.activity.view");
+    const { module, recordId } = request.params as { module: string; recordId: string };
+    const eventNames = activityEventNames(module);
+    if (!eventNames.length) return ok([], responseMeta(request));
+    const [rows] = await app.masterDbPool.execute<Array<Record<string, unknown>>>(
+      `SELECT id, actor_type, actor_email, correlation_id, event_name, event_payload, created_at
+       FROM audit_events
+       WHERE event_name IN (${eventNames.map(() => "?").join(", ")})
+       ORDER BY id DESC
+       LIMIT 100`,
+      eventNames
+    );
+    const filtered = rows
+      .map(convertRow)
+      .filter((row) => JSON.stringify(row.event_payload ?? "").includes(recordId))
+      .slice(0, 20);
+    return ok(filtered, responseMeta(request));
   });
 
   // ── Migration Status ───────────────────────────────────────────

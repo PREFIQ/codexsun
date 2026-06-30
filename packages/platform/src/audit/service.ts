@@ -71,7 +71,7 @@ export class AuditService {
       ...(input.correlationId ? { correlationId: input.correlationId } : {}),
       eventName: "tenant.created",
       tenantId: input.tenantId,
-      payload: { tenantCode: input.tenantCode }
+      payload: { tenantCode: input.tenantCode, tenantId: input.tenantId }
     });
   }
 
@@ -82,7 +82,7 @@ export class AuditService {
       ...(input.correlationId ? { correlationId: input.correlationId } : {}),
       eventName: "tenant.updated",
       tenantId: input.tenantId,
-      payload: { changes: input.changes }
+      payload: { changes: input.changes, tenantId: input.tenantId }
     });
   }
 
@@ -93,7 +93,7 @@ export class AuditService {
       ...(input.correlationId ? { correlationId: input.correlationId } : {}),
       eventName: "tenant.deleted",
       tenantId: input.tenantId,
-      payload: { tenantCode: input.tenantCode }
+      payload: { tenantCode: input.tenantCode, tenantId: input.tenantId }
     });
   }
 }
