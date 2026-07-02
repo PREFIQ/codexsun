@@ -1,7 +1,9 @@
 [
   {
     "active": true,
+    "acceptanceCriteria": "Tenant list, show, upsert, lifecycle, permission, API, screen, database, and planning records are mapped.",
     "auditEvent": "",
+    "blockers": "Missing ownership or route coverage should be raised as Work & Automation issues.",
     "componentPath": "",
     "defaultValue": "",
     "dependencyKeys": [],
@@ -24,6 +26,7 @@
     "ownerTeam": "Platform",
     "pageType": "",
     "permissionKey": "",
+    "planType": "coverage",
     "relation": "",
     "richNotes": "<p>Track list, show, upsert, lifecycle, permission, API, screen, and table coverage for Tenant.</p>",
     "riskLevel": "medium",
@@ -36,8 +39,9 @@
     "tableScope": "",
     "tenantRequired": false,
     "testPath": "",
+    "validationPlan": "Run focused tenant and platform registry checks after each coverage update.",
     "unique": false,
-    "updatedAt": "2026-07-02T00:32:47.950Z",
+    "updatedAt": "2026-07-02T02:31:15.767Z",
     "version": "1.0.0",
     "status": "active"
   }

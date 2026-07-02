@@ -78,6 +78,7 @@ test("work and automation drill-down keeps references, timeline, and gantt in sc
 
   await verifyRandomWorkflowPersistence(page)
   await verifyStandaloneDiscussions(page)
+  await verifyPlatformRegistryIssueBridge(page)
 
   expect(failedResponses).toEqual([])
   expect(browserErrors.filter((message) => !message.includes("Failed to load resource"))).toEqual([])
@@ -171,6 +172,43 @@ async function verifyStandaloneDiscussions(page: Page) {
   await expect(page.getByRole("button", { name: "issue-1", exact: true })).toBeVisible()
 }
 
+async function verifyPlatformRegistryIssueBridge(page: Page) {
+  cleanupRegistryRaisedIssues()
+  await page.goto("/sa/platform-registry")
+  await page.waitForLoadState("networkidle")
+  await expect(page.getByRole("heading", { name: "Platform Registry" })).toBeVisible()
+
+  await page.getByRole("button", { name: "SUPER ADMIN", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "SUPER ADMIN Module Groups" })).toBeVisible()
+  await page.getByRole("table").getByRole("button", { name: "Project Manager", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "Project Manager Module Registry" })).toBeVisible()
+  await page.getByRole("table").getByRole("button", { name: "Platform Registry", exact: true }).click()
+  await expect(page.getByRole("heading", { name: "Platform Registry" })).toBeVisible()
+
+  await page.getByRole("button", { name: "Feature Registry" }).click()
+  await expect(page.getByRole("heading", { name: "Feature Registry" })).toBeVisible()
+  await page.getByRole("button", { name: "Feature registry actions" }).click()
+  await page.getByRole("menuitem", { name: "Raise issue" }).click()
+  await expect(page.getByText("Issue raised")).toBeVisible()
+  await expect.poll(() => readJsonFile("issue-board.json").some((record) => record.referenceId === "feature-registry" && record.referenceType === "feature")).toBeTruthy()
+
+  await page.getByRole("button", { name: "Planning" }).click()
+  await expect(page.getByText("Planned")).toBeVisible()
+  await expect(page.getByText("Ready")).toBeVisible()
+  await expect(page.getByText("Blocked / review")).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Model Notes" })).toHaveCount(0)
+  await page.getByRole("button", { name: "New work item" }).click()
+  await expect(page.getByText("Acceptance criteria")).toBeVisible()
+  await expect(page.getByText("Risks / blockers")).toBeVisible()
+  await expect(page.getByText("Validation plan")).toBeVisible()
+  await page.getByRole("button", { name: "Cancel" }).last().click()
+  await page.getByRole("button", { name: "Model Notes" }).click()
+  await expect(page.getByRole("heading", { name: "Model Notes" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "New model note" })).toBeVisible()
+
+  cleanupRegistryRaisedIssues()
+}
+
 async function loginAsSuperAdmin(page: Page) {
   await page.goto("/sa/login")
   await page.getByLabel("Email").fill("sundar@sundar.com")
@@ -251,7 +289,7 @@ function cleanupRandomWorkflowArtifacts(suffix: string) {
     if (Array.isArray(result[key])) result[key] = result[key].filter((record: any) => !keyIncludesSuffix(record))
   }
   result.generatedAt = new Date().toISOString()
-  writeFileSync(resultPath, `${JSON.stringify(result, null, 2)}\n`, "utf8")
+  safeWriteFile(resultPath, `${JSON.stringify(result, null, 2)}\n`)
 }
 
 function cleanupIssueOneAutomationQueue() {
@@ -270,12 +308,34 @@ function cleanupIssueOneAutomationQueue() {
   refreshMaturityResult()
 }
 
+function cleanupRegistryRaisedIssues() {
+  const dir = join(process.cwd(), "apps/platform/api/project-manager-json")
+  const issuePath = join(dir, "issue-board.json")
+  const issues = JSON.parse(readFileSync(issuePath, "utf8")).filter((record: any) => !String(record.key ?? "").startsWith("issue.registry."))
+  writeFileSync(issuePath, `${JSON.stringify(issues, null, 2)}\n`, "utf8")
+  for (const file of ["timeline-registry.json", "gantt-registry.json"]) {
+    const path = join(dir, file)
+    const records = JSON.parse(readFileSync(path, "utf8")).filter((record: any) => !JSON.stringify(record).includes("issue.registry."))
+    writeFileSync(path, `${JSON.stringify(records, null, 2)}\n`, "utf8")
+  }
+  refreshMaturityResult()
+}
+
 function refreshMaturityResult() {
   const dir = join(process.cwd(), "apps/platform/api/project-manager-json")
   const files = { action: "maturity-action-registry.json", agent_note: "agent-note-registry.json", activity: "activity-registry.json", automation: "automation-registry.json", changelog: "changelog-registry.json", coverage: "coverage-registry.json", discussion: "discussion-registry.json", gantt: "gantt-registry.json", github: "github-registry.json", issue: "issue-board.json", kanban: "kanban-board.json", planning: "planning-registry.json", pull_request: "pull-request-registry.json", release: "release-registry.json", review: "review-registry.json", security_quality: "security-quality-registry.json", task: "task-registry.json", timeline: "timeline-registry.json", todo: "todo-registry.json" }
   const result: Record<string, unknown> = { generatedAt: new Date().toISOString() }
   for (const [key, file] of Object.entries(files)) result[key] = JSON.parse(readFileSync(join(dir, file), "utf8"))
-  writeFileSync(join(dir, "maturity-result.json"), `${JSON.stringify(result, null, 2)}\n`, "utf8")
+  safeWriteFile(join(dir, "maturity-result.json"), `${JSON.stringify(result, null, 2)}\n`)
+}
+
+function safeWriteFile(path: string, content: string) {
+  try {
+    writeFileSync(path, content, "utf8")
+  } catch {
+    // The API can briefly hold the derived report snapshot while reconciling JSON.
+    // Source registry files are already cleaned; a later API read will rebuild this snapshot.
+  }
 }
 
 function collectBrowserErrors(page: Page, browserErrors: string[]) {

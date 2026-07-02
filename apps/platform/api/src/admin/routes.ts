@@ -345,7 +345,7 @@ function platformFeatureRegistryInputFromBody(body: Record<string, unknown>, req
 
 function platformDetailRegistryInputFromBody(body: Record<string, unknown>, requireIdentity: boolean) {
   const input: Record<string, unknown> = {};
-  const stringFields = ["auditEvent", "componentPath", "defaultValue", "description", "featureId", "fieldName", "fieldNature", "fieldType", "key", "method", "migrationId", "moduleId", "name", "operation", "ownerTeam", "pageType", "permissionKey", "relation", "richNotes", "riskLevel", "routePath", "scope", "subscriptionFlagKey", "tableName", "tableScope", "testPath", "version"];
+  const stringFields = ["acceptanceCriteria", "auditEvent", "blockers", "componentPath", "defaultValue", "description", "featureId", "fieldName", "fieldNature", "fieldType", "key", "method", "migrationId", "moduleId", "name", "operation", "ownerTeam", "pageType", "permissionKey", "planType", "relation", "richNotes", "riskLevel", "routePath", "scope", "subscriptionFlagKey", "tableName", "tableScope", "testPath", "validationPlan", "version"];
   for (const field of stringFields) {
     if (typeof body[field] === "string" || body[field] === null) input[field] = body[field] ?? "";
   }

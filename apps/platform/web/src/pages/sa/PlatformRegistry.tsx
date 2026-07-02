@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, CheckCircle2, ChevronRight, Pencil, Plus, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react"
+import { ArrowLeft, CheckCircle2, ChevronRight, CircleAlert, Pencil, Plus, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@codexsun/ui/components/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@codexsun/ui/components/dialog"
@@ -60,7 +60,9 @@ type FeatureRegistryRecord = BaseRecord & {
 type DetailKind = "action" | "api" | "screen" | "database" | "planning" | "note"
 
 type DetailRecord = BaseRecord & {
+  acceptanceCriteria: string
   auditEvent: string
+  blockers: string
   componentPath: string
   defaultValue: string
   dependencyKeys: string[]
@@ -80,6 +82,7 @@ type DetailRecord = BaseRecord & {
   ownerTeam: string
   pageType: string
   permissionKey: string
+  planType: string
   relation: string
   richNotes: string
   riskLevel: string
@@ -92,6 +95,7 @@ type DetailRecord = BaseRecord & {
   tableScope: string
   tenantRequired: boolean
   testPath: string
+  validationPlan: string
   unique: boolean
   version: string
 }
@@ -99,8 +103,10 @@ type DetailRecord = BaseRecord & {
 type AnyRecord = PlatformRecord | ModuleGroupRecord | ModuleRegistryRecord | FeatureRegistryRecord
 
 type DetailFormState = {
+  acceptanceCriteria: string
   active: boolean
   auditEvent: string
+  blockers: string
   componentPath: string
   defaultValue: string
   dependencyKeys: string
@@ -121,6 +127,7 @@ type DetailFormState = {
   ownerTeam: string
   pageType: string
   permissionKey: string
+  planType: string
   relation: string
   richNotes: string
   riskLevel: string
@@ -133,9 +140,15 @@ type DetailFormState = {
   tableScope: string
   tenantRequired: boolean
   testPath: string
+  validationPlan: string
   unique: boolean
   version: string
 }
+
+type RegistryIssueTarget =
+  | { kind: Level; record: AnyRecord }
+  | { kind: "feature"; record: FeatureRegistryRecord }
+  | { kind: DetailKind; record: DetailRecord }
 
 type DrillView =
   | { mode: "list" }
@@ -385,6 +398,18 @@ export function PlatformRegistry({ onBack: _onBack }: { onBack: () => void }) {
     onError: (error) => showRegistryError("Force delete failed", error)
   })
 
+  const raiseIssueMutation = useMutation({
+    mutationFn: (target: RegistryIssueTarget) => apiPost<{ id: string; key: string; title: string }>(
+      "/admin/project-manager/maturity/issues",
+      registryIssuePayload(target, selectedPlatform, selectedGroup, selectedModule),
+      "sa"
+    ),
+    onSuccess: (record) => {
+      toast.success("Issue raised", { description: record.key })
+    },
+    onError: (error) => showRegistryError("Issue raise failed", error)
+  })
+
   const magicFillMutation = useMutation({
     mutationFn: async ({ target }: { target: "features" | DetailKind }) => {
       if (!selectedModule) throw new Error("Select a module before running magic fill.")
@@ -590,6 +615,7 @@ export function PlatformRegistry({ onBack: _onBack }: { onBack: () => void }) {
           onDetailRestore={(kind, record) => detailLifecycleMutation.mutate({ action: "restore", kind, record })}
           onForceDelete={() => setPendingForceDelete({ level: view.level, record: view.record })}
           onMagicFill={(target) => magicFillMutation.mutate({ target })}
+          onRaiseIssue={(target) => raiseIssueMutation.mutate(target)}
           magicFillTarget={magicFillMutation.variables?.target ?? null}
           magicFilling={magicFillMutation.isPending}
           onRestore={() => restoreMutation.mutate(view.record)}
@@ -904,6 +930,7 @@ function RegistryShowPage({
   onMagicFill,
   magicFilling,
   magicFillTarget,
+  onRaiseIssue,
   onRestore
 }: {
   actionData: DetailRecord[]
@@ -941,9 +968,10 @@ function RegistryShowPage({
   onMagicFill: (target: "features" | DetailKind) => void
   magicFilling: boolean
   magicFillTarget: "features" | DetailKind | null
+  onRaiseIssue: (target: RegistryIssueTarget) => void
   onRestore: () => void
 }) {
-  const [activeTab, setActiveTab] = useState<"overview" | "features" | "actions" | "apis" | "screens" | "database" | "planning">("overview")
+  const [activeTab, setActiveTab] = useState<"overview" | "features" | "actions" | "apis" | "screens" | "database" | "planning" | "notes">("overview")
   const moduleWorkspaceTabs = [
     { id: "overview", label: "Overview" },
     { id: "features", label: "Feature Registry" },
@@ -951,7 +979,8 @@ function RegistryShowPage({
     { id: "apis", label: "APIs" },
     { id: "screens", label: "Screens" },
     { id: "database", label: "Database" },
-    { id: "planning", label: "Planning" }
+    { id: "planning", label: "Planning" },
+    { id: "notes", label: "Model Notes" }
   ] as const
 
   return (
@@ -967,6 +996,10 @@ function RegistryShowPage({
           <Button type="button" className="h-9 rounded-md" onClick={onEdit}>
             <Pencil className="size-4" />
             Edit
+          </Button>
+          <Button type="button" variant="outline" className="h-9 rounded-md" onClick={() => onRaiseIssue({ kind: level, record })}>
+            <CircleAlert className="size-4" />
+            Raise issue
           </Button>
           <Button type="button" variant="outline" className="h-9 rounded-md" onClick={record.active ? onDeactivate : onRestore}>
             {record.active ? "Deactivate" : "Restore"}
@@ -1006,20 +1039,19 @@ function RegistryShowPage({
               onForceDelete={onFeatureForceDelete}
               onMagicFill={() => onMagicFill("features")}
               magicFilling={magicFilling && magicFillTarget === "features"}
+              onRaiseIssue={(feature) => onRaiseIssue({ kind: "feature", record: feature })}
               onRefresh={onFeaturesRefresh}
               onRestore={onFeatureRestore}
             />
           ) : null}
-          {activeTab === "actions" ? <DetailRegistryPanel kind="action" loading={actionLoading} magicFilling={magicFilling && magicFillTarget === "action"} records={actionData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRefresh={onDetailRefresh} onRestore={onDetailRestore} /> : null}
-          {activeTab === "apis" ? <DetailRegistryPanel kind="api" loading={apiLoading} magicFilling={magicFilling && magicFillTarget === "api"} records={apiData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRefresh={onDetailRefresh} onRestore={onDetailRestore} /> : null}
-          {activeTab === "screens" ? <DetailRegistryPanel kind="screen" loading={screenLoading} magicFilling={magicFilling && magicFillTarget === "screen"} records={screenData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRefresh={onDetailRefresh} onRestore={onDetailRestore} /> : null}
-          {activeTab === "database" ? <DetailRegistryPanel kind="database" loading={databaseLoading} magicFilling={magicFilling && magicFillTarget === "database"} records={databaseData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRefresh={onDetailRefresh} onRestore={onDetailRestore} /> : null}
+          {activeTab === "actions" ? <DetailRegistryPanel kind="action" loading={actionLoading} magicFilling={magicFilling && magicFillTarget === "action"} records={actionData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRaiseIssue={(detail) => onRaiseIssue({ kind: "action", record: detail })} onRefresh={onDetailRefresh} onRestore={onDetailRestore} /> : null}
+          {activeTab === "apis" ? <DetailRegistryPanel kind="api" loading={apiLoading} magicFilling={magicFilling && magicFillTarget === "api"} records={apiData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRaiseIssue={(detail) => onRaiseIssue({ kind: "api", record: detail })} onRefresh={onDetailRefresh} onRestore={onDetailRestore} /> : null}
+          {activeTab === "screens" ? <DetailRegistryPanel kind="screen" loading={screenLoading} magicFilling={magicFilling && magicFillTarget === "screen"} records={screenData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRaiseIssue={(detail) => onRaiseIssue({ kind: "screen", record: detail })} onRefresh={onDetailRefresh} onRestore={onDetailRestore} /> : null}
+          {activeTab === "database" ? <DetailRegistryPanel kind="database" loading={databaseLoading} magicFilling={magicFilling && magicFillTarget === "database"} records={databaseData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRaiseIssue={(detail) => onRaiseIssue({ kind: "database", record: detail })} onRefresh={onDetailRefresh} onRestore={onDetailRestore} /> : null}
           {activeTab === "planning" ? (
-            <div className="space-y-4">
-              <DetailRegistryPanel kind="planning" loading={planningLoading} magicFilling={magicFilling && magicFillTarget === "planning"} records={planningData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRefresh={onDetailRefresh} onRestore={onDetailRestore} />
-              <DetailRegistryPanel kind="note" loading={noteLoading} magicFilling={magicFilling && magicFillTarget === "note"} records={noteData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRefresh={onDetailRefresh} onRestore={onDetailRestore} />
-            </div>
+            <PlanningRegistryPanel kind="planning" loading={planningLoading} magicFilling={magicFilling && magicFillTarget === "planning"} records={planningData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRaiseIssue={(detail) => onRaiseIssue({ kind: "planning", record: detail })} onRefresh={onDetailRefresh} onRestore={onDetailRestore} />
           ) : null}
+          {activeTab === "notes" ? <DetailRegistryPanel kind="note" loading={noteLoading} magicFilling={magicFilling && magicFillTarget === "note"} records={noteData} onCreate={onDetailCreate} onDeactivate={onDetailDeactivate} onEdit={onDetailEdit} onForceDelete={onDetailForceDelete} onMagicFill={onMagicFill} onRefresh={onDetailRefresh} onRestore={onDetailRestore} /> : null}
         </div>
       ) : (
         <WorkspaceShowLayout>
@@ -1064,6 +1096,7 @@ function FeatureRegistryPanel({
   onForceDelete,
   onMagicFill,
   magicFilling,
+  onRaiseIssue,
   onRefresh,
   onRestore
 }: {
@@ -1075,6 +1108,7 @@ function FeatureRegistryPanel({
   onForceDelete: (record: FeatureRegistryRecord) => void
   onMagicFill: () => void
   magicFilling: boolean
+  onRaiseIssue: (record: FeatureRegistryRecord) => void
   onRefresh: () => void
   onRestore: (record: FeatureRegistryRecord) => void
 }) {
@@ -1141,6 +1175,12 @@ function FeatureRegistryPanel({
                     onView={() => onEdit(feature)}
                     actions={[
                       {
+                        id: "raise-issue",
+                        icon: <CircleAlert className="size-4" />,
+                        label: "Raise issue",
+                        onSelect: () => onRaiseIssue(feature)
+                      },
+                      {
                         id: "force-delete",
                         icon: <Trash2 className="size-4" />,
                         label: "Force delete",
@@ -1171,6 +1211,7 @@ function DetailRegistryPanel({
   onForceDelete,
   onMagicFill,
   magicFilling,
+  onRaiseIssue,
   onRefresh,
   onRestore
 }: {
@@ -1183,6 +1224,7 @@ function DetailRegistryPanel({
   onEdit: (kind: DetailKind, record: DetailRecord) => void
   onForceDelete: (kind: DetailKind, record: DetailRecord) => void
   onMagicFill: (kind: DetailKind) => void
+  onRaiseIssue?: (record: DetailRecord) => void
   onRefresh: (kind: DetailKind) => void
   onRestore: (kind: DetailKind, record: DetailRecord) => void
 }) {
@@ -1248,7 +1290,10 @@ function DetailRegistryPanel({
                     onEdit={() => onEdit(kind, record)}
                     onRestore={() => onRestore(kind, record)}
                     onView={() => onEdit(kind, record)}
-                    actions={[{ id: "force-delete", icon: <Trash2 className="size-4" />, label: "Force delete", tone: "destructive", onSelect: () => onForceDelete(kind, record) }]}
+                    actions={[
+                      ...(onRaiseIssue ? [{ id: "raise-issue", icon: <CircleAlert className="size-4" />, label: "Raise issue", onSelect: () => onRaiseIssue(record) }] : []),
+                      { id: "force-delete", icon: <Trash2 className="size-4" />, label: "Force delete", tone: "destructive", onSelect: () => onForceDelete(kind, record) }
+                    ]}
                   />
                 </td>
               </tr>
@@ -1259,6 +1304,44 @@ function DetailRegistryPanel({
       {records.length === 0 && loading ? <WorkspaceTableSkeletonRows columns={columns.length + 5} /> : null}
       {records.length === 0 && !loading ? <WorkspaceTableEmptyState>No {detailShortLabel(kind)} records found.</WorkspaceTableEmptyState> : null}
     </WorkspaceTablePanel>
+  )
+}
+
+function PlanningRegistryPanel(props: {
+  kind: "planning"
+  loading: boolean
+  magicFilling: boolean
+  records: DetailRecord[]
+  onCreate: (kind: DetailKind) => void
+  onDeactivate: (kind: DetailKind, record: DetailRecord) => void
+  onEdit: (kind: DetailKind, record: DetailRecord) => void
+  onForceDelete: (kind: DetailKind, record: DetailRecord) => void
+  onMagicFill: (kind: DetailKind) => void
+  onRaiseIssue: (record: DetailRecord) => void
+  onRefresh: (kind: DetailKind) => void
+  onRestore: (kind: DetailKind, record: DetailRecord) => void
+}) {
+  const planned = props.records.filter((record) => record.status === "planned").length
+  const blocked = props.records.filter((record) => ["blocked", "risk", "needs-review"].includes(record.status)).length
+  const ready = props.records.filter((record) => ["ready", "active", "approved"].includes(record.status)).length
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-3">
+        <PlanningMetric label="Planned" value={planned} />
+        <PlanningMetric label="Ready" value={ready} />
+        <PlanningMetric label="Blocked / review" value={blocked} tone="danger" />
+      </div>
+      <DetailRegistryPanel {...props} />
+    </div>
+  )
+}
+
+function PlanningMetric({ label, tone = "default", value }: { label: string; tone?: "danger" | "default"; value: number }) {
+  return (
+    <div className={cn("rounded-md border px-4 py-3", tone === "danger" ? "border-rose-200 bg-rose-50 text-rose-900" : "border-border bg-background text-foreground")}>
+      <div className="text-xs font-medium uppercase text-muted-foreground">{label}</div>
+      <div className="mt-1 text-2xl font-semibold tracking-normal">{value}</div>
+    </div>
   )
 }
 
@@ -1415,6 +1498,47 @@ function RegistryUpsertPage({
   )
 }
 
+function RegistryDialogGrid({ left, right }: { left: ReactNode; right: ReactNode }) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="min-w-0 space-y-4">{left}</div>
+      <aside className="space-y-3 border-t border-border/70 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">{right}</aside>
+    </div>
+  )
+}
+
+function RegistrySideSection({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <div className="space-y-3 rounded-md border border-border/70 bg-muted/10 p-3">
+      <div className="text-xs font-semibold uppercase tracking-normal text-muted-foreground">{title}</div>
+      {children}
+    </div>
+  )
+}
+
+function RegistryActiveCard({
+  checked,
+  description,
+  onCheckedChange
+}: {
+  checked: boolean
+  description: string
+  onCheckedChange: (checked: boolean) => void
+}) {
+  return (
+    <div className={cn("flex min-h-14 items-center justify-between rounded-md border px-3 py-2", checked ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-border bg-muted/40 text-muted-foreground")}>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <CheckCircle2 className="size-4" />
+          Active
+        </div>
+        <p className="mt-1 text-xs">{description}</p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  )
+}
+
 function PlatformRegistryDialog({
   errorMessage,
   loading,
@@ -1461,7 +1585,7 @@ function PlatformRegistryDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose() }}>
-      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden rounded-md border-border/70 p-0 sm:max-w-2xl">
+      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden rounded-md border-border/70 p-0 sm:max-w-4xl">
         <DialogHeader className="border-b border-border/70 px-5 py-4">
           <DialogTitle>{isEdit ? "Edit platform registry" : "New platform registry"}</DialogTitle>
           <DialogDescription>Maintain platform identity and active status.</DialogDescription>
@@ -1488,27 +1612,30 @@ function PlatformRegistryDialog({
                 {localBanner || errorMessage}
               </WorkspaceFormBanner>
             ) : null}
-            <WorkspaceFormGrid columns={1}>
-              <WorkspaceFormField label="Name" required>
-                <Input className="h-11 rounded-md" value={form.name} onChange={(event) => updateForm(setForm, { name: event.target.value }, setLocalBanner)} required />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Platform" required>
-                <Input className="h-11 rounded-md font-mono" value={form.keyValue} onChange={(event) => updateForm(setForm, { keyValue: event.target.value }, setLocalBanner)} required />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Description">
-                <Textarea className="min-h-28 rounded-md" value={form.description} onChange={(event) => updateForm(setForm, { description: event.target.value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <div className={cn("flex min-h-16 w-full items-center justify-between rounded-md border px-4 py-3", form.active ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-border bg-muted/40 text-muted-foreground")}>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <CheckCircle2 className="size-4" />
-                    Active
-                  </div>
-                  <p className="mt-1 text-sm">Active platforms appear in the project manager drill-down.</p>
-                </div>
-                <Switch checked={form.active} onCheckedChange={(checked) => setForm((current) => ({ ...current, active: checked }))} />
-              </div>
-            </WorkspaceFormGrid>
+            <RegistryDialogGrid
+              left={
+                <>
+                  <WorkspaceFormField label="Name" required>
+                    <Input className="h-11 rounded-md" value={form.name} onChange={(event) => updateForm(setForm, { name: event.target.value }, setLocalBanner)} required />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Description">
+                    <Textarea className="min-h-36 rounded-md" value={form.description} onChange={(event) => updateForm(setForm, { description: event.target.value }, setLocalBanner)} />
+                  </WorkspaceFormField>
+                </>
+              }
+              right={
+                <>
+                  <RegistrySideSection title="Identity">
+                    <WorkspaceFormField label="Platform" required>
+                      <Input className="h-11 rounded-md font-mono" value={form.keyValue} onChange={(event) => updateForm(setForm, { keyValue: event.target.value }, setLocalBanner)} required />
+                    </WorkspaceFormField>
+                  </RegistrySideSection>
+                  <RegistrySideSection title="State">
+                    <RegistryActiveCard checked={form.active} description="Appears in project drill-down." onCheckedChange={(checked) => setForm((current) => ({ ...current, active: checked }))} />
+                  </RegistrySideSection>
+                </>
+              }
+            />
           </div>
           <DialogFooter className="border-t border-border/70 px-5 py-4 sm:justify-start">
             <Button type="submit" disabled={loading} className="rounded-md bg-foreground text-background hover:bg-foreground/90">
@@ -1572,10 +1699,10 @@ function ModuleGroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose() }}>
-      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden rounded-md border-border/70 p-0 sm:max-w-2xl">
+      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden rounded-md border-border/70 p-0 sm:max-w-4xl">
         <DialogHeader className="border-b border-border/70 px-5 py-4">
           <DialogTitle>{isEdit ? "Edit module group" : "New module group"}</DialogTitle>
-          <DialogDescription>Maintain module group identity, order, and active status.</DialogDescription>
+          <DialogDescription>Maintain module group identity and active status.</DialogDescription>
         </DialogHeader>
         <form
           noValidate
@@ -1599,30 +1726,30 @@ function ModuleGroupDialog({
                 {localBanner || errorMessage}
               </WorkspaceFormBanner>
             ) : null}
-            <WorkspaceFormGrid columns={1}>
-              <WorkspaceFormField label="Name" required>
-                <Input className="h-11 rounded-md" value={form.name} onChange={(event) => updateForm(setForm, { name: event.target.value }, setLocalBanner)} required />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Group key" required>
-                <Input className="h-11 rounded-md font-mono" value={form.keyValue} onChange={(event) => updateForm(setForm, { keyValue: event.target.value }, setLocalBanner)} required />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Sort order">
-                <Input className="h-11 rounded-md" value={form.sortOrder} onChange={(event) => updateForm(setForm, { sortOrder: event.target.value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Description">
-                <Textarea className="min-h-28 rounded-md" value={form.description} onChange={(event) => updateForm(setForm, { description: event.target.value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <div className={cn("flex min-h-16 w-full items-center justify-between rounded-md border px-4 py-3", form.active ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-border bg-muted/40 text-muted-foreground")}>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <CheckCircle2 className="size-4" />
-                    Active
-                  </div>
-                  <p className="mt-1 text-sm">Active groups appear in the selected platform drill-down.</p>
-                </div>
-                <Switch checked={form.active} onCheckedChange={(checked) => setForm((current) => ({ ...current, active: checked }))} />
-              </div>
-            </WorkspaceFormGrid>
+            <RegistryDialogGrid
+              left={
+                <>
+                  <WorkspaceFormField label="Name" required>
+                    <Input className="h-11 rounded-md" value={form.name} onChange={(event) => updateForm(setForm, { name: event.target.value }, setLocalBanner)} required />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Description">
+                    <Textarea className="min-h-36 rounded-md" value={form.description} onChange={(event) => updateForm(setForm, { description: event.target.value }, setLocalBanner)} />
+                  </WorkspaceFormField>
+                </>
+              }
+              right={
+                <>
+                  <RegistrySideSection title="Identity">
+                    <WorkspaceFormField label="Group key" required>
+                      <Input className="h-11 rounded-md font-mono" value={form.keyValue} onChange={(event) => updateForm(setForm, { keyValue: event.target.value }, setLocalBanner)} required />
+                    </WorkspaceFormField>
+                  </RegistrySideSection>
+                  <RegistrySideSection title="State">
+                    <RegistryActiveCard checked={form.active} description="Appears in selected platform." onCheckedChange={(checked) => setForm((current) => ({ ...current, active: checked }))} />
+                  </RegistrySideSection>
+                </>
+              }
+            />
           </div>
           <DialogFooter className="border-t border-border/70 px-5 py-4 sm:justify-start">
             <Button type="submit" disabled={loading} className="rounded-md bg-foreground text-background hover:bg-foreground/90">
@@ -1686,18 +1813,18 @@ function ModuleRegistryDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose() }}>
-      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden rounded-md border-border/70 p-0 sm:max-w-2xl">
+      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden rounded-md border-border/70 p-0 sm:max-w-4xl">
         <DialogHeader className="border-b border-border/70 px-5 py-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <DialogTitle>{isEdit ? "Edit module registry" : "New module registry"}</DialogTitle>
-              <DialogDescription>Maintain module identity, route, order, and active status.</DialogDescription>
+              <DialogDescription>Maintain module identity, route, and active status.</DialogDescription>
             </div>
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="h-9 w-9 shrink-0 rounded-md"
+              className="mr-8 h-9 w-9 shrink-0 rounded-md"
               title="Magic fill module key and route"
               onClick={() => {
                 setLocalBanner("")
@@ -1730,33 +1857,33 @@ function ModuleRegistryDialog({
                 {localBanner || errorMessage}
               </WorkspaceFormBanner>
             ) : null}
-            <WorkspaceFormGrid columns={1}>
-              <WorkspaceFormField label="Name" required>
-                <Input className="h-11 rounded-md" value={form.name} onChange={(event) => updateForm(setForm, { name: event.target.value }, setLocalBanner)} required />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Module key" required>
-                <Input className="h-11 rounded-md font-mono" value={form.keyValue} onChange={(event) => updateForm(setForm, { keyValue: event.target.value }, setLocalBanner)} required />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Route path">
-                <Input className="h-11 rounded-md font-mono" value={form.routePath} onChange={(event) => updateForm(setForm, { routePath: event.target.value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Sort order">
-                <Input className="h-11 rounded-md" value={form.sortOrder} onChange={(event) => updateForm(setForm, { sortOrder: event.target.value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Description">
-                <Textarea className="min-h-28 rounded-md" value={form.description} onChange={(event) => updateForm(setForm, { description: event.target.value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <div className={cn("flex min-h-16 w-full items-center justify-between rounded-md border px-4 py-3", form.active ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-border bg-muted/40 text-muted-foreground")}>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <CheckCircle2 className="size-4" />
-                    Active
-                  </div>
-                  <p className="mt-1 text-sm">Active modules appear in the selected module group.</p>
-                </div>
-                <Switch checked={form.active} onCheckedChange={(checked) => setForm((current) => ({ ...current, active: checked }))} />
-              </div>
-            </WorkspaceFormGrid>
+            <RegistryDialogGrid
+              left={
+                <>
+                  <WorkspaceFormField label="Name" required>
+                    <Input className="h-11 rounded-md" value={form.name} onChange={(event) => updateForm(setForm, { name: event.target.value }, setLocalBanner)} required />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Route path">
+                    <Input className="h-11 rounded-md font-mono" value={form.routePath} onChange={(event) => updateForm(setForm, { routePath: event.target.value }, setLocalBanner)} />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Description">
+                    <Textarea className="min-h-36 rounded-md" value={form.description} onChange={(event) => updateForm(setForm, { description: event.target.value }, setLocalBanner)} />
+                  </WorkspaceFormField>
+                </>
+              }
+              right={
+                <>
+                  <RegistrySideSection title="Identity">
+                    <WorkspaceFormField label="Module key" required>
+                      <Input className="h-11 rounded-md font-mono" value={form.keyValue} onChange={(event) => updateForm(setForm, { keyValue: event.target.value }, setLocalBanner)} required />
+                    </WorkspaceFormField>
+                  </RegistrySideSection>
+                  <RegistrySideSection title="State">
+                    <RegistryActiveCard checked={form.active} description="Appears in selected module group." onCheckedChange={(checked) => setForm((current) => ({ ...current, active: checked }))} />
+                  </RegistrySideSection>
+                </>
+              }
+            />
           </div>
           <DialogFooter className="border-t border-border/70 px-5 py-4 sm:justify-start">
             <Button type="submit" disabled={loading} className="rounded-md bg-foreground text-background hover:bg-foreground/90">
@@ -1820,18 +1947,18 @@ function FeatureRegistryDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose() }}>
-      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden rounded-md border-border/70 p-0 sm:max-w-2xl">
+      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden rounded-md border-border/70 p-0 sm:max-w-4xl">
         <DialogHeader className="border-b border-border/70 px-5 py-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <DialogTitle>{isEdit ? "Edit feature registry" : "New feature registry"}</DialogTitle>
-              <DialogDescription>Maintain feature identity, type, route, permission, order, and active status.</DialogDescription>
+              <DialogDescription>Maintain feature identity, type, route, permission, and active status.</DialogDescription>
             </div>
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="h-9 w-9 shrink-0 rounded-md"
+              className="mr-8 h-9 w-9 shrink-0 rounded-md"
               title="Magic fill feature key, route, and permission"
               onClick={() => {
                 setLocalBanner("")
@@ -1864,50 +1991,50 @@ function FeatureRegistryDialog({
                 {localBanner || errorMessage}
               </WorkspaceFormBanner>
             ) : null}
-            <WorkspaceFormGrid columns={1}>
-              <WorkspaceFormField label="Name" required>
-                <Input className="h-11 rounded-md" value={form.name} onChange={(event) => updateForm(setForm, { name: event.target.value }, setLocalBanner)} required />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Feature key" required>
-                <Input className="h-11 rounded-md font-mono" value={form.keyValue} onChange={(event) => updateForm(setForm, { keyValue: event.target.value }, setLocalBanner)} required />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Type">
-                <select
-                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={form.type}
-                  onChange={(event) => updateForm(setForm, { type: event.target.value }, setLocalBanner)}
-                >
-                  <option value="page">Page</option>
-                  <option value="action">Action</option>
-                  <option value="api">API</option>
-                  <option value="report">Report</option>
-                  <option value="setting">Setting</option>
-                  <option value="workflow">Workflow</option>
-                </select>
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Route path">
-                <Input className="h-11 rounded-md font-mono" value={form.routePath} onChange={(event) => updateForm(setForm, { routePath: event.target.value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Permission key">
-                <Input className="h-11 rounded-md font-mono" value={form.permissionKey} onChange={(event) => updateForm(setForm, { permissionKey: event.target.value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Sort order">
-                <Input className="h-11 rounded-md" value={form.sortOrder} onChange={(event) => updateForm(setForm, { sortOrder: event.target.value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Description">
-                <Textarea className="min-h-28 rounded-md" value={form.description} onChange={(event) => updateForm(setForm, { description: event.target.value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <div className={cn("flex min-h-16 w-full items-center justify-between rounded-md border px-4 py-3", form.active ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-border bg-muted/40 text-muted-foreground")}>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <CheckCircle2 className="size-4" />
-                    Active
-                  </div>
-                  <p className="mt-1 text-sm">Active features appear in this module workspace.</p>
-                </div>
-                <Switch checked={form.active} onCheckedChange={(checked) => setForm((current) => ({ ...current, active: checked }))} />
-              </div>
-            </WorkspaceFormGrid>
+            <RegistryDialogGrid
+              left={
+                <>
+                  <WorkspaceFormField label="Name" required>
+                    <Input className="h-11 rounded-md" value={form.name} onChange={(event) => updateForm(setForm, { name: event.target.value }, setLocalBanner)} required />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Route path">
+                    <Input className="h-11 rounded-md font-mono" value={form.routePath} onChange={(event) => updateForm(setForm, { routePath: event.target.value }, setLocalBanner)} />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Permission key">
+                    <Input className="h-11 rounded-md font-mono" value={form.permissionKey} onChange={(event) => updateForm(setForm, { permissionKey: event.target.value }, setLocalBanner)} />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Description">
+                    <Textarea className="min-h-36 rounded-md" value={form.description} onChange={(event) => updateForm(setForm, { description: event.target.value }, setLocalBanner)} />
+                  </WorkspaceFormField>
+                </>
+              }
+              right={
+                <>
+                  <RegistrySideSection title="Identity">
+                    <WorkspaceFormField label="Feature key" required>
+                      <Input className="h-11 rounded-md font-mono" value={form.keyValue} onChange={(event) => updateForm(setForm, { keyValue: event.target.value }, setLocalBanner)} required />
+                    </WorkspaceFormField>
+                    <WorkspaceFormField label="Type">
+                      <select
+                        className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        value={form.type}
+                        onChange={(event) => updateForm(setForm, { type: event.target.value }, setLocalBanner)}
+                      >
+                        <option value="page">Page</option>
+                        <option value="action">Action</option>
+                        <option value="api">API</option>
+                        <option value="report">Report</option>
+                        <option value="setting">Setting</option>
+                        <option value="workflow">Workflow</option>
+                      </select>
+                    </WorkspaceFormField>
+                  </RegistrySideSection>
+                  <RegistrySideSection title="State">
+                    <RegistryActiveCard checked={form.active} description="Appears in module workspace." onCheckedChange={(checked) => setForm((current) => ({ ...current, active: checked }))} />
+                  </RegistrySideSection>
+                </>
+              }
+            />
           </div>
           <DialogFooter className="border-t border-border/70 px-5 py-4 sm:justify-start">
             <Button type="submit" disabled={loading} className="rounded-md bg-foreground text-background hover:bg-foreground/90">
@@ -1957,7 +2084,7 @@ function DetailRegistryDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose() }}>
-      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden rounded-md border-border/70 p-0 sm:max-w-3xl">
+      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden rounded-md border-border/70 p-0 sm:max-w-5xl">
         <DialogHeader className="border-b border-border/70 px-5 py-4">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1968,7 +2095,7 @@ function DetailRegistryDialog({
               type="button"
               variant="outline"
               size="icon"
-              className="h-9 w-9 shrink-0 rounded-md"
+              className="mr-8 h-9 w-9 shrink-0 rounded-md"
               title="Magic fill this form"
               disabled={!module}
               onClick={() => {
@@ -2003,41 +2130,55 @@ function DetailRegistryDialog({
                 {localBanner || errorMessage}
               </WorkspaceFormBanner>
             ) : null}
-            <WorkspaceFormGrid columns={1}>
-              <WorkspaceFormField label="Name" required>
-                <Input className="h-11 rounded-md" value={form.name} onChange={(event) => updateDetailForm(setForm, { name: event.target.value }, setLocalBanner)} required />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Key" required>
-                <Input className="h-11 rounded-md font-mono" value={form.key} onChange={(event) => updateDetailForm(setForm, { key: event.target.value }, setLocalBanner)} required />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Feature">
-                <WorkspaceAutocomplete
-                  createLabel="Use feature"
-                  options={features.map((feature) => ({ value: feature.id, label: `${feature.name} (${feature.featureKey})` }))}
-                  placeholder="Select linked feature"
-                  value={form.featureId}
-                  onChange={(value) => updateDetailForm(setForm, { featureId: value ?? "" }, setLocalBanner)}
-                  onCreate={(query) => updateDetailForm(setForm, { featureId: query }, setLocalBanner)}
-                />
-              </WorkspaceFormField>
-              {detailFields(kind).map((field) => (
-                <DetailField key={field} field={field} form={form} setForm={setForm} setLocalBanner={setLocalBanner} />
-              ))}
-              <WorkspaceFormField label="Description">
-                <Textarea className="min-h-24 rounded-md" value={form.description} onChange={(event) => updateDetailForm(setForm, { description: event.target.value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <WorkspaceFormField label="Rich notes">
-                <WorkspaceEditor content={form.richNotes} placeholder="Write implementation notes, coverage gaps, decisions, and debug observations..." onChange={(value) => updateDetailForm(setForm, { richNotes: value }, setLocalBanner)} />
-              </WorkspaceFormField>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {booleanFieldsForKind(kind).map((field) => (
-                  <div key={field} className={cn("flex min-h-14 items-center justify-between rounded-md border px-4 py-3", Boolean(form[field as keyof DetailFormState]) ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-border bg-muted/40 text-muted-foreground")}>
-                    <span className="text-sm font-semibold">{booleanLabel(field)}</span>
-                    <Switch checked={Boolean(form[field as keyof DetailFormState])} onCheckedChange={(checked) => updateDetailForm(setForm, { [field]: checked } as Partial<DetailFormState>, setLocalBanner)} />
-                  </div>
-                ))}
-              </div>
-            </WorkspaceFormGrid>
+            <RegistryDialogGrid
+              left={
+                <>
+                  <WorkspaceFormField label="Name" required>
+                    <Input className="h-11 rounded-md" value={form.name} onChange={(event) => updateDetailForm(setForm, { name: event.target.value }, setLocalBanner)} required />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Key" required>
+                    <Input className="h-11 rounded-md font-mono" value={form.key} onChange={(event) => updateDetailForm(setForm, { key: event.target.value }, setLocalBanner)} required />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Description">
+                    <Textarea className="min-h-24 rounded-md" value={form.description} onChange={(event) => updateDetailForm(setForm, { description: event.target.value }, setLocalBanner)} />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Rich notes">
+                    <WorkspaceEditor content={form.richNotes} placeholder="Write implementation notes, coverage gaps, decisions, and debug observations..." onChange={(value) => updateDetailForm(setForm, { richNotes: value }, setLocalBanner)} />
+                  </WorkspaceFormField>
+                </>
+              }
+              right={
+                <>
+                  <RegistrySideSection title="Reference">
+                    {detailUsesFeature(kind) ? (
+                      <WorkspaceFormField label="Feature">
+                        <WorkspaceAutocomplete
+                          createLabel="Use feature"
+                          options={features.map((feature) => ({ value: feature.id, label: `${feature.name} (${feature.featureKey})` }))}
+                          placeholder="Select linked feature"
+                          value={form.featureId}
+                          onChange={(value) => updateDetailForm(setForm, { featureId: value ?? "" }, setLocalBanner)}
+                          onCreate={(query) => updateDetailForm(setForm, { featureId: query }, setLocalBanner)}
+                        />
+                      </WorkspaceFormField>
+                    ) : null}
+                    {detailFields(kind).map((field) => (
+                      <DetailField key={field} field={field} form={form} setForm={setForm} setLocalBanner={setLocalBanner} />
+                    ))}
+                  </RegistrySideSection>
+                  <RegistrySideSection title="State">
+                    <div className="space-y-2">
+                      {booleanFieldsForKind(kind).map((field) => (
+                        <div key={field} className={cn("flex min-h-11 items-center justify-between rounded-md border px-3 py-2", Boolean(form[field as keyof DetailFormState]) ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-border bg-background text-muted-foreground")}>
+                          <span className="text-sm font-semibold">{booleanLabel(field)}</span>
+                          <Switch checked={Boolean(form[field as keyof DetailFormState])} onCheckedChange={(checked) => updateDetailForm(setForm, { [field]: checked } as Partial<DetailFormState>, setLocalBanner)} />
+                        </div>
+                      ))}
+                    </div>
+                  </RegistrySideSection>
+                </>
+              }
+            />
           </div>
           <DialogFooter className="border-t border-border/70 px-5 py-4 sm:justify-start">
             <Button type="submit" disabled={loading} className="rounded-md bg-foreground text-background hover:bg-foreground/90">
@@ -2215,7 +2356,7 @@ function detailColumns(kind: DetailKind) {
   if (kind === "api") return [{ id: "operation", label: "Operation" }, { id: "route", label: "Route" }, { id: "permissionKey", label: "Permission" }, { id: "auditEvent", label: "Audit" }, { id: "riskLevel", label: "Risk" }]
   if (kind === "screen") return [{ id: "pageType", label: "Page type" }, { id: "routePath", label: "Route" }, { id: "componentPath", label: "Component" }, { id: "testPath", label: "Test" }]
   if (kind === "database") return [{ id: "tableName", label: "Table" }, { id: "fieldName", label: "Field" }, { id: "fieldType", label: "Type" }, { id: "fieldNature", label: "Nature" }, { id: "fieldFlags", label: "Flags" }, { id: "relation", label: "Relation" }]
-  if (kind === "planning") return [{ id: "ownerTeam", label: "Owner" }, { id: "version", label: "Version" }, { id: "scope", label: "Scope" }, { id: "subscriptionFlagKey", label: "Flag" }]
+  if (kind === "planning") return [{ id: "planType", label: "Plan type" }, { id: "ownerTeam", label: "Owner" }, { id: "riskLevel", label: "Risk" }, { id: "testPath", label: "Test path" }]
   if (kind === "note") return [{ id: "ownerTeam", label: "Owner" }, { id: "version", label: "Version" }, { id: "dependencyKeys", label: "Dependencies" }, { id: "scope", label: "Scope" }]
   return [{ id: "routePath", label: "Route" }, { id: "permissionKey", label: "Permission" }, { id: "scope", label: "Scope" }, { id: "subscriptionFlagKey", label: "Flag" }]
 }
@@ -2238,13 +2379,12 @@ function detailCell(record: DetailRecord, id: string) {
 }
 
 function detailFields(kind: DetailKind): Array<keyof DetailFormState> {
-  const common: Array<keyof DetailFormState> = ["scope", "ownerTeam", "version", "dependencyKeys", "subscriptionFlagKey", "sortOrder"]
-  if (kind === "api") return ["operation", "method", "routePath", "permissionKey", "auditEvent", "riskLevel", ...common]
-  if (kind === "screen") return ["routePath", "componentPath", "pageType", "testPath", ...common]
-  if (kind === "database") return ["tableName", "fieldName", "fieldType", "fieldNature", "tableScope", "relation", "defaultValue", "migrationId", "auditEvent", ...common]
-  if (kind === "planning") return ["ownerTeam", "version", "scope", "subscriptionFlagKey", "dependencyKeys", "testPath", "sortOrder"]
-  if (kind === "note") return ["ownerTeam", "version", "scope", "dependencyKeys", "sortOrder"]
-  return ["routePath", "permissionKey", "auditEvent", "scope", "ownerTeam", "version", "dependencyKeys", "subscriptionFlagKey", "sortOrder"]
+  if (kind === "api") return ["operation", "method", "routePath", "permissionKey", "riskLevel"]
+  if (kind === "screen") return ["routePath", "componentPath", "pageType", "testPath"]
+  if (kind === "database") return ["tableName", "fieldName", "fieldType", "fieldNature", "relation"]
+  if (kind === "planning") return ["planType", "ownerTeam", "riskLevel", "acceptanceCriteria", "blockers", "validationPlan", "testPath"]
+  if (kind === "note") return ["ownerTeam"]
+  return ["routePath", "permissionKey", "auditEvent"]
 }
 
 function DetailField({
@@ -2270,6 +2410,8 @@ function DetailField({
           onChange={(value) => updateDetailForm(setForm, { [field]: value ?? "" } as Partial<DetailFormState>, setLocalBanner)}
           onCreate={(query) => updateDetailForm(setForm, { [field]: query } as Partial<DetailFormState>, setLocalBanner)}
         />
+      ) : ["acceptanceCriteria", "blockers", "validationPlan"].includes(field) ? (
+        <Textarea className="min-h-24 rounded-md" value={String(form[field] ?? "")} onChange={(event) => updateDetailForm(setForm, { [field]: event.target.value } as Partial<DetailFormState>, setLocalBanner)} />
       ) : (
         <Input className="h-11 rounded-md font-mono" value={String(form[field] ?? "")} onChange={(event) => updateDetailForm(setForm, { [field]: event.target.value } as Partial<DetailFormState>, setLocalBanner)} />
       )}
@@ -2286,12 +2428,15 @@ function optionsForDetailField(field: keyof DetailFormState) {
   if (field === "scope") return ["super_admin", "admin", "tenant", "public", "api", "system"]
   if (field === "pageType") return ["list", "show", "upsert", "dialog", "activity", "dashboard", "report", "setting"]
   if (field === "tableScope") return ["master", "tenant", "shared", "system"]
+  if (field === "planType") return ["feature", "enhancement", "bugfix", "refactor", "coverage", "release", "debug", "migration"]
   return []
 }
 
 function detailFieldLabel(field: keyof DetailFormState) {
   const labels: Partial<Record<keyof DetailFormState, string>> = {
+    acceptanceCriteria: "Acceptance criteria",
     auditEvent: "Audit event",
+    blockers: "Risks / blockers",
     componentPath: "Frontend component path",
     defaultValue: "Default value",
     dependencyKeys: "Dependency modules",
@@ -2307,6 +2452,7 @@ function detailFieldLabel(field: keyof DetailFormState) {
     ownerTeam: "Owner/team",
     pageType: "Page type",
     permissionKey: "Permission key",
+    planType: "Plan type",
     relation: "Relation",
     richNotes: "Rich notes",
     riskLevel: "Risk level",
@@ -2319,6 +2465,7 @@ function detailFieldLabel(field: keyof DetailFormState) {
     tableScope: "Table scope",
     tenantRequired: "Tenant required",
     testPath: "Test path",
+    validationPlan: "Validation plan",
     unique: "Unique"
   }
   return labels[field] ?? field
@@ -2337,13 +2484,19 @@ function booleanLabel(field: string) {
 function booleanFieldsForKind(kind: DetailKind) {
   if (kind === "database") return ["active", "nullable", "indexed", "unique", "softDelete"]
   if (kind === "api") return ["active", "tenantRequired", "lifecycleAction"]
-  return ["active", "tenantRequired", "lifecycleAction", "softDelete"]
+  return ["active"]
+}
+
+function detailUsesFeature(kind: DetailKind) {
+  return kind === "action" || kind === "api" || kind === "screen"
 }
 
 function detailFormFromRecord(record: DetailRecord | null, kind: DetailKind): DetailFormState {
   return {
+    acceptanceCriteria: record?.acceptanceCriteria ?? "",
     active: record?.active ?? true,
     auditEvent: record?.auditEvent ?? "",
+    blockers: record?.blockers ?? "",
     componentPath: record?.componentPath ?? "",
     defaultValue: record?.defaultValue ?? "",
     dependencyKeys: record?.dependencyKeys?.join(", ") ?? "",
@@ -2364,6 +2517,7 @@ function detailFormFromRecord(record: DetailRecord | null, kind: DetailKind): De
     ownerTeam: record?.ownerTeam ?? "",
     pageType: record?.pageType ?? "",
     permissionKey: record?.permissionKey ?? "",
+    planType: record?.planType ?? (kind === "planning" ? "enhancement" : ""),
     relation: record?.relation ?? "",
     richNotes: record?.richNotes ?? "",
     riskLevel: record?.riskLevel ?? "medium",
@@ -2376,6 +2530,7 @@ function detailFormFromRecord(record: DetailRecord | null, kind: DetailKind): De
     tableScope: record?.tableScope ?? "",
     tenantRequired: record?.tenantRequired ?? false,
     testPath: record?.testPath ?? "",
+    validationPlan: record?.validationPlan ?? "",
     unique: record?.unique ?? false,
     version: record?.version ?? "1.0.0"
   }
@@ -2545,15 +2700,24 @@ function magicActionForms(module: ModuleRegistryRecord, features: FeatureRegistr
 
 function magicPlanningForm(module: ModuleRegistryRecord): DetailFormState {
   return detailState("planning", {
+    acceptanceCriteria: [
+      `${module.name} registry records are complete for feature, action, API, screen, database, and planning coverage.`,
+      "Any missing backend route, UI route, permission, or database ownership is raised as a Work & Automation issue.",
+      "Timeline and Gantt can show progress from raised issues and linked tasks."
+    ].join("\n"),
+    blockers: "Unknown implementation gaps, missing owner, missing permission, or route not yet mapped.",
     dependencyKeys: "",
     description: `Implementation coverage plan for ${module.name}.`,
     key: `${module.moduleKey}.coverage`,
     name: `${module.name} coverage plan`,
     ownerTeam: "Platform",
+    planType: "coverage",
+    riskLevel: "medium",
     richNotes: `<p>Track registry, permissions, APIs, screens, database ownership, tests, review, release notes, and deployment readiness for ${module.name}.</p>`,
     scope: "super_admin",
     sortOrder: "10",
-    subscriptionFlagKey: `${module.moduleKey}.enabled`
+    subscriptionFlagKey: `${module.moduleKey}.enabled`,
+    validationPlan: "Run focused typecheck and related e2e after implementing each raised issue."
   })
 }
 
@@ -2580,6 +2744,45 @@ function detailPayload(form: DetailFormState, moduleId?: string) {
     ...(moduleId ? { moduleId } : {}),
     sortOrder: Number(form.sortOrder) || 0
   }
+}
+
+function registryIssuePayload(target: RegistryIssueTarget, platform: PlatformRecord | null, group: ModuleGroupRecord | null, module: ModuleRegistryRecord | null) {
+  const record = target.record
+  const targetKey = registryTargetKey(target)
+  const moduleRecord = target.kind === "module" ? target.record as ModuleRegistryRecord : module
+  const groupRecord = target.kind === "group" ? target.record as ModuleGroupRecord : group
+  const platformRecord = target.kind === "platform" ? target.record as PlatformRecord : platform
+  return {
+    active: true,
+    assignee: "",
+    description: record.description || "",
+    key: `issue.registry.${target.kind}.${slugify(targetKey)}.${Date.now()}`,
+    labels: ["registry", String(target.kind)],
+    moduleGroupKey: groupRecord?.groupKey ?? "",
+    moduleId: moduleRecord?.id ?? "",
+    moduleKey: moduleRecord?.moduleKey ?? "",
+    ownerTeam: "Platform",
+    platformKey: platformRecord?.platform ?? "",
+    priority: "medium",
+    referenceId: targetKey,
+    referenceType: String(target.kind),
+    richNotes: `<p>Raised from Platform Registry ${String(target.kind)} reference: <code>${targetKey}</code>.</p>`,
+    status: "open",
+    title: `Review ${registryTargetLabel(target)}`,
+    type: target.kind === "database" ? "bugfix" : "enhancement"
+  }
+}
+
+function registryTargetKey(target: RegistryIssueTarget) {
+  if (target.kind === "platform") return (target.record as PlatformRecord).platform
+  if (target.kind === "group") return (target.record as ModuleGroupRecord).groupKey
+  if (target.kind === "module") return (target.record as ModuleRegistryRecord).moduleKey
+  if (target.kind === "feature") return (target.record as FeatureRegistryRecord).featureKey
+  return (target.record as DetailRecord).key
+}
+
+function registryTargetLabel(target: RegistryIssueTarget) {
+  return `${String(target.kind)}: ${target.record.name}`
 }
 
 function detailRecordsForKind(kind: DetailKind, queries: { actionQuery: ReturnType<typeof useDetailQuery>; apiQuery: ReturnType<typeof useDetailQuery>; databaseQuery: ReturnType<typeof useDetailQuery>; noteQuery: ReturnType<typeof useDetailQuery>; planningQuery: ReturnType<typeof useDetailQuery>; screenQuery: ReturnType<typeof useDetailQuery> }) {

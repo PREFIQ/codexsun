@@ -1,7 +1,9 @@
 [
   {
     "active": true,
+    "acceptanceCriteria": "",
     "auditEvent": "",
+    "blockers": "",
     "componentPath": "",
     "defaultValue": "",
     "dependencyKeys": [],
@@ -24,6 +26,7 @@
     "ownerTeam": "Platform",
     "pageType": "",
     "permissionKey": "",
+    "planType": "",
     "relation": "",
     "richNotes": "<p>Tenant is the anchor model for workspace provisioning, domains, subscriptions, and module activation.</p>",
     "riskLevel": "medium",
@@ -36,8 +39,9 @@
     "tableScope": "",
     "tenantRequired": false,
     "testPath": "",
+    "validationPlan": "",
     "unique": false,
-    "updatedAt": "2026-07-02T00:32:47.951Z",
+    "updatedAt": "2026-07-02T02:17:09.093Z",
     "version": "1.0.0",
     "status": "active"
   }

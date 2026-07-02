@@ -1,7 +1,9 @@
 [
   {
     "active": true,
+    "acceptanceCriteria": "",
     "auditEvent": "",
+    "blockers": "",
     "componentPath": "apps/platform/web/src/pages/sa/TenantList.tsx",
     "defaultValue": "",
     "dependencyKeys": [],
@@ -24,6 +26,7 @@
     "ownerTeam": "",
     "pageType": "list",
     "permissionKey": "",
+    "planType": "",
     "relation": "",
     "richNotes": "",
     "riskLevel": "medium",
@@ -36,14 +39,17 @@
     "tableScope": "",
     "tenantRequired": false,
     "testPath": "apps/platform/web/e2e",
+    "validationPlan": "",
     "unique": false,
-    "updatedAt": "2026-07-01T21:36:07.547Z",
+    "updatedAt": "2026-07-02T02:16:44.092Z",
     "version": "1.0.0",
     "status": "active"
   },
   {
     "active": true,
+    "acceptanceCriteria": "",
     "auditEvent": "",
+    "blockers": "",
     "componentPath": "apps/platform/web/src/pages/sa/TenantList.tsx",
     "defaultValue": "",
     "dependencyKeys": [],
@@ -66,6 +72,7 @@
     "ownerTeam": "",
     "pageType": "upsert",
     "permissionKey": "",
+    "planType": "",
     "relation": "",
     "richNotes": "",
     "riskLevel": "medium",
@@ -78,8 +85,9 @@
     "tableScope": "",
     "tenantRequired": false,
     "testPath": "",
+    "validationPlan": "",
     "unique": false,
-    "updatedAt": "2026-07-01T21:36:07.547Z",
+    "updatedAt": "2026-07-02T02:16:44.092Z",
     "version": "1.0.0",
     "status": "active"
   }

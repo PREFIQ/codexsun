@@ -56,7 +56,9 @@ export type ProjectManagerDetailKind = "action" | "api" | "screen" | "database" 
 
 export type ProjectManagerDetailRecord = {
   active: boolean;
+  acceptanceCriteria: string;
   auditEvent: string;
+  blockers: string;
   componentPath: string;
   dependencyKeys: string[];
   description: string;
@@ -79,6 +81,7 @@ export type ProjectManagerDetailRecord = {
   ownerTeam: string;
   pageType: string;
   permissionKey: string;
+  planType: string;
   relation: string;
   richNotes: string;
   riskLevel: string;
@@ -92,6 +95,7 @@ export type ProjectManagerDetailRecord = {
   tableScope: string;
   tenantRequired: boolean;
   testPath: string;
+  validationPlan: string;
   unique: boolean;
   updatedAt: string;
   version: string;
@@ -631,7 +635,9 @@ function deleteDetailsByModuleIds(db: JsonDatabase, moduleIds: Set<string>) {
 function normalizeDetail(kind: ProjectManagerDetailKind, input: Partial<ProjectManagerDetailRecord>): ProjectManagerDetailRecord {
   return withStatus({
     active: input.active ?? true,
+    acceptanceCriteria: input.acceptanceCriteria ?? "",
     auditEvent: input.auditEvent ?? "",
+    blockers: input.blockers ?? "",
     componentPath: input.componentPath ?? "",
     defaultValue: input.defaultValue ?? "",
     dependencyKeys: Array.isArray(input.dependencyKeys) ? input.dependencyKeys : stringList(input.dependencyKeys),
@@ -654,6 +660,7 @@ function normalizeDetail(kind: ProjectManagerDetailKind, input: Partial<ProjectM
     ownerTeam: input.ownerTeam ?? "",
     pageType: input.pageType ?? "",
     permissionKey: input.permissionKey ?? "",
+    planType: input.planType ?? "",
     relation: input.relation ?? "",
     richNotes: input.richNotes ?? "",
     riskLevel: input.riskLevel ?? "medium",
@@ -666,6 +673,7 @@ function normalizeDetail(kind: ProjectManagerDetailKind, input: Partial<ProjectM
     tableScope: input.tableScope ?? "",
     tenantRequired: Boolean(input.tenantRequired ?? false),
     testPath: input.testPath ?? "",
+    validationPlan: input.validationPlan ?? "",
     unique: Boolean(input.unique ?? false),
     updatedAt: input.updatedAt ?? now(),
     version: input.version ?? "1.0.0"
@@ -795,7 +803,7 @@ function seedDetails(kind: ProjectManagerDetailKind): ProjectManagerDetailRecord
   }
   if (kind === "planning") {
     return [
-      normalizeDetail("planning", { id: "planning-sa-tenant-coverage", moduleId: "module-sa-tenant", key: "tenant.coverage", name: "Complete tenant registry coverage", ownerTeam: "Platform", status: "planned", scope: "super_admin", sortOrder: 10, richNotes: "<p>Track list, show, upsert, lifecycle, permission, API, screen, and table coverage for Tenant.</p>" })
+      normalizeDetail("planning", { id: "planning-sa-tenant-coverage", moduleId: "module-sa-tenant", key: "tenant.coverage", name: "Complete tenant registry coverage", acceptanceCriteria: "Tenant list, show, upsert, lifecycle, permission, API, screen, database, and planning records are mapped.", blockers: "Missing ownership or route coverage should be raised as Work & Automation issues.", ownerTeam: "Platform", planType: "coverage", riskLevel: "medium", status: "planned", scope: "super_admin", sortOrder: 10, validationPlan: "Run focused tenant and platform registry checks after each coverage update.", richNotes: "<p>Track list, show, upsert, lifecycle, permission, API, screen, and table coverage for Tenant.</p>" })
     ];
   }
   return [

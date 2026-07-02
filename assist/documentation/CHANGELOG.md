@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.54
+Current version: 1.0.59
 
-Release tag: v-1.0.54
+Release tag: v-1.0.59
 
-Changelog label: v 1.0.54
+Changelog label: v 1.0.59
 
 Historical changelog entries are immutable. A version bump may update this Version State block and add a new entry, but it must not rewrite old entry labels.
 
@@ -19,6 +19,83 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, and documentation changes.
+
+## v-1.0.59
+
+### [v 1.0.59] 2026-07-02 7:57 am - Platform Registry Magic Button Alignment
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Bumped workspace packages and lockfile to `1.0.59`.
+- Nudged Platform Registry popup magic-fill icon buttons inward from the far right edge for cleaner header spacing.
+
+## v-1.0.58
+
+### [v 1.0.58] 2026-07-02 7:49 am - Platform Registry Form Consolidation
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Bumped workspace packages and lockfile to `1.0.58`.
+- Consolidated Platform Registry popup forms by hiding low-value sort/order controls from normal group, module, and feature entry.
+- Reduced detail popup inputs by registry type so APIs, screens, database fields, planning items, model notes, and actions each show only their working fields.
+- Limited feature lookup to action, API, and screen details where it creates a real relationship.
+- Simplified non-API/database detail state controls to active-only while keeping API and database-specific switches available.
+
+## v-1.0.57
+
+### [v 1.0.57] 2026-07-02 7:38 am - Platform Registry Popup Form Layout
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Bumped workspace packages and lockfile to `1.0.57`.
+- Reworked Platform Registry popup forms into a consistent left/right alignment pattern.
+- Added shared popup layout helpers for main form content and contextual side sections.
+- Converted platform, module group, module registry, feature registry, and detail registry popups to keep identity/state/context controls on the right and descriptive working content on the left.
+- Kept table/list behavior stable while improving popup form scanability across Platform Registry.
+
+## v-1.0.56
+
+### [v 1.0.56] 2026-07-02 7:34 am - Platform Registry Model Notes Tab
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Bumped workspace packages and lockfile to `1.0.56`.
+- Moved Model Notes out of the Platform Registry Planning tab into a separate module workspace tab.
+- Kept Planning focused on implementation plans, acceptance criteria, blockers, validation, and issue raising.
+- Extended the hardened e2e to verify Planning no longer renders Model Notes and the new Model Notes tab opens independently.
+
+## v-1.0.55
+
+### [v 1.0.55] 2026-07-02 7:29 am - Platform Registry Issue And Planning Wiring
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Bumped workspace packages and lockfile to `1.0.55`.
+- Added `Raise issue` actions from Platform Registry module, feature, action, API, screen, database, and planning references into Work & Automation issues.
+- Wired raised issues with registry `referenceId`, `referenceType`, platform, group, module, labels, and rich notes so Work & Automation can trace them back to registry coverage.
+- Reworked Planning into a richer implementation-planning surface with plan type, owner, risk, acceptance criteria, blockers, validation plan, test path, and planning health metrics.
+- Extended Project Manager detail persistence to store planning fields explicitly in JSON.
+- Extended the hardened e2e to verify Platform Registry issue raising and the richer Planning form, with cleanup of raised issue Timeline/Gantt side effects.
 
 ## v-1.0.54
 
