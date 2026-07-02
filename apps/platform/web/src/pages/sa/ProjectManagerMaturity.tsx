@@ -121,8 +121,7 @@ const workChildKinds: MaturityKind[] = ["tasks", "reviews", "automations", "acti
 const workSupportKinds: MaturityKind[] = ["todos", "timeline", "gantt"];
 
 const discussionTabs: MaturityTab[] = [
-  { icon: MessageSquare, kind: "discussions", label: "Discussion" },
-  { icon: CheckCircle2, kind: "reviews", label: "Reviews" }
+  { icon: MessageSquare, kind: "discussions", label: "Discussion" }
 ];
 
 const statusFilters = [
@@ -556,7 +555,7 @@ export function ProjectManagerDiscussions() {
   return (
     <ProjectManagerMaturity
       availableTabs={discussionTabs}
-      description="Discussion and review workspace for product decisions, technical review, and improvement signals."
+      description="Standalone decision notes connected to issue reference numbers."
       initialKind="discussions"
       technicalName="page.project-manager.discussions"
       title="Discussions"
@@ -1320,7 +1319,7 @@ function columnsForKind(kind: MaturityKind) {
   const referenceColumns = [{ id: "platformKey", label: "Platform" }, { id: "moduleGroupKey", label: "Group" }, { id: "moduleKey", label: "Module" }];
   if (kind === "pull-requests") return [{ id: "githubBranch", label: "Branch" }, { id: "githubPr", label: "PR" }, { id: "reviewer", label: "Reviewer" }, ...referenceColumns];
   if (kind === "agents") return [{ id: "actor", label: "Agent" }, { id: "referenceType", label: "Ref type" }, { id: "referenceId", label: "Ref id" }, ...referenceColumns];
-  if (kind === "discussions") return [{ id: "type", label: "Topic" }, { id: "assignee", label: "Owner" }, ...referenceColumns, { id: "priority", label: "Priority" }];
+  if (kind === "discussions") return [{ id: "referenceId", label: "Reference no" }, { id: "type", label: "Topic" }, { id: "assignee", label: "Owner" }, ...referenceColumns, { id: "priority", label: "Priority" }];
   if (kind === "actions") return [{ id: "command", label: "Command" }, { id: "eventName", label: "Event" }, { id: "actor", label: "Actor" }, ...referenceColumns];
   if (kind === "security-quality") return [{ id: "type", label: "Area" }, { id: "severity", label: "Severity" }, { id: "ownerTeam", label: "Owner" }, ...referenceColumns];
   if (kind === "github") return [{ id: "githubBranch", label: "Branch" }, { id: "githubCommit", label: "Commit" }, { id: "githubPr", label: "PR" }, ...referenceColumns];
@@ -1340,7 +1339,7 @@ function fieldsForKind(kind: MaturityKind): Array<keyof MaturityForm> {
   const base: Array<keyof MaturityForm> = ["type", "status", ...references, "ownerTeam", "priority", "sortOrder"];
   if (kind === "pull-requests") return ["githubBranch", "githubCommit", "githubPr", "githubUrl", "reviewer", "status", ...references, "referenceType", "referenceId", "version", "sortOrder"];
   if (kind === "agents") return ["actor", "eventName", "referenceType", "referenceId", ...references, "status", "sortOrder"];
-  if (kind === "discussions") return ["assignee", "reviewer", "labels", "type", "status", ...references, "priority", "dueDate", "sortOrder"];
+  if (kind === "discussions") return ["referenceId", "assignee", "labels", "type", "status", ...references, "priority", "dueDate", "sortOrder"];
   if (kind === "actions") return ["command", "eventName", "actor", ...references, "referenceType", "referenceId", "status", "sortOrder"];
   if (kind === "security-quality") return ["type", "severity", "status", "ownerTeam", ...references, "referenceType", "referenceId", "priority", "dueDate", "sortOrder"];
   if (kind === "github") return ["githubBranch", "githubCommit", "githubPr", "githubIssue", "githubUrl", ...references, "referenceType", "referenceId", "version", "sortOrder"];
@@ -1361,7 +1360,7 @@ function metadataFieldsForKind(kind: MaturityKind): Array<keyof MaturityForm> {
   const references: Array<keyof MaturityForm> = ["platformKey", "moduleGroupKey", "moduleId"];
   if (kind === "pull-requests") return ["githubBranch", "githubPr", "githubCommit", "githubUrl", "reviewer", "status", ...references, "referenceType", "referenceId", "version"];
   if (kind === "agents") return ["actor", "eventName", "status", ...references, "referenceType", "referenceId"];
-  if (kind === "discussions") return ["assignee", "reviewer", "labels", "type", "status", "priority", ...references, "dueDate"];
+  if (kind === "discussions") return ["referenceId", "assignee", "labels", "type", "status", "priority", ...references, "dueDate"];
   if (kind === "actions") return ["command", "eventName", "actor", "status", ...references, "referenceType", "referenceId"];
   if (kind === "security-quality") return ["type", "severity", "status", "ownerTeam", "priority", ...references, "referenceType", "referenceId", "dueDate"];
   if (kind === "issues") return ["assignee", "reviewer", "labels", "type", "status", "priority", "severity", "moduleId", "dueDate"];

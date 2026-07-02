@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.53
+Current version: 1.0.54
 
-Release tag: v-1.0.53
+Release tag: v-1.0.54
 
-Changelog label: v 1.0.53
+Changelog label: v 1.0.54
 
 Historical changelog entries are immutable. A version bump may update this Version State block and add a new entry, but it must not rewrite old entry labels.
 
@@ -19,6 +19,22 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, and documentation changes.
+
+## v-1.0.54
+
+### [v 1.0.54] 2026-07-02 6:04 am - Project Manager Standalone Discussions
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Bumped workspace packages and lockfile to `1.0.54`.
+- Removed the Reviews tab from Project Manager Discussions so Discussions is a standalone decision-note area.
+- Moved Discussion forms to use issue `Reference no` as the primary link back into Work & Automation.
+- Linked the seed Project Manager discussion to `issue-1` with `referenceType: issue`.
+- Extended the hardened Project Manager e2e to verify Discussions has no Reviews tab and displays the linked issue reference.
 
 ## v-1.0.53
 

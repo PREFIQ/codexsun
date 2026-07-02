@@ -77,6 +77,7 @@ test("work and automation drill-down keeps references, timeline, and gantt in sc
   await expect(page.getByRole("button", { name: "Tasks" })).toHaveCount(0)
 
   await verifyRandomWorkflowPersistence(page)
+  await verifyStandaloneDiscussions(page)
 
   expect(failedResponses).toEqual([])
   expect(browserErrors.filter((message) => !message.includes("Failed to load resource"))).toEqual([])
@@ -159,6 +160,15 @@ async function verifyRandomWorkflowPersistence(page: Page) {
     }
     cleanupRandomWorkflowArtifacts(suffix)
   }
+}
+
+async function verifyStandaloneDiscussions(page: Page) {
+  await page.goto("/sa/project-manager-discussions")
+  await page.waitForLoadState("networkidle")
+  await expect(page.getByRole("heading", { name: "Discussions" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Discussion", exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Reviews" })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "issue-1", exact: true })).toBeVisible()
 }
 
 async function loginAsSuperAdmin(page: Page) {
