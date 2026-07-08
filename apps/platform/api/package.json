@@ -1,19 +1,23 @@
 {
   "name": "@codexsun/platform-api",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node ../../../tools/preflight.mjs platform-api",
     "dev:fast": "npm run dev",
     "build": "tsc -p tsconfig.json",
+    "db:migrate": "tsx src/database/db-cli.ts migrate",
+    "db:seed": "tsx src/database/db-cli.ts seed",
+    "db:drop": "tsx src/database/db-cli.ts drop",
+    "dbmigrate:fresh": "tsx src/database/db-cli.ts fresh",
     "typecheck": "npm run build -w @codexsun/framework && tsc -p tsconfig.json --noEmit",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "test:e2e:tenant": "vitest run src/modules/tenant/tenant.database.e2e.test.ts src/auth/default-tenant-auth.e2e.test.ts"
   },
   "dependencies": {
-    "@codexsun/framework": "^1.0.6",
+    "@codexsun/framework": "^1.0.7",
     "fastify": "^5.2.1",
     "kysely": "^0.29.0",
     "mysql2": "^3.22.3",

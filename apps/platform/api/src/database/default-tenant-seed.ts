@@ -6,10 +6,12 @@ import { provisionTenantDatabase } from "./tenant-database.js";
 
 export async function seedDefaultTenant() {
   if (env.ENABLE_DEFAULT_TENANT_SEED !== "1") {
+    console.info("[seeder] default tenant seed skipped because ENABLE_DEFAULT_TENANT_SEED is not 1");
     return null;
   }
 
   const tenant = defaultTenant();
+  console.info(`[seeder] default tenant seed started for "${tenant.tenantCode}"`);
   const database = getPlatformDatabase();
   const existing = await database
     .selectFrom("tenants")
@@ -45,14 +47,17 @@ export async function seedDefaultTenant() {
 
   if (existing) {
     await database.updateTable("tenants").set(row).where("id", "=", existing.id).execute();
+    console.info(`[seeder] default tenant updated: ${tenant.tenantCode}`);
   } else {
     await database.insertInto("tenants").values(row).execute();
+    console.info(`[seeder] default tenant created: ${tenant.tenantCode}`);
   }
 
+  const domain = defaultTenantDomain();
   await database
     .insertInto("tenant_domains")
     .values({
-      domain: defaultTenantDomain(),
+      domain,
       is_primary: true,
       tenant_id: tenant.id
     })
@@ -61,8 +66,10 @@ export async function seedDefaultTenant() {
       tenant_id: tenant.id
     })
     .execute();
+  console.info(`[seeder] default tenant domain ready: ${domain}`);
 
   await provisionTenantDatabase(tenant);
+  console.info(`[seeder] default tenant seed completed for "${tenant.tenantCode}"`);
   return tenant;
 }
 

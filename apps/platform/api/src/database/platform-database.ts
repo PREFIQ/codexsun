@@ -41,13 +41,24 @@ export function getPlatformDatabase() {
 
 export async function bootstrapPlatformDatabase() {
   if (bootstrapped || process.env.CODEXSUN_DEV_SKIP_DB === "1") {
+    if (process.env.CODEXSUN_DEV_SKIP_DB === "1") {
+      console.info("[database] bootstrap skipped because CODEXSUN_DEV_SKIP_DB=1");
+    }
     return;
   }
 
+  if (env.CODEXSUN_DB_FRESH_ON_START === "1") {
+    console.info("[database] fresh startup requested");
+    await resetPlatformDatabases();
+    return;
+  }
+
+  console.info("[database] bootstrap started");
   await createMasterDatabase();
   await migratePlatformDatabase();
   await seedPlatformDatabase();
   bootstrapped = true;
+  console.info(`[database] bootstrap completed for master database "${platformDatabaseName()}"`);
 }
 
 export async function closePlatformDatabase() {
@@ -58,7 +69,9 @@ export async function closePlatformDatabase() {
   bootstrapped = false;
 }
 
-async function createMasterDatabase() {
+export async function createMasterDatabase() {
+  const databaseName = platformDatabaseName();
+  console.info(`[database] ensuring master database "${databaseName}" on ${env.DB_HOST}:${env.DB_PORT}`);
   const connection = await createConnection({
     host: env.DB_HOST,
     password: env.DB_PASSWORD,
@@ -68,14 +81,16 @@ async function createMasterDatabase() {
   });
   try {
     await connection.query(
-      `CREATE DATABASE IF NOT EXISTS ${quoteIdentifier(platformDatabaseName())} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+      `CREATE DATABASE IF NOT EXISTS ${quoteIdentifier(databaseName)} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
     );
+    console.info(`[database] master database ready: "${databaseName}"`);
   } finally {
     await connection.end();
   }
 }
 
-async function migratePlatformDatabase() {
+export async function migratePlatformDatabase() {
+  console.info(`[database] migrating platform database "${platformDatabaseName()}"`);
   const database = getPlatformDatabase();
   await database.schema
     .createTable("codexsun_migrations")
@@ -151,6 +166,7 @@ async function migratePlatformDatabase() {
     .execute();
 
   await database.insertInto("codexsun_migrations").ignore().values({ name: "001_platform_foundation" }).execute();
+  console.info(`[database] platform migration applied: 001_platform_foundation`);
 }
 
 async function ensureTenantColumns(database: ReturnType<typeof getPlatformDatabase>) {
@@ -181,7 +197,8 @@ async function addColumnIfMissing(database: ReturnType<typeof getPlatformDatabas
   await sql.raw(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`).execute(database);
 }
 
-async function seedPlatformDatabase() {
+export async function seedPlatformDatabase() {
+  console.info(`[seeder] seeding platform app registry (${platformAppRegistry.length} apps)`);
   const database = getPlatformDatabase();
   for (const app of platformAppRegistry) {
     await database
@@ -205,5 +222,92 @@ async function seedPlatformDatabase() {
         updated_at: sql`CURRENT_TIMESTAMP`
       })
       .execute();
+    console.info(`[seeder] platform app ready: ${app.moduleKey}`);
   }
+  console.info("[seeder] platform app registry seed completed");
+}
+
+export async function resetPlatformDatabases() {
+  assertDestructiveDatabaseAction("fresh database startup");
+  console.warn(`
+DATABASE WARNING
+Fresh database mode is enabled. CODEXSUN will drop configured tenant databases and the master database, then recreate and seed them.
+`);
+  await dropPlatformDatabases();
+  await createMasterDatabase();
+  await migratePlatformDatabase();
+  await seedPlatformDatabase();
+  bootstrapped = true;
+}
+
+export async function dropPlatformDatabases() {
+  assertDestructiveDatabaseAction("drop database");
+  await closePlatformDatabase();
+
+  const connection = await createConnection({
+    host: env.DB_HOST,
+    password: env.DB_PASSWORD,
+    port: env.DB_PORT,
+    user: env.DB_USER,
+    timezone: "Z"
+  });
+
+  try {
+    const masterName = platformDatabaseName();
+    const tenantDatabaseNames = await listTenantDatabaseNames(connection, masterName);
+    for (const tenantDatabaseName of tenantDatabaseNames) {
+      if (tenantDatabaseName === masterName) {
+        continue;
+      }
+      console.warn(`[database] dropping tenant database "${tenantDatabaseName}"`);
+      await connection.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(tenantDatabaseName)}`);
+    }
+
+    console.warn(`[database] dropping master database "${masterName}"`);
+    await connection.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(masterName)}`);
+  } finally {
+    await connection.end();
+  }
+
+  bootstrapped = false;
+}
+
+function assertDestructiveDatabaseAction(action: string) {
+  if (env.CODEXSUN_DB_RESET_CONFIRM !== "DROP_DATABASES") {
+    throw new Error(
+      `${action} refused. Set CODEXSUN_DB_RESET_CONFIRM=DROP_DATABASES only when you intentionally want to delete configured databases.`
+    );
+  }
+
+  if (env.NODE_ENV === "production" && env.CODEXSUN_ALLOW_PRODUCTION_DB_RESET !== "1") {
+    throw new Error(
+      `${action} refused in production. Set CODEXSUN_ALLOW_PRODUCTION_DB_RESET=1 and CODEXSUN_DB_RESET_CONFIRM=DROP_DATABASES to continue.`
+    );
+  }
+}
+
+async function listTenantDatabaseNames(connection: Awaited<ReturnType<typeof createConnection>>, masterName: string) {
+  const [databases] = await connection.query(`SHOW DATABASES LIKE ?`, [masterName]);
+  if (!Array.isArray(databases) || databases.length === 0) {
+    return [];
+  }
+
+  let rows: unknown;
+  try {
+    [rows] = await connection.query(`SELECT db_name FROM ${quoteIdentifier(masterName)}.tenants`);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  const names = new Set<string>();
+  for (const row of rows as Array<{ db_name?: unknown }>) {
+    if (typeof row.db_name === "string" && row.db_name.trim()) {
+      names.add(assertDatabaseName(row.db_name.trim(), "tenant database name"));
+    }
+  }
+
+  return Array.from(names);
 }

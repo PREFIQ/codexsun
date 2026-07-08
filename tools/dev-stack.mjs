@@ -8,12 +8,12 @@ const root = resolve(import.meta.dirname, "..");
 const stackName = process.argv[2] ?? "platform";
 
 const services = {
-  "billing-api": { color: "\x1b[33m", command: ["billing-api"], label: "billing api" },
-  "billing-web": { color: "\x1b[37m", command: ["billing-web"], label: "billing web" },
-  "core-api": { color: "\x1b[35m", command: ["core-api"], label: "core api" },
-  "core-web": { color: "\x1b[34m", command: ["core-web"], label: "core web" },
-  "platform-api": { color: "\x1b[36m", command: ["platform-api"], label: "platform api" },
-  "platform-web": { color: "\x1b[32m", command: ["platform-web"], label: "platform web" }
+  "billing-api": { color: "\x1b[33m", command: ["billing-api"], label: "billing api", logLabel: "billing-api" },
+  "billing-web": { color: "\x1b[37m", command: ["billing-web"], label: "billing web", logLabel: "billing-web" },
+  "core-api": { color: "\x1b[35m", command: ["core-api"], label: "core api", logLabel: "core-api" },
+  "core-web": { color: "\x1b[34m", command: ["core-web"], label: "core web", logLabel: "core-web" },
+  "platform-api": { color: "\x1b[36m", command: ["platform-api"], label: "api", logLabel: "api" },
+  "platform-web": { color: "\x1b[32m", command: ["platform-web"], label: "web", logLabel: "web" }
 };
 
 const stacks = {
@@ -63,7 +63,7 @@ function startService(serviceName) {
   child.on("exit", (code) => {
     children.delete(child);
     if (code && code !== 0) {
-      console.error(`${service.color}[${serviceName}]${reset} exited with code ${code}`);
+      console.error(`${service.color}[${service.logLabel}]${reset} exited with code ${code}`);
       stopChildren(child);
       process.exit(code);
     }
@@ -76,7 +76,7 @@ function writeServiceLines(serviceName, service, chunk) {
     if (!line || shouldHideLine(line)) {
       continue;
     }
-    process.stdout.write(`${service.color}[${serviceName}]${reset} ${line}\n`);
+    process.stdout.write(`${service.color}[${service.logLabel}]${reset} ${line}\n`);
   }
 }
 

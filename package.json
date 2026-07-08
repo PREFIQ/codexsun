@@ -1,6 +1,6 @@
 {
   "name": "codexsun",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "packageManager": "npm@11.17.0",
   "description": "CODEXSUN",
@@ -25,6 +25,10 @@
     "verify:core": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "check": "npm run check:module-boundaries && npm run typecheck && npm run lint",
     "check:module-boundaries": "node tools/check-module-boundaries.mjs",
+    "db:migrate": "npm run db:migrate -w @codexsun/platform-api",
+    "db:seed": "npm run db:seed -w @codexsun/platform-api",
+    "db:drop": "npm run db:drop -w @codexsun/platform-api",
+    "dbmigrate:fresh": "npm run dbmigrate:fresh -w @codexsun/platform-api",
     "test:e2e:tenant": "npm run test:e2e:tenant -w @codexsun/platform-api",
     "version:show": "node tools/version/version.mjs show",
     "version:bump": "node tools/version-bump.mjs",

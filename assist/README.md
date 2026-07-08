@@ -20,6 +20,7 @@ rhythm into CODEXSUN through `@codexsun/ui`; do not paste unrelated business log
 
 Agents must read and follow these standards before changing module UI, backend contracts, or release notes:
 
+- Current repository inventory and latest work update: `assist/documentation/project-inventory.md`
 - UI and backend module standard: `assist/documentation/design-system-helper.md`
 - App/backend/frontend bundle structure: `assist/documentation/app-bundle-structure.md`
 - Governance rule book: `assist/governance/rules.md`
@@ -308,7 +309,7 @@ and `assist/governance/quality-gates.md` as the working standard for AI-assisted
 
 - `assist/readme.md`: Main product and architecture overview.
 - `assist/blueprint/`: Practical pre-coding blueprint and captured decisions.
-- `assist/documentation/`: Active release changelog and future customer/developer documentation.
+- `assist/documentation/`: Active release changelog, current project inventory, and future customer/developer documentation.
 - `assist/product/`: Product scope, domain map, industry model, and feature planning.
 - `assist/architecture/`: Architecture decisions, boundaries, tenancy, data, security, events, queues, sync, and
   deployment notes.
@@ -320,22 +321,23 @@ and `assist/governance/quality-gates.md` as the working standard for AI-assisted
 ## Recommended Reading Order For Agents
 
 1. `assist/readme.md`
-2. `assist/blueprint/first-mvp.md`
-3. `assist/blueprint/framework-foundation.md`
-4. `assist/blueprint/platform-foundation.md`
-5. `assist/blueprint/decision-summary.md`
-6. `assist/blueprint/foundation-blueprint.md`
-7. `assist/product/product-scope.md`
-8. `assist/product/domain-map.md`
-9. `assist/architecture/architecture-principles.md`
-10. `assist/architecture/tenant-isolation.md`
-11. `assist/architecture/tenant-readiness-track.md`
-12. `assist/product/enterprise-scope.md` for enterprise-impacting work.
-13. Relevant module, industry, agent, or operation notes for the task.
-14. `assist/governance/rules.md`
-15. `assist/governance/engineering-standards.md`
-16. `assist/governance/testing-strategy.md`
-17. `assist/governance/quality-gates.md`
+2. `assist/documentation/project-inventory.md`
+3. `assist/blueprint/first-mvp.md`
+4. `assist/blueprint/framework-foundation.md`
+5. `assist/blueprint/platform-foundation.md`
+6. `assist/blueprint/decision-summary.md`
+7. `assist/blueprint/foundation-blueprint.md`
+8. `assist/product/product-scope.md`
+9. `assist/product/domain-map.md`
+10. `assist/architecture/architecture-principles.md`
+11. `assist/architecture/tenant-isolation.md`
+12. `assist/architecture/tenant-readiness-track.md`
+13. `assist/product/enterprise-scope.md` for enterprise-impacting work.
+14. Relevant module, industry, agent, or operation notes for the task.
+15. `assist/governance/rules.md`
+16. `assist/governance/engineering-standards.md`
+17. `assist/governance/testing-strategy.md`
+18. `assist/governance/quality-gates.md`
 
 ## Working Principle
 

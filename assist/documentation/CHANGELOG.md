@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.6
+Current version: 1.0.7
 
-Release tag: v-1.0.6
+Release tag: v-1.0.7
 
-Changelog label: v 1.0.6
+Changelog label: v 1.0.7
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,31 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.7
+
+### [v 1.0.7] 2026-07-08 7:28 pm - Database Lifecycle CLI
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Added Platform database lifecycle commands for master and tenant databases: `db:migrate`, `db:seed`, `db:drop`, and `dbmigrate:fresh`.
+- Added a Platform API database CLI that reuses the same Kysely migration and seed paths as application startup.
+- Added tenant-aware migration and seed passes so registered tenant databases are migrated and seeded from the master tenant registry.
+- Added `CODEXSUN_DB_FRESH_ON_START` to optionally drop, recreate, migrate, and seed configured databases during API startup.
+- Added destructive action guards: `CODEXSUN_DB_RESET_CONFIRM=DROP_DATABASES`, plus `CODEXSUN_ALLOW_PRODUCTION_DB_RESET=1` when `NODE_ENV=production`.
+- Made drop/fresh remove registered tenant databases before dropping the master database.
+
+#### App Codebase Changes
+
+- Added loud CLI/startup warnings before destructive database lifecycle actions.
+- Added console progress logs for database bootstrap, master/tenant database creation, migrations, platform app seeding,
+  default tenant seeding, tenant module seeding, tenant admin seed status, and database CLI commands.
+- Standardized Platform dev logs so `platform-api` displays as `api` and `platform-web` displays as `web` in stack and
+  preflight output.
+- Closed tenant database pools after provisioning so one-shot DB commands exit cleanly.
+- Documented lifecycle switches in `.env` and `.env.example`.
+- Bumped workspace version to 1.0.7.
 
 ## v-1.0.6
 
@@ -35,6 +60,8 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 #### App Codebase Changes
 
 - Removed the remaining hard-coded default tenant domain suffix from Platform API tenant seed/repository paths.
+- Added `assist/documentation/project-inventory.md` as the current workspace inventory and latest work update for future agents.
+- Linked the project inventory from `assist/README.md` and added it to the recommended reading order.
 - Bumped workspace version to 1.0.6.
 
 ## v-1.0.5

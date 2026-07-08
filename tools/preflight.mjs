@@ -10,6 +10,7 @@ const app = process.argv[2];
 
 const apps = {
   "billing-api": {
+    displayName: "billing-api",
     cwd: "apps/billing/api",
     envKey: "BILLING_API_PORT",
     hostKey: "BILLING_API_HOST",
@@ -19,6 +20,7 @@ const apps = {
     args: [nodePackageBin("tsx", "dist/cli.mjs", "apps/billing/api"), "watch", "src/server.ts"]
   },
   "billing-web": {
+    displayName: "billing-web",
     cwd: "apps/billing/web",
     envKey: "BILLING_WEB_PORT",
     hostKey: "BILLING_WEB_HOST",
@@ -28,6 +30,7 @@ const apps = {
     args: [nodePackageBin("vite", "bin/vite.js", "apps/billing/web"), "--host", "127.0.0.1", "--strictPort"]
   },
   "core-api": {
+    displayName: "core-api",
     cwd: "apps/core/api",
     envKey: "CORE_API_PORT",
     hostKey: "CORE_API_HOST",
@@ -37,6 +40,7 @@ const apps = {
     args: [nodePackageBin("tsx", "dist/cli.mjs", "apps/core/api"), "watch", "src/server.ts"]
   },
   "core-web": {
+    displayName: "core-web",
     cwd: "apps/core/web",
     envKey: "CORE_WEB_PORT",
     hostKey: "CORE_WEB_HOST",
@@ -46,6 +50,7 @@ const apps = {
     args: [nodePackageBin("vite", "bin/vite.js", "apps/core/web"), "--host", "127.0.0.1", "--strictPort"]
   },
   "platform-api": {
+    displayName: "api",
     cwd: "apps/platform/api",
     envKey: "PLATFORM_API_PORT",
     hostKey: "PLATFORM_API_HOST",
@@ -55,6 +60,7 @@ const apps = {
     args: [nodePackageBin("tsx", "dist/cli.mjs", "apps/platform/api"), "watch", "src/server.ts"]
   },
   "platform-web": {
+    displayName: "web",
     cwd: "apps/platform/web",
     envKey: "PLATFORM_WEB_PORT",
     hostKey: "PLATFORM_WEB_HOST",
@@ -209,7 +215,7 @@ function runNpm(args) {
 }
 
 async function freePort(port, host) {
-  console.log(`\n  > ${app} preflight`);
+  console.log(`\n  > ${config.displayName} preflight`);
   console.log(`  - Checking ${host}:${port}`);
 
   if (await probePort(port, host)) {

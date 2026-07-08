@@ -10,14 +10,21 @@ import type { TenantDatabase } from "./schema.js";
 const tenantConnections = new Map<string, Kysely<TenantDatabase>>();
 
 export async function provisionTenantDatabase(tenant: Tenant) {
+  console.info(`[database] provisioning tenant database "${tenant.dbName}" for tenant "${tenant.tenantCode}"`);
   await createTenantDatabase(tenant.dbName);
   const database = getTenantDatabase(tenant);
-  await migrateTenantDatabase(database);
-  await seedTenantDatabase(database, tenant);
+  try {
+    await migrateTenantDatabase(database);
+    await seedTenantDatabase(database, tenant);
+    console.info(`[database] tenant database provisioned: "${tenant.dbName}"`);
+  } finally {
+    await closeTenantDatabase(tenant);
+  }
 }
 
 export async function createTenantDatabase(databaseName: string) {
   const name = assertDatabaseName(databaseName, "tenant database name");
+  console.info(`[database] ensuring tenant database "${name}" on ${env.DB_HOST}:${env.DB_PORT}`);
   const connection = await createConnection({
     host: env.DB_HOST,
     password: env.DB_PASSWORD,
@@ -29,6 +36,7 @@ export async function createTenantDatabase(databaseName: string) {
     await connection.query(
       `CREATE DATABASE IF NOT EXISTS ${quoteIdentifier(name)} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
     );
+    console.info(`[database] tenant database ready: "${name}"`);
   } finally {
     await connection.end();
   }
@@ -72,6 +80,7 @@ export async function closeTenantDatabase(tenant: Tenant) {
 
 export async function dropTenantDatabase(tenant: Tenant) {
   await closeTenantDatabase(tenant);
+  console.warn(`[database] dropping tenant database "${tenant.dbName}" for tenant "${tenant.tenantCode}"`);
   const connection = await createConnection({
     host: tenant.dbHost || env.DB_HOST,
     password: env.DB_PASSWORD,
@@ -87,6 +96,7 @@ export async function dropTenantDatabase(tenant: Tenant) {
 }
 
 export async function migrateTenantDatabase(database: Kysely<TenantDatabase>) {
+  console.info("[database] migrating tenant database");
   await database.schema
     .createTable("tenant_migrations")
     .ifNotExists()
@@ -120,11 +130,13 @@ export async function migrateTenantDatabase(database: Kysely<TenantDatabase>) {
     .execute();
 
   await database.insertInto("tenant_migrations").ignore().values({ name: "001_tenant_foundation" }).execute();
+  console.info("[database] tenant migration applied: 001_tenant_foundation");
 }
 
 export async function seedTenantDatabase(database: Kysely<TenantDatabase>, tenant: Tenant) {
   const enabledKeys = new Set(["platform.application", ...tenant.enabledModuleKeys]);
   const moduleKeys = Array.from(enabledKeys);
+  console.info(`[seeder] seeding tenant "${tenant.tenantCode}" modules (${moduleKeys.length} modules)`);
   for (const moduleKey of moduleKeys) {
     const settingsJson = JSON.stringify({
       defaultLandingApp: tenant.defaultLandingApp,
@@ -144,9 +156,11 @@ export async function seedTenantDatabase(database: Kysely<TenantDatabase>, tenan
         updated_at: sql`CURRENT_TIMESTAMP`
       })
       .execute();
+    console.info(`[seeder] tenant module ready: ${moduleKey}`);
   }
 
   await seedTenantAdmin(database);
+  console.info(`[seeder] tenant seed completed for "${tenant.tenantCode}"`);
 }
 
 async function seedTenantAdmin(database: Kysely<TenantDatabase>) {
@@ -154,6 +168,7 @@ async function seedTenantAdmin(database: Kysely<TenantDatabase>) {
   const password = (env.DEFAULT_TENANT_ADMIN_PASSWORD || env.TENANT_ADMIN_PASSWORD).trim();
   const name = (env.DEFAULT_TENANT_ADMIN_NAME || env.TENANT_ADMIN_NAME).trim() || email;
   if (!email || !password) {
+    console.info("[seeder] tenant admin seed skipped because admin email or password is not configured");
     return;
   }
 
@@ -170,6 +185,7 @@ async function seedTenantAdmin(database: Kysely<TenantDatabase>) {
 
   if (existing) {
     await database.updateTable("tenant_users").set(row).where("id", "=", existing.id).execute();
+    console.info(`[seeder] tenant admin updated: ${email}`);
     return;
   }
 
@@ -180,4 +196,5 @@ async function seedTenantAdmin(database: Kysely<TenantDatabase>) {
       id: userId
     })
     .execute();
+  console.info(`[seeder] tenant admin created: ${email}`);
 }
