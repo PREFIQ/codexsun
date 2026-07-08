@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut } from "../../shared/api/platform-api";
-import type { AuditEventDTO, Tenant, TenantSavePayload } from "./tenant.types";
+import type { AuditEventDTO, Tenant, TenantRuntime, TenantSavePayload } from "./tenant.types";
 
 export function listTenants() {
   return apiGet<Tenant[]>("/admin/tenants", "sa");
@@ -23,4 +23,8 @@ export function restoreTenant(id: string) {
 
 export function listTenantActivity(id: string) {
   return apiGet<AuditEventDTO[]>(`/admin/activity/tenant/${id}`, "sa");
+}
+
+export function getTenantRuntime() {
+  return apiGet<TenantRuntime>("/tenant/runtime", "tenant");
 }

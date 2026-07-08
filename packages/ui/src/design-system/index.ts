@@ -13,6 +13,7 @@ import {
 import type { DesignSystemVariant, DesignSystemVariantId } from "./types";
 
 export type { DesignSystemVariant, DesignSystemVariantId };
+export * from "./component-defaults";
 
 export const DESIGN_SYSTEM_NAME = "codexsun";
 export const DESIGN_SYSTEM_MARKER = "data-design-system";

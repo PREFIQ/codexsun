@@ -3,6 +3,14 @@ import { join } from "node:path";
 
 const moduleRoots = [
   {
+    app: "billing-api",
+    path: join(process.cwd(), "apps", "billing", "api", "src", "modules")
+  },
+  {
+    app: "core-api",
+    path: join(process.cwd(), "apps", "core", "api", "src", "modules")
+  },
+  {
     app: "platform-api",
     path: join(process.cwd(), "apps", "platform", "api", "src", "modules")
   }

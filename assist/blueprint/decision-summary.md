@@ -218,7 +218,7 @@ Sensitive activation changes require confirmation or scheduling. High-risk chang
 
 Use:
 
-- `codexsun_master_db`
+- `cxsun_master_db`
 - One dedicated database per tenant.
 
 ### Tenant Provisioning Split

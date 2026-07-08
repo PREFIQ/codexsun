@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronRight, type LucideIcon } from "lucide-react"
+import { type LucideIcon } from "lucide-react"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../../components/collapsible"
 import {
@@ -53,7 +53,7 @@ export function SidemenuSection({ items, title }: { items: SidemenuItem[]; title
                     <SidebarMenuButton tooltip={item.title}>
                       <item.icon />
                       <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                      <ChevronRight className="ml-auto text-muted-foreground transition-transform duration-200 group-data-[collapsible=icon]:hidden group-data-[state=open]/collapsible:rotate-90" />
+                      <SidemenuChevron className="group-data-[collapsible=icon]:hidden group-data-[state=open]/collapsible:rotate-45" />
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                 ) : (
@@ -108,7 +108,7 @@ function SidemenuSubItemNode({ item }: { item: SidemenuSubItem }) {
               <SidebarMenuSubButton asChild isActive={active}>
                 <button type="button">
                   <span>{item.title}</span>
-                  <ChevronRight className="ml-auto size-3 text-muted-foreground transition-transform duration-200 group-data-[state=open]/sub-collapsible:rotate-90" />
+                  <SidemenuChevron className="group-data-[state=open]/sub-collapsible:rotate-45" />
                 </button>
               </SidebarMenuSubButton>
             </CollapsibleTrigger>
@@ -139,5 +139,14 @@ function SidemenuSubItemNode({ item }: { item: SidemenuSubItem }) {
         )}
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>
+  )
+}
+
+function SidemenuChevron({ className = "" }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`ml-auto size-2 shrink-0 rotate-[-45deg] border-b border-r border-muted-foreground transition-transform duration-200 ${className}`}
+    />
   )
 }

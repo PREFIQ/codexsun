@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Building2, CheckCircle2, Pencil, Plus, RefreshCw, Save, X } from "lucide-react"
+import { ArrowLeft, CheckCircle2, Pencil, Plus, RefreshCw, Save, X } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@codexsun/ui/components/button"
 import { Input } from "@codexsun/ui/components/input"
@@ -17,6 +17,7 @@ import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormGrid, WorkspaceFo
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils"
 import { cn } from "@codexsun/ui/lib/utils"
 import { createTenant, listTenantActivity, listTenants, restoreTenant as restoreTenantRecord, suspendTenant as suspendTenantRecord, updateTenant } from "./tenant.services"
+import { defaultLandingApp, normalizeModuleKeys, platformAppRegistry, type PlatformAppId } from "../../app/app-registry"
 
 type Tenant = {
   corporateId: string | null
@@ -27,6 +28,7 @@ type Tenant = {
   dbType: string
   dbUser: string
   enabledModuleKeys: string[]
+  defaultLandingApp: PlatformAppId
   id: string
   mobile: string | null
   payloadSettings: Record<string, unknown>
@@ -50,6 +52,7 @@ type TenantSavePayload = {
   dbType: string
   dbUser: string
   enabledModuleKeys: string[]
+  defaultLandingApp: PlatformAppId
   mobile: string | null
   payloadSettings: Record<string, unknown>
   slug: string
@@ -465,6 +468,7 @@ type TenantFormState = {
   dbSecretRef: string
   dbType: string
   dbUser: string
+  defaultLandingApp: PlatformAppId
   enabledModuleKeys: string[]
   id?: string
   mobile: string
@@ -484,14 +488,14 @@ type TenantAppAccess = {
 }
 
 const tenantAppAccess: TenantAppAccess[] = [
-  {
-    color: "bg-slate-950",
-    description: "Tenant workspace, settings, access, and platform module entry.",
-    enabled: true,
-    icon: <Building2 className="size-5" />,
-    moduleKey: "platform.tenant",
-    name: "Tenant"
-  }
+  ...platformAppRegistry.map((app) => ({
+    color: app.accentClass,
+    description: app.description,
+    enabled: app.alwaysEnabled,
+    icon: <app.icon className="size-5" />,
+    moduleKey: app.moduleKey,
+    name: app.label
+  }))
 ]
 
 function TenantUpsertPage({
@@ -516,7 +520,8 @@ function TenantUpsertPage({
     dbSecretRef: tenant?.dbSecretRef ?? "DB_PASSWORD",
     dbType: tenant?.dbType ?? "mariadb",
     dbUser: tenant?.dbUser ?? "root",
-    enabledModuleKeys: tenant?.enabledModuleKeys ?? tenantAppAccess.filter((app) => app.enabled).map((app) => app.moduleKey),
+    defaultLandingApp: defaultLandingApp(tenant?.defaultLandingApp ?? landingAppFromPayload(tenant?.payloadSettings), tenant?.enabledModuleKeys ?? []),
+    enabledModuleKeys: normalizeModuleKeys(tenant?.enabledModuleKeys ?? tenantAppAccess.filter((app) => app.enabled).map((app) => app.moduleKey)),
     ...(tenant ? { id: tenant.id } : {}),
     mobile: tenant?.mobile ?? "",
     slug: tenant?.slug ?? toSlug(tenant?.tenantCode ?? ""),
@@ -529,7 +534,7 @@ function TenantUpsertPage({
   const [appAccess, setAppAccess] = useState(() =>
     tenantAppAccess.map((app) => ({
       ...app,
-      enabled: app.moduleKey === "platform.tenant" || (tenant ? tenant.enabledModuleKeys.includes(app.moduleKey) : app.enabled)
+      enabled: app.moduleKey === "platform.application" || (tenant ? normalizeModuleKeys(tenant.enabledModuleKeys).includes(app.moduleKey) : app.enabled)
     }))
   )
   const [corporateIdTouched, setCorporateIdTouched] = useState(false)
@@ -737,13 +742,44 @@ function TenantUpsertPage({
               <span className="rounded-md border border-border/70 bg-background px-3 py-1 text-xs font-semibold">{enabledAppCount} enabled</span>
             </div>
           </div>
+          <div className="mt-4 rounded-md border border-border/70 p-4">
+            <WorkspaceFormField label="Landing app">
+              <select
+                className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={form.defaultLandingApp}
+                onChange={(event) => setForm((current) => ({ ...current, defaultLandingApp: event.target.value as PlatformAppId }))}
+              >
+                {appAccess
+                  .filter((app) => app.enabled)
+                  .map((app) => {
+                    const registry = platformAppRegistry.find((item) => item.moduleKey === app.moduleKey)
+                    return (
+                      <option key={app.moduleKey} value={registry?.id ?? "application"}>
+                        {app.name}
+                      </option>
+                    )
+                  })}
+              </select>
+            </WorkspaceFormField>
+          </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {appAccess.map((app, index) => (
               <TenantAppCard
                 key={app.name}
                 app={app}
                 onToggle={(enabled) =>
-                  setAppAccess((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, enabled } : item)))
+                  setAppAccess((current) => {
+                    const next = current.map((item, itemIndex) => (itemIndex === index ? { ...item, enabled } : item))
+                    const enabledIds = next
+                      .filter((item) => item.enabled)
+                      .map((item) => platformAppRegistry.find((registry) => registry.moduleKey === item.moduleKey)?.id)
+                      .filter(Boolean)
+                    setForm((currentForm) => ({
+                      ...currentForm,
+                      defaultLandingApp: enabledIds.includes(currentForm.defaultLandingApp) ? currentForm.defaultLandingApp : "application"
+                    }))
+                    return next
+                  })
                 }
               />
             ))}
@@ -798,7 +834,7 @@ function TenantUpsertPage({
           setLocalBanner("")
           onSubmit({
             ...form,
-            enabledModuleKeys: appAccess.filter((app) => app.enabled).map((app) => app.moduleKey)
+            enabledModuleKeys: normalizeModuleKeys(appAccess.filter((app) => app.enabled).map((app) => app.moduleKey))
           })
         }}
       >
@@ -816,7 +852,7 @@ function TenantUpsertPage({
 }
 
 function TenantAppCard({ app, onToggle }: { app: TenantAppAccess; onToggle: (enabled: boolean) => void }) {
-  const locked = app.moduleKey === "platform.tenant"
+  const locked = app.moduleKey === "platform.application"
   return (
     <div className={cn("flex min-h-32 gap-3 rounded-md border border-border/70 p-4", app.enabled ? "bg-muted/40" : "bg-background")}>
       <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-md text-white", app.color)}>{app.icon}</div>
@@ -850,7 +886,8 @@ function TenantHeader({ children, className }: { children: ReactNode; className?
 }
 
 function toTenantSavePayload(form: TenantFormState): TenantSavePayload {
-  const enabledModuleKeys = Array.from(new Set(["platform.tenant", ...form.enabledModuleKeys]))
+  const enabledModuleKeys = normalizeModuleKeys(form.enabledModuleKeys)
+  const landingApp = defaultLandingApp(form.defaultLandingApp, enabledModuleKeys)
 
   return {
     corporateId: form.corporateId.trim() || null,
@@ -860,10 +897,12 @@ function toTenantSavePayload(form: TenantFormState): TenantSavePayload {
     dbSecretRef: form.dbSecretRef.trim() || "DB_PASSWORD",
     dbType: form.dbType.trim() || "mariadb",
     dbUser: form.dbUser.trim() || "root",
+    defaultLandingApp: landingApp,
     enabledModuleKeys,
     mobile: form.mobile.replace(/\D/g, "") || null,
     payloadSettings: {
-      apps: { enabled: enabledModuleKeys }
+      apps: { enabled: enabledModuleKeys },
+      landing: { app: landingApp, mode: "tenant" }
     },
     slug: form.slug.trim() || toSlug(form.tenantCode),
     status: form.status,
@@ -874,6 +913,11 @@ function toTenantSavePayload(form: TenantFormState): TenantSavePayload {
 
 function toTenantApiPayload(tenant: TenantSavePayload) {
   return tenant
+}
+
+function landingAppFromPayload(payloadSettings: Record<string, unknown> | undefined): unknown {
+  const landing = payloadSettings?.landing
+  return typeof landing === "object" && landing !== null && "app" in landing ? landing.app : undefined
 }
 
 function toTenantSummary(tenant: Tenant) {

@@ -5,18 +5,24 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
+const envPath = join(root, ".env");
+
+if (existsSync(envPath)) {
+  process.loadEnvFile(envPath);
+}
+
 const client =
   process.env.MARIADB_CLIENT ||
   "C:\\Program Files\\MariaDB 12.3\\bin\\mariadb.exe";
 
-const adminUser = process.env.DB_ADMIN_USER || "root";
+const adminUser = requiredEnv("DB_ADMIN_USER");
 const adminPassword = process.env.DB_ADMIN_PASSWORD || "";
 const host = process.env.DB_HOST || "127.0.0.1";
 const port = process.env.DB_PORT || "3306";
-const appUser = process.env.DB_APP_USER || "codexsun_app";
-const appPassword = process.env.DB_APP_PASSWORD || "Codexsun1@@";
-const masterDb = process.env.DB_MASTER_NAME || "codexsun_master_db";
-const tenantDb = process.env.TENANT_TEST_DB_NAME || "tenant_test_001_db";
+const appUser = requiredEnv("DB_APP_USER");
+const appPassword = requiredEnv("DB_APP_PASSWORD");
+const masterDb = requiredEnv("DB_MASTER_NAME");
+const tenantDb = requiredEnv("DEFAULT_TENANT_DB_NAME");
 
 if (!existsSync(client)) {
   throw new Error(`MariaDB client was not found at ${client}. Set MARIADB_CLIENT to the full mariadb.exe path.`);
@@ -52,3 +58,12 @@ execFileSync(client, args, {
 });
 
 console.log(`Created MariaDB app user ${appUser}. Set DB_USER=${appUser} and DB_PASSWORD=${appPassword}.`);
+
+function requiredEnv(name) {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`Missing ${name}. Create .env from .env.example and set ${name} before running this helper.`);
+  }
+
+  return value;
+}

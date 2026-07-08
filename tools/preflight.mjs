@@ -9,6 +9,42 @@ const root = resolve(import.meta.dirname, "..");
 const app = process.argv[2];
 
 const apps = {
+  "billing-api": {
+    cwd: "apps/billing/api",
+    envKey: "BILLING_API_PORT",
+    hostKey: "BILLING_API_HOST",
+    fallbackPort: 5550,
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("tsx", "dist/cli.mjs", "apps/billing/api"), "watch", "src/server.ts"]
+  },
+  "billing-web": {
+    cwd: "apps/billing/web",
+    envKey: "BILLING_WEB_PORT",
+    hostKey: "BILLING_WEB_HOST",
+    fallbackPort: 5560,
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("vite", "bin/vite.js", "apps/billing/web"), "--host", "127.0.0.1", "--strictPort"]
+  },
+  "core-api": {
+    cwd: "apps/core/api",
+    envKey: "CORE_API_PORT",
+    hostKey: "CORE_API_HOST",
+    fallbackPort: 5530,
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("tsx", "dist/cli.mjs", "apps/core/api"), "watch", "src/server.ts"]
+  },
+  "core-web": {
+    cwd: "apps/core/web",
+    envKey: "CORE_WEB_PORT",
+    hostKey: "CORE_WEB_HOST",
+    fallbackPort: 5540,
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("vite", "bin/vite.js", "apps/core/web"), "--host", "127.0.0.1", "--strictPort"]
+  },
   "platform-api": {
     cwd: "apps/platform/api",
     envKey: "PLATFORM_API_PORT",
@@ -40,11 +76,11 @@ const port = Number(process.env[config.envKey] || env[config.envKey]) || config.
 const host = process.env[config.hostKey] || env[config.hostKey] || config.fallbackHost;
 await freePort(port, host);
 
-if (app === "platform-api") {
+if (app === "platform-api" || app === "core-api" || app === "billing-api") {
   ensurePlatformApiDependencies();
 }
 
-const child = spawn(config.command, [...config.args, ...(app === "platform-web" ? ["--port", String(port)] : [])], {
+const child = spawn(config.command, [...config.args, ...(app.endsWith("-web") ? ["--port", String(port)] : [])], {
   cwd: resolve(root, config.cwd),
   env: {
     ...process.env,

@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Building2Icon, CircleGaugeIcon, DatabaseIcon, ShieldCheckIcon, UsersRoundIcon } from "lucide-react";
+import { Building2Icon, CircleGaugeIcon, DatabaseIcon, PaletteIcon, ShieldCheckIcon, UsersRoundIcon } from "lucide-react";
 import { Card, StatusBadge } from "@codexsun/ui";
 import { SuperLayout } from "@codexsun/ui/layouts/super-layout";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
+import { DesignSystemGallery } from "../../modules/design-system";
 import { TenantList } from "../../modules/tenant";
 import { AuthGate } from "../../shared/auth/AuthGate";
 
-type SaPage = "overview" | "tenants" | "database" | "access";
+type SaPage = "overview" | "tenants" | "database" | "access" | "design-system";
 
 export function SaDesk() {
   const [page, setPage] = useState<SaPage>(pageFromUrl());
@@ -28,6 +29,14 @@ export function SaDesk() {
         { title: "Database", isActive: page === "database", onSelect: () => selectPage("database") },
         { title: "Access", isActive: page === "access", onSelect: () => selectPage("access") }
       ]
+    },
+    {
+      title: "Design System",
+      icon: PaletteIcon,
+      isActive: page === "design-system",
+      items: [
+        { title: "Component", isActive: page === "design-system", onSelect: () => selectPage("design-system") }
+      ]
     }
   ];
 
@@ -38,6 +47,7 @@ export function SaDesk() {
         {page === "tenants" ? <TenantList onBack={() => selectPage("overview")} /> : null}
         {page === "database" ? <FoundationPanel title="Database Foundation" badge="Configured" icon={DatabaseIcon} /> : null}
         {page === "access" ? <FoundationPanel title="Access Foundation" badge="Configured" icon={UsersRoundIcon} /> : null}
+        {page === "design-system" ? <DesignSystemGallery /> : null}
       </SuperLayout>
     </AuthGate>
   );
@@ -45,7 +55,7 @@ export function SaDesk() {
 
 function pageFromUrl(): SaPage {
   const page = window.location.pathname.split("/")[2];
-  return page === "tenants" || page === "database" || page === "access" ? page : "overview";
+  return page === "tenants" || page === "database" || page === "access" || page === "design-system" ? page : "overview";
 }
 
 function SaOverview({ onNavigate }: { onNavigate: (page: SaPage) => void }) {
@@ -67,6 +77,7 @@ function SaOverview({ onNavigate }: { onNavigate: (page: SaPage) => void }) {
         <DeskCard title="Tenants" value="Manage" icon={Building2Icon} onClick={() => onNavigate("tenants")} />
         <DeskCard title="Database Context" value="Root dist" icon={DatabaseIcon} onClick={() => onNavigate("database")} />
         <DeskCard title="Access" value="SA/Admin/App" icon={ShieldCheckIcon} onClick={() => onNavigate("access")} />
+        <DeskCard title="Design System" value="Component" icon={PaletteIcon} onClick={() => onNavigate("design-system")} />
       </div>
     </main>
   );

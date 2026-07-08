@@ -1,0 +1,131 @@
+body {
+  margin: 0;
+}
+
+.billing-shell {
+  display: grid;
+  gap: 24px;
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 32px 20px;
+}
+
+.billing-hero,
+.billing-toolbar {
+  align-items: flex-start;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.billing-hero h1,
+.billing-toolbar h1 {
+  font-size: 32px;
+  line-height: 1.1;
+  margin: 12px 0 8px;
+}
+
+.billing-hero p,
+.billing-toolbar p,
+.billing-card p {
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+  max-width: 620px;
+}
+
+.billing-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.billing-card,
+.sales-panel {
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.billing-card {
+  display: grid;
+  gap: 8px;
+}
+
+.billing-card span {
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+}
+
+.billing-actions,
+.sales-panel-header,
+.sales-panel-header div {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.sales-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.sales-panel-header {
+  justify-content: space-between;
+}
+
+.sales-table {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sales-row {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(150px, 1.2fr) minmax(180px, 1.4fr) repeat(3, minmax(100px, 1fr));
+  padding: 14px 16px;
+}
+
+.sales-row + .sales-row {
+  border-top: 1px solid hsl(var(--border));
+}
+
+.sales-row-head {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sales-row small {
+  color: hsl(var(--muted-foreground));
+  display: block;
+  margin-top: 2px;
+}
+
+.sales-empty {
+  border: 1px dashed hsl(var(--border));
+  border-radius: 8px;
+  color: hsl(var(--muted-foreground));
+  padding: 28px;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .billing-hero,
+  .billing-toolbar {
+    display: grid;
+  }
+
+  .billing-actions {
+    flex-wrap: wrap;
+  }
+
+  .sales-row {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-row-head {
+    display: none;
+  }
+}

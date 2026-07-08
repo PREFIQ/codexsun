@@ -1323,7 +1323,7 @@ Rules:
 Master database:
 
 ```text
-codexsun_master_db
+cxsun_master_db
 ```
 
 Tenant databases:

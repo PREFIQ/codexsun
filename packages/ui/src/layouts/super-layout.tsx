@@ -106,7 +106,7 @@ export function SuperLayout({
       subtitle={subtitle}
       title={title}
       user={{
-        email: "superadmin@codexsun.app",
+        email: "Configured in environment",
         fallback: "S",
         name: "Super Admin"
       }}

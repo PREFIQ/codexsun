@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.1
+Current version: 1.0.6
 
-Release tag: v-1.0.1
+Release tag: v-1.0.6
 
-Changelog label: v 1.0.1
+Changelog label: v 1.0.6
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,96 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.6
+
+### [v 1.0.6] 2026-07-08 7:20 pm - Env Driven Tenant Domain Seed
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Added `DEFAULT_TENANT_DOMAIN` so the test-only default tenant seed stores its primary domain from env.
+- Added `TENANT_DOMAIN_BASE` so newly created tenant domains are generated from env instead of a hard-coded `.codexsun.local` suffix.
+- Set the local/test default domain values to `localhost` in `.env` and `.env.example` while keeping seed data disabled and blank by default.
+- Updated the CODEXSUN auth e2e to verify login through the seeded `localhost` tenant domain.
+
+#### App Codebase Changes
+
+- Removed the remaining hard-coded default tenant domain suffix from Platform API tenant seed/repository paths.
+- Bumped workspace version to 1.0.6.
+
+## v-1.0.5
+
+### [v 1.0.5] 2026-07-08 7:04 pm - Test-Only Default Tenant Seed
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Moved the default tenant seed behind `ENABLE_DEFAULT_TENANT_SEED=1`.
+- Cleared fixed master database, tenant database, DB user, DB password, JWT, and seed user values from `.env` and `.env.example`.
+- Made `DEFAULT_TENANT_*` optional for normal runtime and required only when the test seed switch is enabled.
+- Kept CODEXSUN seed data inside e2e setup only, with disposable test databases.
+
+#### App Codebase Changes
+
+- Updated the environment helper banner to explain that default tenant values are test-only.
+- Updated tenant database e2e setup to explicitly enable and configure the default seed for test runs.
+- Bumped workspace version to 1.0.5.
+
+## v-1.0.4
+
+### [v 1.0.4] 2026-07-08 6:59 pm - Strict Environment Configuration
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Removed runtime fallback database names from Platform, Core, Billing, and database helper code.
+- Required `DB_MASTER_NAME`, `DB_USER`, `DB_PASSWORD`, and `DEFAULT_TENANT_*` values to come from explicit environment configuration.
+- Changed the database user helper to read root `.env` and require configured admin/app user credentials and tenant database values.
+- Kept e2e database tests isolated by injecting their own disposable environment values.
+
+#### App Codebase Changes
+
+- Added a shared missing/invalid `.env` banner with setup commands: `Copy-Item .env.example .env` and `npm run env:jwt-secret`.
+- Removed runtime JWT development-secret fallbacks from Core and Billing APIs.
+- Removed hard-coded admin email placeholders from shared UI layouts.
+- Bumped workspace version to 1.0.4.
+
+## v-1.0.3
+
+### [v 1.0.3] 2026-07-08 6:52 pm - CODEXSUN Database Naming Seed
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Changed the default master database name from `codexsun_master_db` to `cxsun_master_db`.
+- Changed the default `CODEXSUN` tenant database name from `codexsun_tenant_db` to `codexsun_db`.
+- Updated Platform, Core, Billing, setup tooling, and assist architecture references to use the new master database default.
+- Kept the default tenant seeder idempotent so first boot creates or updates the `CODEXSUN` tenant with the new tenant database name.
+
+#### App Codebase Changes
+
+- Updated the `CODEXSUN` tenant auth e2e to run against disposable databases using the new naming pattern and verify seed, login, JWT/session, and tenant runtime.
+- Bumped workspace version to 1.0.3.
+
+## v-1.0.2
+
+### [v 1.0.2] 2026-07-08 6:35 pm - Default CODEXSUN Tenant Auth Seed
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Added an idempotent default tenant seed for `CODEXSUN` during Platform API bootstrap.
+- Added `.env`-driven default tenant settings: name, corporate ID, slug, tenant database name, and default tenant admin credentials.
+- Provisioned the default `CODEXSUN` tenant database with tenant module settings and a tenant-local admin user when `DEFAULT_TENANT_ADMIN_PASSWORD` is configured.
+- Kept tenant identity database-owned by seeding master tenant and tenant domain rows, with `public_id` used for external JWT/session identity.
+
+#### App Codebase Changes
+
+- Hardened tenant login around the seeded tenant path: Corporate ID + domain resolution, tenant database lookup, tenant-local user verification, signed JWT issue, session verification, and tenant runtime access.
+- Added `CODEXSUN` start-to-finish e2e coverage that boots the app, seeds the tenant, logs in, verifies the signed JWT/session, resolves runtime, and cleans up disposable databases.
+- Updated platform e2e script to include both tenant database isolation and default tenant auth flows.
+- Bumped workspace version to 1.0.2.
 
 ## v-1.0.1
 

@@ -10,6 +10,7 @@ const rootPackage = JSON.parse(readFileSync(resolve(configDir, "../../../package
 
 export default defineConfig({
   build: {
+    chunkSizeWarningLimit: 900,
     emptyOutDir: true,
     outDir: "../../../dist/apps/platform/web",
     rollupOptions: {
@@ -115,6 +116,18 @@ export default defineConfig({
 
           if (normalizedId.includes("/apps/platform/web/src/modules/tenant/")) {
             return "tenant-module";
+          }
+
+          if (normalizedId.includes("/apps/platform/web/src/routes/public/HomePage")) {
+            return "public-home";
+          }
+
+          if (normalizedId.includes("/apps/platform/web/src/routes/public/LoginPage")) {
+            return "public-login";
+          }
+
+          if (normalizedId.includes("/apps/platform/web/src/routes/public/HealthPage")) {
+            return "public-health";
           }
 
           if (normalizedId.includes("/apps/platform/web/src/routes/public/")) {

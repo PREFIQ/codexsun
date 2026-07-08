@@ -106,9 +106,9 @@ export function AdminLayout({
       subtitle={subtitle}
       title={title}
       user={{
-        email: "admin@codexsun.app",
+        email: "Configured in environment",
         fallback: "A",
-        name: "Admin"
+        name: "Staff Admin"
       }}
       userMenuItems={[
         {

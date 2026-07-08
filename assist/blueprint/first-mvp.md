@@ -35,7 +35,7 @@ Use MariaDB.
 
 The first server boot must:
 
-- Create `codexsun_master_db` if it does not exist.
+- Create `cxsun_master_db` if it does not exist.
 - Create the first test tenant database if it does not exist.
 - Run foundation migrations automatically.
 - Seed Super Admin in the master database only when `SUPER_ADMIN_*` env values are present.

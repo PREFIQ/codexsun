@@ -248,7 +248,7 @@ Do not put unstable business rules in the shared kernel.
 
 ### Table Ownership
 
-**Master Database (codexsun_master_db) — owned by `apps/platform/api`:**
+**Master Database (cxsun_master_db) — owned by `apps/platform/api`:**
 
 | Table | Owner | Purpose |
 |---|---|---|

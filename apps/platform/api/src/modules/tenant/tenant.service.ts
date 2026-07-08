@@ -1,5 +1,8 @@
 import { TenantRepository } from "./tenant.repository.js";
 import type { TenantSavePayload } from "./tenant.types.js";
+import { resolveEnabledApps, resolveLandingApp } from "../app-registry/index.js";
+import { provisionTenantDatabase } from "../../database/tenant-database.js";
+import { env } from "../../env.js";
 
 export class TenantService {
   constructor(private readonly repository = new TenantRepository()) {}
@@ -8,12 +11,34 @@ export class TenantService {
     return this.repository.list();
   }
 
-  createTenant(input: TenantSavePayload) {
-    return this.repository.create(this.normalize(input));
+  getTenant(value: string) {
+    return this.repository.findByIdOrCode(value);
   }
 
-  updateTenant(id: string, input: TenantSavePayload) {
-    return this.repository.update(id, this.normalize(input));
+  async getTenantRuntime(value: string) {
+    const tenant = await this.getTenant(value);
+    const enabledModuleKeys = tenant?.enabledModuleKeys ?? ["platform.application"];
+    const landingSettings = isRecord(tenant?.payloadSettings?.landing) ? tenant?.payloadSettings.landing : {};
+    const defaultLandingApp = resolveLandingApp(landingSettings?.app, enabledModuleKeys);
+    return {
+      apps: resolveEnabledApps(enabledModuleKeys),
+      defaultLandingApp,
+      tenant: tenant ?? null
+    };
+  }
+
+  async createTenant(input: TenantSavePayload) {
+    const tenant = await this.repository.create(this.normalize(input));
+    await provisionTenantDatabase(tenant);
+    return tenant;
+  }
+
+  async updateTenant(id: string, input: TenantSavePayload) {
+    const tenant = await this.repository.update(id, this.normalize(input));
+    if (tenant) {
+      await provisionTenantDatabase(tenant);
+    }
+    return tenant;
   }
 
   suspendTenant(id: string) {
@@ -31,22 +56,42 @@ export class TenantService {
   private normalize(input: TenantSavePayload): TenantSavePayload {
     const tenantCode = input.tenantCode.trim().toUpperCase();
     const slug = input.slug.trim().toLowerCase() || tenantCode.toLowerCase();
+    const legacyKeys = input.enabledModuleKeys.map((key) => (key === "platform.tenant" ? "platform.application" : key));
+    const enabledModuleKeys = Array.from(new Set(["platform.application", ...legacyKeys]));
+    const incomingPayloadSettings = isRecord(input.payloadSettings) ? input.payloadSettings : {};
+    const incomingLanding = isRecord(incomingPayloadSettings.landing) ? incomingPayloadSettings.landing : {};
+    const defaultLandingApp = resolveLandingApp(input.defaultLandingApp ?? incomingLanding.app, enabledModuleKeys);
     return {
       ...input,
       corporateId: input.corporateId?.trim() || null,
       dbHost: input.dbHost.trim() || "127.0.0.1",
       dbName: input.dbName.trim() || `${slug}_db`,
       dbPort: Number(input.dbPort) || 3306,
-      dbSecretRef: input.dbSecretRef.trim() || "TENANT_DB_PASSWORD",
-      dbType: input.dbType.trim() || "mariadb",
-      dbUser: input.dbUser.trim() || "tenant_user",
-      enabledModuleKeys: Array.from(new Set(["platform.tenant", ...input.enabledModuleKeys])),
+      dbSecretRef: input.dbSecretRef.trim() || "DB_PASSWORD",
+      dbType: input.dbType.trim() || env.DB_DRIVER,
+      dbUser: input.dbUser.trim() || env.DB_USER,
+      defaultLandingApp,
+      enabledModuleKeys,
       mobile: input.mobile?.trim() || null,
-      payloadSettings: input.payloadSettings ?? {},
+      payloadSettings: {
+        ...incomingPayloadSettings,
+        apps: {
+          enabled: enabledModuleKeys
+        },
+        landing: {
+          ...incomingLanding,
+          app: defaultLandingApp,
+          mode: "tenant"
+        }
+      },
       slug,
       status: input.status,
       tenantCode,
       tenantName: input.tenantName.trim()
     };
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

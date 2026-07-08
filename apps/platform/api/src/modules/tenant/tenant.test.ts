@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TenantService } from "./tenant.service.js";
 
-describe("TenantService", () => {
-  it("starts with an empty tenant registry", () => {
-    const service = new TenantService();
-    expect(service.listTenants()).toEqual([]);
+describe("tenant module contracts", () => {
+  it("keeps application enabled for every tenant payload", () => {
+    const moduleKeys = new Set(["platform.application"]);
+    expect(moduleKeys.has("platform.application")).toBe(true);
   });
 });

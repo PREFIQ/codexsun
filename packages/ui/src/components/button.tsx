@@ -3,6 +3,7 @@ import type { ReactNode } from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
+import { useDesignSystemComponentDefault } from "../design-system/component-defaults"
 import { cn } from "../lib/utils"
 
 const buttonVariants = cva(
@@ -47,11 +48,13 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ children, className, icon, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    const defaultVariant = useDesignSystemComponentDefault("button", "default") as ButtonProps["variant"]
+    const resolvedVariant = variant ?? defaultVariant
 
     if (asChild) {
       return (
         <Comp
-          className={cn(buttonVariants({ variant, size, className }))}
+          className={cn(buttonVariants({ variant: resolvedVariant, size, className }))}
           ref={ref}
           {...props}
         >
@@ -62,7 +65,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant: resolvedVariant, size, className }))}
         ref={ref}
         {...props}
       >

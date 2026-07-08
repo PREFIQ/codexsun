@@ -1,81 +1,101 @@
-import type { FastifyInstance } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import { fail, ok } from "@codexsun/framework/http";
+import { AuthService } from "./auth.service.js";
+import { verifyAuthToken, type AuthUserType } from "./jwt.js";
 
-const developmentUsers = {
-  admin: {
-    email: "admin@codexsun.app",
-    name: "Staff Admin",
-    userType: "staff"
-  },
-  sa: {
-    email: "superadmin@codexsun.app",
-    name: "Super Admin",
-    userType: "super_admin"
-  },
-  tenant: {
-    email: "user@codexsun.app",
-    name: "Tenant Admin",
-    userType: "tenant"
-  }
-} as const;
-
-type Desk = keyof typeof developmentUsers;
-
-function isDesk(value: unknown): value is Desk {
-  return value === "sa" || value === "admin" || value === "tenant";
-}
-
-function base64Url(input: string) {
-  return Buffer.from(input).toString("base64url");
-}
-
-function createDevToken(payload: Record<string, unknown>) {
-  const now = Math.floor(Date.now() / 1000);
-  return [
-    base64Url(JSON.stringify({ alg: "none", typ: "JWT" })),
-    base64Url(JSON.stringify({ ...payload, exp: now + 60 * 60 * 8, iat: now })),
-    "dev"
-  ].join(".");
-}
+const authService = new AuthService();
 
 export async function registerAuthRoutes(app: FastifyInstance) {
-  app.post("/auth/login", async (request) => {
-    const body = request.body as { desk?: unknown; email?: string; tenantCode?: string } | undefined;
-    const desk = isDesk(body?.desk) ? body.desk : "tenant";
-    const user = developmentUsers[desk];
-    const tenantCode = desk === "tenant" ? body?.tenantCode?.trim() || undefined : undefined;
-    const tenantId = tenantCode ? `tenant-${tenantCode.toLowerCase()}` : undefined;
-    const meta = tenantId ? { requestId: request.id, tenantId } : { requestId: request.id };
+  app.post("/auth/login", async (request, reply) => {
+    const body = request.body as LoginBody | undefined;
+    const loginInput: {
+      corporateId?: string;
+      desk?: AuthUserType | "admin" | "sa";
+      domain: string;
+      email?: string;
+      password?: string;
+    } = {
+      domain: requestDomain(request)
+    };
+    if (body?.desk) loginInput.desk = body.desk;
+    if (body?.email) loginInput.email = body.email;
+    if (body?.password) loginInput.password = body.password;
+    const corporateId = body?.corporateId ?? body?.tenantCode;
+    if (corporateId) loginInput.corporateId = corporateId;
+    const result = await authService.login(loginInput);
+
+    if (!result) {
+      return reply.code(401).send(
+        fail(
+          {
+            code: "AUTH_INVALID_CREDENTIALS",
+            message: "Invalid credentials or workspace."
+          },
+          { requestId: request.id }
+        )
+      );
+    }
+
+    return ok(result, {
+      requestId: request.id,
+      ...("tenantId" in result && result.tenantId ? { tenantId: result.tenantId } : {})
+    });
+  });
+
+  app.get("/auth/session", async (request, reply) => {
+    const token = bearerToken(request);
+    const payload = token ? verifyAuthToken(token) : null;
+    if (!payload) {
+      return reply.code(401).send(
+        fail(
+          {
+            code: "AUTH_SESSION_EXPIRED",
+            message: "Session expired. Please sign in again."
+          },
+          { requestId: request.id }
+        )
+      );
+    }
 
     return ok(
       {
-        accessToken: createDevToken({
-          email: body?.email || user.email,
-          tenantCode,
-          tenantId,
-          userType: user.userType
-        }),
-        email: body?.email || user.email,
-        tenantCode,
-        tenantId,
-        userType: user.userType
-      },
-      meta
-    );
-  });
-
-  app.get("/auth/session", async (request) =>
-    ok(
-      {
         authenticated: true,
-        tenantId: request.headers["x-tenant-id"]
+        email: payload.email,
+        expiresAt: new Date(payload.exp * 1000).toISOString(),
+        sessionIssuedAt: payload.sessionIssuedAt,
+        tenantCode: payload.tenantCode,
+        tenantId: payload.tenantId,
+        tenantUuid: payload.tenantUuid,
+        userType: payload.userType
       },
       {
         requestId: request.id,
-        ...(request.headers["x-tenant-id"] ? { tenantId: String(request.headers["x-tenant-id"]) } : {})
+        ...(payload.tenantId ? { tenantId: payload.tenantId } : {})
       }
-    )
-  );
+    );
+  });
 
   app.post("/auth/logout", async (request) => ok({ loggedOut: true }, { requestId: request.id }));
+}
+
+type LoginBody = {
+  corporateId?: string;
+  desk?: AuthUserType | "admin" | "sa";
+  email?: string;
+  password?: string;
+  tenantCode?: string;
+};
+
+function bearerToken(request: FastifyRequest) {
+  const authorization = request.headers.authorization;
+  if (!authorization?.startsWith("Bearer ")) {
+    return "";
+  }
+  return authorization.slice("Bearer ".length).trim();
+}
+
+function requestDomain(request: FastifyRequest) {
+  const forwardedHost = request.headers["x-forwarded-host"];
+  const host = Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost || request.headers.host || "";
+  return String(host);
 }

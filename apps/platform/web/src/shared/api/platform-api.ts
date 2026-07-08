@@ -96,13 +96,15 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Request failed";
 }
 
-export async function login(input: { desk: Desk; email: string; password: string; tenantCode?: string }) {
+export async function login(input: { corporateId?: string; desk: Desk; email: string; password: string; tenantCode?: string }) {
   try {
     const data = await apiPost<{
       accessToken?: string;
+      corporateId?: string;
       email: string;
       tenantId?: string;
       tenantCode?: string;
+      tenantUuid?: string;
       userType: string;
     }>("/auth/login", input);
 
