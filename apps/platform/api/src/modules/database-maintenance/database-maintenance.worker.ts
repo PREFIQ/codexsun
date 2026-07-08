@@ -1,4 +1,6 @@
 import { DatabaseMaintenanceRepository } from "./database-maintenance.repository.js";
+import { env } from "../../env.js";
+import { executeDatabaseBackup, executeDatabaseRestore } from "./database-maintenance.executor.js";
 
 export async function processDatabaseMaintenanceJob(payload: Record<string, unknown>) {
   const runId = Number(payload.runId);
@@ -13,20 +15,71 @@ export async function processDatabaseMaintenanceJob(payload: Record<string, unkn
   }
 
   const executedAt = new Date().toISOString();
-  const executionMode = run.operation === "restore" ? "sandbox-restore-check" : "operator-backup-check";
+  const target = {
+    databaseName: run.databaseName,
+    host: stringDetail(run.details.host) || env.DB_HOST,
+    port: numberDetail(run.details.port) || env.DB_PORT,
+    tenantKey: stringDetail(run.details.tenantKey) || stringDetail(run.details.tenantCode),
+    user: stringDetail(run.details.user) || env.DB_USER
+  };
+
+  const result = run.operation === "restore"
+    ? await executeDatabaseRestore({
+        backupPath: await restoreBackupPath(repository, run),
+        liveRestoreConfirm: stringDetail(run.details.liveRestoreConfirm),
+        operation: run.operation,
+        restoreMode: stringDetail(run.details.restoreMode),
+        runId: run.id,
+        scope: run.scope,
+        target
+      })
+    : await executeDatabaseBackup({
+        operation: run.operation,
+        runId: run.id,
+        scope: run.scope,
+        target
+      });
+
   const details = {
     ...run.details,
     executedAt,
-    executionMode,
+    ...result,
     queueStatus: "completed"
   };
   await repository.updateRunStatus(run.id, "completed", details);
 
   return {
     databaseName: run.databaseName,
-    executionMode,
     operation: run.operation,
     runId: run.id,
-    scope: run.scope
+    scope: run.scope,
+    ...result
   };
+}
+
+async function restoreBackupPath(repository: DatabaseMaintenanceRepository, run: NonNullable<Awaited<ReturnType<DatabaseMaintenanceRepository["findRun"]>>>) {
+  const explicitPath = stringDetail(run.details.backupPath) || stringDetail(run.details.filePath);
+  if (explicitPath) return explicitPath;
+  const backupId = stringDetail(run.details.backupId);
+  const latest = await repository.latestCompletedBackup(run.scope, run.targetKey);
+  if (!latest) {
+    throw new Error(backupId ? `Backup ${backupId} was not found for restore.` : "No completed backup is available for restore.");
+  }
+  const latestBackupId = stringDetail(latest.details.backupId);
+  if (backupId && latestBackupId !== backupId) {
+    throw new Error(`Backup ${backupId} was not found for this target.`);
+  }
+  const latestPath = stringDetail(latest.details.filePath);
+  if (!latestPath) {
+    throw new Error("Latest completed backup has no file path.");
+  }
+  return latestPath;
+}
+
+function stringDetail(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
+function numberDetail(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }

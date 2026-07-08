@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-import { DatabaseIcon, ServerIcon } from "lucide-react";
+import { DatabaseIcon, RotateCcwIcon, ServerIcon, ShieldCheckIcon } from "lucide-react";
 import { StatusBadge } from "@codexsun/ui";
 import type { MasterDatabaseStatus } from "./master-database.types";
 
@@ -7,14 +7,24 @@ export function MasterDatabaseList({ record }: { record: MasterDatabaseStatus | 
   if (!record) {
     return <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground shadow-sm">Loading master database status.</div>;
   }
+  const lastRun = record.runs[0];
+  const pendingRuns = record.runs.filter((run) => run.status === "requested" || run.status === "running").length;
 
   return (
     <section className="space-y-4">
       <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard label="Live status" value={record.status} tone={record.status === "online" ? "green" : "red"} />
-        <MetricCard label="Version" value={record.version} />
-        <MetricCard label="Tables" value={String(record.tableCount)} />
-        <MetricCard label="Migrations" value={String(record.migrations.length)} />
+        <MetricCard icon={ShieldCheckIcon} label="Live status" value={record.status} tone={record.status === "online" ? "green" : "red"} />
+        <MetricCard icon={DatabaseIcon} label="Version" value={record.version} />
+        <MetricCard icon={ServerIcon} label="Tables" value={String(record.tableCount)} />
+        <MetricCard icon={RotateCcwIcon} label="Migrations" value={String(record.migrations.length)} />
+      </div>
+      <div className="rounded-md border bg-card p-4 shadow-sm">
+        <div className="grid gap-3 md:grid-cols-4">
+          <WorkflowStep active label="Connected" tone={record.status === "online" ? "green" : "red"} value={record.status} />
+          <WorkflowStep active={record.migrations.length > 0} label="Migrated" value={String(record.migrations.length)} />
+          <WorkflowStep active={pendingRuns > 0} label="Queued" value={String(pendingRuns)} tone={pendingRuns > 0 ? "blue" : "neutral"} />
+          <WorkflowStep active={Boolean(lastRun)} label="Last run" value={lastRun ? lastRun.status : "none"} tone={lastRun?.status === "completed" ? "green" : lastRun?.status === "failed" ? "red" : "neutral"} />
+        </div>
       </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_1.3fr]">
         <div className="rounded-md border bg-card p-5 shadow-sm">
@@ -29,6 +39,7 @@ export function MasterDatabaseList({ record }: { record: MasterDatabaseStatus | 
             <InfoRow label="Database" value={record.databaseName} />
             <InfoRow label="Backup" value={record.backupStatus} />
             <InfoRow label="Restore" value={record.restoreStatus} />
+            <InfoRow label="Recent run" value={lastRun ? `${lastRun.operation} ${lastRun.status}` : "none"} />
           </dl>
         </div>
         <div className="overflow-x-auto rounded-md border bg-card shadow-sm">
@@ -78,12 +89,26 @@ export function MasterDatabaseList({ record }: { record: MasterDatabaseStatus | 
   );
 }
 
-function MetricCard({ label, tone, value }: { label: string; tone?: "green" | "red"; value: string }) {
+function MetricCard({ icon: Icon, label, tone, value }: { icon: typeof DatabaseIcon; label: string; tone?: "green" | "red"; value: string }) {
   return (
     <div className="rounded-md border bg-card p-5 shadow-sm">
-      <DatabaseIcon className="size-5 text-muted-foreground" />
+      <Icon className="size-5 text-muted-foreground" />
       <div className="mt-5 flex items-center gap-2 text-xl font-semibold">{tone ? <StatusBadge tone={tone}>{value}</StatusBadge> : value}</div>
       <div className="mt-1 text-sm text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+function WorkflowStep({ active, label, tone, value }: { active: boolean; label: string; tone?: "blue" | "green" | "neutral" | "red"; value: string }) {
+  return (
+    <div className={`rounded-md border px-4 py-3 ${active ? "bg-muted/40" : "bg-background"}`}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium">{label}</span>
+        <StatusBadge tone={tone ?? (active ? "blue" : "neutral")}>{value}</StatusBadge>
+      </div>
+      <div className="mt-3 h-1.5 rounded-full bg-muted">
+        <div className={`h-1.5 rounded-full ${tone === "red" ? "bg-destructive" : tone === "green" ? "bg-emerald-500" : "bg-primary"}`} style={{ width: active ? "100%" : "18%" }} />
+      </div>
     </div>
   );
 }

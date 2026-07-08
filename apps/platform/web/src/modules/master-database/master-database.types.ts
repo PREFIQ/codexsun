@@ -34,5 +34,8 @@ export type MasterDatabaseStatus = {
 
 export type DatabaseActionPayload = {
   backupId?: string | undefined;
+  backupPath?: string | undefined;
+  liveRestoreConfirm?: string | undefined;
   note?: string | undefined;
+  restoreMode?: "live" | "sandbox" | undefined;
 };

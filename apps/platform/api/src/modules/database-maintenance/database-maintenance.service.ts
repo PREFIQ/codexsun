@@ -3,6 +3,7 @@ import { createTenantDatabase, getTenantDatabase, closeTenantDatabase } from "..
 import { migrateTenantRuntimeModule } from "../tenant/tenant.migration.js";
 import { PlatformActivityService } from "../platform-activity/index.js";
 import { QueueManagerService } from "../queue-manager/index.js";
+import { env } from "../../env.js";
 import { DatabaseMaintenanceRepository } from "./database-maintenance.repository.js";
 import type { DatabaseActionPayload } from "./database-maintenance.types.js";
 
@@ -19,6 +20,10 @@ export class DatabaseMaintenanceService {
 
   tenantStatuses() {
     return this.repository.tenantStatuses();
+  }
+
+  tenantDetails(tenantId: number) {
+    return this.repository.tenantDetails(tenantId);
   }
 
   async migrateMaster(input: DatabaseActionPayload = {}) {
@@ -47,7 +52,7 @@ export class DatabaseMaintenanceService {
   }
 
   async requestMasterBackup(input: DatabaseActionPayload = {}) {
-    const run = await this.repository.recordRun({ databaseName: platformDatabaseName(), details: { ...input, policy: "operator-backup-required" }, operation: "backup", scope: "master", status: "requested", targetKey: "master" });
+    const run = await this.repository.recordRun({ databaseName: platformDatabaseName(), details: { ...input, host: env.DB_HOST, policy: "operator-backup-required", port: env.DB_PORT, user: env.DB_USER }, operation: "backup", scope: "master", status: "requested", targetKey: "master" });
     if (run) await this.enqueueMaintenanceRun(run.id, "master", null);
     await this.activity.recordActivity({ action: "database.master.backup-requested", details: input, moduleKey: "platform.database-maintenance", recordLabel: platformDatabaseName() });
     return run;
@@ -56,14 +61,14 @@ export class DatabaseMaintenanceService {
   async requestTenantBackup(tenantId: number, input: DatabaseActionPayload = {}) {
     const tenant = await this.repository.findTenant(tenantId);
     if (!tenant) return null;
-    const run = await this.repository.recordRun({ databaseName: tenant.dbName, details: { ...input, policy: "operator-backup-required" }, operation: "backup", scope: "tenant", status: "requested", targetKey: String(tenant.id) });
+    const run = await this.repository.recordRun({ databaseName: tenant.dbName, details: { ...input, host: tenant.dbHost, policy: "operator-backup-required", port: tenant.dbPort, storageRoot: tenant.storageRoot, tenantCode: tenant.tenantCode, tenantKey: tenant.slug || tenant.tenantCode, user: tenant.dbUser }, operation: "backup", scope: "tenant", status: "requested", targetKey: String(tenant.id) });
     if (run) await this.enqueueMaintenanceRun(run.id, "tenant", tenant.id);
     await this.activity.recordActivity({ action: "database.tenant.backup-requested", details: input, moduleKey: "platform.database-maintenance", recordId: tenant.id, recordLabel: tenant.tenantCode, recordUuid: tenant.uuid });
     return run;
   }
 
   async requestMasterRestore(input: DatabaseActionPayload = {}) {
-    const run = await this.repository.recordRun({ databaseName: platformDatabaseName(), details: { ...input, policy: "sandbox-restore-required" }, operation: "restore", scope: "master", status: "requested", targetKey: "master" });
+    const run = await this.repository.recordRun({ databaseName: platformDatabaseName(), details: { ...input, host: env.DB_HOST, policy: "sandbox-restore-required", port: env.DB_PORT, user: env.DB_USER }, operation: "restore", scope: "master", status: "requested", targetKey: "master" });
     if (run) await this.enqueueMaintenanceRun(run.id, "master", null);
     await this.activity.recordActivity({ action: "database.master.restore-requested", details: input, moduleKey: "platform.database-maintenance", recordLabel: platformDatabaseName() });
     return run;
@@ -72,7 +77,7 @@ export class DatabaseMaintenanceService {
   async requestTenantRestore(tenantId: number, input: DatabaseActionPayload = {}) {
     const tenant = await this.repository.findTenant(tenantId);
     if (!tenant) return null;
-    const run = await this.repository.recordRun({ databaseName: tenant.dbName, details: { ...input, policy: "sandbox-restore-required" }, operation: "restore", scope: "tenant", status: "requested", targetKey: String(tenant.id) });
+    const run = await this.repository.recordRun({ databaseName: tenant.dbName, details: { ...input, host: tenant.dbHost, policy: "sandbox-restore-required", port: tenant.dbPort, storageRoot: tenant.storageRoot, tenantCode: tenant.tenantCode, tenantKey: tenant.slug || tenant.tenantCode, user: tenant.dbUser }, operation: "restore", scope: "tenant", status: "requested", targetKey: String(tenant.id) });
     if (run) await this.enqueueMaintenanceRun(run.id, "tenant", tenant.id);
     await this.activity.recordActivity({ action: "database.tenant.restore-requested", details: input, moduleKey: "platform.database-maintenance", recordId: tenant.id, recordLabel: tenant.tenantCode, recordUuid: tenant.uuid });
     return run;

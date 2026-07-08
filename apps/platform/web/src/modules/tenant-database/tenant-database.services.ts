@@ -1,8 +1,12 @@
 import { apiGet, apiPost } from "../../shared/api/platform-api";
-import type { DatabaseMaintenanceRun, TenantDatabaseActionPayload, TenantDatabaseStatus } from "./tenant-database.types";
+import type { DatabaseMaintenanceRun, TenantDatabaseActionPayload, TenantDatabaseDetails, TenantDatabaseStatus } from "./tenant-database.types";
 
 export function listTenantDatabaseStatus() {
   return apiGet<TenantDatabaseStatus[]>("/admin/database/tenants", "sa");
+}
+
+export function getTenantDatabaseDetails(tenantId: number) {
+  return apiGet<TenantDatabaseDetails>(`/admin/database/tenants/${tenantId}/details`, "sa");
 }
 
 export function migrateTenantDatabase(tenantId: number, payload: TenantDatabaseActionPayload) {

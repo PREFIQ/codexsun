@@ -33,3 +33,15 @@ export type QueueRuntimeSettings = {
   pending: number;
   running: number;
 };
+
+export type QueueJobFilters = {
+  correlationId: string;
+  queueName: string;
+  status: "" | QueueJobStatus;
+  tenantId: string;
+};
+
+export type QueueCleanupResult = {
+  completedDeleted: number;
+  failedDeleted: number;
+};

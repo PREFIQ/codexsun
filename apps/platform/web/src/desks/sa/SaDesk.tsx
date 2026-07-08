@@ -1,5 +1,19 @@
 import { useState } from "react";
-import { AppWindowIcon, Building2Icon, CircleGaugeIcon, DatabaseIcon, KeyRoundIcon, ListChecksIcon, PaletteIcon, ReceiptTextIcon, ShieldCheckIcon, TagsIcon, WorkflowIcon } from "lucide-react";
+import {
+  AppWindowIcon,
+  Building2Icon,
+  CircleGaugeIcon,
+  CreditCardIcon,
+  DatabaseIcon,
+  HardDriveIcon,
+  KeyRoundIcon,
+  ListChecksIcon,
+  PaletteIcon,
+  ReceiptTextIcon,
+  ShieldCheckIcon,
+  TagsIcon,
+  WorkflowIcon
+} from "lucide-react";
 import { StatusBadge } from "@codexsun/ui";
 import { SuperLayout } from "@codexsun/ui/layouts/super-layout";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
@@ -18,6 +32,7 @@ import { PlatformActivityWorkspace } from "../../modules/platform-activity";
 import { MasterDatabaseWorkspace } from "../../modules/master-database";
 import { TenantDatabaseWorkspace } from "../../modules/tenant-database";
 import { QueueManagementWorkspace } from "../../modules/queue-management";
+import { StorageManagerWorkspace } from "../../modules/storage-manager";
 import { useTenantsQuery } from "../../modules/tenant";
 import { usePlansQuery } from "../../modules/plan";
 import { useSubscriptionsQuery } from "../../modules/subscription";
@@ -27,7 +42,7 @@ import { usePlatformActivityQuery } from "../../modules/platform-activity";
 import { useQueueRuntimeQuery } from "../../modules/queue-management";
 import { AuthGate } from "../../shared/auth/AuthGate";
 
-type SaPage = "overview" | "tenants" | "domains" | "plans" | "plan-access" | "subscriptions" | "apps" | "entitlements" | "tenant-access" | "industries" | "master-database" | "tenant-database" | "queue-management" | "access" | "activity" | "design-system";
+type SaPage = "overview" | "tenants" | "domains" | "plans" | "plan-access" | "subscriptions" | "apps" | "entitlements" | "tenant-access" | "industries" | "master-database" | "tenant-database" | "queue-management" | "storage-manager" | "access" | "activity" | "design-system";
 
 export function SaDesk() {
   const [page, setPage] = useState<SaPage>(pageFromUrl());
@@ -38,61 +53,62 @@ export function SaDesk() {
   }
 
   const menuItems: SidemenuItem[] = [
+    { title: "Overview", icon: CircleGaugeIcon, isActive: page === "overview", onSelect: () => selectPage("overview") },
     {
-      title: "Platform",
-      icon: ShieldCheckIcon,
-      isActive: page === "overview",
-      onSelect: () => selectPage("overview"),
+      title: "Tenant Setup",
+      icon: Building2Icon,
+      isActive: page === "tenants" || page === "domains" || page === "tenant-access",
       items: [
-        { title: "Overview", isActive: page === "overview", onSelect: () => selectPage("overview") },
-        {
-          title: "Tenant Setup",
-          items: [
-            { title: "Tenants", isActive: page === "tenants", onSelect: () => selectPage("tenants") },
-            { title: "Domains", isActive: page === "domains", onSelect: () => selectPage("domains") },
-            { title: "Tenant Access", isActive: page === "tenant-access", onSelect: () => selectPage("tenant-access") }
-          ]
-        },
-        {
-          title: "Commercial",
-          items: [
-            { title: "Plans", isActive: page === "plans", onSelect: () => selectPage("plans") },
-            { title: "Plan Access", isActive: page === "plan-access", onSelect: () => selectPage("plan-access") },
-            { title: "Subscriptions", isActive: page === "subscriptions", onSelect: () => selectPage("subscriptions") }
-          ]
-        },
-        {
-          title: "Catalog",
-          items: [
-            { title: "Apps", isActive: page === "apps", onSelect: () => selectPage("apps") },
-            { title: "Industries", isActive: page === "industries", onSelect: () => selectPage("industries") }
-          ]
-        },
-        {
-          title: "Governance",
-          items: [
-            { title: "Entitlements", isActive: page === "entitlements", onSelect: () => selectPage("entitlements") },
-            { title: "Access Control", isActive: page === "access", onSelect: () => selectPage("access") },
-            { title: "Activity", isActive: page === "activity", onSelect: () => selectPage("activity") }
-          ]
-        },
-        {
-          title: "Database",
-          items: [
-            { title: "Master Database", isActive: page === "master-database", onSelect: () => selectPage("master-database") },
-            { title: "Tenant Databases", isActive: page === "tenant-database", onSelect: () => selectPage("tenant-database") },
-            { title: "Queue Management", isActive: page === "queue-management", onSelect: () => selectPage("queue-management") }
-          ]
-        }
+        { title: "Tenants", isActive: page === "tenants", onSelect: () => selectPage("tenants") },
+        { title: "Domains", isActive: page === "domains", onSelect: () => selectPage("domains") },
+        { title: "Tenant Access", isActive: page === "tenant-access", onSelect: () => selectPage("tenant-access") }
+      ]
+    },
+    {
+      title: "Commercial",
+      icon: CreditCardIcon,
+      isActive: page === "plans" || page === "plan-access" || page === "subscriptions",
+      items: [
+        { title: "Plans", isActive: page === "plans", onSelect: () => selectPage("plans") },
+        { title: "Plan Access", isActive: page === "plan-access", onSelect: () => selectPage("plan-access") },
+        { title: "Subscriptions", isActive: page === "subscriptions", onSelect: () => selectPage("subscriptions") }
+      ]
+    },
+    {
+      title: "Catalog",
+      icon: AppWindowIcon,
+      isActive: page === "apps" || page === "industries",
+      items: [
+        { title: "Apps", isActive: page === "apps", onSelect: () => selectPage("apps") },
+        { title: "Industries", isActive: page === "industries", onSelect: () => selectPage("industries") }
+      ]
+    },
+    {
+      title: "Governance",
+      icon: ShieldCheckIcon,
+      isActive: page === "entitlements" || page === "access" || page === "activity",
+      items: [
+        { title: "Entitlements", isActive: page === "entitlements", onSelect: () => selectPage("entitlements") },
+        { title: "Access Control", isActive: page === "access", onSelect: () => selectPage("access") },
+        { title: "Activity", isActive: page === "activity", onSelect: () => selectPage("activity") }
+      ]
+    },
+    {
+      title: "Database",
+      icon: DatabaseIcon,
+      isActive: page === "master-database" || page === "tenant-database" || page === "queue-management" || page === "storage-manager",
+      items: [
+        { title: "Master Database", isActive: page === "master-database", onSelect: () => selectPage("master-database") },
+        { title: "Tenant Databases", isActive: page === "tenant-database", onSelect: () => selectPage("tenant-database") },
+        { title: "Queue Management", isActive: page === "queue-management", onSelect: () => selectPage("queue-management") },
+        { title: "Storage Manager", isActive: page === "storage-manager", onSelect: () => selectPage("storage-manager") }
       ]
     },
     {
       title: "Design System",
       icon: PaletteIcon,
       isActive: page === "design-system",
-      items: [
-        { title: "Component", isActive: page === "design-system", onSelect: () => selectPage("design-system") }
-      ]
+      items: [{ title: "Components", isActive: page === "design-system", onSelect: () => selectPage("design-system") }]
     }
   ];
 
@@ -112,6 +128,7 @@ export function SaDesk() {
         {page === "master-database" ? <MasterDatabaseWorkspace /> : null}
         {page === "tenant-database" ? <TenantDatabaseWorkspace /> : null}
         {page === "queue-management" ? <QueueManagementWorkspace /> : null}
+        {page === "storage-manager" ? <StorageManagerWorkspace /> : null}
         {page === "access" ? <AccessControlWorkspace /> : null}
         {page === "activity" ? <PlatformActivityWorkspace /> : null}
         {page === "design-system" ? <DesignSystemGallery /> : null}
@@ -122,7 +139,7 @@ export function SaDesk() {
 
 function pageFromUrl(): SaPage {
   const page = window.location.pathname.split("/")[2];
-  return page === "tenants" || page === "domains" || page === "plans" || page === "plan-access" || page === "subscriptions" || page === "apps" || page === "entitlements" || page === "tenant-access" || page === "industries" || page === "master-database" || page === "tenant-database" || page === "queue-management" || page === "access" || page === "activity" || page === "design-system" ? page : "overview";
+  return page === "tenants" || page === "domains" || page === "plans" || page === "plan-access" || page === "subscriptions" || page === "apps" || page === "entitlements" || page === "tenant-access" || page === "industries" || page === "master-database" || page === "tenant-database" || page === "queue-management" || page === "storage-manager" || page === "access" || page === "activity" || page === "design-system" ? page : "overview";
 }
 
 function SaOverview({ onNavigate }: { onNavigate: (page: SaPage) => void }) {
@@ -158,6 +175,7 @@ function SaOverview({ onNavigate }: { onNavigate: (page: SaPage) => void }) {
         <DeskCard title="Activity" value={String(activity.data?.length ?? 0)} icon={KeyRoundIcon} onClick={() => onNavigate("activity")} />
         <DeskCard title="Database" value="2" icon={DatabaseIcon} onClick={() => onNavigate("master-database")} />
         <DeskCard title="Queue Jobs" value={String((queue.data?.pending ?? 0) + (queue.data?.running ?? 0))} icon={WorkflowIcon} onClick={() => onNavigate("queue-management")} />
+        <DeskCard title="Storage" value="files" icon={HardDriveIcon} onClick={() => onNavigate("storage-manager")} />
       </div>
       <section className="rounded-md border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">

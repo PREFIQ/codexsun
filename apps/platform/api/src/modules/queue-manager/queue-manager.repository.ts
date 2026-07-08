@@ -1,26 +1,28 @@
 import { randomBytes } from "node:crypto";
 import { sql } from "kysely";
 import { getPlatformDatabase } from "../../database/platform-database.js";
-import type { QueueJobPayload, QueueJobRecord, QueueJobStatus, QueueRuntimeSettings } from "./queue-manager.types.js";
+import { env } from "../../env.js";
+import type { QueueJobFilters, QueueJobPayload, QueueJobRecord, QueueJobStatus, QueueRuntimeSettings } from "./queue-manager.types.js";
 
 export class QueueManagerRepository {
-  async list() {
-    const rows = await getPlatformDatabase()
+  async list(filters: QueueJobFilters = {}) {
+    let query = getPlatformDatabase()
       .selectFrom("queue_jobs")
-      .selectAll()
-      .orderBy("created_at", "desc")
-      .orderBy("id", "desc")
-      .limit(100)
-      .execute();
+      .selectAll();
+    if (filters.status) query = query.where("status", "=", filters.status);
+    if (filters.queueName) query = query.where("queue_name", "=", filters.queueName);
+    if (filters.tenantId) query = query.where("tenant_id", "=", filters.tenantId);
+    if (filters.correlationId) query = query.where("correlation_id", "=", filters.correlationId);
+    const rows = await query.orderBy("created_at", "desc").orderBy("id", "desc").limit(100).execute();
     return rows.map(toQueueJob);
   }
 
   async settings(): Promise<QueueRuntimeSettings> {
     const jobs = await this.list();
     return {
-      backend: "database",
-      backendLabel: "Database queue",
-      canRunInline: true,
+      backend: env.CODEXSUN_QUEUE_BACKEND,
+      backendLabel: env.CODEXSUN_QUEUE_BACKEND === "bullmq-redis" ? "BullMQ + Redis" : "Database queue",
+      canRunInline: env.CODEXSUN_QUEUE_BACKEND !== "bullmq-redis",
       completed: jobs.filter((job) => job.status === "completed").length,
       failed: jobs.filter((job) => job.status === "failed").length,
       pending: jobs.filter((job) => job.status === "pending").length,
@@ -69,6 +71,19 @@ export class QueueManagerRepository {
     return row ? toQueueJob(row) : null;
   }
 
+  async nextRunnable() {
+    const row = await getPlatformDatabase()
+      .selectFrom("queue_jobs")
+      .selectAll()
+      .where("status", "=", "pending")
+      .where("available_at", "<=", new Date())
+      .orderBy("priority", "asc")
+      .orderBy("created_at", "asc")
+      .orderBy("id", "asc")
+      .executeTakeFirst();
+    return row ? toQueueJob(row) : null;
+  }
+
   async markRunning(id: number) {
     await getPlatformDatabase()
       .updateTable("queue_jobs")
@@ -114,6 +129,20 @@ export class QueueManagerRepository {
       .where("status", "in", ["pending", "failed"])
       .execute();
     return this.find(id);
+  }
+
+  async cleanup(input: { completedBefore: Date; failedBefore: Date }) {
+    const completed = await getPlatformDatabase()
+      .deleteFrom("queue_jobs")
+      .where("status", "in", ["completed", "cancelled"])
+      .where("completed_at", "<", input.completedBefore)
+      .executeTakeFirst();
+    const failed = await getPlatformDatabase()
+      .deleteFrom("queue_jobs")
+      .where("status", "=", "failed")
+      .where("completed_at", "<", input.failedBefore)
+      .executeTakeFirst();
+    return { completedDeleted: Number(completed.numDeletedRows ?? 0), failedDeleted: Number(failed.numDeletedRows ?? 0) };
   }
 }
 

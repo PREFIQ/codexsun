@@ -16,13 +16,19 @@ export type Tenant = {
   primaryDomain: string;
   slug: string;
   status: TenantStatus;
+  storagePrivateRoot: string;
+  storagePublicRoot: string;
+  storageRoot: string;
   tenantCode: string;
   tenantName: string;
   uuid: string;
 };
 
-export type TenantSavePayload = Omit<Tenant, "id" | "primaryDomain" | "uuid"> & {
+export type TenantSavePayload = Omit<Tenant, "id" | "primaryDomain" | "storagePrivateRoot" | "storagePublicRoot" | "storageRoot" | "uuid"> & {
   primaryDomain?: string;
+  storagePrivateRoot?: string;
+  storagePublicRoot?: string;
+  storageRoot?: string;
   uuid?: string;
 };
 

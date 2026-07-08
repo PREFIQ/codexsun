@@ -1,15 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { queueJobAction } from "./queue-management.schema";
-import { cancelQueueJob, getQueueRuntimeSettings, listQueueJobs, retryQueueJob, runQueueJob } from "./queue-management.services";
+import { queueFiltersSchema, queueJobAction } from "./queue-management.schema";
+import { cancelQueueJob, cleanupQueueJobs, getQueueRuntimeSettings, listQueueJobs, retryQueueJob, runQueueJob } from "./queue-management.services";
+import type { QueueJobFilters } from "./queue-management.types";
 
 export const queueManagementQueryKey = ["admin", "queue-management"] as const;
 
 export function useQueueRuntimeQuery() {
-  return useQuery({ queryFn: getQueueRuntimeSettings, queryKey: [...queueManagementQueryKey, "settings"], refetchInterval: 10_000 });
+  return useQuery({ queryFn: getQueueRuntimeSettings, queryKey: [...queueManagementQueryKey, "settings"], meta: { suppressGlobalLoader: true }, refetchInterval: 10_000 });
 }
 
-export function useQueueJobsQuery() {
-  return useQuery({ queryFn: listQueueJobs, queryKey: [...queueManagementQueryKey, "jobs"], refetchInterval: 10_000 });
+export function useQueueJobsQuery(filters: QueueJobFilters) {
+  const parsed = queueFiltersSchema.parse(filters);
+  return useQuery({ queryFn: () => listQueueJobs(parsed), queryKey: [...queueManagementQueryKey, "jobs", parsed], meta: { suppressGlobalLoader: true }, refetchInterval: 10_000 });
 }
 
 export function useQueueJobMutations() {
@@ -20,6 +22,7 @@ export function useQueueJobMutations() {
   };
   return {
     cancel: useMutation({ mutationFn: (id: number) => cancelQueueJob(queueJobAction(id).id), onSuccess: done }),
+    cleanup: useMutation({ mutationFn: cleanupQueueJobs, onSuccess: done }),
     retry: useMutation({ mutationFn: (id: number) => retryQueueJob(queueJobAction(id).id), onSuccess: done }),
     run: useMutation({ mutationFn: (id: number) => runQueueJob(queueJobAction(id).id), onSuccess: done })
   };

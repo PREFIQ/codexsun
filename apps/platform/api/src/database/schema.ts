@@ -16,6 +16,7 @@ export type PlatformDatabase = {
   platform_activity: PlatformActivityTable;
   platform_apps: PlatformAppsTable;
   queue_jobs: QueueJobsTable;
+  storage_objects: StorageObjectsTable;
   subscriptions: SubscriptionsTable;
   tenant_domains: TenantDomainsTable;
   tenant_audit_events: TenantAuditEventsTable;
@@ -126,6 +127,22 @@ export type QueueJobsTable = {
   uuid: string;
 };
 
+export type StorageObjectsTable = {
+  checksum: string | null;
+  created_at: TimestampColumn;
+  disk_path: string;
+  id: Generated<number>;
+  mime_type: string | null;
+  object_type: "file" | "folder";
+  relative_path: string;
+  scope: "app" | "tenant";
+  size_bytes: number;
+  tenant_id: number | null;
+  updated_at: TimestampColumn;
+  uuid: string;
+  visibility: "private" | "public";
+};
+
 export type PlansTable = {
   annual_price: number;
   code: string;
@@ -203,6 +220,9 @@ export type TenantsTable = {
   payload_settings: string;
   slug: string;
   status: TenantStatus;
+  storage_private_root: string;
+  storage_public_root: string;
+  storage_root: string;
   tenant_code: string;
   tenant_name: string;
   updated_at: TimestampColumn;

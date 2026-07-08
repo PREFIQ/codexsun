@@ -1,7 +1,9 @@
 import { PlatformActivityService } from "../platform-activity/index.js";
 import { processDatabaseMaintenanceJob } from "../database-maintenance/database-maintenance.worker.js";
 import { QueueManagerRepository } from "./queue-manager.repository.js";
-import type { QueueJobPayload } from "./queue-manager.types.js";
+import { env } from "../../env.js";
+import { publishBullMqJob } from "./queue-manager.bullmq.js";
+import type { QueueJobFilters, QueueJobPayload } from "./queue-manager.types.js";
 
 export class QueueManagerService {
   constructor(
@@ -9,21 +11,31 @@ export class QueueManagerService {
     private readonly activity = new PlatformActivityService()
   ) {}
 
-  listJobs() {
-    return this.repository.list();
+  listJobs(filters: QueueJobFilters = {}) {
+    return this.repository.list(filters);
+  }
+
+  findJob(id: number) {
+    return this.repository.find(id);
   }
 
   runtimeSettings() {
     return this.repository.settings();
   }
 
-  enqueue(input: QueueJobPayload) {
-    return this.repository.enqueue(input);
+  async enqueue(input: QueueJobPayload) {
+    const job = await this.repository.enqueue(input);
+    if (job) await publishBullMqJob(job);
+    return job;
   }
 
-  async runJob(id: number) {
+  async runJob(id: number, options: { fromWorker?: boolean } = {}) {
     const job = await this.repository.find(id);
     if (!job) return null;
+    if (env.CODEXSUN_QUEUE_BACKEND === "bullmq-redis" && job.status === "pending" && !options.fromWorker) {
+      await publishBullMqJob(job);
+      return job;
+    }
     if (job.status !== "pending" && job.status !== "failed") {
       return job;
     }
@@ -56,9 +68,15 @@ export class QueueManagerService {
     }
   }
 
+  async runNextJob() {
+    const job = await this.repository.nextRunnable();
+    return job ? this.runJob(job.id) : null;
+  }
+
   async retryJob(id: number) {
     const job = await this.repository.retry(id);
     if (!job) return null;
+    await publishBullMqJob(job);
     await this.activity.recordActivity({ action: "queue.job.retried", moduleKey: "platform.queue-manager", recordId: job.id, recordLabel: job.jobName, recordUuid: job.uuid });
     return job;
   }
@@ -68,6 +86,12 @@ export class QueueManagerService {
     if (!job) return null;
     await this.activity.recordActivity({ action: "queue.job.cancelled", moduleKey: "platform.queue-manager", recordId: job.id, recordLabel: job.jobName, recordUuid: job.uuid });
     return job;
+  }
+
+  async cleanupRetainedJobs() {
+    const completedBefore = new Date(Date.now() - env.CODEXSUN_QUEUE_COMPLETED_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const failedBefore = new Date(Date.now() - env.CODEXSUN_QUEUE_FAILED_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    return this.repository.cleanup({ completedBefore, failedBefore });
   }
 
   private dispatch(jobName: string, payload: Record<string, unknown>) {

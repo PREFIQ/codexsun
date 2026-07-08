@@ -1,28 +1,26 @@
 import { formatDistanceToNow } from "date-fns";
-import { DownloadIcon, RotateCcwIcon, UploadIcon } from "lucide-react";
+import { Building2Icon, CheckCircle2Icon, Clock3Icon, DatabaseIcon } from "lucide-react";
 import { StatusBadge } from "@codexsun/ui";
-import { Button } from "@codexsun/ui/components/button";
 import type { TenantDatabaseStatus } from "./tenant-database.types";
 
 export function TenantDatabaseList({
-  busy,
+  loading,
   records,
-  onBackup,
-  onMigrate,
-  onRestore
+  onView
 }: {
-  busy: boolean;
+  loading: boolean;
   records: TenantDatabaseStatus[];
-  onBackup: (tenantId: number) => void;
-  onMigrate: (tenantId: number) => void;
-  onRestore: (tenantId: number) => void;
+  onView: (record: TenantDatabaseStatus) => void;
 }) {
+  const online = records.filter((record) => record.status === "online").length;
+  const pending = records.flatMap((record) => record.runs).filter((run) => run.status === "requested" || run.status === "running").length;
+
   return (
     <section className="space-y-4">
       <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard label="Tenant databases" value={String(records.length)} />
-        <MetricCard label="Online" value={String(records.filter((record) => record.status === "online").length)} />
-        <MetricCard label="Pending runs" value={String(records.flatMap((record) => record.runs).filter((run) => run.status === "requested" || run.status === "running").length)} />
+        <MetricCard icon={Building2Icon} label="Tenant databases" value={String(records.length)} />
+        <MetricCard icon={CheckCircle2Icon} label="Online" value={String(online)} {...(online === records.length ? { tone: "green" as const } : {})} />
+        <MetricCard icon={Clock3Icon} label="Pending runs" value={String(pending)} {...(pending > 0 ? { tone: "blue" as const } : {})} />
       </div>
       <div className="overflow-x-auto rounded-md border bg-card shadow-sm">
         <table className="w-full min-w-[1080px] border-collapse text-sm">
@@ -33,9 +31,8 @@ export function TenantDatabaseList({
               <th className="px-4 py-3 text-left font-semibold">Live</th>
               <th className="px-4 py-3 text-left font-semibold">Version</th>
               <th className="px-4 py-3 text-left font-semibold">Tables</th>
-              <th className="px-4 py-3 text-left font-semibold">Migrations</th>
               <th className="px-4 py-3 text-left font-semibold">Last run</th>
-              <th className="px-4 py-3 text-right font-semibold">Tools</th>
+              <th className="px-4 py-3 text-right font-semibold">Details</th>
             </tr>
           </thead>
           <tbody>
@@ -44,7 +41,9 @@ export function TenantDatabaseList({
               return (
                 <tr className="border-t align-top" key={record.tenantId}>
                   <td className="px-4 py-3">
-                    <div className="font-medium">{record.tenantName}</div>
+                    <button className="max-w-72 truncate font-medium hover:underline" type="button" onClick={() => onView(record)}>
+                      {record.tenantName}
+                    </button>
                     <div className="text-muted-foreground">{record.tenantCode}</div>
                   </td>
                   <td className="px-4 py-3">
@@ -55,47 +54,40 @@ export function TenantDatabaseList({
                   <td className="px-4 py-3 text-muted-foreground">{record.version}</td>
                   <td className="px-4 py-3">{record.tableCount}</td>
                   <td className="px-4 py-3">
-                    <div className="font-medium">{record.migrations.length}</div>
-                    <div className="text-muted-foreground">{record.migrations[0]?.name ?? "No migration row"}</div>
-                  </td>
-                  <td className="px-4 py-3">
                     {lastRun ? (
                       <>
-                        <div className="font-medium">{lastRun.operation}</div>
+                        <div className="flex items-center gap-2 font-medium">
+                          <span>{lastRun.operation}</span>
+                          <StatusBadge tone={lastRun.status === "completed" ? "green" : lastRun.status === "failed" ? "red" : "blue"}>{lastRun.status}</StatusBadge>
+                        </div>
                         <div className="text-muted-foreground">{formatDistanceToNow(new Date(lastRun.createdAt), { addSuffix: true })}</div>
                       </>
                     ) : (
                       <span className="text-muted-foreground">No runs</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <Button disabled={busy} size="sm" variant="outline" onClick={() => onBackup(record.tenantId)}>
-                        <DownloadIcon className="size-4" />Backup
-                      </Button>
-                      <Button disabled={busy} size="sm" variant="outline" onClick={() => onRestore(record.tenantId)}>
-                        <UploadIcon className="size-4" />Restore
-                      </Button>
-                      <Button disabled={busy} size="sm" onClick={() => onMigrate(record.tenantId)}>
-                        <RotateCcwIcon className="size-4" />Migrate
-                      </Button>
-                    </div>
+                  <td className="px-4 py-3 text-right">
+                    <button className="text-sm font-medium text-primary hover:underline" type="button" onClick={() => onView(record)}>
+                      Open
+                    </button>
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
-        {records.length === 0 ? <div className="px-4 py-8 text-center text-sm text-muted-foreground">No tenant databases found.</div> : null}
+        {records.length === 0 && loading ? <div className="px-4 py-8 text-center text-sm text-muted-foreground">Loading tenant databases...</div> : null}
+        {records.length === 0 && !loading ? <div className="px-4 py-8 text-center text-sm text-muted-foreground">No tenant databases found.</div> : null}
       </div>
     </section>
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function MetricCard({ icon: Icon, label, tone, value }: { icon: typeof DatabaseIcon; label: string; tone?: "blue" | "green" | undefined; value: string }) {
   return (
     <div className="rounded-md border bg-card p-5 shadow-sm">
-      <div className="text-2xl font-semibold">{value}</div>
+      <Icon className="size-5 text-muted-foreground" />
+      <div className="mt-5 text-2xl font-semibold">{tone ? <StatusBadge tone={tone}>{value}</StatusBadge> : value}</div>
       <div className="mt-1 text-sm text-muted-foreground">{label}</div>
     </div>
   );

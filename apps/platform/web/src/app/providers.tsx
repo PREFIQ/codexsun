@@ -9,6 +9,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
 }
 
 export function GlobalQueryLoader() {
-  const fetchingCount = useIsFetching();
+  const fetchingCount = useIsFetching({
+    predicate: (query) => query.state.data === undefined && query.meta?.suppressGlobalLoader !== true
+  });
   return fetchingCount > 0 ? <GlobalLoader /> : null;
 }

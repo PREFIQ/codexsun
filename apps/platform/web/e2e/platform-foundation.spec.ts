@@ -3,6 +3,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 const apiBaseUrl = process.env.VITE_PLATFORM_API_URL ?? "http://127.0.0.1:5510";
 const superAdminEmail = process.env.SUPER_ADMIN_EMAIL ?? "sundar@sundar.com";
 const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD ?? "Kalarani1";
+let superAdminToken = "";
 
 type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 type PlanAccess = {
@@ -78,7 +79,7 @@ test("Super Admin pages render platform-only access areas", async ({ page }) => 
   await expect(page.getByText("Watch tenant database live status, migration sync, backup requests, and restore readiness.")).toBeVisible();
 
   await page.goto("/sa/queue-management");
-  await expect(page.getByRole("heading", { name: "Queue Management" })).toBeVisible();
+  await expect(page.locator("main h1").filter({ hasText: "Queue Management" })).toBeVisible();
   await expect(page.getByText("Manage database-backed platform jobs now, with the same surface ready for BullMQ and Redis later.")).toBeVisible();
 });
 
@@ -131,7 +132,8 @@ test("Database maintenance queues and executes backup jobs", async ({ request })
   expect(master.migrations.length).toBeGreaterThanOrEqual(1);
 
   const masterBackup = await request.post(`${apiBaseUrl}/admin/database/master/backup`, {
-    data: { note: "e2e master backup request" }
+    data: { note: "e2e master backup request" },
+    headers: authHeaders()
   });
   expect(masterBackup.ok()).toBe(true);
   const masterEnvelope = (await masterBackup.json()) as ApiEnvelope<{ id: number }>;
@@ -145,21 +147,46 @@ test("Database maintenance queues and executes backup jobs", async ({ request })
   expect(defaultTenant.migrations.length).toBeGreaterThanOrEqual(1);
 
   const tenantBackup = await request.post(`${apiBaseUrl}/admin/database/tenants/${defaultTenant.tenantId}/backup`, {
-    data: { note: "e2e tenant backup request", tenantId: defaultTenant.tenantId }
+    data: { note: "e2e tenant backup request", tenantId: defaultTenant.tenantId },
+    headers: authHeaders()
   });
   expect(tenantBackup.ok()).toBe(true);
 
   let jobs = await apiData<QueueJob[]>(request, "/admin/queue/jobs");
   const pendingMasterJob = jobs.find((job) => job.correlationId === `database-maintenance:${masterRun?.id}`);
-  expect(pendingMasterJob?.status).toBe("pending");
+  expect(["pending", "completed"]).toContain(pendingMasterJob?.status);
 
-  const runJob = await request.post(`${apiBaseUrl}/admin/queue/jobs/${pendingMasterJob?.id}/run`, { data: {} });
-  expect(runJob.ok()).toBe(true);
+  if (pendingMasterJob?.status === "pending") {
+    const runJob = await request.post(`${apiBaseUrl}/admin/queue/jobs/${pendingMasterJob.id}/run`, { data: {}, headers: authHeaders() });
+    expect(runJob.ok()).toBe(true);
+  }
 
   jobs = await apiData<QueueJob[]>(request, "/admin/queue/jobs");
   expect(jobs.find((job) => job.id === pendingMasterJob?.id)?.status).toBe("completed");
   const nextMaster = await apiData<MasterDatabaseStatus>(request, "/admin/database/master");
   expect(nextMaster.runs.some((run) => run.operation === "backup" && run.status === "completed")).toBe(true);
+
+  const masterRestore = await request.post(`${apiBaseUrl}/admin/database/master/restore`, {
+    data: { note: "e2e master sandbox restore request" },
+    headers: authHeaders()
+  });
+  expect(masterRestore.ok()).toBe(true);
+  const restoreEnvelope = (await masterRestore.json()) as ApiEnvelope<{ id: number }>;
+  const restoreRun = restoreEnvelope.success ? restoreEnvelope.data : null;
+  expect(restoreRun?.id).toBeGreaterThan(0);
+
+  jobs = await apiData<QueueJob[]>(request, "/admin/queue/jobs");
+  const pendingRestoreJob = jobs.find((job) => job.correlationId === `database-maintenance:${restoreRun?.id}`);
+  expect(["pending", "completed"]).toContain(pendingRestoreJob?.status);
+  if (pendingRestoreJob?.status === "pending") {
+    const runRestoreJob = await request.post(`${apiBaseUrl}/admin/queue/jobs/${pendingRestoreJob.id}/run`, { data: {}, headers: authHeaders() });
+    expect(runRestoreJob.ok()).toBe(true);
+  }
+
+  jobs = await apiData<QueueJob[]>(request, "/admin/queue/jobs");
+  expect(jobs.find((job) => job.id === pendingRestoreJob?.id)?.status).toBe("completed");
+  const restoredMaster = await apiData<MasterDatabaseStatus>(request, "/admin/database/master");
+  expect(restoredMaster.runs.some((run) => run.operation === "restore" && run.status === "completed")).toBe(true);
 });
 
 async function signInSuperAdmin(page: Page, request: APIRequestContext) {
@@ -173,6 +200,7 @@ async function signInSuperAdmin(page: Page, request: APIRequestContext) {
   expect(response.ok()).toBe(true);
   const envelope = (await response.json()) as ApiEnvelope<{ accessToken: string }>;
   if (!envelope.success) throw new Error(envelope.error.message);
+  superAdminToken = envelope.data.accessToken;
   await page.addInitScript((token) => {
     window.localStorage.setItem("codexsun_session_sa", token);
   }, envelope.data.accessToken);
@@ -205,11 +233,15 @@ async function getTenantAccess(request: APIRequestContext) {
 }
 
 async function apiData<T>(request: APIRequestContext, path: string) {
-  const response = await request.get(`${apiBaseUrl}${path}`);
+  const response = await request.get(`${apiBaseUrl}${path}`, { headers: authHeaders() });
   expect(response.ok()).toBe(true);
   const envelope = (await response.json()) as ApiEnvelope<T>;
   if (!envelope.success) throw new Error(envelope.error.message);
   return envelope.data;
+}
+
+function authHeaders() {
+  return superAdminToken ? { Authorization: `Bearer ${superAdminToken}` } : {};
 }
 
 function appEnabled(access: PlanAccess, moduleKey: string) {

@@ -22,6 +22,8 @@ import { migrateDatabaseMaintenanceModule } from "../modules/database-maintenanc
 import { seedDatabaseMaintenanceModule } from "../modules/database-maintenance/database-maintenance.seed.js";
 import { migrateQueueManagerModule } from "../modules/queue-manager/queue-manager.migration.js";
 import { seedQueueManagerModule } from "../modules/queue-manager/queue-manager.seed.js";
+import { migrateStorageManagerModule } from "../modules/storage-manager/storage-manager.migration.js";
+import { seedStorageManagerModule } from "../modules/storage-manager/storage-manager.seed.js";
 import { assertDatabaseName, quoteIdentifier } from "./database-utils.js";
 import type { PlatformDatabase } from "./schema.js";
 
@@ -130,6 +132,7 @@ export async function migratePlatformDatabase() {
   await migratePlatformActivityModule(database);
   await migrateDatabaseMaintenanceModule(database);
   await migrateQueueManagerModule(database);
+  await migrateStorageManagerModule(database);
 
   await database.insertInto("codexsun_migrations").ignore().values({ name: "001_platform_foundation" }).execute();
   console.info("[database] platform migration applied: 001_platform_foundation");
@@ -146,6 +149,7 @@ export async function seedPlatformDatabase() {
   await seedPlatformActivityModule(database);
   await seedDatabaseMaintenanceModule(database);
   await seedQueueManagerModule(database);
+  await seedStorageManagerModule(database);
 }
 
 export async function resetPlatformDatabases() {

@@ -15,6 +15,13 @@ export type QueueJobPayload = {
   tenantId?: string | null;
 };
 
+export type QueueJobFilters = {
+  correlationId?: string;
+  queueName?: string;
+  status?: QueueJobStatus;
+  tenantId?: string;
+};
+
 export type QueueJobRecord = {
   actorEmail: string | null;
   attempts: number;

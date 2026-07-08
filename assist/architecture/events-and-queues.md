@@ -57,6 +57,13 @@ Initial backends:
 
 Queue backend selection should be visible in Super Admin or system settings. Production backend changes are high-risk and require Super Admin approval.
 
+Current platform implementation:
+
+- `platform.queue-manager` owns `queue_jobs`, Queue Management UI, retry/cancel/run controls, retention cleanup, and the database-backed worker loop.
+- Local/development backend is `database`, controlled by `CODEXSUN_QUEUE_BACKEND=database`.
+- `bullmq-redis` is connected through BullMQ and Redis using `CODEXSUN_REDIS_URL`; database metadata is still retained so Queue Management can show status, filters, retries, and audit context.
+- Database maintenance backup/restore requests enqueue `database-maintenance.run` jobs on the `maintenance` queue.
+
 ## Outbox Strategy
 
 Use database outbox for important business events.
@@ -80,6 +87,7 @@ This protects business events from being lost between database write and backgro
 - Jobs should log start, finish, failure, and retry.
 - Jobs that call external services should store provider response metadata.
 - Failed jobs should be visible to support users.
+- Completed and failed jobs should follow retention policy and be cleaned by the queue manager.
 
 ## Event And Queue Naming
 

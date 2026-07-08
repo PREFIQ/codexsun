@@ -12,6 +12,8 @@ import { accessControlModule } from "./modules/access-control/index.js";
 import { platformActivityModule } from "./modules/platform-activity/index.js";
 import { databaseMaintenanceModule } from "./modules/database-maintenance/index.js";
 import { queueManagerModule } from "./modules/queue-manager/index.js";
+import { storageManagerModule } from "./modules/storage-manager/index.js";
+import { startQueueManagerWorker } from "./modules/queue-manager/queue-manager.runtime.js";
 import { seedDefaultTenant } from "./modules/tenant/tenant.seed.js";
 import { env } from "./env.js";
 import { bootstrapPlatformDatabase } from "./database/platform-database.js";
@@ -43,7 +45,8 @@ export async function createApp() {
             accessControlModule.key,
             platformActivityModule.key,
             databaseMaintenanceModule.key,
-            queueManagerModule.key
+            queueManagerModule.key,
+            storageManagerModule.key
           ],
           runtime: "platform-foundation"
         },
@@ -66,6 +69,8 @@ export async function createApp() {
   await platformActivityModule.register(app);
   await databaseMaintenanceModule.register(app);
   await queueManagerModule.register(app);
+  await storageManagerModule.register(app);
+  startQueueManagerWorker(app);
 
   return app;
 }

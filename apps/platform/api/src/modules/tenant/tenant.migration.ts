@@ -6,6 +6,19 @@ export const tenantMigration = {
   status: "active"
 } as const;
 
+export const tenantRuntimeMigrations = [
+  {
+    description: "Tenant runtime foundation tables, module settings, users, and tenant migration ledger.",
+    name: "001_tenant_foundation",
+    statements: [
+      "CREATE TABLE IF NOT EXISTS tenant_migrations (...)",
+      "CREATE TABLE IF NOT EXISTS tenant_module_settings (...)",
+      "CREATE TABLE IF NOT EXISTS tenant_users (...)",
+      "INSERT IGNORE INTO tenant_migrations (name) VALUES ('001_tenant_foundation')"
+    ]
+  }
+] as const;
+
 export async function migrateTenantRegistryModule(database: Kysely<PlatformDatabase>) {
   await database.schema
     .createTable("tenants")
@@ -106,6 +119,9 @@ async function ensureTenantColumns(database: Kysely<PlatformDatabase>) {
   await addColumnIfMissing(database, "tenants", "enabled_module_keys", "LONGTEXT NULL");
   await addColumnIfMissing(database, "tenants", "default_landing_app", "VARCHAR(64) NOT NULL DEFAULT 'application'");
   await addColumnIfMissing(database, "tenants", "payload_settings", "LONGTEXT NULL");
+  await addColumnIfMissing(database, "tenants", "storage_root", "VARCHAR(255) NOT NULL DEFAULT ''");
+  await addColumnIfMissing(database, "tenants", "storage_public_root", "VARCHAR(255) NOT NULL DEFAULT ''");
+  await addColumnIfMissing(database, "tenants", "storage_private_root", "VARCHAR(255) NOT NULL DEFAULT ''");
   await addColumnIfMissing(database, "tenants", "created_at", "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
   await addColumnIfMissing(database, "tenants", "updated_at", "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
 }

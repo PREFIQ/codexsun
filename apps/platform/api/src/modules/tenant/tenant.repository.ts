@@ -8,6 +8,7 @@ import {
   normalizeTenantDomain,
   TenantDomainRepository
 } from "../tenant-domain/tenant-domain.repository.js";
+import { tenantPrivateStorageRoot, tenantPublicStorageRoot, tenantStorageRoot } from "../storage-manager/storage-manager.paths.js";
 
 export class TenantRepository {
   constructor(private readonly domains = new TenantDomainRepository()) {}
@@ -40,9 +41,13 @@ export class TenantRepository {
   }
 
   async create(input: TenantSavePayload) {
+    const resolvedTenantKey = input.slug || input.tenantCode;
     const tenantInput = {
       ...input,
       primaryDomain: normalizeTenantDomain(input.primaryDomain || defaultTenantDomainForSlug(input.slug || input.tenantCode)),
+      storagePrivateRoot: input.storagePrivateRoot || tenantPrivateStorageRoot(resolvedTenantKey),
+      storagePublicRoot: input.storagePublicRoot || tenantPublicStorageRoot(resolvedTenantKey),
+      storageRoot: input.storageRoot || tenantStorageRoot(resolvedTenantKey),
       uuid: normalizeUuid(input.uuid) || createPublicUuid()
     };
     const result = await getPlatformDatabase().insertInto("tenants").values(toTenantRow(tenantInput)).executeTakeFirst();
@@ -216,6 +221,9 @@ type TenantRow = {
   primary_domain?: string;
   slug: string;
   status: Tenant["status"];
+  storage_private_root: string;
+  storage_public_root: string;
+  storage_root: string;
   tenant_code: string;
   tenant_name: string;
   uuid: string;
@@ -234,6 +242,7 @@ type TenantUserRow = {
 };
 
 function toTenantRow(tenant: TenantSavePayload | Tenant): TenantWriteRow {
+  const tenantKey = tenant.slug || tenant.tenantCode;
   return {
     corporate_id: tenant.corporateId,
     db_host: tenant.dbHost,
@@ -248,6 +257,9 @@ function toTenantRow(tenant: TenantSavePayload | Tenant): TenantWriteRow {
     payload_settings: JSON.stringify(tenant.payloadSettings),
     slug: tenant.slug,
     status: tenant.status,
+    storage_private_root: tenant.storagePrivateRoot || tenantPrivateStorageRoot(tenantKey),
+    storage_public_root: tenant.storagePublicRoot || tenantPublicStorageRoot(tenantKey),
+    storage_root: tenant.storageRoot || tenantStorageRoot(tenantKey),
     tenant_code: tenant.tenantCode,
     tenant_name: tenant.tenantName,
     uuid: normalizeUuid(tenant.uuid) || createPublicUuid()
@@ -255,6 +267,7 @@ function toTenantRow(tenant: TenantSavePayload | Tenant): TenantWriteRow {
 }
 
 function toTenant(row: TenantRow): Tenant {
+  const tenantKey = row.slug || row.tenant_code;
   return {
     corporateId: row.corporate_id,
     dbHost: row.db_host,
@@ -271,6 +284,9 @@ function toTenant(row: TenantRow): Tenant {
     primaryDomain: normalizeTenantDomain(row.primary_domain ?? defaultTenantDomainForSlug(row.slug)),
     slug: row.slug,
     status: row.status,
+    storagePrivateRoot: row.storage_private_root || tenantPrivateStorageRoot(tenantKey),
+    storagePublicRoot: row.storage_public_root || tenantPublicStorageRoot(tenantKey),
+    storageRoot: row.storage_root || tenantStorageRoot(tenantKey),
     tenantCode: row.tenant_code,
     tenantName: row.tenant_name,
     uuid: row.uuid

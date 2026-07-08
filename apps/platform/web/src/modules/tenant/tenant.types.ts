@@ -13,6 +13,9 @@ export type Tenant = {
   payloadSettings: Record<string, unknown>;
   primaryDomain: string;
   slug: string;
+  storagePrivateRoot: string;
+  storagePublicRoot: string;
+  storageRoot: string;
   tenantCode: string;
   tenantName: string;
   uuid: string;

@@ -7,6 +7,28 @@ export type DatabaseMigrationRow = {
   name: string;
 };
 
+export type DatabaseTableInfo = {
+  autoIncrement: number | null;
+  collation: string | null;
+  comment: string;
+  createdAt: string | null;
+  dataBytes: number;
+  engine: string | null;
+  indexBytes: number;
+  name: string;
+  recordCount: number;
+  updatedAt: string | null;
+};
+
+export type DatabaseMigrationPlan = {
+  applied: DatabaseMigrationRow[];
+  available: Array<{ description: string; name: string }>;
+  dryRunScript: string[];
+  latestApplied: DatabaseMigrationRow | null;
+  latestPending: { description: string; name: string } | null;
+  pending: Array<{ description: string; name: string }>;
+};
+
 export type DatabaseMaintenanceRun = {
   completedAt: string | null;
   createdAt: string;
@@ -47,8 +69,16 @@ export type TenantDatabaseStatus = {
   version: string;
 };
 
+export type TenantDatabaseDetails = TenantDatabaseStatus & {
+  migrationPlan: DatabaseMigrationPlan;
+  tables: DatabaseTableInfo[];
+};
+
 export type DatabaseActionPayload = {
   backupId?: string;
+  backupPath?: string;
+  liveRestoreConfirm?: string;
   note?: string;
+  restoreMode?: "live" | "sandbox";
   tenantId?: number;
 };

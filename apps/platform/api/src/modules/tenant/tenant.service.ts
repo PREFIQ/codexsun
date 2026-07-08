@@ -2,7 +2,7 @@ import { TenantRepository } from "./tenant.repository.js";
 import type { TenantSavePayload } from "./tenant.types.js";
 import { resolveEnabledApps, resolveLandingApp } from "../app-registry/index.js";
 import { EntitlementAccessService } from "../entitlement/entitlement.access.js";
-import { provisionTenantDatabase } from "./tenant.seed.js";
+import { provisionTenantDatabase, provisionTenantStorage } from "./tenant.seed.js";
 import { env } from "../../env.js";
 import { defaultTenantDomainForSlug, normalizeTenantDomain } from "../tenant-domain/tenant-domain.repository.js";
 
@@ -36,6 +36,7 @@ export class TenantService {
 
   async createTenant(input: TenantSavePayload) {
     const tenant = await this.repository.create(this.normalize(input));
+    await provisionTenantStorage(tenant);
     await provisionTenantDatabase(tenant);
     return tenant;
   }
@@ -43,6 +44,7 @@ export class TenantService {
   async updateTenant(id: string, input: TenantSavePayload) {
     const tenant = await this.repository.update(id, this.normalize(input));
     if (tenant) {
+      await provisionTenantStorage(tenant);
       await provisionTenantDatabase(tenant);
     }
     return tenant;

@@ -14,6 +14,8 @@
 - Cross-module writes are not allowed without an approved application service or event.
 - Tenant context is mandatory for business data.
 - Events and jobs must include tenant context.
+- Slow, retryable, external, export/import, backup, restore, sync, and maintenance work must be queued through the platform Queue Manager or a module-owned worker registered with it. Do not leave pending request rows without executable queue jobs.
+- Queue-backed work starts on the database queue backend for local/dev and must keep the same job contract when BullMQ + Redis is enabled. Job payloads must include correlation ID, source module, retry policy, tenant context where relevant, and masked operator-visible payload/result details.
 - Offline sync must be designed, not improvised.
 - AI assistants must use permission-aware tools.
 - Enterprise split into services should happen only after module boundaries and operational pressure are proven.
@@ -57,6 +59,7 @@
 - Backend validation is required for required fields, duplicate records, status values, relationship references, safe delete blockers, and tenant/platform boundaries.
 - Frontend validation must mirror required backend checks enough to show clear missing-field banners before submit.
 - Every create, update, delete, force delete, suspend, restore, enable, disable, and high-risk lifecycle action must be audited.
+- Database backup and restore actions must be Super Admin only, auditable, and queue-backed. Restore must default to a sandbox database and must never restore over a live master or tenant database from the UI.
 - Show pages should expose activity/history for the selected record.
 - Financial records must be auditable.
 - Compliance records must be traceable.

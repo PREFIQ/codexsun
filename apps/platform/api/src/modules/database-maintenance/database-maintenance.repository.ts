@@ -2,9 +2,11 @@ import { randomBytes } from "node:crypto";
 import { createConnection } from "mysql2/promise";
 import { env } from "../../env.js";
 import { platformDatabaseName } from "../../database/platform-database.js";
+import { quoteIdentifier } from "../../database/database-utils.js";
 import type { Tenant } from "../tenant/index.js";
 import { TenantRepository } from "../tenant/index.js";
-import type { DatabaseMaintenanceRun, DatabaseOperation, DatabaseRunStatus, DatabaseScope } from "./database-maintenance.types.js";
+import { tenantRuntimeMigrations } from "../tenant/tenant.migration.js";
+import type { DatabaseMaintenanceRun, DatabaseMigrationRow, DatabaseOperation, DatabaseRunStatus, DatabaseScope, DatabaseTableInfo } from "./database-maintenance.types.js";
 import { getPlatformDatabase } from "../../database/platform-database.js";
 
 export class DatabaseMaintenanceRepository {
@@ -42,6 +44,18 @@ export class DatabaseMaintenanceRepository {
       tenantId: tenant.id,
       tenantName: tenant.tenantName,
       ...probe
+    };
+  }
+
+  async tenantDetails(id: number) {
+    const tenant = await this.findTenant(id);
+    if (!tenant) return null;
+    const status = await this.tenantStatus(tenant);
+    const tables = await this.tenantTables(tenant);
+    return {
+      ...status,
+      migrationPlan: this.tenantMigrationPlan(status.migrations),
+      tables
     };
   }
 
@@ -86,6 +100,21 @@ export class DatabaseMaintenanceRepository {
       .where("id", "=", id)
       .execute();
     return this.findRun(id);
+  }
+
+  async latestCompletedBackup(scope: DatabaseScope, targetKey: string) {
+    const rows = await getPlatformDatabase()
+      .selectFrom("database_maintenance_runs")
+      .selectAll()
+      .where("database_scope", "=", scope)
+      .where("target_key", "=", targetKey)
+      .where("operation", "=", "backup")
+      .where("status", "=", "completed")
+      .orderBy("completed_at", "desc")
+      .orderBy("id", "desc")
+      .limit(1)
+      .execute();
+    return rows[0] ? toRun(rows[0]) : null;
   }
 
   private async runs(scope: DatabaseScope, targetKey: string) {
@@ -144,6 +173,61 @@ export class DatabaseMaintenanceRepository {
       return [];
     }
   }
+
+  private async tenantTables(tenant: Tenant): Promise<DatabaseTableInfo[]> {
+    try {
+      const connection = await createConnection({ database: tenant.dbName, host: tenant.dbHost || env.DB_HOST, password: env.DB_PASSWORD, port: tenant.dbPort || env.DB_PORT, timezone: "Z", user: tenant.dbUser || env.DB_USER });
+      try {
+        const [rows] = await connection.query("SHOW TABLE STATUS");
+        if (!Array.isArray(rows)) return [];
+        return Promise.all(rows.map(async (row) => {
+          const table = row as Record<string, unknown>;
+          const name = String(table.Name ?? "");
+          const [countRows] = await connection.query(`SELECT COUNT(*) as recordCount FROM ${quoteIdentifier(name)}`);
+          const count = Array.isArray(countRows) && countRows[0] ? Number((countRows[0] as { recordCount?: unknown }).recordCount ?? 0) : 0;
+          return {
+            autoIncrement: table.Auto_increment == null ? null : Number(table.Auto_increment),
+            collation: table.Collation == null ? null : String(table.Collation),
+            comment: String(table.Comment ?? ""),
+            createdAt: toIsoDate(table.Create_time),
+            dataBytes: Number(table.Data_length ?? 0),
+            engine: table.Engine == null ? null : String(table.Engine),
+            indexBytes: Number(table.Index_length ?? 0),
+            name,
+            recordCount: count,
+            updatedAt: toIsoDate(table.Update_time)
+          };
+        }));
+      } finally {
+        await connection.end();
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  private tenantMigrationPlan(applied: DatabaseMigrationRow[]) {
+    const appliedNames = new Set(applied.map((migration) => migration.name));
+    const available = tenantRuntimeMigrations.map((migration) => ({ description: migration.description, name: migration.name }));
+    const pending = available.filter((migration) => !appliedNames.has(migration.name));
+    return {
+      applied,
+      available,
+      dryRunScript: pending.flatMap((migration) => {
+        const definition = tenantRuntimeMigrations.find((item) => item.name === migration.name);
+        return definition ? [`-- ${definition.name}: ${definition.description}`, ...definition.statements] : [`-- ${migration.name}`];
+      }),
+      latestApplied: applied.at(-1) ?? null,
+      latestPending: pending[0] ?? null,
+      pending
+    };
+  }
+}
+
+function toIsoDate(value: unknown) {
+  if (!value) return null;
+  const date = new Date(value as string | Date);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 function toRun(row: {

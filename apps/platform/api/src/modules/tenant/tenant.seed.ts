@@ -9,6 +9,7 @@ import { migrateTenantRuntimeModule } from "./tenant.migration.js";
 import { TenantRepository } from "./tenant.repository.js";
 import { normalizeTenantDomain } from "../tenant-domain/tenant-domain.repository.js";
 import { EntitlementAccessService } from "../entitlement/entitlement.access.js";
+import { ensureTenantStorage, tenantPrivateStorageRoot, tenantPublicStorageRoot, tenantStorageRoot } from "../storage-manager/storage-manager.paths.js";
 import type { Tenant, TenantSavePayload } from "./tenant.types.js";
 
 export const tenantSeed = {
@@ -26,6 +27,20 @@ export async function provisionTenantDatabase(tenant: Tenant) {
   } finally {
     await closeTenantDatabase(tenant);
   }
+}
+
+export async function provisionTenantStorage(tenant: Tenant) {
+  const roots = await ensureTenantStorage(tenant.slug || tenant.tenantCode);
+  await getPlatformDatabase()
+    .updateTable("tenants")
+    .set({
+      storage_private_root: roots.privateRoot,
+      storage_public_root: roots.publicRoot,
+      storage_root: roots.root
+    })
+    .where("id", "=", tenant.id)
+    .execute();
+  return roots;
 }
 
 export async function seedDefaultTenant() {
@@ -47,6 +62,7 @@ export async function seedDefaultTenant() {
 
   await seedDefaultTenantSubscription(tenant);
   const accessTenant = await new EntitlementAccessService().refreshTenantAccess(tenant.id);
+  await provisionTenantStorage(accessTenant ?? tenant);
   await provisionTenantDatabase(accessTenant ?? tenant);
   console.info(`[seeder] default tenant seed completed for "${tenant.tenantCode}"`);
   return accessTenant ?? tenant;
@@ -113,6 +129,9 @@ function defaultTenant(): TenantSavePayload {
     primaryDomain: defaultTenantDomain(),
     slug,
     status: "active",
+    storagePrivateRoot: tenantPrivateStorageRoot(slug),
+    storagePublicRoot: tenantPublicStorageRoot(slug),
+    storageRoot: tenantStorageRoot(slug),
     tenantCode,
     tenantName: requiredSeedValue("DEFAULT_TENANT_NAME"),
     uuid: stableUuid(tenantCode)
