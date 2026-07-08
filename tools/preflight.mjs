@@ -102,7 +102,7 @@ function ensurePlatformApiDependencies() {
 function ensureWorkspacePackageBuild(workspaceName, packagePath) {
   const absolutePackagePath = resolve(root, packagePath);
   const srcPath = join(absolutePackagePath, "src");
-  const distPath = join(absolutePackagePath, "dist");
+  const distPath = resolve(root, "dist", packagePath);
   const packageJsonPath = join(absolutePackagePath, "package.json");
   const tsconfigPath = join(absolutePackagePath, "tsconfig.json");
 

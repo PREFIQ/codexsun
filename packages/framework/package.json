@@ -5,60 +5,60 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./api": {
-      "types": "./dist/api/index.d.ts",
-      "default": "./dist/api/index.js"
+      "types": "./src/api/index.ts",
+      "default": "./src/api/index.ts"
     },
     "./config": {
-      "types": "./dist/config/index.d.ts",
-      "default": "./dist/config/index.js"
+      "types": "./src/config/index.ts",
+      "default": "./src/config/index.ts"
     },
     "./db": {
-      "types": "./dist/db/index.d.ts",
-      "default": "./dist/db/index.js"
+      "types": "./src/db/index.ts",
+      "default": "./src/db/index.ts"
     },
     "./env": {
-      "types": "./dist/env/index.d.ts",
-      "default": "./dist/env/index.js"
+      "types": "./src/env/index.ts",
+      "default": "./src/env/index.ts"
     },
     "./errors": {
-      "types": "./dist/errors/index.d.ts",
-      "default": "./dist/errors/index.js"
+      "types": "./src/errors/index.ts",
+      "default": "./src/errors/index.ts"
     },
     "./events": {
-      "types": "./dist/events/index.d.ts",
-      "default": "./dist/events/index.js"
+      "types": "./src/events/index.ts",
+      "default": "./src/events/index.ts"
     },
     "./health": {
-      "types": "./dist/health/index.d.ts",
-      "default": "./dist/health/index.js"
+      "types": "./src/health/index.ts",
+      "default": "./src/health/index.ts"
     },
     "./http": {
-      "types": "./dist/http/index.d.ts",
-      "default": "./dist/http/index.js"
+      "types": "./src/http/index.ts",
+      "default": "./src/http/index.ts"
     },
     "./logger": {
-      "types": "./dist/logger/index.d.ts",
-      "default": "./dist/logger/index.js"
+      "types": "./src/logger/index.ts",
+      "default": "./src/logger/index.ts"
     },
     "./modules": {
-      "types": "./dist/modules/index.d.ts",
-      "default": "./dist/modules/index.js"
+      "types": "./src/modules/index.ts",
+      "default": "./src/modules/index.ts"
     },
     "./queue": {
-      "types": "./dist/queue/index.d.ts",
-      "default": "./dist/queue/index.js"
+      "types": "./src/queue/index.ts",
+      "default": "./src/queue/index.ts"
     },
     "./storage": {
-      "types": "./dist/storage/index.d.ts",
-      "default": "./dist/storage/index.js"
+      "types": "./src/storage/index.ts",
+      "default": "./src/storage/index.ts"
     },
     "./testing": {
-      "types": "./dist/testing/index.d.ts",
-      "default": "./dist/testing/index.js"
+      "types": "./src/testing/index.ts",
+      "default": "./src/testing/index.ts"
     }
   },
   "scripts": {
