@@ -47,6 +47,9 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# Turbo cache
+.turbo/
+
 # Optional npm cache directory
 .npm
 
@@ -141,3 +144,4 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+/.idea/
