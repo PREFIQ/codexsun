@@ -37,7 +37,7 @@ export const platformAppRegistry: PlatformAppDefinition[] = [
   },
   {
     accentClass: "bg-emerald-600",
-    alwaysEnabled: true,
+    alwaysEnabled: false,
     defaultLanding: false,
     description: "Sales, purchase, receipt, payment, report, master, common, and billing settings.",
     icon: ReceiptTextIcon,

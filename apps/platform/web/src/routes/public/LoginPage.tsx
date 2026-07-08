@@ -19,14 +19,14 @@ export function LoginPage({ desk, title }: LoginPageProps) {
 
   const targetPath = useMemo(() => {
     if (desk === "sa") {
-      return "/sa";
+      return "/sa/$";
     }
 
     if (desk === "admin") {
       return "/admin";
     }
 
-    return "/app";
+    return "/app/$";
   }, [desk]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {

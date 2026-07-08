@@ -1,11 +1,16 @@
 import { TenantRepository } from "./tenant.repository.js";
 import type { TenantSavePayload } from "./tenant.types.js";
 import { resolveEnabledApps, resolveLandingApp } from "../app-registry/index.js";
-import { provisionTenantDatabase } from "../../database/tenant-database.js";
+import { EntitlementAccessService } from "../entitlement/entitlement.access.js";
+import { provisionTenantDatabase } from "./tenant.seed.js";
 import { env } from "../../env.js";
+import { defaultTenantDomainForSlug, normalizeTenantDomain } from "../tenant-domain/tenant-domain.repository.js";
 
 export class TenantService {
-  constructor(private readonly repository = new TenantRepository()) {}
+  constructor(
+    private readonly repository = new TenantRepository(),
+    private readonly access = new EntitlementAccessService()
+  ) {}
 
   listTenants() {
     return this.repository.list();
@@ -17,13 +22,15 @@ export class TenantService {
 
   async getTenantRuntime(value: string) {
     const tenant = await this.getTenant(value);
-    const enabledModuleKeys = tenant?.enabledModuleKeys ?? ["platform.application"];
-    const landingSettings = isRecord(tenant?.payloadSettings?.landing) ? tenant?.payloadSettings.landing : {};
+    const accessTenant = tenant ? await this.access.refreshTenantAccess(tenant.id) : null;
+    const runtimeTenant = accessTenant ?? tenant;
+    const enabledModuleKeys = runtimeTenant?.enabledModuleKeys ?? ["platform.application"];
+    const landingSettings = isRecord(runtimeTenant?.payloadSettings?.landing) ? runtimeTenant?.payloadSettings.landing : {};
     const defaultLandingApp = resolveLandingApp(landingSettings?.app, enabledModuleKeys);
     return {
       apps: resolveEnabledApps(enabledModuleKeys),
       defaultLandingApp,
-      tenant: tenant ?? null
+      tenant: runtimeTenant ?? null
     };
   }
 
@@ -84,6 +91,7 @@ export class TenantService {
           mode: "tenant"
         }
       },
+      primaryDomain: normalizeTenantDomain(input.primaryDomain || defaultTenantDomainForSlug(slug)),
       slug,
       status: input.status,
       tenantCode,

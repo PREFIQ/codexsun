@@ -8,12 +8,14 @@ export type Tenant = {
   dbUser: string;
   enabledModuleKeys: string[];
   defaultLandingApp: "application" | "billing";
-  id: string;
+  id: number;
   mobile: string | null;
   payloadSettings: Record<string, unknown>;
+  primaryDomain: string;
   slug: string;
   tenantCode: string;
   tenantName: string;
+  uuid: string;
   status: "active" | "inactive" | "provisioning" | "suspended" | string;
 };
 
@@ -29,6 +31,7 @@ export type TenantSavePayload = {
   defaultLandingApp: "application" | "billing";
   mobile: string | null;
   payloadSettings: Record<string, unknown>;
+  primaryDomain: string;
   slug: string;
   status: string;
   tenantCode: string;

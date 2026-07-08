@@ -4,7 +4,7 @@ import { registerTenantRoutes } from "./tenant.routes.js";
 export const tenantModule = {
   key: "platform.tenant",
   label: "Tenant",
-  register(app: FastifyInstance) {
-    return registerTenantRoutes(app);
+  async register(app: FastifyInstance) {
+    await registerTenantRoutes(app);
   }
 };

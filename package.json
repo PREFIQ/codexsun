@@ -11,6 +11,10 @@
     "tools/*"
   ],
   "scripts": {
+    "preinstall": "node tools/enforce-root-install.mjs",
+    "postinstall": "node tools/check-root-node-modules.mjs",
+    "dependencies:clean": "node tools/clean-workspace-artifacts.mjs",
+    "dependencies:check": "node tools/check-root-node-modules.mjs",
     "dev": "npm run dev:platform",
     "dev:all": "node tools/dev-stack.mjs all",
     "dev:billing": "node tools/dev-stack.mjs billing",
@@ -26,10 +30,19 @@
     "check": "npm run check:module-boundaries && npm run typecheck && npm run lint",
     "check:module-boundaries": "node tools/check-module-boundaries.mjs",
     "db:migrate": "npm run db:migrate -w @codexsun/platform-api",
+    "db:migrations:list": "npm run db:migrations:list -w @codexsun/platform-api",
+    "db:migrations:preflight": "npm run db:migrations:preflight -w @codexsun/platform-api",
+    "db:migrations:run": "npm run db:migrations:run -w @codexsun/platform-api",
+    "db:migrations:test-local": "npm run db:migrations:test-local -w @codexsun/platform-api",
     "db:seed": "npm run db:seed -w @codexsun/platform-api",
     "db:drop": "npm run db:drop -w @codexsun/platform-api",
     "dbmigrate:fresh": "npm run dbmigrate:fresh -w @codexsun/platform-api",
+    "db:dump:create": "npm run db:dump:create -w @codexsun/platform-api",
+    "db:dump:download": "npm run db:dump:download -w @codexsun/platform-api",
+    "db:restore:test": "npm run db:restore:test -w @codexsun/platform-api",
+    "db:backup:verify": "npm run db:backup:verify -w @codexsun/platform-api",
     "test:e2e:tenant": "npm run test:e2e:tenant -w @codexsun/platform-api",
+    "test:e2e:platform": "npm run test:e2e -w @codexsun/platform-web",
     "version:show": "node tools/version/version.mjs show",
     "version:bump": "node tools/version-bump.mjs",
     "changelog:append": "node tools/version/version.mjs append",
@@ -38,6 +51,7 @@
     "env:jwt-secret": "node tools/env-jwt-secret.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/vite": "^4.3.1",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
@@ -47,6 +61,7 @@
     "concurrently": "^10.0.3",
     "eslint": "^9.17.0",
     "prettier": "^3.4.2",
+    "recharts": "^2.15.4",
     "tailwindcss": "^4.3.1",
     "turbo": "^2.3.3",
     "typescript": "^5.7.2",
@@ -57,7 +72,6 @@
     "npm": ">=11.0.0"
   },
   "allowScripts": {
-    "esbuild@0.25.12": true,
-    "esbuild@0.28.1": true
+    "esbuild": true
   }
 }

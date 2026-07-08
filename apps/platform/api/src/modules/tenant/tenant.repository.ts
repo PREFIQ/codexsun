@@ -1,44 +1,59 @@
+import { randomBytes } from "node:crypto";
 import type { Tenant, TenantSavePayload } from "./tenant.types.js";
 import { sql } from "kysely";
 import { getPlatformDatabase } from "../../database/platform-database.js";
-import { env } from "../../env.js";
+import { getTenantDatabase } from "../../database/tenant-database.js";
+import {
+  defaultTenantDomainForSlug,
+  normalizeTenantDomain,
+  TenantDomainRepository
+} from "../tenant-domain/tenant-domain.repository.js";
 
 export class TenantRepository {
+  constructor(private readonly domains = new TenantDomainRepository()) {}
+
   async list() {
     const rows = await getPlatformDatabase().selectFrom("tenants").selectAll().orderBy("tenant_name", "asc").execute();
-    return rows.map(toTenant);
+    return this.withPrimaryDomains(rows.map(toTenant));
   }
 
   async findByIdOrCode(value: string) {
     const normalized = value.trim().toLowerCase();
     const code = normalized.startsWith("tenant-") ? normalized.slice("tenant-".length) : normalized;
+    const numericId = Number.parseInt(normalized, 10);
 
     const row = await getPlatformDatabase()
       .selectFrom("tenants")
       .selectAll()
       .where(
         sql<boolean>`
-          LOWER(id) = ${normalized}
-          OR LOWER(COALESCE(public_id, '')) = ${normalized}
+          ${Number.isInteger(numericId) ? sql<boolean>`id = ${numericId}` : sql<boolean>`false`}
+          OR LOWER(uuid) = ${normalized}
           OR LOWER(tenant_code) = ${normalized}
           OR LOWER(tenant_code) = ${code}
           OR LOWER(slug) = ${code}
-          OR LOWER(id) = ${`tenant-${code}`}
-          OR LOWER(COALESCE(public_id, '')) = ${`tenant-${code}`}
         `
       )
       .executeTakeFirst();
 
-    return row ? toTenant(row) : null;
+    return row ? this.withPrimaryDomain(toTenant(row)) : null;
   }
 
   async create(input: TenantSavePayload) {
-    const tenant: Tenant = {
+    const tenantInput = {
       ...input,
-      id: `tenant-${input.slug || input.tenantCode.toLowerCase()}`
+      primaryDomain: normalizeTenantDomain(input.primaryDomain || defaultTenantDomainForSlug(input.slug || input.tenantCode)),
+      uuid: normalizeUuid(input.uuid) || createPublicUuid()
     };
-    await getPlatformDatabase().insertInto("tenants").values(toTenantRow(tenant)).execute();
-    await this.upsertTenantDomain(tenant);
+    const result = await getPlatformDatabase().insertInto("tenants").values(toTenantRow(tenantInput)).executeTakeFirst();
+    const tenant: Tenant = {
+      ...tenantInput,
+      id: Number(result.insertId)
+    };
+    tenant.primaryDomain = await this.domains.upsertPrimaryDomain({
+      domain: tenant.primaryDomain,
+      tenantId: tenant.id
+    });
     await this.audit(tenant.id, "tenant.created");
     return tenant;
   }
@@ -46,13 +61,16 @@ export class TenantRepository {
   async update(id: string, input: TenantSavePayload) {
     const existing = await this.findByIdOrCode(id);
     if (!existing) return null;
-    const tenant = { ...existing, ...input, id };
+    const tenant = { ...existing, ...input, id: existing.id };
     await getPlatformDatabase()
       .updateTable("tenants")
       .set(toTenantRow(tenant))
-      .where(sql<boolean>`LOWER(COALESCE(public_id, id)) = ${id.toLowerCase()}`)
+      .where("id", "=", tenant.id)
       .execute();
-    await this.upsertTenantDomain(tenant);
+    tenant.primaryDomain = await this.domains.upsertPrimaryDomain({
+      domain: tenant.primaryDomain,
+      tenantId: tenant.id
+    });
     await this.audit(tenant.id, "tenant.updated");
     return tenant;
   }
@@ -72,20 +90,14 @@ export class TenantRepository {
         ])
       )
       .executeTakeFirst();
-    return row ? toTenant(row) : null;
+    return row ? this.withPrimaryDomain(toTenant(row)) : null;
   }
 
   async findByDomain(value: string) {
-    const domain = normalizeDomain(value);
-    if (!domain) return null;
-    const row = await getPlatformDatabase()
-      .selectFrom("tenant_domains")
-      .innerJoin("tenants", "tenant_domains.tenant_id", "tenants.id")
-      .selectAll("tenants")
-      .where("tenants.status", "=", "active")
-      .where("tenant_domains.domain", "=", domain)
-      .executeTakeFirst();
-    return row ? toTenant(row) : null;
+    const tenantId = await this.domains.findTenantIdByDomain(value);
+    if (!tenantId) return null;
+    const tenant = await this.findByIdOrCode(String(tenantId));
+    return tenant?.status === "active" ? tenant : null;
   }
 
   async setStatus(id: string, status: Tenant["status"]) {
@@ -95,17 +107,54 @@ export class TenantRepository {
     await getPlatformDatabase()
       .updateTable("tenants")
       .set({ status })
-      .where(sql<boolean>`LOWER(COALESCE(public_id, id)) = ${tenant.id.toLowerCase()}`)
+      .where("id", "=", tenant.id)
       .execute();
     await this.audit(tenant.id, status === "active" ? "tenant.restored" : "tenant.suspended");
     return tenant;
   }
 
+  async updateAccess(tenant: Tenant, enabledModuleKeys: string[], defaultLandingApp: Tenant["defaultLandingApp"]) {
+    const normalizedKeys = Array.from(
+      new Set(["platform.application", ...enabledModuleKeys.map((key) => (key === "platform.tenant" ? "platform.application" : key))])
+    ).sort();
+    const payloadSettings = {
+      ...tenant.payloadSettings,
+      apps: {
+        enabled: normalizedKeys
+      },
+      landing: {
+        ...(isRecord(tenant.payloadSettings.landing) ? tenant.payloadSettings.landing : {}),
+        app: defaultLandingApp,
+        mode: "tenant"
+      }
+    };
+
+    await getPlatformDatabase()
+      .updateTable("tenants")
+      .set({
+        default_landing_app: defaultLandingApp,
+        enabled_module_keys: JSON.stringify(normalizedKeys),
+        payload_settings: JSON.stringify(payloadSettings)
+      })
+      .where("id", "=", tenant.id)
+      .execute();
+    await this.audit(tenant.id, "tenant.access.updated");
+
+    return {
+      ...tenant,
+      defaultLandingApp,
+      enabledModuleKeys: normalizedKeys,
+      payloadSettings
+    };
+  }
+
   async activity(id: string) {
+    const tenant = await this.findByIdOrCode(id);
+    if (!tenant) return [];
     const rows = await getPlatformDatabase()
       .selectFrom("tenant_audit_events")
       .select(["id", "actor_email", "event_name", "created_at"])
-      .where("tenant_id", "=", id)
+      .where("tenant_id", "=", tenant.id)
       .orderBy("created_at", "desc")
       .orderBy("id", "desc")
       .execute();
@@ -117,33 +166,37 @@ export class TenantRepository {
     }));
   }
 
-  private async audit(tenantId: string, eventName: string) {
+  async findTenantUserByEmail(tenant: Tenant, email: string) {
+    const database = getTenantDatabase(tenant);
+    const row = await database
+      .selectFrom("tenant_users")
+      .select(["id", "uuid", "name", "email", "password_hash", "role", "status"])
+      .where(sql<string>`LOWER(email)`, "=", email.trim().toLowerCase())
+      .executeTakeFirst();
+    return row as TenantUserRow | undefined;
+  }
+
+  private async audit(tenantId: number, eventName: string) {
     await getPlatformDatabase()
       .insertInto("tenant_audit_events")
       .values({
         actor_email: "system@codexsun.app",
         event_name: eventName,
-        tenant_id: tenantId
+        tenant_id: tenantId,
+        uuid: createPublicUuid()
       })
       .execute();
   }
 
-  private async upsertTenantDomain(tenant: Tenant) {
-    const baseDomain = normalizeDomain(env.TENANT_DOMAIN_BASE || "localhost");
-    const domain = normalizeDomain(baseDomain === "localhost" ? `${tenant.slug}.localhost` : `${tenant.slug}.${baseDomain}`);
-    if (!domain) return;
-    await getPlatformDatabase()
-      .insertInto("tenant_domains")
-      .values({
-        domain,
-        is_primary: true,
-        tenant_id: tenant.id
-      })
-      .onDuplicateKeyUpdate({
-        is_primary: true,
-        tenant_id: tenant.id
-      })
-      .execute();
+  private async withPrimaryDomains(tenants: Tenant[]) {
+    return Promise.all(tenants.map((tenant) => this.withPrimaryDomain(tenant)));
+  }
+
+  private async withPrimaryDomain(tenant: Tenant) {
+    return {
+      ...tenant,
+      primaryDomain: await this.domains.primaryDomainForTenant(tenant.id, tenant.slug)
+    };
   }
 }
 
@@ -157,19 +210,30 @@ type TenantRow = {
   db_user: string;
   default_landing_app: Tenant["defaultLandingApp"];
   enabled_module_keys: string;
-  id: number | string;
+  id: number;
   mobile: string | null;
   payload_settings: string;
-  public_id: string | null;
+  primary_domain?: string;
   slug: string;
   status: Tenant["status"];
   tenant_code: string;
   tenant_name: string;
+  uuid: string;
 };
 
-type TenantWriteRow = Omit<TenantRow, "id">;
+type TenantWriteRow = Omit<TenantRow, "id" | "primary_domain">;
 
-function toTenantRow(tenant: Tenant): TenantWriteRow {
+type TenantUserRow = {
+  email: string;
+  id: number;
+  name: string;
+  password_hash: string;
+  role: string;
+  status: "active" | "inactive" | "suspended";
+  uuid: string;
+};
+
+function toTenantRow(tenant: TenantSavePayload | Tenant): TenantWriteRow {
   return {
     corporate_id: tenant.corporateId,
     db_host: tenant.dbHost,
@@ -182,11 +246,11 @@ function toTenantRow(tenant: Tenant): TenantWriteRow {
     enabled_module_keys: JSON.stringify(tenant.enabledModuleKeys),
     mobile: tenant.mobile,
     payload_settings: JSON.stringify(tenant.payloadSettings),
-    public_id: tenant.id,
     slug: tenant.slug,
     status: tenant.status,
     tenant_code: tenant.tenantCode,
-    tenant_name: tenant.tenantName
+    tenant_name: tenant.tenantName,
+    uuid: normalizeUuid(tenant.uuid) || createPublicUuid()
   };
 }
 
@@ -201,13 +265,15 @@ function toTenant(row: TenantRow): Tenant {
     dbUser: row.db_user,
     defaultLandingApp: row.default_landing_app,
     enabledModuleKeys: parseStringArray(row.enabled_module_keys),
-    id: row.public_id ?? String(row.id),
+    id: Number(row.id),
     mobile: row.mobile,
     payloadSettings: parseRecord(row.payload_settings),
+    primaryDomain: normalizeTenantDomain(row.primary_domain ?? defaultTenantDomainForSlug(row.slug)),
     slug: row.slug,
     status: row.status,
     tenantCode: row.tenant_code,
-    tenantName: row.tenant_name
+    tenantName: row.tenant_name,
+    uuid: row.uuid
   };
 }
 
@@ -229,6 +295,10 @@ function parseRecord(value: string): Record<string, unknown> {
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function toIsoDate(value: Date | string) {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
@@ -237,11 +307,10 @@ function normalizeIdentity(value: string) {
   return value.trim().toLowerCase();
 }
 
-function normalizeDomain(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//, "")
-    .replace(/:\d+$/, "")
-    .replace(/^www\./, "");
+function createPublicUuid() {
+  return randomBytes(4).toString("hex");
+}
+
+function normalizeUuid(value: string | undefined) {
+  return value?.trim().toLowerCase().replace(/[^a-f0-9]/g, "").slice(0, 8) ?? "";
 }

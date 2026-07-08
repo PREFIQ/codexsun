@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const workspaceRoots = ["apps", "packages", "tools"].map((dir) => join(root, dir));
-const removableNames = new Set([".turbo", "dist", "dist-types"]);
+const removableNames = new Set([".turbo", "dist", "dist-types", "node_modules"]);
 
 function removeNestedArtifacts(dir) {
   if (!existsSync(dir)) {
@@ -21,10 +21,6 @@ function removeNestedArtifacts(dir) {
 
     if (removableNames.has(entry.name)) {
       rmSync(fullPath, { force: true, recursive: true });
-      continue;
-    }
-
-    if (entry.name === "node_modules") {
       continue;
     }
 

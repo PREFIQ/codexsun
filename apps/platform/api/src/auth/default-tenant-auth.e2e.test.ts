@@ -71,11 +71,11 @@ describe.skipIf(!runDbE2e)("CODEXSUN default tenant auth e2e", () => {
         };
       };
       expect(loginBody.data.tenantCode).toBe("CODEXSUN");
-      expect(loginBody.data.tenantId).toBe("tenant-codexsun");
+      expect(loginBody.data.tenantId).toMatch(/^[a-f0-9]{8}$/);
       expect(loginBody.data.userType).toBe("tenant");
 
       const payload = verifyAuthToken(loginBody.data.accessToken);
-      expect(payload?.tenantId).toBe("tenant-codexsun");
+      expect(payload?.tenantId).toBe(loginBody.data.tenantId);
       expect(payload?.tenantCode).toBe("CODEXSUN");
       expect(payload?.jti).toBeTruthy();
 
@@ -87,14 +87,14 @@ describe.skipIf(!runDbE2e)("CODEXSUN default tenant auth e2e", () => {
         }
       });
       expect(sessionResponse.statusCode).toBe(200);
-      expect(sessionResponse.json().data.tenantId).toBe("tenant-codexsun");
+      expect(sessionResponse.json().data.tenantId).toBe(loginBody.data.tenantId);
 
       const runtimeResponse = await app.inject({
         method: "GET",
         url: "/tenant/runtime",
         headers: {
           authorization: `Bearer ${loginBody.data.accessToken}`,
-          "x-tenant-id": "tenant-codexsun"
+          "x-tenant-id": loginBody.data.tenantId
         }
       });
       expect(runtimeResponse.statusCode).toBe(200);

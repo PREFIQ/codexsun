@@ -16,6 +16,8 @@ import { WorkspaceTableEmptyState, WorkspaceTableHeaderCell, WorkspaceTablePanel
 import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormGrid, WorkspaceFormPanel, WorkspaceUpsertPage } from "@codexsun/ui/workspace/upsert"
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils"
 import { cn } from "@codexsun/ui/lib/utils"
+import { TenantPrimaryDomainField } from "../tenant-domain/tenant-domain.form"
+import { defaultTenantDomain, normalizeTenantDomain } from "../tenant-domain/tenant-domain.services"
 import { createTenant, listTenantActivity, listTenants, restoreTenant as restoreTenantRecord, suspendTenant as suspendTenantRecord, updateTenant } from "./tenant.services"
 import { defaultLandingApp, normalizeModuleKeys, platformAppRegistry, type PlatformAppId } from "../../app/app-registry"
 
@@ -29,12 +31,14 @@ type Tenant = {
   dbUser: string
   enabledModuleKeys: string[]
   defaultLandingApp: PlatformAppId
-  id: string
+  id: number
   mobile: string | null
   payloadSettings: Record<string, unknown>
+  primaryDomain: string
   slug: string
   tenantCode: string
   tenantName: string
+  uuid: string
   status: "active" | "inactive" | "provisioning" | "suspended" | string
 }
 
@@ -55,6 +59,7 @@ type TenantSavePayload = {
   defaultLandingApp: PlatformAppId
   mobile: string | null
   payloadSettings: Record<string, unknown>
+  primaryDomain: string
   slug: string
   status: string
   tenantCode: string
@@ -78,8 +83,10 @@ const filterOptions = [
 
 const columnOptions = [
   { id: "tenant", label: "Tenant" },
+  { id: "uuid", label: "UUID" },
   { id: "corporateId", label: "Corporate ID" },
   { id: "mobile", label: "Mobile" },
+  { id: "domain", label: "Domain" },
   { id: "slug", label: "Slug" },
   { id: "database", label: "Database" },
   { id: "companies", label: "Companies" },
@@ -97,10 +104,12 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
     companies: true,
     corporateId: true,
     database: true,
+    domain: true,
     mobile: false,
     slug: false,
     status: true,
-    tenant: true
+    tenant: true,
+    uuid: true
   })
 
   const tenantsQuery = useQuery<Tenant[]>({
@@ -121,7 +130,7 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
   })
 
   const updateMutation = useMutation({
-    mutationFn: (tenant: TenantSavePayload & { id: string }) =>
+    mutationFn: (tenant: TenantSavePayload & { id: number }) =>
       updateTenant({ ...toTenantApiPayload(tenant), id: tenant.id }),
     onSuccess: async (tenant) => {
       await queryClient.invalidateQueries({ queryKey: ["admin", "tenants"] })
@@ -158,7 +167,7 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
   })
   const tenantActivityQuery = useQuery<AuditEventDTO[]>({
     enabled: view.mode === "show",
-    queryKey: ["admin", "activity", "tenant", view.mode === "show" ? view.tenant.id : ""],
+    queryKey: ["admin", "activity", "tenant", view.mode === "show" ? String(view.tenant.id) : ""],
     queryFn: () => listTenantActivity(view.mode === "show" ? view.tenant.id : "")
   })
 
@@ -170,9 +179,11 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
         !term ||
         [
           tenant.tenantName,
+          tenant.uuid,
           tenant.tenantCode,
           tenant.corporateId ?? "",
           tenant.mobile ?? "",
+          tenant.primaryDomain,
           tenant.slug,
           tenant.dbName,
           tenant.status
@@ -276,7 +287,7 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
           setCurrentPage(1)
         }}
         onShowAllColumns={() => setVisibleColumns(Object.fromEntries(columnOptions.map((column) => [column.id, true])))}
-        searchPlaceholder="Search tenant, corporate ID, mobile, slug, database, or status"
+        searchPlaceholder="Search tenant, corporate ID, domain, mobile, slug, database, or status"
         searchValue={searchValue}
       />
       <WorkspaceTablePanel>
@@ -286,8 +297,10 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
               <tr>
                 <TenantHeader>#</TenantHeader>
                 {visibleColumns.tenant ? <TenantHeader>Tenant <span className="text-muted-foreground">↕</span></TenantHeader> : null}
+                {visibleColumns.uuid ? <TenantHeader>UUID <span className="text-muted-foreground">↕</span></TenantHeader> : null}
                 {visibleColumns.corporateId ? <TenantHeader>Corporate ID <span className="text-muted-foreground">↕</span></TenantHeader> : null}
                 {visibleColumns.mobile ? <TenantHeader>Mobile <span className="text-muted-foreground">↕</span></TenantHeader> : null}
+                {visibleColumns.domain ? <TenantHeader>Domain <span className="text-muted-foreground">↕</span></TenantHeader> : null}
                 {visibleColumns.slug ? <TenantHeader>Slug <span className="text-muted-foreground">↕</span></TenantHeader> : null}
                 {visibleColumns.database ? <TenantHeader>Database <span className="text-muted-foreground">↕</span></TenantHeader> : null}
                 {visibleColumns.companies ? <TenantHeader>Companies <span className="text-muted-foreground">↕</span></TenantHeader> : null}
@@ -313,8 +326,10 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
                         </button>
                       </td>
                     ) : null}
+                    {visibleColumns.uuid ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.uuid}</td> : null}
                     {visibleColumns.corporateId ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.corporateId ?? "-"}</td> : null}
                     {visibleColumns.mobile ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.mobile ?? "-"}</td> : null}
+                    {visibleColumns.domain ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.primaryDomain || "-"}</td> : null}
                     {visibleColumns.slug ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.slug}</td> : null}
                     {visibleColumns.database ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.dbName}</td> : null}
                     {visibleColumns.companies ? <td className="px-4 py-2.5 tabular-nums">{summary.companyCount}</td> : null}
@@ -409,9 +424,11 @@ function TenantShowPage({
             <WorkspaceDetailTable
               rows={[
                 ["Tenant", tenant.tenantName],
+                ["UUID", <span key="uuid" className="font-mono text-xs">{tenant.uuid}</span>],
                 ["Code", <span key="code" className="font-mono text-xs">{tenant.tenantCode}</span>],
                 ["Corporate ID", <span key="corp" className="font-mono text-xs">{tenant.corporateId ?? "-"}</span>],
                 ["Mobile", <span key="mobile" className="font-mono text-xs">{tenant.mobile ?? "-"}</span>],
+                ["Primary domain", <span key="domain" className="font-mono text-xs">{tenant.primaryDomain || "-"}</span>],
                 ["Slug", <span key="slug" className="font-mono text-xs">{tenant.slug}</span>],
                 ["Status", <WorkspaceStatusBadge key="status" label={tenant.status} tone={statusTone(tenant.status)} />]
               ]}
@@ -470,8 +487,9 @@ type TenantFormState = {
   dbUser: string
   defaultLandingApp: PlatformAppId
   enabledModuleKeys: string[]
-  id?: string
+  id?: number
   mobile: string
+  primaryDomain: string
   slug: string
   tenantCode: string
   tenantName: string
@@ -524,6 +542,7 @@ function TenantUpsertPage({
     enabledModuleKeys: normalizeModuleKeys(tenant?.enabledModuleKeys ?? tenantAppAccess.filter((app) => app.enabled).map((app) => app.moduleKey)),
     ...(tenant ? { id: tenant.id } : {}),
     mobile: tenant?.mobile ?? "",
+    primaryDomain: tenant?.primaryDomain ?? defaultTenantDomain(tenant?.slug ?? tenant?.tenantCode ?? ""),
     slug: tenant?.slug ?? toSlug(tenant?.tenantCode ?? ""),
     status: tenant?.status ?? "active",
     tenantCode: tenant?.tenantCode ?? "",
@@ -538,6 +557,7 @@ function TenantUpsertPage({
     }))
   )
   const [corporateIdTouched, setCorporateIdTouched] = useState(false)
+  const [primaryDomainTouched, setPrimaryDomainTouched] = useState(Boolean(tenant?.primaryDomain))
   const enabledAppCount = appAccess.filter((app) => app.enabled).length
 
   const tabs: WorkspaceAnimatedTab[] = [
@@ -582,6 +602,7 @@ function TenantUpsertPage({
                       ...current,
                       corporateId: corporateIdTouched ? current.corporateId : toCorporateId(tenantCode),
                       dbName: toDatabaseName(tenantCode),
+                      primaryDomain: primaryDomainTouched ? current.primaryDomain : defaultTenantDomain(tenantCode),
                       slug: toSlug(tenantCode),
                       tenantCode
                     }))
@@ -595,10 +616,12 @@ function TenantUpsertPage({
                   onClick={() => {
                     const tenantCode = toSlug(form.tenantName || form.tenantCode)
                     setCorporateIdTouched(false)
+                    setPrimaryDomainTouched(false)
                     setForm((current) => ({
                       ...current,
                       corporateId: toCorporateId(tenantCode),
                       dbName: toDatabaseName(tenantCode),
+                      primaryDomain: defaultTenantDomain(tenantCode),
                       slug: toSlug(tenantCode),
                       tenantCode
                     }))
@@ -629,9 +652,21 @@ function TenantUpsertPage({
               <Input
                 className="h-11 rounded-md"
                 value={form.slug}
-                onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))}
+                onChange={(event) => {
+                  const slug = event.target.value
+                  setForm((current) => ({
+                    ...current,
+                    primaryDomain: primaryDomainTouched ? current.primaryDomain : defaultTenantDomain(slug),
+                    slug
+                  }))
+                }}
               />
             </WorkspaceFormField>
+            <TenantPrimaryDomainField
+              value={form.primaryDomain}
+              onTouched={() => setPrimaryDomainTouched(true)}
+              onChange={(primaryDomain) => setForm((current) => ({ ...current, primaryDomain }))}
+            />
             <div className="flex items-end">
               <div className="flex h-[4.5rem] w-full items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 px-4 text-emerald-800">
                 <div className="min-w-0">
@@ -813,6 +848,10 @@ function TenantUpsertPage({
               setLocalBanner("Tenant code is required.")
               return
             }
+            if (!form.primaryDomain.trim()) {
+              setLocalBanner("Primary domain is required.")
+              return
+            }
             setLocalBanner("")
             setActiveTab("database")
             return
@@ -829,6 +868,11 @@ function TenantUpsertPage({
           if (!form.tenantCode.trim()) {
             setActiveTab("details")
             setLocalBanner("Tenant code is required.")
+            return
+          }
+          if (!form.primaryDomain.trim()) {
+            setActiveTab("details")
+            setLocalBanner("Primary domain is required.")
             return
           }
           setLocalBanner("")
@@ -904,6 +948,7 @@ function toTenantSavePayload(form: TenantFormState): TenantSavePayload {
       apps: { enabled: enabledModuleKeys },
       landing: { app: landingApp, mode: "tenant" }
     },
+    primaryDomain: normalizeTenantDomain(form.primaryDomain) || defaultTenantDomain(form.slug || form.tenantCode),
     slug: form.slug.trim() || toSlug(form.tenantCode),
     status: form.status,
     tenantCode: form.tenantCode.trim(),

@@ -484,24 +484,24 @@ Docs must explain:
 - [x] Failed migration status and logs added.
 - [x] Migration preflight service added.
 - [x] Production backup requirement enforced.
-- [ ] Local restored-dump migration test command added.
+- [x] Local restored-dump migration test command added.
 - [x] Super-admin Database Manager updated.
 - [x] Super-admin Migration Status updated.
 - [x] Backup job metadata added.
 - [x] Dump create/download flow added.
 - [x] Restore-test workflow added.
-- [ ] Backup schedule documented.
+- [x] Backup schedule documented.
 - [x] Mirror health metadata/API/UI added.
-- [ ] Legacy source inventory template added.
+- [x] Legacy source inventory template added.
 - [x] Legacy mapping template added.
-- [ ] Legacy import staging plan added.
+- [x] Legacy import staging plan added.
 - [x] Legacy import dry-run implemented.
 - [ ] Legacy import row result logging added.
 - [ ] Legacy sync conflict rules added.
 - [x] API tests added.
 - [ ] Local migration/restore verification performed.
-- [ ] Runbooks created.
-- [ ] Changelog updated.
+- [x] Runbooks created.
+- [x] Changelog updated.
 
 ## Completion Criteria
 

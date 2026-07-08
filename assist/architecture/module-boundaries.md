@@ -77,7 +77,7 @@ apps/billing/src/modules/quotation/
 
 This structure keeps module code easy to scan while preserving clear roles. It replaces folder-heavy patterns such as `application/index.ts`, `contracts/index.ts`, `domain/index.ts`, `infrastructure/index.ts`, and similar nested placeholders.
 
-Module files should be created when the module needs that concern or when the module is being scaffolded as a planned full module. Do not create nested boundary folders for normal app modules.
+Full modules must contain every role above. Do not add empty role files to make the folder look complete. Each file must expose callable, testable behavior for its role. A deliberately smaller module must declare its capability exemptions in `{module}.module.ts`; undocumented omissions are boundary failures.
 
 Strict naming rules:
 
@@ -87,6 +87,29 @@ Strict naming rules:
 - Keep queue registration and worker processors together in `{module}.worker.ts` unless the module becomes large enough to justify a later explicit split.
 - Use `routes.ts` for HTTP/interface code. Do not use a vague `interface.ts` filename for routes.
 - Use `types.ts` for public contracts and shared module types. Do not create a separate `contracts/` folder.
+- `events.ts` defines event names, typed envelopes, and event construction or handling behavior. A constant map alone is incomplete.
+- `worker.ts` defines supported jobs and executable dispatch/processor behavior. Empty queue arrays and future-reservation metadata are incomplete.
+- `sync.ts` defines scope, direction, conflict policy, cursor/checkpoint behavior, and a callable decision or normalization function. An `offline` boolean alone is incomplete.
+- `seed.ts` and `migration.ts` provide callable persistence behavior. Description-only objects are incomplete.
+- `test.ts` contains executable assertions for the module contract. Empty test files or metadata exports are incomplete.
+- `index.ts` is the only public barrel. Other modules import through it unless a composition root needs a specific lifecycle function.
+
+### Role Behavior Contract
+
+| File | Required behavior |
+|---|---|
+| `{module}.module.ts` | Stable key, scope/capabilities, and registration/composition function |
+| `{module}.service.ts` | Business use cases and validation orchestration |
+| `{module}.repository.ts` | Owned persistence reads/writes with tenant/platform scope |
+| `{module}.routes.ts` | Thin HTTP handlers that call the service and return structured responses |
+| `{module}.events.ts` | Typed event names, envelope construction, and handlers/subscribers when consumed |
+| `{module}.migration.ts` | Callable, idempotent table/index migration owned by the module |
+| `{module}.worker.ts` | Typed job names, retry/idempotency policy, and executable dispatch |
+| `{module}.seed.ts` | Callable, repeatable seed behavior or an explicit tested no-data policy |
+| `{module}.sync.ts` | Explicit sync scope/direction/conflict policy and callable sync decision behavior |
+| `{module}.test.ts` | Executable module contract tests |
+| `{module}.types.ts` | Public DTOs, commands, results, event/job/sync contracts |
+| `index.ts` | Intentional public API only |
 
 ## Standard App Source Structure
 
@@ -145,12 +168,10 @@ Frontend ownership follows the same boundary:
 - `apps/accounts/web`, `apps/ecommerce/web`, `apps/crm/web`, and `apps/sites/web` own their own app-specific screens and routes.
 - `packages/ui` owns reusable design-system primitives only. It must not absorb app-specific business screens or rules.
 
-Business app web packages must use `web/pages/modules/{module}/` for app-owned frontend workflows:
+Runnable app web packages use `apps/{app}/web/src/modules/{module}/` for app-owned frontend workflows:
 
 ```text
-apps/{app}/web/pages/
-  api.ts
-  index.ts
+apps/{app}/web/src/
   modules/
     {module}/
       index.ts
@@ -164,15 +185,26 @@ apps/{app}/web/pages/
       {module}.spec.ts
       {module}.settings.tsx
       {module}.print.tsx
-apps/{app}/web/shared/
-  index.ts
-  {shared-area}/
-    index.ts
+  shared/
 ```
 
-Shared controls and layout primitives belong in `packages/ui`. Cross-module app-web code belongs in `web/shared`. Business-specific page state, forms, lists, document settings, print UI, and workflow composition stay in the owning app web module under `web/pages/modules/{module}`. Do not recreate `features/`, `pages/tenant`, or first-level module folders such as `web/pages/sales`.
+Shared controls and layout primitives belong in `packages/ui`. Cross-module app-web code belongs in `web/src/shared`. Business-specific page state, forms, lists, document settings, print UI, and workflow composition stay in the owning app web module under `web/src/modules/{module}`.
 
 Within a frontend module, API calls go in `{module}.services.ts`, custom hooks go in `{module}.hooks.ts`, Zod schemas go in `{module}.schema.ts`, interfaces/types go in `{module}.types.ts`, and focused Playwright tests go in `{module}.spec.ts`. Billing web modules share `web/playwright.config.ts`; per-module Playwright config files are not allowed. Page components should consume those files instead of calling shared APIs directly when the behavior belongs to that module.
+
+Frontend role behavior is strict:
+
+- `{module}.workspace.tsx` owns view state and composes list/show/upsert flows.
+- `{module}.list.tsx` renders the real list, loading, empty, filter, pagination, and row-action states. It must not only rename or re-export the workspace.
+- `{module}.form.tsx` renders the real form controls, validation state, and submit/cancel actions. It must not only rename or re-export the workspace.
+- `{module}.services.ts` owns all module API calls.
+- `{module}.hooks.ts` owns TanStack Query/mutation integration and cache keys.
+- `{module}.schema.ts` owns executable input validation and inferred form types.
+- `{module}.spec.ts` owns executable UI flow coverage.
+- `{module}.types.ts` owns frontend contracts and view models.
+- `index.ts` exposes the intentional module surface.
+
+All full CRUD modules must have the same required file level on backend and frontend. Gallery, shell-only, or composition-only modules may be smaller only when their exemption is explicit and they do not pretend to be full CRUD modules.
 
 ## Module Contract
 

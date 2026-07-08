@@ -38,12 +38,6 @@ const adminLoginRoute = createRoute({
   path: "/admin/login"
 });
 
-const saRoute = createRoute({
-  component: SaDesk,
-  getParentRoute: () => rootRoute,
-  path: "/sa"
-});
-
 const saSplatRoute = createRoute({
   component: SaDesk,
   getParentRoute: () => rootRoute,
@@ -54,12 +48,6 @@ const adminRoute = createRoute({
   component: AdminDesk,
   getParentRoute: () => rootRoute,
   path: "/admin"
-});
-
-const appRoute = createRoute({
-  component: AppDesk,
-  getParentRoute: () => rootRoute,
-  path: "/app"
 });
 
 const appSplatRoute = createRoute({
@@ -74,10 +62,8 @@ const routeTree = rootRoute.addChildren([
   tenantLoginRoute,
   saLoginRoute,
   adminLoginRoute,
-  saRoute,
   saSplatRoute,
   adminRoute,
-  appRoute,
   appSplatRoute
 ]);
 

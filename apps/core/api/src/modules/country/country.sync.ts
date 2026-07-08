@@ -1,4 +1,9 @@
 export const countrySync = {
-  key: "core.country.sync",
-  description: "Reserved sync surface for future country master-data imports."
-};
+  conflictPolicy: "server-wins",
+  direction: "pull-only",
+  scope: "tenant"
+} as const;
+
+export function countryNeedsSync(localUpdatedAt: string | null, serverUpdatedAt: string) {
+  return !localUpdatedAt || Date.parse(serverUpdatedAt) > Date.parse(localUpdatedAt);
+}

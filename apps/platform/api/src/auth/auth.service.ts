@@ -1,6 +1,4 @@
-import { sql } from "kysely";
 import { env } from "../env.js";
-import { getTenantDatabase } from "../database/tenant-database.js";
 import { TenantRepository } from "../modules/tenant/tenant.repository.js";
 import type { Tenant } from "../modules/tenant/tenant.types.js";
 import { signAuthToken, type AuthUserType } from "./jwt.js";
@@ -30,7 +28,7 @@ export class AuthService {
       return null;
     }
 
-    const user = await findTenantUser(tenant, input.email);
+    const user = await tenantRepository.findTenantUserByEmail(tenant, input.email);
     if (!user || user.status !== "active" || !verifyPassword(input.password, user.password_hash)) {
       return null;
     }
@@ -39,15 +37,15 @@ export class AuthService {
       accessToken: signAuthToken({
         email: user.email,
         tenantCode: tenant.tenantCode,
-        tenantId: tenant.id,
-        tenantUuid: tenant.id,
-        userId: user.id,
+        tenantId: tenant.uuid,
+        tenantUuid: tenant.uuid,
+        userId: user.uuid,
         userType: "tenant"
       }),
       email: user.email,
       tenantCode: tenant.tenantCode,
-      tenantId: tenant.id,
-      tenantUuid: tenant.id,
+      tenantId: tenant.uuid,
+      tenantUuid: tenant.uuid,
       userType: "tenant" as const
     };
   }
@@ -77,25 +75,6 @@ type LoginInput = {
   email?: string;
   password?: string;
 };
-
-type TenantUserRow = {
-  email: string;
-  id: string;
-  name: string;
-  password_hash: string;
-  role: string;
-  status: "active" | "inactive" | "suspended";
-};
-
-async function findTenantUser(tenant: Tenant, email: string) {
-  const database = getTenantDatabase(tenant);
-  const row = await database
-    .selectFrom("tenant_users")
-    .select(["id", "name", "email", "password_hash", "role", "status"])
-    .where(sql<string>`LOWER(email)`, "=", email)
-    .executeTakeFirst();
-  return row as TenantUserRow | undefined;
-}
 
 function normalizeDesk(value: unknown): AuthUserType {
   if (value === "sa" || value === "super_admin") return "super_admin";

@@ -1,23 +1,28 @@
-import type { PlatformAppDefinition, PlatformAppId } from "./app-registry.types.js";
+import type { PlatformAppDefinition, PlatformAppId, PlatformAppSavePayload } from "./app-registry.types.js";
+import { AppRegistryRepository } from "./app-registry.repository.js";
 
 export const platformAppRegistry: PlatformAppDefinition[] = [
   {
     alwaysEnabled: true,
     defaultLanding: true,
     description: "Platform workspace, tenant profile, application settings, users, and access.",
-    id: "application",
+    appId: "application",
+    id: 0,
     label: "Application",
     moduleKey: "platform.application",
-    stack: "platform"
+    stack: "platform",
+    uuid: ""
   },
   {
     alwaysEnabled: false,
     defaultLanding: false,
     description: "Billing sales, core masters, invoice flow, and billing setup.",
-    id: "billing",
+    appId: "billing",
+    id: 0,
     label: "Billing",
     moduleKey: "billing.sales",
-    stack: "billing"
+    stack: "billing",
+    uuid: ""
   }
 ];
 
@@ -32,8 +37,19 @@ export function resolveEnabledApps(enabledModuleKeys: string[]) {
 export function resolveLandingApp(value: unknown, enabledModuleKeys: string[]): PlatformAppId {
   const enabledApps = resolveEnabledApps(enabledModuleKeys).filter((app) => app.enabled);
   const requested = typeof value === "string" ? value : "";
-  if (enabledApps.some((app) => app.id === requested)) {
+  if (enabledApps.some((app) => app.appId === requested)) {
     return requested as PlatformAppId;
   }
   return "application";
+}
+
+export class AppRegistryService {
+  constructor(private readonly repository = new AppRegistryRepository()) {}
+  listApps() { return this.repository.list(); }
+  createApp(input: PlatformAppSavePayload) { validateApp(input); return this.repository.create(input); }
+  updateApp(id: string, input: PlatformAppSavePayload) { validateApp(input); return this.repository.update(Number(id), input); }
+}
+
+function validateApp(input: PlatformAppSavePayload) {
+  if (!input.label.trim() || !input.moduleKey.trim()) throw new Error("App label and module key are required.");
 }

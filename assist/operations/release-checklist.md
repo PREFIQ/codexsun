@@ -8,6 +8,10 @@
 - Review migration list.
 - Verify tenant migration plan.
 - Verify backup plan.
+- For database changes, run `npm run db:migrations:preflight`.
+- For database changes, restore a recent dump locally and run `CODEXSUN_RESTORED_DUMP_TEST=1 npm run db:migrations:test-local`.
+- For production database changes, record `CODEXSUN_VERIFIED_BACKUP_ID` before migration execution.
+- For backup readiness, run `npm run db:restore:test` against a sandbox database and then `npm run db:backup:verify`.
 - Run test suite.
 - Check accounting and billing tests.
 - Check offline sync tests if affected.

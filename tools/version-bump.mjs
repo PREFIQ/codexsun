@@ -2,7 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -18,7 +18,7 @@ export function bumpNextVersion(rootDir, title = "version update", options = {})
     updatePackageVersion(file, currentVersion, nextVersion);
   }
 
-  updatePackageLock(resolve(rootDir, "package-lock.json"), currentVersion, nextVersion);
+  updatePackageLock(resolve(rootDir, "package-lock.json"), rootDir, packageFiles, currentVersion, nextVersion);
   updateChangelog(rootDir, nextVersion, title, databaseUpdate);
 
   return {
@@ -124,19 +124,29 @@ function updateInternalDependencyRanges(pkg, currentVersion, nextVersion) {
   }
 }
 
-function updatePackageLock(file, currentVersion, nextVersion) {
+function updatePackageLock(file, rootDir, packageFiles, currentVersion, nextVersion) {
   if (!existsSync(file)) {
     return;
   }
 
   const lock = JSON.parse(readFileSync(file, "utf8"));
+  const workspaceLockPaths = new Set(
+    packageFiles.map((packageFile) =>
+      relative(rootDir, dirname(packageFile)).replaceAll("\\", "/")
+    )
+  );
 
   if (lock.version === currentVersion) {
     lock.version = nextVersion;
   }
 
-  for (const pkg of Object.values(lock.packages ?? {})) {
-    if (pkg && typeof pkg === "object" && pkg.version === currentVersion) {
+  for (const [lockPath, pkg] of Object.entries(lock.packages ?? {})) {
+    if (
+      pkg &&
+      typeof pkg === "object" &&
+      pkg.version === currentVersion &&
+      (lockPath === "" || workspaceLockPaths.has(lockPath))
+    ) {
       pkg.version = nextVersion;
     }
     updateInternalDependencyRanges(pkg, currentVersion, nextVersion);

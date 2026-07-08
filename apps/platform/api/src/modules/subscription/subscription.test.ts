@@ -1,0 +1,1 @@
+import { describe, expect, it } from "vitest"; import { subscriptionNeedsSync } from "./subscription.sync.js"; describe("subscription module", () => { it("uses server state", () => expect(subscriptionNeedsSync(1, 2)).toBe(true)); });

@@ -1,4 +1,9 @@
 export const appRegistrySync = {
-  key: "platform.app-registry.sync",
-  description: "Reserved sync surface for publishing app registry changes."
-};
+  conflictPolicy: "server-wins",
+  direction: "pull-only",
+  scope: "platform"
+} as const;
+
+export function appRegistryNeedsSync(clientVersion: number, serverVersion: number) {
+  return serverVersion > clientVersion;
+}

@@ -9,19 +9,19 @@ export function createTenant(tenant: TenantSavePayload) {
   return apiPost<Tenant>("/admin/tenants", tenant, "sa");
 }
 
-export function updateTenant(tenant: TenantSavePayload & { id: string }) {
+export function updateTenant(tenant: TenantSavePayload & { id: number }) {
   return apiPut<Tenant>(`/admin/tenants/${tenant.id}`, tenant, "sa");
 }
 
-export function suspendTenant(id: string) {
+export function suspendTenant(id: number | string) {
   return apiPost<Tenant>(`/admin/tenants/${id}/suspend`, {}, "sa");
 }
 
-export function restoreTenant(id: string) {
+export function restoreTenant(id: number | string) {
   return apiPost<Tenant>(`/admin/tenants/${id}/restore`, {}, "sa");
 }
 
-export function listTenantActivity(id: string) {
+export function listTenantActivity(id: number | string) {
   return apiGet<AuditEventDTO[]>(`/admin/activity/tenant/${id}`, "sa");
 }
 

@@ -29,11 +29,11 @@ Agents must read and follow these standards before changing module UI, backend c
 Strict business app module folders:
 
 ```text
-apps/{app}/src/modules/{module}/
-apps/{app}/web/pages/{module}/
-apps/{app}/web/shared/
+apps/{app}/api/src/modules/{module}/
+apps/{app}/web/src/modules/{module}/
+apps/{app}/web/src/shared/
 ```
-Use `web/shared` only for cross-module app-web code; keep module-specific business forms, lists,
+Use `web/src/shared` only for cross-module app-web code; keep module-specific business forms, lists,
 settings, print views, services, hooks, schemas, types, tests, and page orchestration inside the owning app web module.
 Keep reusable design controls in `packages/ui`.
 

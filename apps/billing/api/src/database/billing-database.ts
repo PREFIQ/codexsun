@@ -1,7 +1,9 @@
-import { Kysely, MysqlDialect, sql } from "kysely";
+import { Kysely, MysqlDialect } from "kysely";
 import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
 import { env } from "../env.js";
+import { migrateSalesModule } from "../modules/sales/sales.migration.js";
+import { seedSalesModule } from "../modules/sales/sales.seed.js";
 
 export type BillingDatabase = {
   billing_sales: BillingSalesTable;
@@ -39,20 +41,8 @@ export async function bootstrapBillingDatabase(databaseName = env.DB_MASTER_NAME
 
   await ensureDatabase(name);
   const db = openBillingDatabase(name);
-  await db.schema
-    .createTable("billing_sales")
-    .ifNotExists()
-    .addColumn("id", "varchar(80)", (col) => col.primaryKey())
-    .addColumn("invoice_number", "varchar(80)", (col) => col.notNull().unique())
-    .addColumn("customer_name", "varchar(180)", (col) => col.notNull())
-    .addColumn("amount", "double precision", (col) => col.notNull().defaultTo(0))
-    .addColumn("currency_code", "varchar(8)", (col) => col.notNull())
-    .addColumn("issued_on", "varchar(16)", (col) => col.notNull())
-    .addColumn("status", "varchar(24)", (col) => col.notNull())
-    .execute();
-
-  await seedSale("sale-001", "SAL-0001", "Northstar Trading", 12500, "INR", "2026-07-08", "confirmed", name);
-  await seedSale("sale-002", "SAL-0002", "City Retail", 6400, "INR", "2026-07-08", "draft", name);
+  await migrateSalesModule(db);
+  await seedSalesModule(db);
   migrated.add(name);
 }
 
@@ -77,37 +67,6 @@ function openBillingDatabase(databaseName: string) {
   });
   connections.set(name, db);
   return db;
-}
-
-async function seedSale(
-  id: string,
-  invoiceNumber: string,
-  customerName: string,
-  amount: number,
-  currencyCode: string,
-  issuedOn: string,
-  status: BillingSalesTable["status"],
-  databaseName: string
-) {
-  await openBillingDatabase(databaseName)
-    .insertInto("billing_sales")
-    .values({
-      amount,
-      currency_code: currencyCode,
-      customer_name: customerName,
-      id,
-      invoice_number: invoiceNumber,
-      issued_on: issuedOn,
-      status
-    })
-    .onDuplicateKeyUpdate({
-      amount,
-      currency_code: currencyCode,
-      customer_name: customerName,
-      issued_on: issuedOn,
-      status: sql`status`
-    })
-    .execute();
 }
 
 async function ensureDatabase(databaseName: string) {

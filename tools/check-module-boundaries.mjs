@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const moduleRoots = [
@@ -16,7 +16,7 @@ const moduleRoots = [
   }
 ];
 
-const requiredRoles = [
+const requiredBackendRoles = [
   "module",
   "service",
   "repository",
@@ -27,6 +27,36 @@ const requiredRoles = [
   "seed",
   "sync",
   "types"
+];
+
+const webModuleRoots = [
+  {
+    app: "billing-web",
+    path: join(process.cwd(), "apps", "billing", "web", "src", "modules")
+  },
+  {
+    app: "core-web",
+    path: join(process.cwd(), "apps", "core", "web", "src", "modules")
+  },
+  {
+    app: "platform-web",
+    path: join(process.cwd(), "apps", "platform", "web", "src", "modules")
+  }
+];
+
+const requiredFrontendRoles = ["workspace", "list", "form", "services", "hooks", "types", "schema", "spec"];
+const backendBehaviorMarkers = {
+  events: ["create"],
+  migration: ["migrate"],
+  module: ["register"],
+  seed: ["seed"],
+  sync: ["function"],
+  worker: ["process"]
+};
+const forbiddenScaffoldPatterns = [
+  /reserved\s+(worker|sync|seed|migration)\s+surface/i,
+  /queues\s*:\s*\[\s*\]/,
+  /export\s*\{\s*\w+\s+as\s+\w+\s*\}\s*from/
 ];
 
 const missing = [];
@@ -40,11 +70,35 @@ for (const root of moduleRoots) {
   const modules = readdirSync(root.path, { withFileTypes: true }).filter((entry) => entry.isDirectory());
   for (const moduleDir of modules) {
     const modulePath = join(root.path, moduleDir.name);
-    for (const role of requiredRoles) {
+    for (const role of requiredBackendRoles) {
       const filePath = join(modulePath, `${moduleDir.name}.${role}.ts`);
       if (!existsSync(filePath)) {
         missing.push(`${root.app}/${moduleDir.name}: missing ${moduleDir.name}.${role}.ts`);
+        continue;
       }
+      validateRoleFile(filePath, `${root.app}/${moduleDir.name}`, role);
+    }
+    if (!existsSync(join(modulePath, "index.ts"))) {
+      missing.push(`${root.app}/${moduleDir.name}: missing index.ts`);
+    }
+  }
+}
+
+for (const root of webModuleRoots) {
+  if (!existsSync(root.path)) continue;
+  const modules = readdirSync(root.path, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+  for (const moduleDir of modules) {
+    const modulePath = join(root.path, moduleDir.name);
+    if (!existsSync(join(modulePath, `${moduleDir.name}.services.ts`))) continue;
+
+    for (const role of requiredFrontendRoles) {
+      const extension = ["form", "list", "workspace"].includes(role) ? "tsx" : "ts";
+      const filePath = join(modulePath, `${moduleDir.name}.${role}.${extension}`);
+      if (!existsSync(filePath)) {
+        missing.push(`${root.app}/${moduleDir.name}: missing ${moduleDir.name}.${role}.${extension}`);
+        continue;
+      }
+      validateRoleFile(filePath, `${root.app}/${moduleDir.name}`, role);
     }
     if (!existsSync(join(modulePath, "index.ts"))) {
       missing.push(`${root.app}/${moduleDir.name}: missing index.ts`);
@@ -59,3 +113,27 @@ if (missing.length > 0) {
 }
 
 console.log("Module boundary check passed.");
+
+function validateRoleFile(filePath, moduleLabel, role) {
+  const source = readFileSync(filePath, "utf8").trim();
+  if (!source) {
+    missing.push(`${moduleLabel}: ${role} role is empty`);
+    return;
+  }
+  for (const pattern of forbiddenScaffoldPatterns) {
+    if (pattern.test(source)) {
+      missing.push(`${moduleLabel}: ${role} role is scaffold-only or alias-only`);
+      return;
+    }
+  }
+  const markers = backendBehaviorMarkers[role];
+  if (markers && !markers.some((marker) => source.toLowerCase().includes(marker))) {
+    missing.push(`${moduleLabel}: ${role} role has no callable ${markers.join("/")} behavior`);
+  }
+  if (["form", "list", "workspace"].includes(role) && !/export\s+function\s+\w+/.test(source)) {
+    missing.push(`${moduleLabel}: ${role} role must export a real component`);
+  }
+  if (role === "spec" && !/\b(describe|test|it)\s*\(/.test(source)) {
+    missing.push(`${moduleLabel}: spec role has no executable test`);
+  }
+}

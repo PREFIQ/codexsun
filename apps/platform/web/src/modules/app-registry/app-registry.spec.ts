@@ -1,0 +1,1 @@
+import { describe, expect, it } from "vitest"; import { appRegistrySchema } from "./app-registry.schema"; describe("app registry form", () => { it("requires module key", () => expect(appRegistrySchema.safeParse({ moduleKey: "" }).success).toBe(false)); });

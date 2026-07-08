@@ -1,0 +1,1 @@
+import { describe, expect, it } from "vitest"; import { industrySchema } from "./industry.schema"; describe("industry form", () => { it("requires code and name", () => expect(industrySchema.safeParse({ code: "", name: "" }).success).toBe(false)); });

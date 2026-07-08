@@ -17,7 +17,7 @@ const apps = {
     fallbackPort: 5550,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
-    args: [nodePackageBin("tsx", "dist/cli.mjs", "apps/billing/api"), "watch", "src/server.ts"]
+    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
   },
   "billing-web": {
     displayName: "billing-web",
@@ -27,7 +27,7 @@ const apps = {
     fallbackPort: 5560,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js", "apps/billing/web"), "--host", "127.0.0.1", "--strictPort"]
+    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
   },
   "core-api": {
     displayName: "core-api",
@@ -37,7 +37,7 @@ const apps = {
     fallbackPort: 5530,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
-    args: [nodePackageBin("tsx", "dist/cli.mjs", "apps/core/api"), "watch", "src/server.ts"]
+    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
   },
   "core-web": {
     displayName: "core-web",
@@ -47,7 +47,7 @@ const apps = {
     fallbackPort: 5540,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js", "apps/core/web"), "--host", "127.0.0.1", "--strictPort"]
+    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
   },
   "platform-api": {
     displayName: "api",
@@ -57,7 +57,7 @@ const apps = {
     fallbackPort: 5510,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
-    args: [nodePackageBin("tsx", "dist/cli.mjs", "apps/platform/api"), "watch", "src/server.ts"]
+    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
   },
   "platform-web": {
     displayName: "web",
@@ -67,7 +67,7 @@ const apps = {
     fallbackPort: 5520,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js", "apps/platform/web"), "--host", "127.0.0.1", "--strictPort"]
+    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
   }
 };
 
@@ -345,12 +345,6 @@ function stopChild(childProcess, signal) {
   childProcess.kill(signal);
 }
 
-function nodePackageBin(packageName, binPath, workspacePath) {
-  const workspaceBin = resolve(root, workspacePath, "node_modules", packageName, binPath);
-
-  if (existsSync(workspaceBin)) {
-    return workspaceBin;
-  }
-
+function nodePackageBin(packageName, binPath) {
   return resolve(root, "node_modules", packageName, binPath);
 }

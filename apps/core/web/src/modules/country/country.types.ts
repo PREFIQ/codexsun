@@ -11,3 +11,5 @@ export type Country = {
   numericCode: string;
   status: CountryStatus;
 };
+
+export type CountrySavePayload = Omit<Country, "id">;

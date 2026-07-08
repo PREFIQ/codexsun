@@ -29,7 +29,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 - Database update: Yes (manual).
 - Added Platform database lifecycle commands for master and tenant databases: `db:migrate`, `db:seed`, `db:drop`, and `dbmigrate:fresh`.
 - Added a Platform API database CLI that reuses the same Kysely migration and seed paths as application startup.
-- Added tenant-aware migration and seed passes so registered tenant databases are migrated and seeded from the master tenant registry.
+- Added tenant app-module migration and seed passes so registered tenant databases are migrated and seeded from the master tenant registry.
 - Added `CODEXSUN_DB_FRESH_ON_START` to optionally drop, recreate, migrate, and seed configured databases during API startup.
 - Added destructive action guards: `CODEXSUN_DB_RESET_CONFIRM=DROP_DATABASES`, plus `CODEXSUN_ALLOW_PRODUCTION_DB_RESET=1` when `NODE_ENV=production`.
 - Made drop/fresh remove registered tenant databases before dropping the master database.
@@ -37,6 +37,10 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 #### App Codebase Changes
 
 - Added loud CLI/startup warnings before destructive database lifecycle actions.
+- Added stable migration preflight/list/run/local-test, dump, restore-test, and backup-verification command names.
+- Added explicit safety guards for restored-dump migration tests, sandbox restore tests, production backup verification, and backup artifact verification.
+- Added database migration, backup, and legacy client migration runbooks plus reusable legacy intake/mapping/validation/cutover templates.
+- Documented the baseline backup and restore-test schedule.
 - Added console progress logs for database bootstrap, master/tenant database creation, migrations, platform app seeding,
   default tenant seeding, tenant module seeding, tenant admin seed status, and database CLI commands.
 - Standardized Platform dev logs so `platform-api` displays as `api` and `platform-web` displays as `web` in stack and
@@ -128,7 +132,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 - Added an idempotent default tenant seed for `CODEXSUN` during Platform API bootstrap.
 - Added `.env`-driven default tenant settings: name, corporate ID, slug, tenant database name, and default tenant admin credentials.
 - Provisioned the default `CODEXSUN` tenant database with tenant module settings and a tenant-local admin user when `DEFAULT_TENANT_ADMIN_PASSWORD` is configured.
-- Kept tenant identity database-owned by seeding master tenant and tenant domain rows, with `public_id` used for external JWT/session identity.
+- Kept tenant identity database-owned by seeding master tenant and tenant domain rows, with `uuid` used for external JWT/session identity.
 
 #### App Codebase Changes
 

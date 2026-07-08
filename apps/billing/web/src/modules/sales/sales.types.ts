@@ -9,3 +9,5 @@ export type Sale = {
   issuedOn: string;
   status: SaleStatus;
 };
+
+export type SaleSavePayload = Omit<Sale, "id">;

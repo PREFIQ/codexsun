@@ -1,0 +1,1 @@
+import type { FastifyInstance } from "fastify"; import { registerIndustryRoutes } from "./industry.routes.js"; export const industryModule = { key: "platform.industry", label: "Industries", register(app: FastifyInstance) { return registerIndustryRoutes(app); } };

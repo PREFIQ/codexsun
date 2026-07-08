@@ -1,0 +1,1 @@
+import { describe, expect, it } from "vitest"; import { subscriptionSchema } from "./subscription.schema"; describe("subscription form", () => { it("requires tenant and plan", () => expect(subscriptionSchema.safeParse({ tenantId: 0, planId: 0 }).success).toBe(false)); });
