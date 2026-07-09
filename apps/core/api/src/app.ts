@@ -2,7 +2,8 @@ import { createApiApp, registerHealthRoute, registerRequestLogging } from "@code
 import type { HealthCheck } from "@codexsun/framework/health";
 import { bootstrapCoreDatabase } from "./database/core-database.js";
 import { env } from "./env.js";
-import { countryModule } from "./modules/country/index.js";
+import { commonModule } from "./modules/common/index.js";
+import { locationModules } from "./modules/common/location/location.module.js";
 
 export async function createApp() {
   await bootstrapCoreDatabase();
@@ -10,7 +11,7 @@ export async function createApp() {
   const app = await createApiApp({
     appName: "CODEXSUN Core API",
     cookieSecret: env.JWT_SECRET,
-    corsOrigins: [env.CORE_WEB_ORIGIN],
+    corsOrigins: [env.CORE_WEB_ORIGIN, env.PLATFORM_WEB_ORIGIN],
     environment: env.NODE_ENV
   });
 
@@ -19,7 +20,7 @@ export async function createApp() {
       name: "core-api",
       check: () => ({
         details: {
-          modules: [countryModule.key],
+          modules: [commonModule.key, ...locationModules.map((module) => module.key)],
           runtime: "core-foundation"
         },
         status: "ok"
@@ -29,7 +30,7 @@ export async function createApp() {
 
   registerRequestLogging(app);
   registerHealthRoute(app, healthChecks);
-  await countryModule.register(app);
+  await commonModule.register(app);
 
   return app;
 }

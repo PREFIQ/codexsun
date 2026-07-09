@@ -127,10 +127,27 @@ async function ensureTenantColumns(database: Kysely<PlatformDatabase>) {
 }
 
 async function addColumnIfMissing(database: Kysely<PlatformDatabase>, tableName: string, columnName: string, definition: string) {
-  const tables = await database.introspection.getTables();
-  const table = tables.find((candidate) => candidate.name === tableName);
-  if (!table || table.columns.some((column) => column.name === columnName)) {
+  if (await columnExists(database, tableName, columnName)) {
     return;
   }
-  await sql.raw(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`).execute(database);
+  try {
+    await sql.raw(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`).execute(database);
+  } catch (error) {
+    if (!isDuplicateColumnError(error)) throw error;
+  }
+}
+
+async function columnExists(database: Kysely<PlatformDatabase>, tableName: string, columnName: string) {
+  const result = await sql<{ column_count: number | string }>`
+    SELECT COUNT(*) AS column_count
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ${tableName}
+      AND COLUMN_NAME = ${columnName}
+  `.execute(database);
+  return Number(result.rows[0]?.column_count ?? 0) > 0;
+}
+
+function isDuplicateColumnError(error: unknown) {
+  return typeof error === "object" && error !== null && ("code" in error || "errno" in error) && ((error as { code?: string; errno?: number }).code === "ER_DUP_FIELDNAME" || (error as { code?: string; errno?: number }).errno === 1060);
 }

@@ -13,12 +13,14 @@ import { platformActivityModule } from "./modules/platform-activity/index.js";
 import { databaseMaintenanceModule } from "./modules/database-maintenance/index.js";
 import { queueManagerModule } from "./modules/queue-manager/index.js";
 import { storageManagerModule } from "./modules/storage-manager/index.js";
+import { projectManagerModule } from "./modules/project-manager/index.js";
 import { startQueueManagerWorker } from "./modules/queue-manager/queue-manager.runtime.js";
 import { seedDefaultTenant } from "./modules/tenant/tenant.seed.js";
 import { env } from "./env.js";
 import { bootstrapPlatformDatabase } from "./database/platform-database.js";
 
 export async function createApp() {
+  console.info("[platform.boot] bootstrap started");
   await bootstrapPlatformDatabase();
   await seedDefaultTenant();
 
@@ -46,7 +48,8 @@ export async function createApp() {
             platformActivityModule.key,
             databaseMaintenanceModule.key,
             queueManagerModule.key,
-            storageManagerModule.key
+            storageManagerModule.key,
+            projectManagerModule.key
           ],
           runtime: "platform-foundation"
         },
@@ -57,20 +60,31 @@ export async function createApp() {
 
   registerRequestLogging(app);
   registerHealthRoute(app, healthChecks);
+  console.info("[platform.routes] health ready");
   await registerAuthRoutes(app);
-  await appRegistryModule.register(app);
-  await tenantModule.register(app);
-  await tenantDomainModule.register(app);
-  await planModule.register(app);
-  await subscriptionModule.register(app);
-  await industryModule.register(app);
-  await entitlementModule.register(app);
-  await accessControlModule.register(app);
-  await platformActivityModule.register(app);
-  await databaseMaintenanceModule.register(app);
-  await queueManagerModule.register(app);
-  await storageManagerModule.register(app);
+  console.info("[platform.routes] auth ready");
+  await registerPlatformModule(appRegistryModule.key, () => appRegistryModule.register(app));
+  await registerPlatformModule(tenantModule.key, () => tenantModule.register(app));
+  await registerPlatformModule(tenantDomainModule.key, () => tenantDomainModule.register(app));
+  await registerPlatformModule(planModule.key, () => planModule.register(app));
+  await registerPlatformModule(subscriptionModule.key, () => subscriptionModule.register(app));
+  await registerPlatformModule(industryModule.key, () => industryModule.register(app));
+  await registerPlatformModule(entitlementModule.key, () => entitlementModule.register(app));
+  await registerPlatformModule(accessControlModule.key, () => accessControlModule.register(app));
+  await registerPlatformModule(platformActivityModule.key, () => platformActivityModule.register(app));
+  await registerPlatformModule(databaseMaintenanceModule.key, () => databaseMaintenanceModule.register(app));
+  await registerPlatformModule(queueManagerModule.key, () => queueManagerModule.register(app));
+  await registerPlatformModule(storageManagerModule.key, () => storageManagerModule.register(app));
+  await registerPlatformModule(projectManagerModule.key, () => projectManagerModule.register(app));
   startQueueManagerWorker(app);
+  console.info("[platform.worker] queue manager ready");
+  console.info("[platform.boot] bootstrap completed");
 
   return app;
+}
+
+async function registerPlatformModule(key: string, register: () => Promise<unknown> | unknown) {
+  console.info(`[module.register] ${key}`);
+  await register();
+  console.info(`[module.ready] ${key}`);
 }

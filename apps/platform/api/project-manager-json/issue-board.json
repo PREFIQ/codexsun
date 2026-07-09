@@ -1,0 +1,22 @@
+[
+  {
+    "active": true,
+    "assignee": "",
+    "createdAt": "2026-07-09T03:19:58.994Z",
+    "description": "",
+    "dueDate": "",
+    "id": "issue-seed-1",
+    "key": "issue.project-manager.install",
+    "kind": "issue",
+    "lane": "",
+    "moduleKey": "project-manager",
+    "priority": "high",
+    "referenceId": "",
+    "referenceType": "",
+    "sortOrder": 10,
+    "status": "in-progress",
+    "title": "Install Project Manager JSON workspace",
+    "type": "enhancement",
+    "updatedAt": "2026-07-09T03:19:58.994Z"
+  }
+]

@@ -17,6 +17,7 @@ async function startServer(retries = 15, delay = 250) {
         port: env.PLATFORM_API_PORT
       });
       console.log(`  ok api ready: ${address}`);
+      console.info(`[server.listen] ${address}`);
       return;
     } catch (error) {
       if (isAddressInUseError(error) && attempt < retries) {

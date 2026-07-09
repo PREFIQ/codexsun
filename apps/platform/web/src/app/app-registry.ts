@@ -1,13 +1,18 @@
 import {
   Building2Icon,
+  CircleGaugeIcon,
   CreditCardIcon,
   Globe2Icon,
+  PackageIcon,
+  Settings2Icon,
+  UsersIcon,
+  ClipboardListIcon,
   LayoutDashboardIcon,
   ReceiptTextIcon,
-  Settings2Icon,
   type LucideIcon
 } from "lucide-react";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
+import { commonMasterDefinitions } from "../modules/common/registry";
 
 export type PlatformAppId = "application" | "billing";
 
@@ -75,10 +80,21 @@ export function appMenuFor(appId: PlatformAppId, activePage: string, onSelect: (
         { title: "Overview", isActive: activePage === "billing.overview", onSelect: () => onSelect("billing.overview") },
         { title: "Sales", isActive: activePage === "billing.sales", onSelect: () => onSelect("billing.sales") },
         {
-          title: "Core",
-          isActive: activePage.startsWith("core"),
+          title: "Common",
+          isActive: activePage.startsWith("core.common"),
           items: [
-            { title: "Countries", isActive: activePage === "core.country", onSelect: () => onSelect("core.country") }
+            {
+              title: "Location",
+              isActive: activePage.startsWith("core.common.location"),
+              items: [
+                { title: "Countries", isActive: activePage === "core.common.location.countries", onSelect: () => onSelect("core.common.location.countries") },
+                { title: "States", isActive: activePage === "core.common.location.states", onSelect: () => onSelect("core.common.location.states") },
+                { title: "Districts", isActive: activePage === "core.common.location.districts", onSelect: () => onSelect("core.common.location.districts") },
+                { title: "Cities", isActive: activePage === "core.common.location.cities", onSelect: () => onSelect("core.common.location.cities") },
+                { title: "Pincodes", isActive: activePage === "core.common.location.pincodes", onSelect: () => onSelect("core.common.location.pincodes") }
+              ]
+            },
+            ...commonMasterMenuGroups(activePage, onSelect)
           ]
         },
         { title: "Billing Settings", isActive: activePage === "billing.settings", onSelect: () => onSelect("billing.settings") }
@@ -99,6 +115,66 @@ export function appMenuFor(appId: PlatformAppId, activePage: string, onSelect: (
   };
 }
 
+export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSelect: (page: string) => void): SidemenuItem[] {
+  if (appId === "billing") {
+    return [
+      {
+        icon: CircleGaugeIcon,
+        isActive: activePage === "billing.overview",
+        onSelect: () => onSelect("billing.overview"),
+        title: "Overview"
+      },
+      {
+        icon: ReceiptTextIcon,
+        isActive: activePage === "billing.sales" || activePage === "billing.settings",
+        title: "Billing",
+        items: [
+          { title: "Sales", isActive: activePage === "billing.sales", onSelect: () => onSelect("billing.sales") },
+          { title: "Billing Settings", isActive: activePage === "billing.settings", onSelect: () => onSelect("billing.settings") }
+        ]
+      },
+      {
+        icon: Globe2Icon,
+        isActive: activePage.startsWith("core.common"),
+        title: "Common",
+        items: [
+          {
+            title: "Location",
+            isActive: activePage.startsWith("core.common.location"),
+            items: [
+              { title: "Countries", isActive: activePage === "core.common.location.countries", onSelect: () => onSelect("core.common.location.countries") },
+              { title: "States", isActive: activePage === "core.common.location.states", onSelect: () => onSelect("core.common.location.states") },
+              { title: "Districts", isActive: activePage === "core.common.location.districts", onSelect: () => onSelect("core.common.location.districts") },
+              { title: "Cities", isActive: activePage === "core.common.location.cities", onSelect: () => onSelect("core.common.location.cities") },
+              { title: "Pincodes", isActive: activePage === "core.common.location.pincodes", onSelect: () => onSelect("core.common.location.pincodes") }
+            ]
+          },
+          ...commonMasterMenuGroups(activePage, onSelect)
+        ]
+      }
+    ];
+  }
+
+  return [
+    {
+      icon: CircleGaugeIcon,
+      isActive: activePage === "application.overview",
+      onSelect: () => onSelect("application.overview"),
+      title: "Overview"
+    },
+    {
+      icon: Building2Icon,
+      isActive: activePage.startsWith("application") && activePage !== "application.overview",
+      title: "Application",
+      items: [
+        { title: "Landing Desk", isActive: activePage === "application.landing", onSelect: () => onSelect("application.landing") },
+        { title: "Platform Profile", isActive: activePage === "application.profile", onSelect: () => onSelect("application.profile") },
+        { title: "Settings", isActive: activePage === "application.settings", onSelect: () => onSelect("application.settings") }
+      ]
+    }
+  ];
+}
+
 export function appWorkspaceItems(enabledApps: PlatformAppId[], activeApp: PlatformAppId) {
   return platformAppRegistry
     .filter((app) => enabledApps.includes(app.id))
@@ -117,3 +193,31 @@ export const applicationPageIcons = {
   core: Globe2Icon,
   settings: Settings2Icon
 };
+
+function commonMasterMenuGroups(activePage: string, onSelect: (page: string) => void): SidemenuItem[] {
+  const groups = [
+    { icon: UsersIcon, id: "contacts", label: "Contacts" },
+    { icon: PackageIcon, id: "products", label: "Product" },
+    { icon: ClipboardListIcon, id: "workorder", label: "Work Orders" },
+    { icon: Settings2Icon, id: "others", label: "Others" }
+  ] as const;
+  return groups.map((group) => ({
+    icon: group.icon,
+    title: group.label,
+    isActive: activePage.startsWith(`core.common.${group.id}.`),
+    items: commonMasterDefinitions
+      .filter((definition) => definition.group === group.id)
+      .map((definition) => {
+        const page = pageKeyForCommonMaster(definition.path);
+        return {
+          title: definition.label,
+          isActive: activePage === page,
+          onSelect: () => onSelect(page)
+        };
+      })
+  }));
+}
+
+function pageKeyForCommonMaster(path: string) {
+  return path.replace(/^\/core\//, "core.").replaceAll("/", ".");
+}

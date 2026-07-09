@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   AppWindowIcon,
+  BoxesIcon,
   Building2Icon,
   CircleGaugeIcon,
   CreditCardIcon,
@@ -9,6 +10,7 @@ import {
   KeyRoundIcon,
   ListChecksIcon,
   PaletteIcon,
+  ClipboardListIcon,
   ReceiptTextIcon,
   ShieldCheckIcon,
   TagsIcon,
@@ -33,6 +35,8 @@ import { MasterDatabaseWorkspace } from "../../modules/master-database";
 import { TenantDatabaseWorkspace } from "../../modules/tenant-database";
 import { QueueManagementWorkspace } from "../../modules/queue-management";
 import { StorageManagerWorkspace } from "../../modules/storage-manager";
+import { PlatformRegistryWorkspace } from "../../modules/platform-registry";
+import { WorkAutomationWorkspace } from "../../modules/work-automation";
 import { useTenantsQuery } from "../../modules/tenant";
 import { usePlansQuery } from "../../modules/plan";
 import { useSubscriptionsQuery } from "../../modules/subscription";
@@ -42,7 +46,7 @@ import { usePlatformActivityQuery } from "../../modules/platform-activity";
 import { useQueueRuntimeQuery } from "../../modules/queue-management";
 import { AuthGate } from "../../shared/auth/AuthGate";
 
-type SaPage = "overview" | "tenants" | "domains" | "plans" | "plan-access" | "subscriptions" | "apps" | "entitlements" | "tenant-access" | "industries" | "master-database" | "tenant-database" | "queue-management" | "storage-manager" | "access" | "activity" | "design-system";
+type SaPage = "overview" | "tenants" | "domains" | "plans" | "plan-access" | "subscriptions" | "apps" | "entitlements" | "tenant-access" | "industries" | "master-database" | "tenant-database" | "queue-management" | "storage-manager" | "platform-registry" | "work-automation" | "access" | "activity" | "design-system";
 
 export function SaDesk() {
   const [page, setPage] = useState<SaPage>(pageFromUrl());
@@ -54,6 +58,15 @@ export function SaDesk() {
 
   const menuItems: SidemenuItem[] = [
     { title: "Overview", icon: CircleGaugeIcon, isActive: page === "overview", onSelect: () => selectPage("overview") },
+    {
+      title: "Project Manager",
+      icon: ClipboardListIcon,
+      isActive: page === "platform-registry" || page === "work-automation",
+      items: [
+        { title: "Platform Registry", isActive: page === "platform-registry", onSelect: () => selectPage("platform-registry") },
+        { title: "Work Automation", isActive: page === "work-automation", onSelect: () => selectPage("work-automation") }
+      ]
+    },
     {
       title: "Tenant Setup",
       icon: Building2Icon,
@@ -129,6 +142,8 @@ export function SaDesk() {
         {page === "tenant-database" ? <TenantDatabaseWorkspace /> : null}
         {page === "queue-management" ? <QueueManagementWorkspace /> : null}
         {page === "storage-manager" ? <StorageManagerWorkspace /> : null}
+        {page === "platform-registry" ? <PlatformRegistryWorkspace /> : null}
+        {page === "work-automation" ? <WorkAutomationWorkspace /> : null}
         {page === "access" ? <AccessControlWorkspace /> : null}
         {page === "activity" ? <PlatformActivityWorkspace /> : null}
         {page === "design-system" ? <DesignSystemGallery /> : null}
@@ -139,7 +154,8 @@ export function SaDesk() {
 
 function pageFromUrl(): SaPage {
   const page = window.location.pathname.split("/")[2];
-  return page === "tenants" || page === "domains" || page === "plans" || page === "plan-access" || page === "subscriptions" || page === "apps" || page === "entitlements" || page === "tenant-access" || page === "industries" || page === "master-database" || page === "tenant-database" || page === "queue-management" || page === "storage-manager" || page === "access" || page === "activity" || page === "design-system" ? page : "overview";
+  if (page === "project-manager") return "platform-registry";
+  return page === "tenants" || page === "domains" || page === "plans" || page === "plan-access" || page === "subscriptions" || page === "apps" || page === "entitlements" || page === "tenant-access" || page === "industries" || page === "master-database" || page === "tenant-database" || page === "queue-management" || page === "storage-manager" || page === "platform-registry" || page === "work-automation" || page === "access" || page === "activity" || page === "design-system" ? page : "overview";
 }
 
 function SaOverview({ onNavigate }: { onNavigate: (page: SaPage) => void }) {
@@ -176,6 +192,8 @@ function SaOverview({ onNavigate }: { onNavigate: (page: SaPage) => void }) {
         <DeskCard title="Database" value="2" icon={DatabaseIcon} onClick={() => onNavigate("master-database")} />
         <DeskCard title="Queue Jobs" value={String((queue.data?.pending ?? 0) + (queue.data?.running ?? 0))} icon={WorkflowIcon} onClick={() => onNavigate("queue-management")} />
         <DeskCard title="Storage" value="files" icon={HardDriveIcon} onClick={() => onNavigate("storage-manager")} />
+        <DeskCard title="Platform Registry" value="tree" icon={BoxesIcon} onClick={() => onNavigate("platform-registry")} />
+        <DeskCard title="Work Automation" value="flow" icon={ClipboardListIcon} onClick={() => onNavigate("work-automation")} />
       </div>
       <section className="rounded-md border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">

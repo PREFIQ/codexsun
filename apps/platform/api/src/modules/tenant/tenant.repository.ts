@@ -119,12 +119,23 @@ export class TenantRepository {
   }
 
   async updateAccess(tenant: Tenant, enabledModuleKeys: string[], defaultLandingApp: Tenant["defaultLandingApp"]) {
+    const manuallyEnabledKeys = parseStringArrayFromRecord(tenant.payloadSettings.apps, "enabled");
+    const manuallyDisabledKeys = parseStringArrayFromRecord(tenant.payloadSettings.apps, "disabled");
     const normalizedKeys = Array.from(
-      new Set(["platform.application", ...enabledModuleKeys.map((key) => (key === "platform.tenant" ? "platform.application" : key))])
-    ).sort();
+      new Set([
+        "platform.application",
+        ...tenant.enabledModuleKeys,
+        ...manuallyEnabledKeys,
+        ...enabledModuleKeys
+      ].map((key) => (key === "platform.tenant" ? "platform.application" : key)))
+    )
+      .filter((key) => key === "platform.application" || !manuallyDisabledKeys.includes(key))
+      .sort();
     const payloadSettings = {
       ...tenant.payloadSettings,
       apps: {
+        ...(isRecord(tenant.payloadSettings.apps) ? tenant.payloadSettings.apps : {}),
+        disabled: manuallyDisabledKeys.filter((key) => key !== "platform.application"),
         enabled: normalizedKeys
       },
       landing: {
@@ -203,6 +214,12 @@ export class TenantRepository {
       primaryDomain: await this.domains.primaryDomainForTenant(tenant.id, tenant.slug)
     };
   }
+}
+
+function parseStringArrayFromRecord(value: unknown, key: string) {
+  if (!isRecord(value)) return [];
+  const entry = value[key];
+  return Array.isArray(entry) ? entry.filter((item): item is string => typeof item === "string") : [];
 }
 
 type TenantRow = {

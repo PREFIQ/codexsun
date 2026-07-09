@@ -24,8 +24,14 @@ function requestMeta(request: { correlationId?: string; id: string; tenantId?: s
 }
 
 export async function createApiApp(options: CreateApiAppOptions): Promise<FastifyInstance> {
+  console.info(`[app.boot] creating ${options.appName} (${options.environment})`);
   const app = Fastify({
     logger: options.environment === "development" ? false : { level: "warn" }
+  });
+
+  app.addHook("onRoute", (route) => {
+    const methods = Array.isArray(route.method) ? route.method.join(",") : route.method;
+    console.info(`[route.registered] ${methods} ${route.url}`);
   });
 
   await app.register(cors, {
@@ -33,18 +39,22 @@ export async function createApiApp(options: CreateApiAppOptions): Promise<Fastif
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     origin: options.corsOrigins
   });
+  console.info(`[plugin.ready] cors origins=${options.corsOrigins.join(",") || "none"}`);
 
   await app.register(cookie, {
     secret: options.cookieSecret
   });
+  console.info("[plugin.ready] cookie");
 
   app.addHook("onRequest", async (_request, reply) => {
     reply.header("Permissions-Policy", "unload=*");
   });
 
   registerTenantContext(app);
+  console.info("[context.ready] tenant");
 
   app.setErrorHandler((error, request, reply) => {
+    console.error(`[request.error] ${request.method} ${request.url} request=${request.id} ${errorMessage(error)}`);
     if (isAppError(error)) {
       return reply.code(error.statusCode).send(
         fail(
@@ -75,6 +85,14 @@ export async function createApiApp(options: CreateApiAppOptions): Promise<Fastif
     app.addHook("onReady", options.onReady);
   }
 
+  app.addHook("onReady", () => {
+    console.info(`[app.ready] ${options.appName}`);
+  });
+
+  app.addHook("onClose", async () => {
+    console.info(`[app.close] ${options.appName}`);
+  });
+
   if (options.shutdownHooks?.length) {
     registerShutdownHooks(app, options.shutdownHooks);
   }
@@ -90,4 +108,8 @@ export async function createApiApp(options: CreateApiAppOptions): Promise<Fastif
   );
 
   return app;
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }

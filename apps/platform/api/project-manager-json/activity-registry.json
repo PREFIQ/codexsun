@@ -1,0 +1,22 @@
+[
+  {
+    "active": true,
+    "assignee": "",
+    "createdAt": "2026-07-09T03:19:58.994Z",
+    "description": "",
+    "dueDate": "",
+    "id": "activity-seed-1",
+    "key": "activity.project-manager.started",
+    "kind": "activity",
+    "lane": "",
+    "moduleKey": "project-manager",
+    "priority": "medium",
+    "referenceId": "",
+    "referenceType": "",
+    "sortOrder": 10,
+    "status": "active",
+    "title": "Project Manager JSON workspace started",
+    "type": "system",
+    "updatedAt": "2026-07-09T03:19:58.994Z"
+  }
+]

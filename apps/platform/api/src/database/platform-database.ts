@@ -1,6 +1,7 @@
 import { Kysely, MysqlDialect, sql } from "kysely";
 import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
+import { existsSync, writeFileSync } from "node:fs";
 import { env } from "../env.js";
 import { migrateAppRegistryModule } from "../modules/app-registry/app-registry.migration.js";
 import { seedAppRegistryModule } from "../modules/app-registry/app-registry.seed.js";
@@ -69,9 +70,14 @@ export async function bootstrapPlatformDatabase() {
   }
 
   if (env.CODEXSUN_DB_FRESH_ON_START === "1") {
-    console.info("[database] fresh startup requested");
-    await resetPlatformDatabases();
-    return;
+    const sessionFile = process.env.CODEXSUN_DB_FRESH_SESSION_FILE;
+    if (!sessionFile || !existsSync(sessionFile)) {
+      console.info("[database] fresh startup requested");
+      await resetPlatformDatabases();
+      if (sessionFile) writeFileSync(sessionFile, new Date().toISOString(), "utf8");
+      return;
+    }
+    console.info("[database] fresh startup already completed for this dev session");
   }
 
   console.info("[database] bootstrap started");

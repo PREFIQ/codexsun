@@ -1,36 +1,82 @@
 import { sql, type Kysely } from "kysely";
-import type { BillingDatabase } from "../../database/billing-database.js";
+import type { SaleSavePayload } from "./sales.types.js";
+import { normalizeSaleInput } from "./sales.service.js";
+import { SalesRepository } from "./sales.repository.js";
 
 export const salesSeed = {
   key: "billing.sales.seed",
   description: "Sales module seeds default tenant rows into the configured database."
 };
 
-const defaultSales = [
-  { amount: 12500, currencyCode: "INR", customerName: "Northstar Trading", id: "sale-001", invoiceNumber: "SAL-0001", issuedOn: "2026-07-08", status: "confirmed" },
-  { amount: 6400, currencyCode: "INR", customerName: "City Retail", id: "sale-002", invoiceNumber: "SAL-0002", issuedOn: "2026-07-08", status: "draft" }
-] as const;
+const defaultSales: SaleSavePayload[] = [
+  {
+    billingAddress: "18 Market Road\nCoimbatore - 641018",
+    currencyCode: "INR",
+    customerEmail: "accounts@northstar.example",
+    customerName: "Northstar Trading",
+    customerPhone: "+91 98765 43210",
+    invoiceNumber: "SAL-0001",
+    issuedOn: "2026-07-08",
+    items: [
+      { description: "Premium cotton fabric", hsnCode: "5208", quantity: 25, rate: 320, taxRate: 12, unit: "MTR" },
+      { description: "Finishing and packing", hsnCode: "9988", quantity: 1, rate: 1800, taxRate: 18, unit: "JOB" },
+    ],
+    notes: "Dispatch against work order NS-447.",
+    roundOff: 0,
+    shippingAddress: "18 Market Road\nCoimbatore - 641018",
+    status: "confirmed",
+  },
+  {
+    billingAddress: "42 Textile Street\nTiruppur - 641603",
+    currencyCode: "INR",
+    customerEmail: "ops@cityretail.example",
+    customerName: "City Retail",
+    customerPhone: "+91 99887 77665",
+    invoiceNumber: "SAL-0002",
+    issuedOn: "2026-07-09",
+    items: [
+      { description: "Display rack accessories", hsnCode: "9403", quantity: 4, rate: 1350, taxRate: 18, unit: "SET" },
+      { description: "Store branding labels", hsnCode: "4821", quantity: 120, rate: 18, taxRate: 12, unit: "PCS" },
+    ],
+    notes: "Draft invoice pending final dispatch quantity.",
+    roundOff: 0.2,
+    shippingAddress: "42 Textile Street\nTiruppur - 641603",
+    status: "draft",
+  },
+];
 
-export async function seedSalesModule(database: Kysely<BillingDatabase>) {
+export async function seedSalesModule(database: Kysely<any>) {
+  const seedDatabase = database as Kysely<any>;
+  const repository = new SalesRepository();
+  const dbNameResult = await sql<{ db: string }>`SELECT DATABASE() as db`.execute(database);
+  const databaseName = dbNameResult.rows[0]?.db;
+  if (!databaseName) return;
+
   for (const sale of defaultSales) {
-    await database
+    const normalized = normalizeSaleInput(sale);
+    const existing = await repository.list(databaseName);
+    const current = existing.find((entry) => entry.invoiceNumber === normalized.invoiceNumber);
+    if (current) {
+      await repository.update(databaseName, current.id, normalized);
+      continue;
+    }
+    await seedDatabase
       .insertInto("billing_sales")
       .values({
-        amount: sale.amount,
-        currency_code: sale.currencyCode,
-        customer_name: sale.customerName,
-        id: sale.id,
-        invoice_number: sale.invoiceNumber,
-        issued_on: sale.issuedOn,
-        status: sale.status
+        amount: 0,
+        customer_name: normalized.customerName,
+        currency_code: normalized.currencyCode,
+        id: `seed-${normalized.invoiceNumber.toLowerCase()}`,
+        invoice_number: normalized.invoiceNumber,
+        issued_on: normalized.issuedOn,
+        status: normalized.status,
       })
       .onDuplicateKeyUpdate({
-        amount: sale.amount,
-        currency_code: sale.currencyCode,
-        customer_name: sale.customerName,
-        issued_on: sale.issuedOn,
-        status: sql`status`
+        customer_name: normalized.customerName,
+        issued_on: normalized.issuedOn,
+        status: sql`status`,
       })
       .execute();
+    await repository.update(databaseName, `seed-${normalized.invoiceNumber.toLowerCase()}`, normalized);
   }
 }

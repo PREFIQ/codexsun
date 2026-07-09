@@ -1,0 +1,22 @@
+[
+  {
+    "active": true,
+    "assignee": "",
+    "createdAt": "2026-07-09T03:19:58.994Z",
+    "description": "",
+    "dueDate": "",
+    "id": "review-seed-1",
+    "key": "review.project-manager.ui",
+    "kind": "review",
+    "lane": "",
+    "moduleKey": "project-manager",
+    "priority": "medium",
+    "referenceId": "",
+    "referenceType": "",
+    "sortOrder": 10,
+    "status": "requested",
+    "title": "Review Project Manager Super Admin UI",
+    "type": "ui-review",
+    "updatedAt": "2026-07-09T03:19:58.994Z"
+  }
+]

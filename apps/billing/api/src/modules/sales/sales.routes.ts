@@ -25,6 +25,13 @@ export async function registerSalesRoutes(app: FastifyInstance) {
     ok(await salesService.listSales(tenantDatabaseName(request.headers["x-tenant-db"])), { requestId: request.id })
   );
 
+  app.get("/billing/sales/:id", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const sale = await salesService.getSale(tenantDatabaseName(request.headers["x-tenant-db"]), id);
+    if (!sale) return reply.code(404).send(notFound(request.id));
+    return ok(sale, { requestId: request.id });
+  });
+
   app.post("/billing/sales", async (request) =>
     ok(await salesService.createSale(tenantDatabaseName(request.headers["x-tenant-db"]), request.body as SaleSavePayload), {
       requestId: request.id

@@ -18,6 +18,7 @@ import { buildShowingLabel } from "@codexsun/ui/workspace/utils"
 import { cn } from "@codexsun/ui/lib/utils"
 import { TenantPrimaryDomainField } from "../tenant-domain/tenant-domain.form"
 import { defaultTenantDomain, normalizeTenantDomain } from "../tenant-domain/tenant-domain.services"
+import { usePlatformAppsQuery, type PlatformApp } from "../app-registry"
 import { createTenant, listTenantActivity, listTenants, restoreTenant as restoreTenantRecord, suspendTenant as suspendTenantRecord, updateTenant } from "./tenant.services"
 import { defaultLandingApp, normalizeModuleKeys, platformAppRegistry, type PlatformAppId } from "../../app/app-registry"
 
@@ -486,6 +487,7 @@ type TenantFormState = {
   dbType: string
   dbUser: string
   defaultLandingApp: PlatformAppId
+  disabledModuleKeys: string[]
   enabledModuleKeys: string[]
   id?: number
   mobile: string
@@ -497,6 +499,8 @@ type TenantFormState = {
 }
 
 type TenantAppAccess = {
+  appId: PlatformAppId
+  alwaysEnabled: boolean
   color: string
   description: string
   enabled: boolean
@@ -504,17 +508,6 @@ type TenantAppAccess = {
   moduleKey: string
   name: string
 }
-
-const tenantAppAccess: TenantAppAccess[] = [
-  ...platformAppRegistry.map((app) => ({
-    color: app.accentClass,
-    description: app.description,
-    enabled: app.alwaysEnabled,
-    icon: <app.icon className="size-5" />,
-    moduleKey: app.moduleKey,
-    name: app.label
-  }))
-]
 
 function TenantUpsertPage({
   errorMessage,
@@ -530,6 +523,10 @@ function TenantUpsertPage({
   onSubmit: (tenant: TenantFormState) => void
 }) {
   const isEdit = tenant !== null
+  const appsQuery = usePlatformAppsQuery()
+  const availableApps = useMemo(() => tenantAppAccessFromRegistry(appsQuery.data), [appsQuery.data])
+  const initialEnabledKeys = normalizeModuleKeys(tenant?.enabledModuleKeys ?? availableApps.filter((app) => app.enabled).map((app) => app.moduleKey))
+  const initialDisabledKeys = disabledModuleKeysFromPayload(tenant?.payloadSettings, availableApps, initialEnabledKeys)
   const [form, setForm] = useState<TenantFormState>({
     corporateId: tenant?.corporateId ?? toCorporateId(tenant?.tenantCode ?? ""),
     dbHost: tenant?.dbHost ?? "localhost",
@@ -539,7 +536,8 @@ function TenantUpsertPage({
     dbType: tenant?.dbType ?? "mariadb",
     dbUser: tenant?.dbUser ?? "root",
     defaultLandingApp: defaultLandingApp(tenant?.defaultLandingApp ?? landingAppFromPayload(tenant?.payloadSettings), tenant?.enabledModuleKeys ?? []),
-    enabledModuleKeys: normalizeModuleKeys(tenant?.enabledModuleKeys ?? tenantAppAccess.filter((app) => app.enabled).map((app) => app.moduleKey)),
+    disabledModuleKeys: initialDisabledKeys,
+    enabledModuleKeys: initialEnabledKeys,
     ...(tenant ? { id: tenant.id } : {}),
     mobile: tenant?.mobile ?? "",
     primaryDomain: tenant?.primaryDomain ?? defaultTenantDomain(tenant?.slug ?? tenant?.tenantCode ?? ""),
@@ -551,9 +549,9 @@ function TenantUpsertPage({
   const [activeTab, setActiveTab] = useState("details")
   const [localBanner, setLocalBanner] = useState("")
   const [appAccess, setAppAccess] = useState(() =>
-    tenantAppAccess.map((app) => ({
+    availableApps.map((app) => ({
       ...app,
-      enabled: app.moduleKey === "platform.application" || (tenant ? normalizeModuleKeys(tenant.enabledModuleKeys).includes(app.moduleKey) : app.enabled)
+      enabled: app.alwaysEnabled || (tenant ? initialEnabledKeys.includes(app.moduleKey) && !initialDisabledKeys.includes(app.moduleKey) : app.enabled)
     }))
   )
   const [corporateIdTouched, setCorporateIdTouched] = useState(false)
@@ -805,12 +803,16 @@ function TenantUpsertPage({
                 onToggle={(enabled) =>
                   setAppAccess((current) => {
                     const next = current.map((item, itemIndex) => (itemIndex === index ? { ...item, enabled } : item))
+                    const enabledKeys = normalizeModuleKeys(next.filter((item) => item.enabled).map((item) => item.moduleKey))
+                    const disabledKeys = next.filter((item) => !item.enabled && !item.alwaysEnabled).map((item) => item.moduleKey)
                     const enabledIds = next
                       .filter((item) => item.enabled)
-                      .map((item) => platformAppRegistry.find((registry) => registry.moduleKey === item.moduleKey)?.id)
+                      .map((item) => item.appId)
                       .filter(Boolean)
                     setForm((currentForm) => ({
                       ...currentForm,
+                      disabledModuleKeys: disabledKeys,
+                      enabledModuleKeys: enabledKeys,
                       defaultLandingApp: enabledIds.includes(currentForm.defaultLandingApp) ? currentForm.defaultLandingApp : "application"
                     }))
                     return next
@@ -878,6 +880,7 @@ function TenantUpsertPage({
           setLocalBanner("")
           onSubmit({
             ...form,
+            disabledModuleKeys: appAccess.filter((app) => !app.enabled && !app.alwaysEnabled).map((app) => app.moduleKey),
             enabledModuleKeys: normalizeModuleKeys(appAccess.filter((app) => app.enabled).map((app) => app.moduleKey))
           })
         }}
@@ -896,7 +899,7 @@ function TenantUpsertPage({
 }
 
 function TenantAppCard({ app, onToggle }: { app: TenantAppAccess; onToggle: (enabled: boolean) => void }) {
-  const locked = app.moduleKey === "platform.application"
+  const locked = app.alwaysEnabled || app.moduleKey === "platform.application"
   return (
     <div className={cn("flex min-h-32 gap-3 rounded-md border border-border/70 p-4", app.enabled ? "bg-muted/40" : "bg-background")}>
       <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-md text-white", app.color)}>{app.icon}</div>
@@ -932,6 +935,7 @@ function TenantHeader({ children, className }: { children: ReactNode; className?
 function toTenantSavePayload(form: TenantFormState): TenantSavePayload {
   const enabledModuleKeys = normalizeModuleKeys(form.enabledModuleKeys)
   const landingApp = defaultLandingApp(form.defaultLandingApp, enabledModuleKeys)
+  const disabledModuleKeys = form.disabledModuleKeys.filter((key) => key !== "platform.application")
 
   return {
     corporateId: form.corporateId.trim() || null,
@@ -945,7 +949,7 @@ function toTenantSavePayload(form: TenantFormState): TenantSavePayload {
     enabledModuleKeys,
     mobile: form.mobile.replace(/\D/g, "") || null,
     payloadSettings: {
-      apps: { enabled: enabledModuleKeys },
+      apps: { disabled: disabledModuleKeys, enabled: enabledModuleKeys },
       landing: { app: landingApp, mode: "tenant" }
     },
     primaryDomain: normalizeTenantDomain(form.primaryDomain) || defaultTenantDomain(form.slug || form.tenantCode),
@@ -986,6 +990,49 @@ function toDatabaseName(value: string) {
 
 function toSlug(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+}
+
+function tenantAppAccessFromRegistry(apps: PlatformApp[] | undefined): TenantAppAccess[] {
+  const source = apps?.length ? apps : platformAppRegistry.map((app, index) => ({
+    alwaysEnabled: app.alwaysEnabled,
+    appId: app.id,
+    defaultLanding: app.defaultLanding,
+    description: app.description,
+    id: index,
+    label: app.label,
+    moduleKey: app.moduleKey,
+    stack: app.stack,
+    uuid: app.moduleKey
+  }))
+
+  return source
+    .filter((app) => app.appId === "application" || app.appId === "billing")
+    .map((app) => {
+      const local = platformAppRegistry.find((item) => item.id === app.appId || item.moduleKey === app.moduleKey) ?? platformAppRegistry[0]!
+      const Icon = local.icon
+      return {
+        alwaysEnabled: app.alwaysEnabled || app.moduleKey === "platform.application",
+        appId: app.appId as PlatformAppId,
+        color: local.accentClass,
+        description: app.description || local.description,
+        enabled: app.alwaysEnabled || app.moduleKey === "platform.application",
+        icon: <Icon className="size-5" />,
+        moduleKey: app.moduleKey,
+        name: app.label || local.label
+      }
+    })
+}
+
+function disabledModuleKeysFromPayload(payloadSettings: Record<string, unknown> | undefined, apps: TenantAppAccess[], enabledModuleKeys: string[]) {
+  const disabled = isStringArraySetting(payloadSettings?.apps, "disabled")
+  if (disabled.length > 0) return disabled.filter((key) => key !== "platform.application")
+  return apps.filter((app) => !app.alwaysEnabled && !enabledModuleKeys.includes(app.moduleKey)).map((app) => app.moduleKey)
+}
+
+function isStringArraySetting(value: unknown, key: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value) || !(key in value)) return []
+  const entry = (value as Record<string, unknown>)[key]
+  return Array.isArray(entry) ? entry.filter((item): item is string => typeof item === "string") : []
 }
 
 function statusTone(status: string) {

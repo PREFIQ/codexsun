@@ -1,0 +1,24 @@
+[
+  {
+    "active": true,
+    "createdAt": "2026-07-09T03:41:38.297Z",
+    "description": "Super-admin application registry and operations.",
+    "id": "platform-super-admin",
+    "key": "platform.super-admin",
+    "name": "Platform Registry",
+    "sortOrder": 10,
+    "status": "active",
+    "updatedAt": "2026-07-09T03:41:38.297Z"
+  },
+  {
+    "active": true,
+    "createdAt": "2026-07-09T03:41:38.297Z",
+    "description": "Tenant application modules and tenant-owned feature map.",
+    "id": "platform-tenant",
+    "key": "platform.tenant",
+    "name": "Tenant",
+    "sortOrder": 20,
+    "status": "active",
+    "updatedAt": "2026-07-09T03:41:38.297Z"
+  }
+]

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
+import { createConnection } from "node:net";
 import { resolve } from "node:path";
 import "./clean-workspace-artifacts.mjs";
 
@@ -17,10 +18,10 @@ const services = {
 };
 
 const stacks = {
-  all: ["platform-api", "platform-web", "billing-api", "billing-web"],
-  billing: ["platform-api", "billing-api", "billing-web"],
-  core: ["platform-api", "platform-web"],
-  platform: ["platform-api", "platform-web"]
+  all: ["platform-api", "core-api", "platform-web", "billing-api", "billing-web"],
+  billing: ["platform-api", "core-api", "billing-api", "billing-web"],
+  core: ["platform-api", "core-api", "platform-web", "core-web"],
+  platform: ["platform-api", "core-api", "platform-web"]
 };
 
 if (!stacks[stackName]) {
@@ -38,8 +39,13 @@ for (const serviceName of stacks[stackName]) {
 }
 console.log("");
 
-for (const serviceName of stacks[stackName]) {
-  startService(serviceName);
+const stackServices = stacks[stackName];
+if (stackServices.includes("platform-api")) {
+  startService("platform-api");
+  await waitForPort(5510);
+}
+for (const serviceName of stackServices) {
+  if (serviceName !== "platform-api") startService(serviceName);
 }
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
@@ -67,6 +73,26 @@ function startService(serviceName) {
       stopChildren(child);
       process.exit(code);
     }
+  });
+}
+
+async function waitForPort(port) {
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline) {
+    if (await canConnect(port)) return;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 250));
+  }
+  throw new Error(`Timed out waiting for platform API on port ${port}`);
+}
+
+function canConnect(port) {
+  return new Promise((resolveConnect) => {
+    const socket = createConnection({ host: "127.0.0.1", port });
+    socket.once("connect", () => {
+      socket.destroy();
+      resolveConnect(true);
+    });
+    socket.once("error", () => resolveConnect(false));
   });
 }
 

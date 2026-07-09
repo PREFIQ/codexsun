@@ -2,24 +2,10 @@ import { Kysely, MysqlDialect } from "kysely";
 import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
 import { env } from "../env.js";
-import { migrateCountryModule } from "../modules/country/country.migration.js";
-import { seedCountryModule } from "../modules/country/country.seed.js";
+import { migrateCommonModule } from "../modules/common/common.migration.js";
+import { seedCommonModule } from "../modules/common/common.seed.js";
 
-export type CoreDatabase = {
-  core_countries: CoreCountriesTable;
-};
-
-export type CoreCountriesTable = {
-  capital: string | null;
-  currency_code: string;
-  dial_code: string;
-  id: string;
-  iso2: string;
-  iso3: string;
-  name: string;
-  numeric_code: string;
-  status: "active" | "inactive";
-};
+export type CoreDatabase = Record<string, unknown>;
 
 let database: Kysely<CoreDatabase> | null = null;
 
@@ -42,12 +28,18 @@ export function getCoreDatabase() {
   return database;
 }
 
+export async function closeCoreDatabase() {
+  if (!database) return;
+  await database.destroy();
+  database = null;
+}
+
 export async function bootstrapCoreDatabase() {
   await ensureDatabase(env.DB_MASTER_NAME);
   const db = getCoreDatabase();
 
-  await migrateCountryModule(db);
-  await seedCountryModule(db);
+  await migrateCommonModule(db);
+  await seedCommonModule();
 }
 
 async function ensureDatabase(databaseName: string) {

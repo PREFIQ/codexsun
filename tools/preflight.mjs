@@ -3,6 +3,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { createServer } from "node:net";
 
 const root = resolve(import.meta.dirname, "..");
@@ -91,6 +92,9 @@ const child = spawn(config.command, [...config.args, ...(app.endsWith("-web") ? 
   env: {
     ...process.env,
     ...env,
+    ...(app === "platform-api"
+      ? { CODEXSUN_DB_FRESH_SESSION_FILE: join(tmpdir(), `codexsun-platform-fresh-${process.pid}.done`) }
+      : {}),
     [config.envKey]: String(port)
   },
   stdio: "inherit"
