@@ -28,6 +28,7 @@ const envSchema = z.object({
   CODEXSUN_RESTORE_TEST_DB_NAME: z.string().default(""),
   CODEXSUN_VERIFIED_BACKUP_ID: z.string().default(""),
   ENABLE_DEFAULT_TENANT_SEED: z.enum(["0", "1"]).default("0"),
+  DEV_AUTO_TENANT_LOGIN: z.enum(["0", "1"]).default("0"),
   TENANT_DOMAIN_BASE: z.string().default("localhost"),
   DEFAULT_TENANT_ADMIN_EMAIL: z.string().default(""),
   DEFAULT_TENANT_ADMIN_NAME: z.string().default(""),

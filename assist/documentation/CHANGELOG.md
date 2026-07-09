@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.8
+Current version: 1.0.9
 
-Release tag: v-1.0.8
+Release tag: v-1.0.9
 
-Changelog label: v 1.0.8
+Changelog label: v 1.0.9
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,33 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.9
+
+### [v 1.0.9] 2026-07-09 7:53 pm - Billing Settings and Quotation Workflow
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Preserved operator-configured tenant app access during default-tenant boot seeding instead of replacing it with seed defaults.
+- Synchronized tenant module settings so disabled and enabled app records remain accurate after provisioning and restart.
+- Extended tenant billing settings JSON with shared layout, printing, customisation, feature, and document-numbering defaults.
+- Added backward-compatible normalization for legacy per-document layouts and removed obsolete hidden feature and totals settings.
+- Added tenant-scoped automatic numbering profiles for Sales, Quotation, Purchase, and Export Sales.
+
+#### App Codebase Changes
+
+- Added development-only CODEXSUN tenant auto-login controlled by `.env`, using the normal server-side credential verification and session flow.
+- Added Billing API to the Platform development stack and verified Billing Settings startup, CORS, and tenant database loading.
+- Rebuilt Billing Settings with shared global PO, DC, Colour, Size, E-invoice, and E-way controls for Quotation, Sales, and Purchase.
+- Added persisted Printing controls, custom terms, live letterhead preview/designer, document titles, print language, and focused feature switches for Quotation, Export Sales, and TConnect.
+- Added a Document Settings workspace with automatic mode, prefix, separator, suffix, next number, padding, and live previews.
+- Connected automatic numbering to Sales and Quotation creation and advanced counters only after successful saves.
+- Reshaped Quotation entry with header tabs, Details, Other Details, Address, and Terms sections; removed Quotation E-way and E-invoice tabs.
+- Reordered Quotation details into customer/work-order and number/date/tax columns, moved item entry into Details, aligned totals right, and added Save, Save & Print, and Cancel footer actions.
+- Connected Quotation PO, DC, Colour, and Size item columns to the global Billing Layout switches.
+- Added regression coverage for tenant access preservation and updated Billing Settings validation for the finalized payload.
+- Bumped workspace version to 1.0.9.
 
 ## v-1.0.8
 

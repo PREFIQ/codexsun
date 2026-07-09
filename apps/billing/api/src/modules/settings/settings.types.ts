@@ -1,6 +1,19 @@
 export type BillingGstApiMode = "einvoice_eway" | "eway_only";
 
 export type BillingDocumentKind = "quotation" | "sales" | "purchase";
+export type BillingNumberDocumentKind = BillingDocumentKind | "exportSales";
+
+export type BillingDocumentNumberSettings = {
+  automatic: boolean;
+  nextNumber: number;
+  padding: number;
+  prefix: string;
+  separator: string;
+  suffix: string;
+  usePrefix: boolean;
+  useSeparator: boolean;
+  useSuffix: boolean;
+};
 
 export type BillingDocumentLayoutSettings = {
   useColour: boolean;
@@ -13,12 +26,39 @@ export type BillingDocumentLayoutSettings = {
 
 export type BillingSettings = {
   features: {
+    exportSales: boolean;
     quotation: boolean;
-    purchase: boolean;
-    sales: boolean;
+    tconnect: boolean;
   };
   gstApiMode: BillingGstApiMode;
-  layout: Record<BillingDocumentKind, BillingDocumentLayoutSettings>;
+  layout: BillingDocumentLayoutSettings;
+  numbering: Record<BillingNumberDocumentKind, BillingDocumentNumberSettings>;
+  customise: {
+    documentTitles: Record<BillingDocumentKind, string>;
+    printLanguage: "english";
+  };
+  printing: {
+    customTerms: string;
+    letterhead: {
+      addressColor: string;
+      addressFont: string;
+      addressSize: number;
+      borderColor: string;
+      companyColor: string;
+      companyFont: string;
+      companySize: number;
+      contactSize: number;
+      headerHeightMm: number;
+      logoHeightMm: number;
+      logoLeftMm: number;
+      logoTopMm: number;
+      logoWidthMm: number;
+      taxSize: number;
+    };
+    printAccountNumber: boolean;
+    printQrAccountDetails: boolean;
+    printWithLogo: boolean;
+  };
 };
 
 export type BillingSalesSettings = BillingSettings;
@@ -34,16 +74,53 @@ export const defaultBillingDocumentLayoutSettings: BillingDocumentLayoutSettings
 
 export const defaultBillingSettings: BillingSettings = {
   features: {
-    purchase: true,
+    exportSales: false,
     quotation: true,
-    sales: true,
+    tconnect: true,
   },
   gstApiMode: "einvoice_eway",
-  layout: {
-    purchase: { ...defaultBillingDocumentLayoutSettings },
-    quotation: { ...defaultBillingDocumentLayoutSettings },
-    sales: { ...defaultBillingDocumentLayoutSettings },
+  layout: { ...defaultBillingDocumentLayoutSettings },
+  numbering: {
+    exportSales: { automatic: true, nextNumber: 1, padding: 4, prefix: "EXP", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
+    purchase: { automatic: true, nextNumber: 1, padding: 4, prefix: "PUR", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
+    quotation: { automatic: true, nextNumber: 1, padding: 4, prefix: "QUO", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
+    sales: { automatic: true, nextNumber: 1, padding: 4, prefix: "SAL", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
+  },
+  customise: {
+    documentTitles: {
+      purchase: "Purchase",
+      quotation: "Quotation",
+      sales: "Tax Invoice",
+    },
+    printLanguage: "english",
+  },
+  printing: {
+    customTerms: "",
+    letterhead: {
+      addressColor: "#111827",
+      addressFont: "Times New Roman",
+      addressSize: 12,
+      borderColor: "#9ca3af",
+      companyColor: "#000000",
+      companyFont: "Times New Roman",
+      companySize: 32,
+      contactSize: 11,
+      headerHeightMm: 42,
+      logoHeightMm: 24,
+      logoLeftMm: 4,
+      logoTopMm: 9,
+      logoWidthMm: 28,
+      taxSize: 11,
+    },
+    printAccountNumber: true,
+    printQrAccountDetails: true,
+    printWithLogo: true,
   },
 };
 
 export const defaultBillingSalesSettings = defaultBillingSettings;
+
+export function formatBillingDocumentNumber(settings: BillingDocumentNumberSettings) {
+  const number = String(Math.max(1, settings.nextNumber)).padStart(Math.max(1, settings.padding), "0");
+  return `${settings.usePrefix ? settings.prefix : ""}${settings.useSeparator ? settings.separator : ""}${number}${settings.useSuffix ? settings.suffix : ""}`;
+}

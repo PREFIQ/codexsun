@@ -25,7 +25,7 @@ const stacks = {
   accounts: ["platform-api", "core-api", "accounts-api", "accounts-web"],
   billing: ["platform-api", "core-api", "billing-api", "billing-web"],
   core: ["platform-api", "core-api", "platform-web", "core-web"],
-  platform: ["platform-api", "core-api", "platform-web"]
+  platform: ["platform-api", "core-api", "billing-api", "platform-web"]
 };
 
 if (!stacks[stackName]) {

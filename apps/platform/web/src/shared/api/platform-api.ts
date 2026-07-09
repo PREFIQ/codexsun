@@ -137,6 +137,27 @@ export async function login(input: { corporateId?: string; desk: Desk; email: st
   }
 }
 
+export async function developmentTenantLogin() {
+  try {
+    const data = await apiPost<{
+      accessToken: string;
+      email: string;
+      tenantCode: string;
+      tenantDbName: string;
+      tenantId: string;
+      tenantUuid: string;
+      userType: "tenant";
+    }>("/auth/development/tenant-login");
+
+    setToken("tenant", data.accessToken);
+    setTenantId(data.tenantId);
+    setTenantDbName(data.tenantDbName);
+    return { data, success: true } as const;
+  } catch (error: unknown) {
+    return { error: { message: errorMessage(error) }, success: false } as const;
+  }
+}
+
 export async function logout(desk: Desk): Promise<void> {
   try {
     if (getToken(desk)) await apiPost("/auth/logout", undefined, desk);

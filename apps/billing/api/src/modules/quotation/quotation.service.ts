@@ -1,8 +1,13 @@
 import { QuotationRepository } from "./quotation.repository.js";
 import type { QuotationLineItemInput, QuotationSavePayload } from "./quotation.types.js";
+import { BillingSettingsRepository } from "../settings/settings.repository.js";
+import { formatBillingDocumentNumber } from "../settings/settings.types.js";
 
 export class QuotationService {
-  constructor(private readonly repository = new QuotationRepository()) {}
+  constructor(
+    private readonly repository = new QuotationRepository(),
+    private readonly settings = new BillingSettingsRepository()
+  ) {}
 
   async list(databaseName: string) {
     return this.repository.list(databaseName);
@@ -13,7 +18,22 @@ export class QuotationService {
   }
 
   async create(databaseName: string, input: QuotationSavePayload) {
-    return this.repository.create(databaseName, normalizeInput(input));
+    const billingSettings = await this.settings.getBillingSettings(databaseName);
+    const numbering = billingSettings.numbering.quotation;
+    const normalizedInput = numbering.automatic
+      ? { ...input, quotationNumber: formatBillingDocumentNumber(numbering) }
+      : input;
+    const quotation = await this.repository.create(databaseName, normalizeInput(normalizedInput));
+    if (numbering.automatic) {
+      await this.settings.saveBillingSettings(databaseName, {
+        ...billingSettings,
+        numbering: {
+          ...billingSettings.numbering,
+          quotation: { ...numbering, nextNumber: numbering.nextNumber + 1 }
+        }
+      });
+    }
+    return quotation;
   }
 
   async update(databaseName: string, id: string, input: QuotationSavePayload) {

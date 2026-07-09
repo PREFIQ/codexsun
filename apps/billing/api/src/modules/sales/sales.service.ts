@@ -1,9 +1,14 @@
 import { env } from "../../env.js";
 import { SalesRepository } from "./sales.repository.js";
 import type { Sale, SaleLineItem, SaleLineItemInput, SaleSavePayload } from "./sales.types.js";
+import { BillingSettingsRepository } from "../settings/settings.repository.js";
+import { formatBillingDocumentNumber } from "../settings/settings.types.js";
 
 export class SalesService {
-  constructor(private readonly repository = new SalesRepository()) {}
+  constructor(
+    private readonly repository = new SalesRepository(),
+    private readonly settings = new BillingSettingsRepository()
+  ) {}
 
   async listSales(databaseName: string) {
     return this.repository.list(databaseName);
@@ -14,7 +19,21 @@ export class SalesService {
   }
 
   async createSale(databaseName: string, input: SaleSavePayload) {
-    const sale = await this.repository.create(databaseName, normalizeSaleInput(input));
+    const billingSettings = await this.settings.getBillingSettings(databaseName);
+    const numbering = billingSettings.numbering.sales;
+    const normalizedInput = numbering.automatic
+      ? { ...input, invoiceNumber: formatBillingDocumentNumber(numbering) }
+      : input;
+    const sale = await this.repository.create(databaseName, normalizeSaleInput(normalizedInput));
+    if (numbering.automatic) {
+      await this.settings.saveBillingSettings(databaseName, {
+        ...billingSettings,
+        numbering: {
+          ...billingSettings.numbering,
+          sales: { ...numbering, nextNumber: numbering.nextNumber + 1 }
+        }
+      });
+    }
     await postSaleToAccounts(databaseName, sale, "create");
     return sale;
   }

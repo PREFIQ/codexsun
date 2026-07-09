@@ -12,13 +12,7 @@ import { PageTitle } from "../../shared/document/PageTitle";
 import { BillingLayout } from "../../shared/layout/BillingLayout";
 import { saveBillingSettings } from "./settings.services";
 import { useBillingSettings } from "./settings.hooks";
-import { defaultBillingSettings, type BillingDocumentKind, type BillingDocumentLayoutSettings, type BillingSettings } from "./settings.types";
-
-const documentSections: Array<{ key: BillingDocumentKind; label: string; note: string }> = [
-  { key: "quotation", label: "Quotation", note: "Controls item entry, preview, and print columns for quotation vouchers." },
-  { key: "sales", label: "Sales", note: "Controls invoice item entry, print rows, E-invoice, and E-way fields." },
-  { key: "purchase", label: "Purchase", note: "Controls purchase item entry, supplier billing rows, and GST transport fields." },
-];
+import { defaultBillingSettings, type BillingDocumentLayoutSettings, type BillingSettings } from "./settings.types";
 
 const layoutSwitches: Array<{ key: keyof BillingDocumentLayoutSettings; label: string; note: string }> = [
   { key: "usePo", label: "PO", note: "Show purchase order number on item rows." },
@@ -71,16 +65,10 @@ function SalesSettingsWorkspace() {
     setForm((current) => ({ ...current, ...next }));
   }
 
-  function patchLayout(kind: BillingDocumentKind, next: Partial<BillingDocumentLayoutSettings>) {
+  function patchLayout(next: Partial<BillingDocumentLayoutSettings>) {
     setForm((current) => ({
       ...current,
-      layout: {
-        ...current.layout,
-        [kind]: {
-          ...current.layout[kind],
-          ...next,
-        },
-      },
+      layout: { ...current.layout, ...next },
     }));
   }
 
@@ -119,17 +107,7 @@ function SalesSettingsWorkspace() {
                 />
               </div>
             </div>
-            {documentSections.map((section) => (
-              <DocumentLayoutPanel
-                key={section.key}
-                enabled={form.features[section.key]}
-                layout={form.layout[section.key]}
-                note={section.note}
-                title={section.label}
-                onFeatureChange={(enabled) => patchFeature(section.key, enabled)}
-                onLayoutChange={(next) => patchLayout(section.key, next)}
-              />
-            ))}
+            <DocumentLayoutPanel layout={form.layout} onLayoutChange={patchLayout} />
           </div>
         </div>
       ),
@@ -174,8 +152,8 @@ function SalesSettingsWorkspace() {
       content: (
         <div className="space-y-3 rounded-md border border-border/70 bg-card/95 p-4 shadow-sm">
           <SettingsToggle checked={form.features.quotation} label="Enable quotations" note="Shows quotation list, entry, preview, and conversion workspace." onChange={(enabled) => patchFeature("quotation", enabled)} />
-          <SettingsToggle checked={form.features.sales} label="Enable sales" note="Shows sales invoice list, entry, preview, and print workspace." onChange={(enabled) => patchFeature("sales", enabled)} />
-          <SettingsToggle checked={form.features.purchase} label="Enable purchase" note="Shows purchase billing entry and supplier-side item controls." onChange={(enabled) => patchFeature("purchase", enabled)} />
+          <SettingsToggle checked={form.features.exportSales} label="Export Sales" note="Shows export sales entries, totals, shortcuts, and document settings." onChange={(enabled) => patchFeature("exportSales", enabled)} />
+          <SettingsToggle checked={form.features.tconnect} label="TConnect" note="Shows the TConnect trade connection workspace in the client app menu and landing desk." onChange={(enabled) => patchFeature("tconnect", enabled)} />
         </div>
       ),
     },
@@ -198,27 +176,16 @@ function SalesSettingsWorkspace() {
   );
 }
 
-function DocumentLayoutPanel({ enabled, layout, note, onFeatureChange, onLayoutChange, title }: { enabled: boolean; layout: BillingDocumentLayoutSettings; note: string; onFeatureChange: (enabled: boolean) => void; onLayoutChange: (next: Partial<BillingDocumentLayoutSettings>) => void; title: string }) {
+function DocumentLayoutPanel({ layout, onLayoutChange }: { layout: BillingDocumentLayoutSettings; onLayoutChange: (next: Partial<BillingDocumentLayoutSettings>) => void }) {
   return (
     <div className="rounded-md border border-border/70 bg-background p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-            <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">Industry</span>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">{note}</p>
-        </div>
-        <Switch checked={enabled} onCheckedChange={onFeatureChange} />
-      </div>
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div className="space-y-3">
         {layoutSwitches.map((item) => (
           <SettingsToggle
             key={item.key}
             checked={layout[item.key]}
-            disabled={!enabled}
             label={item.label}
-            note={item.note}
+            note={`${item.note} Applies to quotation, sales, and purchase.`}
             onChange={(checked) => onLayoutChange({ [item.key]: checked })}
           />
         ))}

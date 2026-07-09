@@ -11,6 +11,7 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
+  X,
 } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@codexsun/ui/components/dialog";
@@ -55,6 +56,8 @@ import { unitsDefinition } from "../common/products/units/units.definition";
 import { paymentTermsDefinition } from "../common/others/payment-terms/payment-terms.definition";
 import { salesTypesDefinition } from "../common/others/sales-types/sales-types.definition";
 import { transportsDefinition } from "../common/workorder/transports/transports.definition";
+import { getBillingSettings } from "../billing-settings/billing-settings.services";
+import { defaultBillingSettings } from "../billing-settings/billing-settings.types";
 import {
   addEntryComment,
   convertQuotationsToSales,
@@ -145,6 +148,11 @@ type ProductDraft = {
 
 export function BillingEntriesWorkspace({ kind }: { kind: EntryKind }) {
   const queryClient = useQueryClient();
+  const billingSettingsQuery = useQuery({
+    queryFn: getBillingSettings,
+    queryKey: ["billing", "settings"],
+  });
+  const billingLayout = billingSettingsQuery.data?.layout ?? defaultBillingSettings.layout;
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(25);
@@ -246,6 +254,7 @@ export function BillingEntriesWorkspace({ kind }: { kind: EntryKind }) {
   if (view.mode === "upsert") {
     return (
       <EntryUpsertPageView
+        billingLayout={billingLayout}
         commonQueries={commonQueries}
         contacts={contactsQuery.data ?? []}
         entry={view.entry}
@@ -556,6 +565,7 @@ function EntryShowPage({
 }
 
 function EntryUpsertPageView({
+  billingLayout,
   commonQueries,
   contacts,
   entry,
@@ -567,6 +577,7 @@ function EntryUpsertPageView({
   onRefreshSupport,
   onSaved,
 }: {
+  billingLayout: typeof defaultBillingSettings.layout;
   commonQueries: ReturnType<typeof useCommonEntryLookups>;
   contacts: EntryContactRecord[];
   entry: EntryRecord | null;
@@ -625,13 +636,13 @@ function EntryUpsertPageView({
     {
       content: (
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label={kind === "quotation" ? "Quotation number" : "Invoice number"} required>
+          <Field className={kind === "quotation" ? "md:col-start-2 md:row-start-1" : ""} label={kind === "quotation" ? "Quotation number" : "Invoice number"} required>
             <Input value={form.documentNo} onChange={(event) => setForm((current) => ({ ...current, documentNo: event.target.value }))} />
           </Field>
-          <Field label="Date" required>
+          <Field className={kind === "quotation" ? "md:col-start-2 md:row-start-2" : ""} label="Date" required>
             <Input type="date" value={form.documentDate} onChange={(event) => setForm((current) => ({ ...current, documentDate: event.target.value }))} />
           </Field>
-          <Field label="Customer" required className="md:col-span-2">
+          <Field label={kind === "quotation" ? "Customer name" : "Customer"} required className={kind === "quotation" ? "md:col-start-1 md:row-start-1" : "md:col-span-2"}>
             <WorkspaceLookup
               createDescription="Create a sales contact without leaving the entry."
               createLabel="New contact"
@@ -681,22 +692,22 @@ function EntryUpsertPageView({
               )}
             />
           </Field>
-          <Field label="Reference number">
+          <Field className={kind === "quotation" ? "hidden" : ""} label="Reference number">
             <Input value={form.referenceNo} onChange={(event) => setForm((current) => ({ ...current, referenceNo: event.target.value }))} />
           </Field>
-          <Field label="Due date">
+          <Field className={kind === "quotation" ? "hidden" : ""} label="Due date">
             <Input type="date" value={form.dueDate} onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))} />
           </Field>
-          <Field label="Place of supply">
+          <Field className={kind === "quotation" ? "md:col-start-2 md:row-start-3" : ""} label={kind === "quotation" ? "Quotation tax type" : "Place of supply"}>
             <WorkspaceSelect options={supplyOptions.map(optionToSelect)} value={form.placeOfSupply} onValueChange={(value) => setForm((current) => ({ ...current, placeOfSupply: value as EntryFormState["placeOfSupply"] }))} />
           </Field>
-          <Field label="Status">
+          <Field className={kind === "quotation" ? "hidden" : ""} label="Status">
             <WorkspaceSelect options={statusOptions.map(optionToSelect)} value={form.status} onValueChange={(value) => setForm((current) => ({ ...current, status: value as EntryStatus }))} />
           </Field>
-          <Field label="Payment status">
+          <Field className={kind === "quotation" ? "hidden" : ""} label="Payment status">
             <WorkspaceSelect options={paymentStatusOptions.map(optionToSelect)} value={form.paymentStatus} onValueChange={(value) => setForm((current) => ({ ...current, paymentStatus: value as EntryFormState["paymentStatus"] }))} />
           </Field>
-          <Field label="Payment term">
+          <Field className={kind === "quotation" ? "hidden" : ""} label="Payment term">
             <WorkspaceLookup
               createLabel="Create"
               createMode="inline"
@@ -710,7 +721,7 @@ function EntryUpsertPageView({
               onValueChange={(value, option) => setForm((current) => ({ ...current, paymentTermId: value, paymentTermName: option?.label ?? "" }))}
             />
           </Field>
-          <Field label="Sales type">
+          <Field className={kind === "quotation" ? "hidden" : ""} label="Sales type">
             <WorkspaceLookup
               createLabel="Create"
               createMode="inline"
@@ -724,12 +735,12 @@ function EntryUpsertPageView({
               onValueChange={(value, option) => setForm((current) => ({ ...current, salesTypeId: value, salesTypeName: option?.label ?? "" }))}
             />
           </Field>
-          <Field label="Work order number">
+          <Field className={kind === "quotation" ? "md:col-start-1 md:row-start-2" : ""} label={kind === "quotation" ? "Work order no" : "Work order number"}>
             <Input value={form.workOrderNo} onChange={(event) => setForm((current) => ({ ...current, workOrderNo: event.target.value }))} />
           </Field>
         </div>
       ),
-      label: "General",
+      label: kind === "quotation" ? "Details" : "General",
       value: "general",
     },
     {
@@ -846,6 +857,52 @@ function EntryUpsertPageView({
                   />
                 ),
               },
+              ...(billingLayout.usePo ? [{
+                header: "PO",
+                width: "140px",
+                render: (line: EntryLineRecord, index: number) => <Input value={line.poNo ?? ""} onChange={(event) => updateLine(index, { poNo: event.target.value })} />,
+              }] : []),
+              ...(billingLayout.useDc ? [{
+                header: "DC",
+                width: "140px",
+                render: (line: EntryLineRecord, index: number) => <Input value={line.dcNo ?? ""} onChange={(event) => updateLine(index, { dcNo: event.target.value })} />,
+              }] : []),
+              ...(billingLayout.useColour ? [{
+                header: "Colour",
+                width: "160px",
+                render: (line: EntryLineRecord, index: number) => (
+                  <WorkspaceLookup
+                    createLabel="Create"
+                    createMode="inline"
+                    options={commonQueries.colourOptions}
+                    value={line.colourId || line.colourName || ""}
+                    onCreate={async (name) => {
+                      const created = await createCommonMasterOption(coloursDefinition.path, { name });
+                      await onRefreshSupport();
+                      return commonOption(created, "name");
+                    }}
+                    onValueChange={(value, option) => updateLine(index, { colourId: value, colourName: option?.label ?? value })}
+                  />
+                ),
+              }] : []),
+              ...(billingLayout.useSize ? [{
+                header: "Size",
+                width: "150px",
+                render: (line: EntryLineRecord, index: number) => (
+                  <WorkspaceLookup
+                    createLabel="Create"
+                    createMode="inline"
+                    options={commonQueries.sizeOptions}
+                    value={line.sizeId || line.sizeName || ""}
+                    onCreate={async (name) => {
+                      const created = await createCommonMasterOption(sizesDefinition.path, { name });
+                      await onRefreshSupport();
+                      return commonOption(created, "name");
+                    }}
+                    onValueChange={(value, option) => updateLine(index, { sizeId: value, sizeName: option?.label ?? value })}
+                  />
+                ),
+              }] : []),
               {
                 header: "Unit",
                 width: "140px",
@@ -1046,6 +1103,60 @@ function EntryUpsertPageView({
       value: "terms",
     },
   ];
+  const visibleTabs = kind === "quotation"
+    ? [
+        {
+          ...tabs[0]!,
+          content: (
+            <div className="space-y-10">
+              {tabs[0]!.content}
+              <section className="space-y-4">
+                <h2 className="w-fit border-b border-foreground text-base font-semibold">Quotation Items</h2>
+                {tabs[1]!.content}
+              </section>
+            </div>
+          ),
+        },
+        {
+          value: "other-details",
+          label: "Other Details",
+          content: (
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Reference number">
+                <Input value={form.referenceNo} onChange={(event) => setForm((current) => ({ ...current, referenceNo: event.target.value }))} />
+              </Field>
+              <Field label="Due date">
+                <Input type="date" value={form.dueDate} onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))} />
+              </Field>
+              <Field label="Place of supply">
+                <WorkspaceSelect options={supplyOptions.map(optionToSelect)} value={form.placeOfSupply} onValueChange={(value) => setForm((current) => ({ ...current, placeOfSupply: value as EntryFormState["placeOfSupply"] }))} />
+              </Field>
+              <Field label="Status">
+                <WorkspaceSelect options={statusOptions.map(optionToSelect)} value={form.status} onValueChange={(value) => setForm((current) => ({ ...current, status: value as EntryStatus }))} />
+              </Field>
+              <Field label="Payment status">
+                <WorkspaceSelect options={paymentStatusOptions.map(optionToSelect)} value={form.paymentStatus} onValueChange={(value) => setForm((current) => ({ ...current, paymentStatus: value as EntryFormState["paymentStatus"] }))} />
+              </Field>
+              <Field label="Payment term">
+                <WorkspaceLookup
+                  createLabel="Create"
+                  createMode="inline"
+                  options={commonQueries.paymentTermOptions}
+                  value={form.paymentTermId || form.paymentTermName}
+                  onCreate={async (name) => {
+                    const created = await createCommonMasterOption(paymentTermsDefinition.path, { name });
+                    await onRefreshSupport();
+                    return commonOption(created, "name");
+                  }}
+                  onValueChange={(value, option) => setForm((current) => ({ ...current, paymentTermId: value, paymentTermName: option?.label ?? "" }))}
+                />
+              </Field>
+            </div>
+          ),
+        },
+        ...tabs.filter((tab) => !["general", "items", "eway", "einvoice"].includes(tab.value)),
+      ]
+    : tabs;
 
   function updateLine(index: number, patch: Partial<EntryLineRecord>) {
     setForm((current) => ({
@@ -1059,26 +1170,61 @@ function EntryUpsertPageView({
 
   return (
     <WorkspaceUpsertPage
+      {...(kind === "quotation" ? {
+        action: (
+          <Button type="button" variant="outline" onClick={onBack} className="h-9 rounded-md">
+            <X className="size-4" />
+            Cancel
+          </Button>
+        ),
+      } : { onBack })}
       description={`Enter the ${kind === "quotation" ? "quotation" : "invoice"} details and save without leaving the list.`}
-      onBack={onBack}
-      title={`${entry ? "Edit" : "New"} ${kind === "quotation" ? "quotation" : "sales"}`}
+      title={entry && kind === "quotation" ? `Edit ${entry.documentNo}` : `${entry ? "Edit" : "New"} ${kind === "quotation" ? "quotation" : "sales"}`}
     >
       <div className="space-y-4">
         {saveError || formError ? <WorkspaceFormBanner title="Unable to save">{saveError ?? formError}</WorkspaceFormBanner> : null}
         <WorkspaceFormPanel
           footer={
-            <WorkspaceFormFooter
-              onCancel={onBack}
-              primaryLabel="Save"
-              primaryLoading={loading}
-              primaryProps={{ children: <><Save className="size-4" />Save</> }}
-            />
+            kind === "quotation" ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" disabled={loading} onClick={submit}>
+                  <Save className="size-4" />
+                  Save
+                </Button>
+                <Button type="button" variant="outline" disabled={loading} onClick={() => {
+                  submit();
+                  window.setTimeout(() => window.print(), 250);
+                }}>
+                  <Printer className="size-4" />
+                  Save & Print
+                </Button>
+                <Button type="button" variant="outline" onClick={onBack}>
+                  <X className="size-4" />
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <WorkspaceFormFooter
+                onCancel={onBack}
+                primaryLabel="Save"
+                primaryLoading={loading}
+                primaryProps={{ children: <><Save className="size-4" />Save</> }}
+              />
+            )
           }
-          title="Entry"
+          {...(kind === "sales" ? { title: "Entry" } : {})}
         >
-          <WorkspaceAnimatedTabs tabs={tabs} value={activeTab} onValueChange={setActiveTab} />
-          <div className="mt-6 rounded-md border border-border/70 bg-muted/25 px-4 py-3 text-sm">
-            <div className="grid gap-2 md:grid-cols-5">
+          <WorkspaceAnimatedTabs
+            tabs={visibleTabs}
+            value={activeTab}
+            onValueChange={setActiveTab}
+            {...(kind === "quotation" ? {
+              contentClassName: "mt-0 px-5 pb-5 pt-4",
+              listClassName: "rounded-none border-0 border-b border-border/70 bg-transparent px-5 shadow-none",
+            } : {})}
+          />
+          <div className={cn("mt-6 rounded-md border border-border/70 bg-muted/25 px-4 py-3 text-sm", kind === "quotation" && "ml-auto max-w-xl")}>
+            <div className={cn("grid gap-2", kind === "quotation" ? "grid-cols-2" : "md:grid-cols-5")}>
               <SummaryValue label="Subtotal" value={money(totals(form.lines, form.roundOff).subtotal)} />
               <SummaryValue label="Discount" value={money(totals(form.lines, form.roundOff).discount)} />
               <SummaryValue label="Taxable" value={money(totals(form.lines, form.roundOff).taxable)} />
@@ -1086,7 +1232,7 @@ function EntryUpsertPageView({
               <SummaryValue label="Grand total" strong value={money(totals(form.lines, form.roundOff).grand)} />
             </div>
           </div>
-          <div className="mt-6 flex justify-end">
+          <div className={cn("mt-6 flex justify-end", kind === "quotation" && "hidden")}>
             <Button type="button" onClick={submit}>
               <Save className="size-4" />
               Save {kind === "quotation" ? "quotation" : "sales"}

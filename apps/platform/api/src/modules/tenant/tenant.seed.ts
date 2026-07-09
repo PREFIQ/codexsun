@@ -53,11 +53,11 @@ export async function seedDefaultTenant() {
   console.info(`[seeder] default tenant seed started for "${input.tenantCode}"`);
   const repository = new TenantRepository();
   const existing = await repository.findByIdOrCode(input.tenantCode);
-  const tenant = existing ? await repository.update(String(existing.id), input) : await repository.create(input);
+  const tenant = existing ?? await repository.create(input);
   if (!tenant) {
     throw new Error("Default tenant seed failed.");
   }
-  console.info(`[seeder] default tenant ${existing ? "updated" : "created"}: ${tenant.tenantCode}`);
+  console.info(`[seeder] default tenant ${existing ? "configuration preserved" : "created"}: ${tenant.tenantCode}`);
   console.info(`[seeder] default tenant domain ready: ${tenant.primaryDomain}`);
 
   await seedDefaultTenantSubscription(tenant);
@@ -72,6 +72,16 @@ export async function seedTenantRuntimeModule(database: Kysely<TenantDatabase>, 
   const enabledKeys = new Set(["platform.application", ...tenant.enabledModuleKeys]);
   const moduleKeys = Array.from(enabledKeys);
   console.info(`[seeder] seeding tenant "${tenant.tenantCode}" app modules (${moduleKeys.length} modules)`);
+
+  await database
+    .updateTable("tenant_module_settings")
+    .set({
+      enabled: false,
+      updated_at: sql`CURRENT_TIMESTAMP`
+    })
+    .where("module_key", "not in", moduleKeys)
+    .execute();
+
   for (const moduleKey of moduleKeys) {
     const settingsJson = JSON.stringify({
       defaultLandingApp: tenant.defaultLandingApp,

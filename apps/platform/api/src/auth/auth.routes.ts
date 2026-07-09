@@ -2,10 +2,54 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { fail, ok } from "@codexsun/framework/http";
 import { AuthService } from "./auth.service.js";
 import { verifyAuthToken, type AuthUserType } from "./jwt.js";
+import { env } from "../env.js";
 
 const authService = new AuthService();
 
 export async function registerAuthRoutes(app: FastifyInstance) {
+  app.post("/auth/development/tenant-login", async (request, reply) => {
+    if (
+      env.NODE_ENV !== "development" ||
+      env.DEV_AUTO_TENANT_LOGIN !== "1" ||
+      env.DEFAULT_TENANT_CORPORATE_ID.trim().toUpperCase() !== "CODEXSUN"
+    ) {
+      return reply.code(404).send(
+        fail(
+          {
+            code: "AUTH_DEVELOPMENT_LOGIN_DISABLED",
+            message: "Development tenant login is disabled."
+          },
+          { requestId: request.id }
+        )
+      );
+    }
+
+    const result = await authService.login({
+      corporateId: "CODEXSUN",
+      desk: "tenant",
+      domain: requestDomain(request),
+      email: env.DEFAULT_TENANT_ADMIN_EMAIL,
+      password: env.DEFAULT_TENANT_ADMIN_PASSWORD
+    });
+
+    if (!result || !("tenantId" in result)) {
+      return reply.code(401).send(
+        fail(
+          {
+            code: "AUTH_DEVELOPMENT_LOGIN_FAILED",
+            message: "CODEXSUN development credentials are invalid."
+          },
+          { requestId: request.id }
+        )
+      );
+    }
+
+    return ok(result, {
+      requestId: request.id,
+      tenantId: result.tenantId
+    });
+  });
+
   app.post("/auth/login", async (request, reply) => {
     const body = request.body as LoginBody | undefined;
     const loginInput: {

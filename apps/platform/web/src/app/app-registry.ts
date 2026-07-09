@@ -113,7 +113,8 @@ export function appMenuFor(appId: PlatformAppId, activePage: string, onSelect: (
             ...commonMasterMenuGroups(activePage, onSelect)
           ]
         },
-        { title: "Billing Settings", isActive: activePage === "billing.settings", onSelect: () => onSelect("billing.settings") }
+        { title: "Billing Settings", isActive: activePage === "billing.settings", onSelect: () => onSelect("billing.settings") },
+        { title: "Document Settings", isActive: activePage === "billing.document-settings", onSelect: () => onSelect("billing.document-settings") }
       ]
     };
   }
@@ -193,12 +194,13 @@ export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSele
       },
       {
         icon: ReceiptTextIcon,
-        isActive: activePage === "billing.quotation" || activePage === "billing.sales" || activePage === "billing.settings",
+        isActive: activePage === "billing.quotation" || activePage === "billing.sales" || activePage === "billing.settings" || activePage === "billing.document-settings",
         title: "Billing",
         items: [
           { title: "Quotation", isActive: activePage === "billing.quotation", onSelect: () => onSelect("billing.quotation") },
           { title: "Sales", isActive: activePage === "billing.sales", onSelect: () => onSelect("billing.sales") },
-          { title: "Billing Settings", isActive: activePage === "billing.settings", onSelect: () => onSelect("billing.settings") }
+          { title: "Billing Settings", isActive: activePage === "billing.settings", onSelect: () => onSelect("billing.settings") },
+          { title: "Document Settings", isActive: activePage === "billing.document-settings", onSelect: () => onSelect("billing.document-settings") }
         ]
       },
       {

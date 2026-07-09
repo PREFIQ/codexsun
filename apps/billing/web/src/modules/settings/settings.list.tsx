@@ -1,18 +1,15 @@
 import { WorkspaceStatusBadge, WorkspaceTableHeaderCell, WorkspaceTablePanel } from "@codexsun/ui/workspace";
-import type { BillingDocumentKind, BillingSettings } from "./settings.types";
-
-const documentKinds: BillingDocumentKind[] = ["quotation", "sales", "purchase"];
+import type { BillingSettings } from "./settings.types";
 
 export function SettingsList({ settings }: { settings: BillingSettings }) {
-  const rows = documentKinds.flatMap((kind) => [
-    [`${kind} enabled`, settings.features[kind]],
-    [`${kind} PO`, settings.layout[kind].usePo],
-    [`${kind} DC`, settings.layout[kind].useDc],
-    [`${kind} Colour`, settings.layout[kind].useColour],
-    [`${kind} Size`, settings.layout[kind].useSize],
-    [`${kind} E-Invoice`, settings.layout[kind].useEinvoice],
-    [`${kind} E-Way`, settings.layout[kind].useEway],
-  ] as const);
+  const rows = [
+    ["PO", settings.layout.usePo],
+    ["DC", settings.layout.useDc],
+    ["Colour", settings.layout.useColour],
+    ["Size", settings.layout.useSize],
+    ["E-Invoice", settings.layout.useEinvoice],
+    ["E-Way", settings.layout.useEway],
+  ] as const;
 
   return (
     <WorkspaceTablePanel>

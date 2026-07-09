@@ -7,7 +7,7 @@ import { WorkspaceAnimatedTabs, type WorkspaceAnimatedTab } from "@codexsun/ui/w
 import { WorkspaceDatePicker } from "@codexsun/ui/workspace/date-picker";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormGrid, WorkspaceFormPanel, WorkspaceUpsertPage } from "@codexsun/ui/workspace/upsert";
-import type { BillingDocumentLayoutSettings } from "../settings/settings.types";
+import { formatDocumentNumber, type BillingDocumentLayoutSettings, type BillingDocumentNumberSettings } from "../settings/settings.types";
 import { formatMoney } from "./sales.services";
 import { salesSchema } from "./sales.schema";
 import { createEmptySale, createEmptySaleItem, type Sale, type SaleLineItemInput, type SaleSavePayload } from "./sales.types";
@@ -17,6 +17,7 @@ export function SalesUpsertPage({
   loading,
   onBack,
   onSubmit,
+  numbering,
   sale,
   settings,
 }: {
@@ -24,12 +25,16 @@ export function SalesUpsertPage({
   loading: boolean;
   onBack: () => void;
   onSubmit: (payload: SaleSavePayload) => void;
+  numbering: BillingDocumentNumberSettings;
   sale: Sale | null;
   settings: BillingDocumentLayoutSettings;
 }) {
   const [activeTab, setActiveTab] = useState("details");
   const [banner, setBanner] = useState("");
-  const [form, setForm] = useState<SaleSavePayload>(() => sale ? toSalePayload(sale) : createEmptySale());
+  const [form, setForm] = useState<SaleSavePayload>(() => sale ? toSalePayload(sale) : {
+    ...createEmptySale(),
+    invoiceNumber: numbering.automatic ? formatDocumentNumber(numbering) : createEmptySale().invoiceNumber,
+  });
   const totals = useMemo(() => buildDraftTotals(form), [form]);
   const isEdit = Boolean(sale);
 
@@ -51,7 +56,7 @@ export function SalesUpsertPage({
         >
           <WorkspaceFormGrid columns={2}>
             <WorkspaceFormField label="Invoice number" required>
-              <Input className="h-11 rounded-md font-mono uppercase" value={form.invoiceNumber} onChange={(event) => updateField("invoiceNumber", event.target.value.toUpperCase())} />
+              <Input className="h-11 rounded-md font-mono uppercase" disabled={!isEdit && numbering.automatic} value={form.invoiceNumber} onChange={(event) => updateField("invoiceNumber", event.target.value.toUpperCase())} />
             </WorkspaceFormField>
             <WorkspaceFormField label="Invoice date" required>
               <WorkspaceDatePicker value={form.issuedOn} onValueChange={(value) => updateField("issuedOn", value)} />

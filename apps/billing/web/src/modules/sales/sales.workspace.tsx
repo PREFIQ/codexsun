@@ -55,7 +55,8 @@ export function SalesWorkspace() {
   });
   const salesQuery = useSalesList();
   const settingsQuery = useBillingSettings();
-  const salesLayout = (settingsQuery.data ?? defaultBillingSettings).layout.sales;
+  const billingSettings = settingsQuery.data ?? defaultBillingSettings;
+  const salesLayout = billingSettings.layout;
 
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: SaleSavePayload }) => id ? updateSale(id, payload) : createSale(payload),
@@ -136,6 +137,7 @@ export function SalesWorkspace() {
         onBack={() => setView(view.returnTo === "show" && view.sale ? { mode: "show", sale: view.sale } : { mode: "list" })}
         onSubmit={(payload) => saveMutation.mutate(view.sale ? { id: view.sale.id, payload } : { payload })}
         settings={salesLayout}
+        numbering={billingSettings.numbering.sales}
       />
     );
   }

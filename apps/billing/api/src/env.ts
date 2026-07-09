@@ -5,6 +5,7 @@ const envSchema = z.object({
   BILLING_API_HOST: z.string().default("127.0.0.1"),
   BILLING_API_PORT: z.coerce.number().int().positive(),
   BILLING_WEB_ORIGIN: z.string().min(1, "BILLING_WEB_ORIGIN is required"),
+  PLATFORM_WEB_ORIGIN: z.string().min(1, "PLATFORM_WEB_ORIGIN is required"),
   ACCOUNTS_API_URL: z.string().min(1, "ACCOUNTS_API_URL is required"),
   DB_HOST: z.string().default("127.0.0.1"),
   DB_MASTER_NAME: z.string().min(1, "DB_MASTER_NAME is required"),

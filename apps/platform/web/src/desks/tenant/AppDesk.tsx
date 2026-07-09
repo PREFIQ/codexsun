@@ -26,6 +26,7 @@ import { CommonMasterWorkspace } from "../../modules/common-master";
 import { commonMasterDefinitions } from "../../modules/common/registry";
 import { BillingEntriesWorkspace } from "../../modules/entries";
 import { AccountsSettingsWorkspace, AccountsWorkspace } from "../../modules/accounts";
+import { BillingSettingsWorkspace, DocumentSettingsWorkspace } from "../../modules/billing-settings";
 import { getToken, setTenantDbName, setTenantId } from "../../shared/api/platform-api";
 
 type AppPage =
@@ -37,6 +38,7 @@ type AppPage =
   | "billing.quotation"
   | "billing.sales"
   | "billing.settings"
+  | "billing.document-settings"
   | "accounts.overview"
   | "accounts.groups"
   | "accounts.ledgers"
@@ -154,7 +156,8 @@ export function AppDesk() {
           {safePage === "billing.overview" ? <BillingOverview /> : null}
           {safePage === "billing.quotation" ? <BillingEntriesWorkspace kind="quotation" /> : null}
           {safePage === "billing.sales" ? <BillingSales /> : null}
-          {safePage === "billing.settings" ? <BillingSettings /> : null}
+          {safePage === "billing.settings" ? <BillingSettingsWorkspace /> : null}
+          {safePage === "billing.document-settings" ? <DocumentSettingsWorkspace /> : null}
           {isAccountsPage(safePage) && safePage !== "accounts.settings" && !isAccountsSettingsPage(safePage) ? <AccountsWorkspace page={accountsWorkspacePage(safePage)} /> : null}
           {isAccountsSettingsPage(safePage) ? <AccountsSettings page={safePage} /> : null}
           {isCoreLocationPage(safePage) ? <LocationWorkspace kind={locationKindFromPage(safePage)} /> : null}
@@ -184,6 +187,7 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "billing.desk" ||
     key === "billing.sales" ||
     key === "billing.settings" ||
+    key === "billing.document-settings" ||
     key === "accounts.overview" ||
     key === "accounts.groups" ||
     key === "accounts.ledgers" ||
@@ -646,14 +650,6 @@ function decodeTokenEmail(token: string) {
   }
 }
 
-function BillingSettings() {
-  return (
-    <Card title="Billing Settings" description="Billing module settings and document setup.">
-      <StatusBadge tone="green">Enabled</StatusBadge>
-    </Card>
-  );
-}
-
 function AccountsSettings({ page = "accounts.settings" }: { page?: Extract<AppPage, `accounts.${string}`> }) {
   const title = titleForPage(page);
   const description = accountsSettingsDescription(page);
@@ -737,6 +733,7 @@ function titleForPage(page: AppPage) {
     "billing.quotation": "Quotation",
     "billing.sales": "Sales",
     "billing.settings": "Billing Settings",
+    "billing.document-settings": "Document Settings",
     "accounts.overview": "Overview",
     "accounts.groups": "Account Groups",
     "accounts.ledgers": "Ledgers",

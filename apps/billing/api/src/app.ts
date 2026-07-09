@@ -10,7 +10,7 @@ export async function createApp() {
   const app = await createApiApp({
     appName: "CODEXSUN Billing API",
     cookieSecret: env.JWT_SECRET,
-    corsOrigins: [env.BILLING_WEB_ORIGIN],
+    corsOrigins: [env.BILLING_WEB_ORIGIN, env.PLATFORM_WEB_ORIGIN],
     environment: env.NODE_ENV,
     shutdownHooks: [
       async () => {

@@ -18,7 +18,7 @@ import { cn } from "@codexsun/ui/lib/utils";
 import { PageTitle } from "../../shared/document/PageTitle";
 import { BillingLayout } from "../../shared/layout/BillingLayout";
 import { useSalesSettings } from "../settings";
-import { defaultBillingSettings, type BillingDocumentLayoutSettings } from "../settings/settings.types";
+import { defaultBillingSettings, formatDocumentNumber, type BillingDocumentLayoutSettings, type BillingDocumentNumberSettings } from "../settings/settings.types";
 import { createEmptyQuotation, createEmptyQuotationItem, type Quotation, type QuotationLineItemInput, type QuotationSavePayload, type QuotationTaxType, type QuotationView } from "./quotation.types";
 import { createQuotation, formatDate, formatMoney, quotationToPayload, setQuotationStatus, totalQuotationQuantity, updateQuotation } from "./quotation.services";
 import { useQuotationList } from "./quotation.hooks";
@@ -51,7 +51,7 @@ function QuotationWorkspace() {
   const quotationsQuery = useQuotationList();
   const settingsQuery = useSalesSettings();
   const settings = settingsQuery.data ?? defaultBillingSettings;
-  const quotationLayout = settings.layout.quotation;
+  const quotationLayout = settings.layout;
   const [view, setView] = useState<QuotationView>({ mode: "list" });
   const [searchValue, setSearchValue] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -126,6 +126,7 @@ function QuotationWorkspace() {
         loading={saveMutation.isPending}
         quotation={view.quotation}
         settings={quotationLayout}
+        numbering={settings.numbering.quotation}
         onBack={() => setView(view.returnTo === "show" && view.quotation ? { mode: "show", quotation: view.quotation } : { mode: "list" })}
         onSubmit={(payload, printAfter) => {
           saveMutation.mutate(view.quotation ? { id: view.quotation.id, payload } : { payload }, {
@@ -252,9 +253,12 @@ function QuotationList({ entries, loading, onEdit, onSetStatus, onView, page, ro
   );
 }
 
-function QuotationUpsertPage({ errorMessage, loading, onBack, onSubmit, quotation, settings }: { errorMessage: string; loading: boolean; onBack: () => void; onSubmit: (payload: QuotationSavePayload, printAfter?: boolean) => void; quotation: Quotation | null; settings: BillingDocumentLayoutSettings }) {
+function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmit, quotation, settings }: { errorMessage: string; loading: boolean; numbering: BillingDocumentNumberSettings; onBack: () => void; onSubmit: (payload: QuotationSavePayload, printAfter?: boolean) => void; quotation: Quotation | null; settings: BillingDocumentLayoutSettings }) {
   const [activeTab, setActiveTab] = useState("details");
-  const [form, setForm] = useState<QuotationSavePayload>(() => quotation ? quotationToPayload(quotation) : createEmptyQuotation());
+  const [form, setForm] = useState<QuotationSavePayload>(() => quotation ? quotationToPayload(quotation) : {
+    ...createEmptyQuotation(),
+    quotationNumber: numbering.automatic ? formatDocumentNumber(numbering) : createEmptyQuotation().quotationNumber,
+  });
   const [draftItem, setDraftItem] = useState<QuotationLineItemInput>(() => createEmptyQuotationItem());
   const totals = buildClientTotals(form);
 
@@ -287,7 +291,7 @@ function QuotationUpsertPage({ errorMessage, loading, onBack, onSubmit, quotatio
         <div className="space-y-5">
           <div className="grid gap-4 lg:grid-cols-2">
             <Field label="Customer name" required><Input required value={form.customerName} onChange={(event) => patch({ customerName: event.target.value })} /></Field>
-            <Field label="Quotation no"><Input value={form.quotationNumber} onChange={(event) => patch({ quotationNumber: event.target.value })} /></Field>
+            <Field label="Quotation no"><Input disabled={!quotation && numbering.automatic} value={form.quotationNumber} onChange={(event) => patch({ quotationNumber: event.target.value })} /></Field>
             <Field label="Work Order no"><Input value={form.workOrderNo} onChange={(event) => patch({ workOrderNo: event.target.value })} /></Field>
             <Field label="Date"><Input type="date" value={form.date} onChange={(event) => patch({ date: event.target.value })} /></Field>
             <Field label="Sales Ledger"><Input value={form.salesLedger} onChange={(event) => patch({ salesLedger: event.target.value })} /></Field>

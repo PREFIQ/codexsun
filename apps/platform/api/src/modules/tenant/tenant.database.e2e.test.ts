@@ -108,4 +108,38 @@ describe.skipIf(!runDbE2e)("tenant database e2e", () => {
       await closeTenantDatabase(tenantTwo);
     }
   });
+
+  it("preserves tenant app access when the default tenant seed runs again", async () => {
+    const { bootstrapPlatformDatabase } = await import("../../database/platform-database.js");
+    const { seedDefaultTenant } = await import("./tenant.seed.js");
+    const { TenantService } = await import("./tenant.service.js");
+
+    await bootstrapPlatformDatabase();
+    const service = new TenantService();
+    const existing = await service.getTenant("E2ESEED");
+    expect(existing).not.toBeNull();
+
+    await service.updateTenant(String(existing!.id), {
+      ...existing!,
+      defaultLandingApp: "billing",
+      enabledModuleKeys: ["platform.application", "billing.sales"],
+      payloadSettings: {
+        ...existing!.payloadSettings,
+        apps: {
+          disabled: [],
+          enabled: ["platform.application", "billing.sales"]
+        },
+        landing: {
+          app: "billing",
+          mode: "tenant"
+        }
+      }
+    });
+
+    await seedDefaultTenant();
+
+    const afterRestartSeed = await service.getTenant("E2ESEED");
+    expect(afterRestartSeed?.enabledModuleKeys).toEqual(["platform.application", "billing.sales"]);
+    expect(afterRestartSeed?.defaultLandingApp).toBe("billing");
+  });
 });

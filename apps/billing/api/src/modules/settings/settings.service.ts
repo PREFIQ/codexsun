@@ -25,7 +25,33 @@ function normalizeBillingSettings(input: BillingSettings): BillingSettings {
   return {
     ...defaultBillingSettings,
     ...input,
-    features: { ...defaultBillingSettings.features, ...(input.features ?? {}) },
-    gstApiMode: input.gstApiMode === "eway_only" ? "eway_only" : "einvoice_eway"
+    features: {
+      exportSales: input.features?.exportSales ?? defaultBillingSettings.features.exportSales,
+      quotation: input.features?.quotation ?? defaultBillingSettings.features.quotation,
+      tconnect: input.features?.tconnect ?? defaultBillingSettings.features.tconnect
+    },
+    gstApiMode: input.gstApiMode === "eway_only" ? "eway_only" : "einvoice_eway",
+    layout: { ...defaultBillingSettings.layout, ...(input.layout ?? {}) },
+    numbering: {
+      exportSales: { ...defaultBillingSettings.numbering.exportSales, ...(input.numbering?.exportSales ?? {}) },
+      purchase: { ...defaultBillingSettings.numbering.purchase, ...(input.numbering?.purchase ?? {}) },
+      quotation: { ...defaultBillingSettings.numbering.quotation, ...(input.numbering?.quotation ?? {}) },
+      sales: { ...defaultBillingSettings.numbering.sales, ...(input.numbering?.sales ?? {}) }
+    },
+    customise: {
+      documentTitles: {
+        ...defaultBillingSettings.customise.documentTitles,
+        ...(input.customise?.documentTitles ?? {})
+      },
+      printLanguage: "english"
+    },
+    printing: {
+      ...defaultBillingSettings.printing,
+      ...(input.printing ?? {}),
+      letterhead: {
+        ...defaultBillingSettings.printing.letterhead,
+        ...(input.printing?.letterhead ?? {})
+      }
+    }
   };
 }

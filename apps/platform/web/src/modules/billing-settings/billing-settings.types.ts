@@ -1,5 +1,4 @@
 export type BillingGstApiMode = "einvoice_eway" | "eway_only";
-
 export type BillingDocumentKind = "quotation" | "sales" | "purchase";
 export type BillingNumberDocumentKind = BillingDocumentKind | "exportSales";
 export type BillingDocumentNumberSettings = {
@@ -60,9 +59,7 @@ export type BillingSettings = {
   };
 };
 
-export type BillingSalesSettings = BillingSettings;
-
-export const defaultBillingDocumentLayoutSettings: BillingDocumentLayoutSettings = {
+export const defaultBillingLayout: BillingDocumentLayoutSettings = {
   useColour: true,
   useDc: false,
   useEinvoice: true,
@@ -78,7 +75,7 @@ export const defaultBillingSettings: BillingSettings = {
     tconnect: true,
   },
   gstApiMode: "einvoice_eway",
-  layout: { ...defaultBillingDocumentLayoutSettings },
+  layout: { ...defaultBillingLayout },
   numbering: {
     exportSales: { automatic: true, nextNumber: 1, padding: 4, prefix: "EXP", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
     purchase: { automatic: true, nextNumber: 1, padding: 4, prefix: "PUR", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
@@ -112,8 +109,3 @@ export const defaultBillingSettings: BillingSettings = {
     printWithLogo: true,
   },
 };
-
-export function formatDocumentNumber(settings: BillingDocumentNumberSettings) {
-  const number = String(Math.max(1, settings.nextNumber)).padStart(Math.max(1, settings.padding), "0");
-  return `${settings.usePrefix ? settings.prefix : ""}${settings.useSeparator ? settings.separator : ""}${number}${settings.useSuffix ? settings.suffix : ""}`;
-}

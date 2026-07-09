@@ -1,8 +1,8 @@
 import { AuthLayout, Button, Field } from "@codexsun/ui";
 import { LogIn } from "lucide-react";
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { type Desk, login } from "../../shared/api/platform-api";
+import { developmentTenantLogin, type Desk, login } from "../../shared/api/platform-api";
 
 type LoginPageProps = {
   desk: Desk;
@@ -16,6 +16,7 @@ export function LoginPage({ desk, title }: LoginPageProps) {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const autoLoginStarted = useRef(false);
 
   const targetPath = useMemo(() => {
     if (desk === "sa") {
@@ -28,6 +29,31 @@ export function LoginPage({ desk, title }: LoginPageProps) {
 
     return "/app/$";
   }, [desk]);
+
+  useEffect(() => {
+    if (
+      desk !== "tenant" ||
+      !import.meta.env.DEV ||
+      import.meta.env.VITE_DEV_AUTO_TENANT_LOGIN !== "1" ||
+      autoLoginStarted.current
+    ) {
+      return;
+    }
+
+    autoLoginStarted.current = true;
+    setLoading(true);
+    setMessage("");
+    void developmentTenantLogin()
+      .then(async (result) => {
+        if (!result.success) {
+          setMessage(result.error.message);
+          return;
+        }
+        await navigate({ to: targetPath });
+      })
+      .catch(() => setMessage("Development auto-login failed."))
+      .finally(() => setLoading(false));
+  }, [desk, navigate, targetPath]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
