@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { getSalesSettings } from "./settings.services";
+import { getBillingSettings } from "./settings.services";
 
-export function useSalesSettings() {
+export function useBillingSettings() {
   return useQuery({
-    queryFn: getSalesSettings,
-    queryKey: ["billing", "settings", "sales"],
+    queryFn: getBillingSettings,
+    queryKey: ["billing", "settings"],
   });
 }
 
+export const useSalesSettings = useBillingSettings;

@@ -1,8 +1,8 @@
 export type BillingGstApiMode = "einvoice_eway" | "eway_only";
 
-export type BillingSalesSettings = {
-  featureQuotation: boolean;
-  gstApiMode: BillingGstApiMode;
+export type BillingDocumentKind = "quotation" | "sales" | "purchase";
+
+export type BillingDocumentLayoutSettings = {
   useColour: boolean;
   useDc: boolean;
   useEinvoice: boolean;
@@ -11,9 +11,19 @@ export type BillingSalesSettings = {
   useSize: boolean;
 };
 
-export const defaultBillingSalesSettings: BillingSalesSettings = {
-  featureQuotation: true,
-  gstApiMode: "einvoice_eway",
+export type BillingSettings = {
+  features: {
+    quotation: boolean;
+    purchase: boolean;
+    sales: boolean;
+  };
+  gstApiMode: BillingGstApiMode;
+  layout: Record<BillingDocumentKind, BillingDocumentLayoutSettings>;
+};
+
+export type BillingSalesSettings = BillingSettings;
+
+export const defaultBillingDocumentLayoutSettings: BillingDocumentLayoutSettings = {
   useColour: true,
   useDc: false,
   useEinvoice: true,
@@ -21,3 +31,19 @@ export const defaultBillingSalesSettings: BillingSalesSettings = {
   usePo: false,
   useSize: true,
 };
+
+export const defaultBillingSettings: BillingSettings = {
+  features: {
+    purchase: true,
+    quotation: true,
+    sales: true,
+  },
+  gstApiMode: "einvoice_eway",
+  layout: {
+    purchase: { ...defaultBillingDocumentLayoutSettings },
+    quotation: { ...defaultBillingDocumentLayoutSettings },
+    sales: { ...defaultBillingDocumentLayoutSettings },
+  },
+};
+
+export const defaultBillingSalesSettings = defaultBillingSettings;

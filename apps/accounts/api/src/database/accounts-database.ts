@@ -6,6 +6,7 @@ import { migrateLedgersModule } from "../modules/ledgers/index.js";
 import { seedLedgersModule } from "../modules/ledgers/index.js";
 import { migrateVouchersModule } from "../modules/vouchers/index.js";
 import { migrateReportsModule } from "../modules/reports/index.js";
+import { migrateAccountsSettingsModule, seedAccountsSettingsModule } from "../modules/settings/index.js";
 
 export type AccountsDatabase = Record<string, unknown>;
 
@@ -32,7 +33,9 @@ export async function bootstrapAccountsDatabase(databaseName = env.DB_MASTER_NAM
   await migrateLedgersModule(db);
   await migrateVouchersModule(db);
   await migrateReportsModule(db);
+  await migrateAccountsSettingsModule(db);
   await seedLedgersModule(db);
+  await seedAccountsSettingsModule(db);
   migrated.add(name);
 }
 

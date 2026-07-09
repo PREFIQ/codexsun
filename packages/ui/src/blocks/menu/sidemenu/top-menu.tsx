@@ -40,6 +40,7 @@ export type TopMenuWorkspaceItem = {
   active?: boolean
   description: string
   icon: LucideIcon
+  onSelect?: () => void
   title: string
   url?: string
 }
@@ -115,8 +116,13 @@ export function TopMenu({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {workspaceItems.map((item) => (
-                <DropdownMenuItem key={item.title} asChild={Boolean(item.url)} className="gap-3 p-2">
-                  {item.url ? (
+                <DropdownMenuItem
+                  key={item.title}
+                  asChild={Boolean(item.url && !item.onSelect)}
+                  className="gap-3 p-2"
+                  {...(item.onSelect ? { onSelect: (event) => { event.preventDefault(); item.onSelect?.(); } } : {})}
+                >
+                  {item.url && !item.onSelect ? (
                     <a href={item.url}>
                       <div className="flex size-8 items-center justify-center rounded-md border bg-background">
                         <item.icon className="size-4" />
@@ -128,7 +134,7 @@ export function TopMenu({
                       {item.active ? <CheckIcon className="size-4" /> : null}
                     </a>
                   ) : (
-                    <>
+                    <button type="button" className="flex w-full items-center gap-3 text-left">
                       <div className="flex size-8 items-center justify-center rounded-md border bg-background">
                         <item.icon className="size-4" />
                       </div>
@@ -137,7 +143,7 @@ export function TopMenu({
                         <div className="truncate text-xs text-muted-foreground">{item.description}</div>
                       </div>
                       {item.active ? <CheckIcon className="size-4" /> : null}
-                    </>
+                    </button>
                   )}
                 </DropdownMenuItem>
               ))}

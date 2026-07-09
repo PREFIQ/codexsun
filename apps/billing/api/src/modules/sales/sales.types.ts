@@ -1,10 +1,14 @@
 export type SaleStatus = "draft" | "confirmed" | "cancelled";
 
 export type SaleLineItemInput = {
+  colour?: string;
+  dcNo?: string;
   description: string;
   hsnCode: string;
+  poNo?: string;
   quantity: number;
   rate: number;
+  size?: string;
   taxRate: number;
   unit: string;
 };

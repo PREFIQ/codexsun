@@ -136,6 +136,39 @@ export type AccountsReportsOverview = {
   voucherRegister: VoucherRegisterRow[];
 };
 
+export type AccountsSettings = {
+  financialYear: {
+    allowBackdatedPosting: boolean;
+    endDate: string;
+    lockDate: string | null;
+    startDate: string;
+  };
+  postingRules: {
+    deletePolicy: "delete_draft_only" | "reverse_voucher";
+    mode: "auto_post" | "draft_review";
+    postOnBillingDelete: boolean;
+    postOnBillingSave: boolean;
+    postOnBillingUpdate: boolean;
+    roundOffLedgerCode: string;
+  };
+  tallyIntegration: {
+    companyName: string;
+    enabled: boolean;
+    lastSyncAt: string | null;
+    syncMode: "auto" | "manual";
+    tallyUrl: string;
+  };
+  voucherNumbering: {
+    creditNotePrefix: string;
+    debitNotePrefix: string;
+    journalPrefix: string;
+    mode: "auto" | "manual";
+    paymentPrefix: string;
+    receiptPrefix: string;
+    salesPrefix: string;
+  };
+};
+
 export type AccountsView =
   | { mode: "overview" }
   | { mode: "ledgers" }

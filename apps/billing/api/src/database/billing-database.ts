@@ -24,6 +24,8 @@ export type BillingSalesTable = {
 
 const connections = new Map<string, Kysely<BillingDatabase>>();
 const migrated = new Set<string>();
+const bootstrapping = new Map<string, Promise<void>>();
+const bootstrapTimeoutMs = 5_000;
 
 export function resolveBillingDatabaseName(value: unknown) {
   const requested = typeof value === "string" ? value.trim() : "";
@@ -42,15 +44,36 @@ export async function bootstrapBillingDatabase(databaseName = env.DB_MASTER_NAME
     return;
   }
 
+  const activeBootstrap = bootstrapping.get(name);
+  if (activeBootstrap) {
+    await withTimeout(activeBootstrap, bootstrapTimeoutMs, `Billing database bootstrap timed out after ${bootstrapTimeoutMs}ms for ${name}`);
+    return;
+  }
+
+  const bootstrapPromise = bootstrapBillingDatabaseOnce(name);
+  bootstrapping.set(name, bootstrapPromise);
+  try {
+    await withTimeout(bootstrapPromise, bootstrapTimeoutMs, `Billing database bootstrap timed out after ${bootstrapTimeoutMs}ms for ${name}`);
+  } finally {
+    bootstrapping.delete(name);
+  }
+}
+
+async function bootstrapBillingDatabaseOnce(name: string) {
   await ensureDatabase(name);
   const db = openBillingDatabase(name);
   await migrateSalesModule(db);
   await migrateQuotationModule(db);
   await migrateBillingSettingsModule(db);
-  await seedSalesModule(db);
-  const settingsRepository = new BillingSettingsRepository();
-  await settingsRepository.saveSalesSettings(name, await settingsRepository.getSalesSettings(name));
   migrated.add(name);
+  try {
+    await seedSalesModule(db);
+    const settingsRepository = new BillingSettingsRepository();
+    await settingsRepository.saveSalesSettings(name, await settingsRepository.getSalesSettings(name));
+  } catch (error) {
+    migrated.delete(name);
+    throw error;
+  }
 }
 
 function openBillingDatabase(databaseName: string) {
@@ -68,7 +91,8 @@ function openBillingDatabase(databaseName: string) {
         password: env.DB_PASSWORD,
         port: env.DB_PORT,
         timezone: "Z",
-        user: env.DB_USER
+        user: env.DB_USER,
+        connectTimeout: 5_000
       } satisfies PoolOptions)
     })
   });
@@ -83,7 +107,8 @@ async function ensureDatabase(databaseName: string) {
     password: env.DB_PASSWORD,
     port: env.DB_PORT,
     timezone: "Z",
-    user: env.DB_USER
+    user: env.DB_USER,
+    connectTimeout: 5_000
   });
   try {
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${name}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
@@ -104,4 +129,21 @@ function assertDatabaseName(value: string) {
     throw new Error(`Invalid database name: ${value}`);
   }
   return value;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+    timer.unref();
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
 }

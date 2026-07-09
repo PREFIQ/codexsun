@@ -3,7 +3,7 @@ import { AppLayout } from "@codexsun/ui/layouts/app-layout";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
 import type { SidebarBrand } from "@codexsun/ui/blocks/menu/sidemenu/app-sidebar";
 import type { TopMenuWorkspaceItem } from "@codexsun/ui/blocks/menu/sidemenu/top-menu";
-import { HomeIcon, LayoutDashboardIcon, ReceiptTextIcon } from "lucide-react";
+import { FileTextIcon, HomeIcon, LayoutDashboardIcon, ReceiptTextIcon, SettingsIcon } from "lucide-react";
 
 const billingBrand: SidebarBrand = {
   href: "/billing",
@@ -54,6 +54,32 @@ export function BillingLayout({
       title: "Sales",
       url: "/billing/sales",
     },
+    {
+      icon: FileTextIcon,
+      isActive: currentPath.startsWith("/billing/quotation"),
+      items: [
+        {
+          isActive: currentPath === "/billing/quotation",
+          title: "Quotation list",
+          url: "/billing/quotation",
+        },
+      ],
+      title: "Quotation",
+      url: "/billing/quotation",
+    },
+    {
+      icon: SettingsIcon,
+      isActive: currentPath.startsWith("/billing/settings"),
+      items: [
+        {
+          isActive: currentPath === "/billing/settings/sales",
+          title: "Bill settings",
+          url: "/billing/settings/sales",
+        },
+      ],
+      title: "Settings",
+      url: "/billing/settings/sales",
+    },
   ];
 
   return (
@@ -73,6 +99,8 @@ export function BillingLayout({
       userMenuItems={[
         { icon: HomeIcon, title: "Billing home", url: "/billing" },
         { icon: ReceiptTextIcon, title: "Sales", url: "/billing/sales" },
+        { icon: FileTextIcon, title: "Quotation", url: "/billing/quotation" },
+        { icon: SettingsIcon, title: "Bill settings", url: "/billing/settings/sales" },
       ]}
       versionLabel="v 1.0.7"
       workspaceItems={billingWorkspaceItems}

@@ -7,8 +7,6 @@ import { salesModule } from "./modules/sales/index.js";
 import { billingSettingsModule } from "./modules/settings/index.js";
 
 export async function createApp() {
-  await bootstrapBillingDatabase();
-
   const app = await createApiApp({
     appName: "CODEXSUN Billing API",
     cookieSecret: env.JWT_SECRET,
@@ -40,6 +38,13 @@ export async function createApp() {
   await salesModule.register(app);
   await quotationModule.register(app);
   await billingSettingsModule.register(app);
+  void bootstrapBillingDatabase()
+    .then(() => {
+      console.info("[billing.boot] database bootstrap completed");
+    })
+    .catch((error: unknown) => {
+      console.error("[billing.boot] database bootstrap failed", error);
+    });
 
   return app;
 }

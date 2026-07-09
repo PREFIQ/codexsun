@@ -64,6 +64,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
         expiresAt: new Date(payload.exp * 1000).toISOString(),
         sessionIssuedAt: payload.sessionIssuedAt,
         tenantCode: payload.tenantCode,
+        tenantDbName: payload.tenantDbName,
         tenantId: payload.tenantId,
         tenantUuid: payload.tenantUuid,
         userType: payload.userType

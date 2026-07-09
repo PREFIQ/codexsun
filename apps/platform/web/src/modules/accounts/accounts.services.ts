@@ -1,6 +1,6 @@
-import { getTenantId, getToken } from "../../shared/api/platform-api";
+import { getTenantDbName, getTenantId, getToken } from "../../shared/api/platform-api";
 import { requiredClientEnv } from "../../shared/env/client-env";
-import type { AccountGroup, AccountsReportsOverview, Ledger, LedgerSavePayload, Voucher, VoucherSavePayload } from "./accounts.types";
+import type { AccountGroup, AccountsReportsOverview, AccountsSettings, Ledger, LedgerSavePayload, Voucher, VoucherSavePayload } from "./accounts.types";
 
 const accountsApiBaseUrl = requiredClientEnv("VITE_ACCOUNTS_API_URL");
 
@@ -8,6 +8,7 @@ type Envelope<T> = { data: T; success: true } | { error: { message: string }; su
 
 async function request<T>(path: string, options: RequestInit = {}) {
   const token = getToken("tenant");
+  const tenantDbName = getTenantDbName();
   const tenantId = getTenantId();
   const response = await fetch(`${accountsApiBaseUrl}${path}`, {
     ...options,
@@ -15,6 +16,7 @@ async function request<T>(path: string, options: RequestInit = {}) {
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...(tenantId ? { "x-tenant-id": tenantId } : {}),
       ...options.headers
     }
@@ -50,4 +52,12 @@ export function createVoucher(payload: VoucherSavePayload) {
 
 export function getAccountsReports() {
   return request<AccountsReportsOverview>("/accounts/reports");
+}
+
+export function getAccountsSettings() {
+  return request<AccountsSettings>("/accounts/settings");
+}
+
+export function saveAccountsSettings(payload: AccountsSettings) {
+  return request<AccountsSettings>("/accounts/settings", { body: JSON.stringify(payload), method: "PUT" });
 }

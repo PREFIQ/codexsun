@@ -4,7 +4,7 @@ import { StatusBadge } from "@codexsun/ui/components/StatusBadge";
 import type { ReactElement } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { getToken, apiGet, setTenantId, type Desk } from "../api/platform-api";
+import { getToken, apiGet, setTenantDbName, setTenantId, type Desk } from "../api/platform-api";
 
 type JWTPayload = {
   email: string;
@@ -12,6 +12,7 @@ type JWTPayload = {
   iat: number;
   tenantId?: string;
   tenantCode?: string;
+  tenantDbName?: string;
   userType: string;
 };
 
@@ -66,12 +67,16 @@ export function AuthGate({ children, desk }: { children: ReactElement; desk: Des
       try {
         const data = await apiGet<{
           authenticated: boolean;
+          tenantDbName?: string;
           tenantId?: string;
         }>("/auth/session", desk);
         if (!cancelled) {
           setServerValid(data.authenticated);
           if (data.authenticated && data.tenantId) {
             setTenantId(data.tenantId);
+          }
+          if (data.authenticated && data.tenantDbName) {
+            setTenantDbName(data.tenantDbName);
           }
         }
       } catch {

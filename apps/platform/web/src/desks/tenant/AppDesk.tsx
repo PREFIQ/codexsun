@@ -25,8 +25,8 @@ import { LocationWorkspace, type LocationKind } from "../../modules/location";
 import { CommonMasterWorkspace } from "../../modules/common-master";
 import { commonMasterDefinitions } from "../../modules/common/registry";
 import { BillingEntriesWorkspace } from "../../modules/entries";
-import { AccountsWorkspace } from "../../modules/accounts";
-import { getToken } from "../../shared/api/platform-api";
+import { AccountsSettingsWorkspace, AccountsWorkspace } from "../../modules/accounts";
+import { getToken, setTenantDbName, setTenantId } from "../../shared/api/platform-api";
 
 type AppPage =
   | "application.overview"
@@ -38,10 +38,22 @@ type AppPage =
   | "billing.sales"
   | "billing.settings"
   | "accounts.overview"
+  | "accounts.groups"
   | "accounts.ledgers"
+  | "accounts.opening-balances"
   | "accounts.vouchers"
+  | "accounts.sales-postings"
+  | "accounts.receipts-payments"
   | "accounts.reports"
+  | "accounts.trial-balance"
+  | "accounts.ledger-statement"
+  | "accounts.balance-sheet"
+  | "accounts.profit-loss"
   | "accounts.settings"
+  | "accounts.posting-rules"
+  | "accounts.financial-year"
+  | "accounts.voucher-numbering"
+  | "accounts.tally-integration"
   | "core.common.location.countries"
   | "core.common.location.states"
   | "core.common.location.districts"
@@ -80,6 +92,13 @@ export function AppDesk() {
   }, [enabledApps, publishedLandingApp]);
 
   useEffect(() => {
+    if (runtime?.tenant) {
+      setTenantId(runtime.tenant.uuid);
+      setTenantDbName(runtime.tenant.dbName);
+    }
+  }, [runtime?.tenant]);
+
+  useEffect(() => {
     if (!shouldResolveLandingPath) return;
     if (!publishedLandingApp && runtimeQuery.isLoading) return;
 
@@ -103,6 +122,7 @@ export function AppDesk() {
   const menuItems = appMenuItemsFor(activeApp, safePage, (nextPage) => selectPage(nextPage as AppPage));
   const workspaceItems = appWorkspaceItems(switchableApps, activeApp).map((item) => ({
     ...item,
+    onSelect: () => selectPage(item.title === "Application" ? "application.overview" : item.title === "Billing" ? "billing.overview" : "accounts.overview"),
     url: item.title === "Application" ? "/app/application/overview" : item.title === "Billing" ? "/app/billing/overview" : "/app/accounts/overview"
   }));
 
@@ -135,11 +155,8 @@ export function AppDesk() {
           {safePage === "billing.quotation" ? <BillingEntriesWorkspace kind="quotation" /> : null}
           {safePage === "billing.sales" ? <BillingSales /> : null}
           {safePage === "billing.settings" ? <BillingSettings /> : null}
-          {safePage === "accounts.overview" ? <AccountsWorkspace page="overview" /> : null}
-          {safePage === "accounts.ledgers" ? <AccountsWorkspace page="ledgers" /> : null}
-          {safePage === "accounts.vouchers" ? <AccountsWorkspace page="vouchers" /> : null}
-          {safePage === "accounts.reports" ? <AccountsWorkspace page="reports" /> : null}
-          {safePage === "accounts.settings" ? <AccountsSettings /> : null}
+          {isAccountsPage(safePage) && safePage !== "accounts.settings" && !isAccountsSettingsPage(safePage) ? <AccountsWorkspace page={accountsWorkspacePage(safePage)} /> : null}
+          {isAccountsSettingsPage(safePage) ? <AccountsSettings page={safePage} /> : null}
           {isCoreLocationPage(safePage) ? <LocationWorkspace kind={locationKindFromPage(safePage)} /> : null}
           {isCommonMasterPage(safePage) ? <CommonMasterWorkspace definition={definitionFromPage(safePage)} /> : null}
         </main>
@@ -168,10 +185,22 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "billing.sales" ||
     key === "billing.settings" ||
     key === "accounts.overview" ||
+    key === "accounts.groups" ||
     key === "accounts.ledgers" ||
+    key === "accounts.opening-balances" ||
     key === "accounts.vouchers" ||
+    key === "accounts.sales-postings" ||
+    key === "accounts.receipts-payments" ||
     key === "accounts.reports" ||
+    key === "accounts.trial-balance" ||
+    key === "accounts.ledger-statement" ||
+    key === "accounts.balance-sheet" ||
+    key === "accounts.profit-loss" ||
     key === "accounts.settings" ||
+    key === "accounts.posting-rules" ||
+    key === "accounts.financial-year" ||
+    key === "accounts.voucher-numbering" ||
+    key === "accounts.tally-integration" ||
     key === "core.common.location.countries" ||
     key === "core.common.location.states" ||
     key === "core.common.location.districts" ||
@@ -625,12 +654,48 @@ function BillingSettings() {
   );
 }
 
-function AccountsSettings() {
+function AccountsSettings({ page = "accounts.settings" }: { page?: Extract<AppPage, `accounts.${string}`> }) {
+  const title = titleForPage(page);
+  const description = accountsSettingsDescription(page);
   return (
-    <Card title="Accounts Settings" description="Financial year, posting policy, period locks, voucher numbering, and Tally sync settings.">
-      <StatusBadge tone="green">Accounts enabled</StatusBadge>
-    </Card>
+    <section className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border bg-card p-5 shadow-sm">
+        <div>
+          <p className="text-sm font-semibold uppercase text-muted-foreground">Accounts</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-normal">{title}</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
+        </div>
+        <StatusBadge tone="green">Accounts enabled</StatusBadge>
+      </div>
+      <AccountsSettingsWorkspace page={page} />
+    </section>
   );
+}
+
+function isAccountsSettingsPage(page: AppPage): page is Extract<AppPage, `accounts.${string}`> {
+  return page === "accounts.settings" || page === "accounts.posting-rules" || page === "accounts.financial-year" || page === "accounts.voucher-numbering" || page === "accounts.tally-integration";
+}
+
+function isAccountsPage(page: AppPage): page is Extract<AppPage, `accounts.${string}`> {
+  return page.startsWith("accounts.");
+}
+
+function accountsWorkspacePage(page: Extract<AppPage, `accounts.${string}`>): "overview" | "ledgers" | "vouchers" | "reports" {
+  if (page === "accounts.groups" || page === "accounts.ledgers" || page === "accounts.opening-balances") return "ledgers";
+  if (page === "accounts.vouchers" || page === "accounts.sales-postings" || page === "accounts.receipts-payments") return "vouchers";
+  if (page === "accounts.reports" || page === "accounts.trial-balance" || page === "accounts.ledger-statement" || page === "accounts.balance-sheet" || page === "accounts.profit-loss") return "reports";
+  return "overview";
+}
+
+function accountsSettingsDescription(page: Extract<AppPage, `accounts.${string}`>) {
+  const descriptions: Partial<Record<Extract<AppPage, `accounts.${string}`>, string>> = {
+    "accounts.financial-year": "Financial year, period locks, and accounting period controls.",
+    "accounts.posting-rules": "Backend billing-to-accounts posting rules for save, update, delete, and reversal flows.",
+    "accounts.settings": "Financial year, posting policy, period locks, voucher numbering, and Tally sync settings.",
+    "accounts.tally-integration": "Tally-ready ledger names, voucher export mapping, and next integration settings.",
+    "accounts.voucher-numbering": "Voucher numbering series for sales, journal, receipt, payment, debit note, and credit note entries."
+  };
+  return descriptions[page] ?? "Accounts configuration.";
 }
 
 function isCoreLocationPage(page: AppPage): page is Extract<AppPage, `core.common.location.${string}`> {
@@ -673,10 +738,22 @@ function titleForPage(page: AppPage) {
     "billing.sales": "Sales",
     "billing.settings": "Billing Settings",
     "accounts.overview": "Overview",
+    "accounts.groups": "Account Groups",
     "accounts.ledgers": "Ledgers",
+    "accounts.opening-balances": "Opening Balances",
     "accounts.vouchers": "Vouchers",
+    "accounts.sales-postings": "Billing Postings",
+    "accounts.receipts-payments": "Receipts & Payments",
     "accounts.reports": "Accounts Reports",
+    "accounts.trial-balance": "Trial Balance",
+    "accounts.ledger-statement": "Ledger Statement",
+    "accounts.balance-sheet": "Balance Sheet",
+    "accounts.profit-loss": "Profit & Loss",
     "accounts.settings": "Accounts Settings",
+    "accounts.posting-rules": "Posting Rules",
+    "accounts.financial-year": "Financial Year",
+    "accounts.voucher-numbering": "Voucher Numbering",
+    "accounts.tally-integration": "Tally Integration",
     "core.common.location.cities": "Cities",
     "core.common.location.countries": "Countries",
     "core.common.location.districts": "Districts",

@@ -9,6 +9,8 @@ import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspaceTableEmptyState, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 import { cn } from "@codexsun/ui/lib/utils";
+import { useBillingSettings } from "../settings";
+import { defaultBillingSettings } from "../settings/settings.types";
 import { useSalesList } from "./sales.hooks";
 import { SalesUpsertPage } from "./sales.form";
 import { SalesList } from "./sales.list";
@@ -52,6 +54,8 @@ export function SalesWorkspace() {
     total: true,
   });
   const salesQuery = useSalesList();
+  const settingsQuery = useBillingSettings();
+  const salesLayout = (settingsQuery.data ?? defaultBillingSettings).layout.sales;
 
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: SaleSavePayload }) => id ? updateSale(id, payload) : createSale(payload),
@@ -131,6 +135,7 @@ export function SalesWorkspace() {
         loading={saveMutation.isPending}
         onBack={() => setView(view.returnTo === "show" && view.sale ? { mode: "show", sale: view.sale } : { mode: "list" })}
         onSubmit={(payload) => saveMutation.mutate(view.sale ? { id: view.sale.id, payload } : { payload })}
+        settings={salesLayout}
       />
     );
   }

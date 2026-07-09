@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAccountsReports, listAccountGroups, listLedgers, listVouchers } from "./accounts.services";
+import { getAccountsReports, getAccountsSettings, listAccountGroups, listLedgers, listVouchers } from "./accounts.services";
 
 export function useAccountGroups() {
   return useQuery({ queryFn: listAccountGroups, queryKey: ["accounts", "groups"] });
@@ -15,4 +15,8 @@ export function useVouchers(search = "") {
 
 export function useAccountsReports() {
   return useQuery({ queryFn: getAccountsReports, queryKey: ["accounts", "reports"] });
+}
+
+export function useAccountsSettings() {
+  return useQuery({ queryFn: getAccountsSettings, queryKey: ["accounts", "settings"] });
 }

@@ -1,11 +1,13 @@
 import { billingApiGet, billingApiPut } from "../../shared/api/billing-api";
-import type { BillingSalesSettings } from "./settings.types";
+import type { BillingSettings } from "./settings.types";
 
-export async function getSalesSettings() {
-  return billingApiGet<BillingSalesSettings>("/billing/settings/sales");
+export async function getBillingSettings() {
+  return billingApiGet<BillingSettings>("/billing/settings");
 }
 
-export async function saveSalesSettings(payload: BillingSalesSettings) {
-  return billingApiPut<BillingSalesSettings>("/billing/settings/sales", payload);
+export async function saveBillingSettings(payload: BillingSettings) {
+  return billingApiPut<BillingSettings>("/billing/settings", payload);
 }
 
+export const getSalesSettings = getBillingSettings;
+export const saveSalesSettings = saveBillingSettings;

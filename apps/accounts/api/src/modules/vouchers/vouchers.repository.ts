@@ -1,9 +1,12 @@
 import { randomBytes } from "node:crypto";
 import { sql } from "kysely";
 import { getAccountsDatabase } from "../../database/accounts-database.js";
+import { AccountsSettingsRepository } from "../settings/settings.repository.js";
 import type { Voucher, VoucherLine, VoucherSavePayload, VoucherStatus } from "./vouchers.types.js";
 
 export class VouchersRepository {
+  constructor(private readonly settings = new AccountsSettingsRepository()) {}
+
   async list(databaseName: string, search = "") {
     const db = await getAccountsDatabase(databaseName);
     const term = `%${search.trim()}%`;
@@ -127,10 +130,21 @@ export class VouchersRepository {
 
   private async nextVoucherNo(databaseName: string, type: string) {
     const db = await getAccountsDatabase(databaseName);
-    const prefix = type.toUpperCase().replace(/[^A-Z0-9]+/g, "-");
+    const settings = await this.settings.get(databaseName);
+    const prefix = prefixForVoucherType(type, settings.voucherNumbering);
     const result = await sql<{ count_value: number | string }>`SELECT COUNT(*) + 1 AS count_value FROM account_vouchers WHERE voucher_type = ${type}`.execute(db);
     return `${prefix}-${String(Number(result.rows[0]?.count_value ?? 1)).padStart(5, "0")}`;
   }
+}
+
+function prefixForVoucherType(type: string, numbering: Awaited<ReturnType<AccountsSettingsRepository["get"]>>["voucherNumbering"]) {
+  if (type === "sales") return numbering.salesPrefix;
+  if (type === "receipt") return numbering.receiptPrefix;
+  if (type === "payment") return numbering.paymentPrefix;
+  if (type === "journal") return numbering.journalPrefix;
+  if (type === "debit_note") return numbering.debitNotePrefix;
+  if (type === "credit_note") return numbering.creditNotePrefix;
+  return type.toUpperCase().replace(/[^A-Z0-9]+/g, "-");
 }
 
 type VoucherRow = {

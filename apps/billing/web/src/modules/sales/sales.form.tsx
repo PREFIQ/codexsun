@@ -7,6 +7,7 @@ import { WorkspaceAnimatedTabs, type WorkspaceAnimatedTab } from "@codexsun/ui/w
 import { WorkspaceDatePicker } from "@codexsun/ui/workspace/date-picker";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormGrid, WorkspaceFormPanel, WorkspaceUpsertPage } from "@codexsun/ui/workspace/upsert";
+import type { BillingDocumentLayoutSettings } from "../settings/settings.types";
 import { formatMoney } from "./sales.services";
 import { salesSchema } from "./sales.schema";
 import { createEmptySale, createEmptySaleItem, type Sale, type SaleLineItemInput, type SaleSavePayload } from "./sales.types";
@@ -17,12 +18,14 @@ export function SalesUpsertPage({
   onBack,
   onSubmit,
   sale,
+  settings,
 }: {
   errorMessage: string;
   loading: boolean;
   onBack: () => void;
   onSubmit: (payload: SaleSavePayload) => void;
   sale: Sale | null;
+  settings: BillingDocumentLayoutSettings;
 }) {
   const [activeTab, setActiveTab] = useState("details");
   const [banner, setBanner] = useState("");
@@ -118,6 +121,26 @@ export function SalesUpsertPage({
                   <WorkspaceFormField label="Tax rate (%)" required>
                     <Input className="h-11 rounded-md" type="number" min={0} step="0.01" value={item.taxRate} onChange={(event) => updateItem(index, "taxRate", Number(event.target.value) || 0)} />
                   </WorkspaceFormField>
+                  {settings.usePo ? (
+                    <WorkspaceFormField label="PO no">
+                      <Input className="h-11 rounded-md uppercase" value={item.poNo} onChange={(event) => updateItem(index, "poNo", event.target.value.toUpperCase())} />
+                    </WorkspaceFormField>
+                  ) : null}
+                  {settings.useDc ? (
+                    <WorkspaceFormField label="DC no">
+                      <Input className="h-11 rounded-md uppercase" value={item.dcNo} onChange={(event) => updateItem(index, "dcNo", event.target.value.toUpperCase())} />
+                    </WorkspaceFormField>
+                  ) : null}
+                  {settings.useColour ? (
+                    <WorkspaceFormField label="Colour">
+                      <Input className="h-11 rounded-md" value={item.colour} onChange={(event) => updateItem(index, "colour", event.target.value)} />
+                    </WorkspaceFormField>
+                  ) : null}
+                  {settings.useSize ? (
+                    <WorkspaceFormField label="Size">
+                      <Input className="h-11 rounded-md" value={item.size} onChange={(event) => updateItem(index, "size", event.target.value)} />
+                    </WorkspaceFormField>
+                  ) : null}
                   <WorkspaceFormField label="Line total">
                     <div className="flex h-11 items-center rounded-md border border-border/70 bg-muted/20 px-3 text-sm font-medium">
                       {formatMoney(calculateItemTotal(item), form.currencyCode)}
@@ -265,10 +288,14 @@ function toSalePayload(sale: Sale): SaleSavePayload {
     invoiceNumber: sale.invoiceNumber,
     issuedOn: sale.issuedOn,
     items: sale.items.map((item) => ({
+      colour: item.colour ?? "",
+      dcNo: item.dcNo ?? "",
       description: item.description,
       hsnCode: item.hsnCode,
+      poNo: item.poNo ?? "",
       quantity: item.quantity,
       rate: item.rate,
+      size: item.size ?? "",
       taxRate: item.taxRate,
       unit: item.unit,
     })),

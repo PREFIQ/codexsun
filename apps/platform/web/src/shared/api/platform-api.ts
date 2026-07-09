@@ -11,6 +11,7 @@ const TOKEN_KEYS: Record<Desk, string> = {
 };
 
 const TENANT_ID_KEY = "codexsun_tenant_id";
+const TENANT_DB_NAME_KEY = "codexsun_tenant_db_name";
 
 type ApiEnvelope<T> =
   | { data: T; success: true }
@@ -48,6 +49,21 @@ export function setTenantId(id: string | undefined): void {
   try {
     if (id) localStorage.setItem(TENANT_ID_KEY, id);
     else localStorage.removeItem(TENANT_ID_KEY);
+  } catch {}
+}
+
+export function getTenantDbName(): string | null {
+  try {
+    return localStorage.getItem(TENANT_DB_NAME_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setTenantDbName(dbName: string | undefined): void {
+  try {
+    if (dbName) localStorage.setItem(TENANT_DB_NAME_KEY, dbName);
+    else localStorage.removeItem(TENANT_DB_NAME_KEY);
   } catch {}
 }
 
@@ -105,6 +121,7 @@ export async function login(input: { corporateId?: string; desk: Desk; email: st
       corporateId?: string;
       email: string;
       tenantId?: string;
+      tenantDbName?: string;
       tenantCode?: string;
       tenantUuid?: string;
       userType: string;
@@ -112,6 +129,7 @@ export async function login(input: { corporateId?: string; desk: Desk; email: st
 
     if (data.accessToken) setToken(input.desk, data.accessToken);
     if (input.desk === "tenant" && data.tenantId) setTenantId(data.tenantId);
+    if (input.desk === "tenant" && data.tenantDbName) setTenantDbName(data.tenantDbName);
 
     return { data, success: true };
   } catch (error: unknown) {
@@ -124,5 +142,8 @@ export async function logout(desk: Desk): Promise<void> {
     if (getToken(desk)) await apiPost("/auth/logout", undefined, desk);
   } catch {}
   clearToken(desk);
-  if (desk === "tenant") setTenantId(undefined);
+  if (desk === "tenant") {
+    setTenantId(undefined);
+    setTenantDbName(undefined);
+  }
 }

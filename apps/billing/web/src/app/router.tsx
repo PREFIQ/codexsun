@@ -1,6 +1,8 @@
 import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import { QuotationPage } from "../modules/quotation";
 import { SalesPage } from "../modules/sales/sales.page";
 import { SalesPrintRoutePage } from "../modules/sales/sales.print";
+import { SalesSettingsPage } from "../modules/settings";
 
 const rootRoute = createRootRoute();
 
@@ -22,13 +24,25 @@ const salesRoute = createRoute({
   path: "/billing/sales"
 });
 
+const quotationRoute = createRoute({
+  component: QuotationPage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/quotation"
+});
+
 const salesPrintRoute = createRoute({
   component: SalesPrintRoutePage,
   getParentRoute: () => rootRoute,
   path: "/billing/sales/print"
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, billingRoute, salesRoute, salesPrintRoute]);
+const salesSettingsRoute = createRoute({
+  component: SalesSettingsPage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/settings/sales"
+});
+
+const routeTree = rootRoute.addChildren([homeRoute, billingRoute, salesRoute, quotationRoute, salesPrintRoute, salesSettingsRoute]);
 
 export const router = createRouter({ routeTree });
 

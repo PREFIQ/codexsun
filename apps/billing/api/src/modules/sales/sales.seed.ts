@@ -18,8 +18,8 @@ const defaultSales: SaleSavePayload[] = [
     invoiceNumber: "SAL-0001",
     issuedOn: "2026-07-08",
     items: [
-      { description: "Premium cotton fabric", hsnCode: "5208", quantity: 25, rate: 320, taxRate: 12, unit: "MTR" },
-      { description: "Finishing and packing", hsnCode: "9988", quantity: 1, rate: 1800, taxRate: 18, unit: "JOB" },
+      { colour: "", dcNo: "", description: "Premium cotton fabric", hsnCode: "5208", poNo: "", quantity: 25, rate: 320, size: "", taxRate: 12, unit: "MTR" },
+      { colour: "", dcNo: "", description: "Finishing and packing", hsnCode: "9988", poNo: "", quantity: 1, rate: 1800, size: "", taxRate: 18, unit: "JOB" },
     ],
     notes: "Dispatch against work order NS-447.",
     roundOff: 0,
@@ -35,8 +35,8 @@ const defaultSales: SaleSavePayload[] = [
     invoiceNumber: "SAL-0002",
     issuedOn: "2026-07-09",
     items: [
-      { description: "Display rack accessories", hsnCode: "9403", quantity: 4, rate: 1350, taxRate: 18, unit: "SET" },
-      { description: "Store branding labels", hsnCode: "4821", quantity: 120, rate: 18, taxRate: 12, unit: "PCS" },
+      { colour: "", dcNo: "", description: "Display rack accessories", hsnCode: "9403", poNo: "", quantity: 4, rate: 1350, size: "", taxRate: 18, unit: "SET" },
+      { colour: "", dcNo: "", description: "Store branding labels", hsnCode: "4821", poNo: "", quantity: 120, rate: 18, size: "", taxRate: 12, unit: "PCS" },
     ],
     notes: "Draft invoice pending final dispatch quantity.",
     roundOff: 0.2,

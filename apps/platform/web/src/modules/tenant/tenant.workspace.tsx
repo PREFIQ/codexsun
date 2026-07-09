@@ -1006,7 +1006,7 @@ function tenantAppAccessFromRegistry(apps: PlatformApp[] | undefined): TenantApp
   }))
 
   return source
-    .filter((app) => app.appId === "application" || app.appId === "billing")
+    .filter((app) => app.appId === "application" || app.appId === "billing" || app.appId === "accounts")
     .map((app) => {
       const local = platformAppRegistry.find((item) => item.id === app.appId || item.moduleKey === app.moduleKey) ?? platformAppRegistry[0]!
       const Icon = local.icon

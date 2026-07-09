@@ -10,20 +10,24 @@ import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { useRouterState } from "@tanstack/react-router";
 import { PageTitle } from "../../shared/document/PageTitle";
 import { BillingLayout } from "../../shared/layout/BillingLayout";
-import { saveSalesSettings } from "./settings.services";
-import { useSalesSettings } from "./settings.hooks";
-import type { BillingSalesSettings } from "./settings.types";
+import { saveBillingSettings } from "./settings.services";
+import { useBillingSettings } from "./settings.hooks";
+import { defaultBillingSettings, type BillingDocumentKind, type BillingDocumentLayoutSettings, type BillingSettings } from "./settings.types";
 
-const defaultSettings: BillingSalesSettings = {
-  featureQuotation: true,
-  gstApiMode: "einvoice_eway",
-  useColour: true,
-  useDc: false,
-  useEinvoice: true,
-  useEway: true,
-  usePo: false,
-  useSize: true,
-};
+const documentSections: Array<{ key: BillingDocumentKind; label: string; note: string }> = [
+  { key: "quotation", label: "Quotation", note: "Controls item entry, preview, and print columns for quotation vouchers." },
+  { key: "sales", label: "Sales", note: "Controls invoice item entry, print rows, E-invoice, and E-way fields." },
+  { key: "purchase", label: "Purchase", note: "Controls purchase item entry, supplier billing rows, and GST transport fields." },
+];
+
+const layoutSwitches: Array<{ key: keyof BillingDocumentLayoutSettings; label: string; note: string }> = [
+  { key: "usePo", label: "PO", note: "Show purchase order number on item rows." },
+  { key: "useDc", label: "DC", note: "Show delivery challan number on item rows." },
+  { key: "useColour", label: "Colour", note: "Show colour selector and item column." },
+  { key: "useSize", label: "Size", note: "Show size selector and item column." },
+  { key: "useEinvoice", label: "E-invoice", note: "Enable E-invoice controls for this billing flow." },
+  { key: "useEway", label: "E-way", note: "Enable E-way controls for this billing flow." },
+];
 
 export function SalesSettingsPage() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -31,11 +35,11 @@ export function SalesSettingsPage() {
   return (
     <BillingLayout
       currentPath={pathname}
-      headerTitle="Sales Settings"
-      subtitle="Configure billing sales, quotation, GST, and print controls."
+      headerTitle="Bill Settings"
+      subtitle="Configure billing layout, customisation, GST, numbering, and print controls."
       title="Billing Workspace"
     >
-      <PageTitle title="Sales Settings" />
+      <PageTitle title="Bill Settings" />
       <SalesSettingsWorkspace />
     </BillingLayout>
   );
@@ -43,28 +47,51 @@ export function SalesSettingsPage() {
 
 function SalesSettingsWorkspace() {
   const queryClient = useQueryClient();
-  const settingsQuery = useSalesSettings();
+  const settingsQuery = useBillingSettings();
   const [activeTab, setActiveTab] = useState("layout");
-  const [form, setForm] = useState<BillingSalesSettings>(defaultSettings);
+  const [form, setForm] = useState<BillingSettings>(defaultBillingSettings);
 
   useEffect(() => {
     if (settingsQuery.data) setForm(settingsQuery.data);
   }, [settingsQuery.data]);
 
   const mutation = useMutation({
-    mutationFn: saveSalesSettings,
+    mutationFn: saveBillingSettings,
     onSuccess: async (settings) => {
-      await queryClient.invalidateQueries({ queryKey: ["billing", "settings", "sales"] });
+      await queryClient.invalidateQueries({ queryKey: ["billing", "settings"] });
       setForm(settings);
-      toast.success("Sales settings published", { description: "Quotation and sales entry screens will use the latest layout." });
+      toast.success("Billing settings published", { description: "Quotation, sales, and purchase screens will use the latest layout." });
     },
     onError: (error) => {
       toast.error("Unable to publish settings", { description: error instanceof Error ? error.message : "Please try again." });
     },
   });
 
-  function patch(next: Partial<BillingSalesSettings>) {
+  function patch(next: Partial<BillingSettings>) {
     setForm((current) => ({ ...current, ...next }));
+  }
+
+  function patchLayout(kind: BillingDocumentKind, next: Partial<BillingDocumentLayoutSettings>) {
+    setForm((current) => ({
+      ...current,
+      layout: {
+        ...current.layout,
+        [kind]: {
+          ...current.layout[kind],
+          ...next,
+        },
+      },
+    }));
+  }
+
+  function patchFeature(kind: keyof BillingSettings["features"], enabled: boolean) {
+    setForm((current) => ({
+      ...current,
+      features: {
+        ...current.features,
+        [kind]: enabled,
+      },
+    }));
   }
 
   const tabs: WorkspaceAnimatedTab[] = useMemo(() => [
@@ -74,8 +101,8 @@ function SalesSettingsWorkspace() {
       content: (
         <div className="rounded-md border border-border/70 bg-card/95 p-4 shadow-sm">
           <div className="space-y-1">
-            <h2 className="text-base font-semibold text-foreground">Sales Layout</h2>
-            <p className="text-sm text-muted-foreground">Toggle fields used by sales and quotation entry screens.</p>
+            <h2 className="text-base font-semibold text-foreground">Billing Layout</h2>
+            <p className="text-sm text-muted-foreground">Toggle industry fields independently for quotation, sales, and purchase.</p>
           </div>
           <div className="mt-6 space-y-3">
             <div className="rounded-md border border-border/70 bg-background p-4">
@@ -88,16 +115,40 @@ function SalesSettingsWorkspace() {
                     { label: "E-invoice + E-way", value: "einvoice_eway" },
                     { label: "E-way only", value: "eway_only" },
                   ]}
-                  onValueChange={(gstApiMode) => patch({ gstApiMode: gstApiMode as BillingSalesSettings["gstApiMode"] })}
+                  onValueChange={(gstApiMode) => patch({ gstApiMode: gstApiMode as BillingSettings["gstApiMode"] })}
                 />
               </div>
             </div>
-            <SettingsToggle checked={form.usePo} label="Use PO in sales" note="Shows PO number on sales and quotation item rows." onChange={(usePo) => patch({ usePo })} />
-            <SettingsToggle checked={form.useDc} label="Use DC in sales" note="Shows DC number on sales and quotation item rows." onChange={(useDc) => patch({ useDc })} />
-            <SettingsToggle checked={form.useColour} label="Use Colour in sales" note="Shows colour on sales and quotation item rows." onChange={(useColour) => patch({ useColour })} />
-            <SettingsToggle checked={form.useSize} label="Use Size in sales" note="Shows size on sales and quotation item rows." onChange={(useSize) => patch({ useSize })} />
-            <SettingsToggle checked={form.useEinvoice} label="Use E-invoice in sales" note="Shows the E-invoice details tab on sales upsert." onChange={(useEinvoice) => patch({ useEinvoice })} />
-            <SettingsToggle checked={form.useEway} label="Use E-way in sales" note="Shows the E-way details tab on sales upsert." onChange={(useEway) => patch({ useEway })} />
+            {documentSections.map((section) => (
+              <DocumentLayoutPanel
+                key={section.key}
+                enabled={form.features[section.key]}
+                layout={form.layout[section.key]}
+                note={section.note}
+                title={section.label}
+                onFeatureChange={(enabled) => patchFeature(section.key, enabled)}
+                onLayoutChange={(next) => patchLayout(section.key, next)}
+              />
+            ))}
+          </div>
+        </div>
+      ),
+    },
+    {
+      value: "customise",
+      label: "Customise",
+      content: (
+        <div className="rounded-md border border-border/70 bg-card/95 p-4 shadow-sm">
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold text-foreground">Bill Customise</h2>
+            <p className="text-sm text-muted-foreground">Controls for bill titles, labels, totals, and print language.</p>
+          </div>
+          <div className="mt-6 grid gap-3 lg:grid-cols-2">
+            <CustomiseCard title="Sales invoice" note="Uses the sales item layout, GST mode, E-invoice, and E-way switches." />
+            <CustomiseCard title="Quotation" note="Uses quotation item controls for PO, DC, colour, and size." />
+            <CustomiseCard title="Purchase" note="Uses purchase item controls for supplier-side billing and GST fields." />
+            <CustomiseCard title="Item table" note="Keeps item columns aligned with the Layout tab before printing." />
+            <CustomiseCard title="Totals block" note="Shows taxable amount, GST total, round off, and grand total." />
           </div>
         </div>
       ),
@@ -108,16 +159,23 @@ function SalesSettingsWorkspace() {
       content: <PlaceholderPanel title="Printing" note="Print controls will use the active quotation and sales layout." />,
     },
     {
-      value: "customise",
-      label: "Customise",
-      content: <PlaceholderPanel title="Customise" note="Template customisation controls are ready for billing print layouts." />,
+      value: "numbering",
+      label: "Numbering",
+      content: <PlaceholderPanel title="Numbering" note="Invoice and quotation numbering controls will live here." />,
+    },
+    {
+      value: "gst",
+      label: "GST",
+      content: <PlaceholderPanel title="GST" note="GST API, E-invoice, and E-way settings are controlled from the active billing layout." />,
     },
     {
       value: "features",
       label: "Features",
       content: (
-        <div className="rounded-md border border-border/70 bg-card/95 p-4 shadow-sm">
-          <SettingsToggle checked={form.featureQuotation} label="Enable quotations" note="Shows quotation list, entry, preview, and conversion workspace." onChange={(featureQuotation) => patch({ featureQuotation })} />
+        <div className="space-y-3 rounded-md border border-border/70 bg-card/95 p-4 shadow-sm">
+          <SettingsToggle checked={form.features.quotation} label="Enable quotations" note="Shows quotation list, entry, preview, and conversion workspace." onChange={(enabled) => patchFeature("quotation", enabled)} />
+          <SettingsToggle checked={form.features.sales} label="Enable sales" note="Shows sales invoice list, entry, preview, and print workspace." onChange={(enabled) => patchFeature("sales", enabled)} />
+          <SettingsToggle checked={form.features.purchase} label="Enable purchase" note="Shows purchase billing entry and supplier-side item controls." onChange={(enabled) => patchFeature("purchase", enabled)} />
         </div>
       ),
     },
@@ -125,8 +183,8 @@ function SalesSettingsWorkspace() {
 
   return (
     <WorkspacePage
-      title="Sales Settings"
-      description="Configure sales layout, customisation, and print controls."
+      title="Bill Settings"
+      description="Configure billing layout, customisation, print, numbering, GST, and feature controls."
       technicalName="page.billing.settings.sales"
       actions={
         <Button className="h-9 rounded-md" disabled={mutation.isPending || settingsQuery.isLoading} onClick={() => mutation.mutate(form)} type="button">
@@ -140,7 +198,45 @@ function SalesSettingsWorkspace() {
   );
 }
 
-function SettingsToggle({ checked, label, note, onChange }: { checked: boolean; label: string; note: string; onChange: (checked: boolean) => void }) {
+function DocumentLayoutPanel({ enabled, layout, note, onFeatureChange, onLayoutChange, title }: { enabled: boolean; layout: BillingDocumentLayoutSettings; note: string; onFeatureChange: (enabled: boolean) => void; onLayoutChange: (next: Partial<BillingDocumentLayoutSettings>) => void; title: string }) {
+  return (
+    <div className="rounded-md border border-border/70 bg-background p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">Industry</span>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{note}</p>
+        </div>
+        <Switch checked={enabled} onCheckedChange={onFeatureChange} />
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        {layoutSwitches.map((item) => (
+          <SettingsToggle
+            key={item.key}
+            checked={layout[item.key]}
+            disabled={!enabled}
+            label={item.label}
+            note={item.note}
+            onChange={(checked) => onLayoutChange({ [item.key]: checked })}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CustomiseCard({ note, title }: { note: string; title: string }) {
+  return (
+    <div className="rounded-md border border-border/70 bg-background p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">{note}</p>
+    </div>
+  );
+}
+
+function SettingsToggle({ checked, disabled = false, label, note, onChange }: { checked: boolean; disabled?: boolean; label: string; note: string; onChange: (checked: boolean) => void }) {
   return (
     <div className="flex min-h-16 items-center justify-between gap-4 rounded-md border border-border/70 bg-background px-4 py-3 shadow-sm">
       <div className="min-w-0">
@@ -150,7 +246,7 @@ function SettingsToggle({ checked, label, note, onChange }: { checked: boolean; 
         </div>
         <p className="mt-1 text-sm text-muted-foreground">{note}</p>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} />
     </div>
   );
 }
@@ -163,4 +259,3 @@ function PlaceholderPanel({ note, title }: { note: string; title: string }) {
     </div>
   );
 }
-

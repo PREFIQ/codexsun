@@ -5,6 +5,7 @@ import { env } from "./env.js";
 import { ledgersModule } from "./modules/ledgers/index.js";
 import { vouchersModule } from "./modules/vouchers/index.js";
 import { reportsModule } from "./modules/reports/index.js";
+import { accountsSettingsModule } from "./modules/settings/index.js";
 
 export async function createApp() {
   await bootstrapAccountsDatabase();
@@ -27,7 +28,7 @@ export async function createApp() {
       name: "accounts-api",
       check: () => ({
         details: {
-          modules: [ledgersModule.key, vouchersModule.key, reportsModule.key],
+          modules: [ledgersModule.key, vouchersModule.key, reportsModule.key, accountsSettingsModule.key],
           runtime: "accounts-foundation"
         },
         status: "ok"
@@ -40,6 +41,7 @@ export async function createApp() {
   await ledgersModule.register(app);
   await vouchersModule.register(app);
   await reportsModule.register(app);
+  await accountsSettingsModule.register(app);
 
   return app;
 }

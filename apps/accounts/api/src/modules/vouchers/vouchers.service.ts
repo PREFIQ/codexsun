@@ -1,4 +1,5 @@
 import { LedgersRepository } from "../ledgers/ledgers.repository.js";
+import { AccountsSettingsRepository } from "../settings/settings.repository.js";
 import type { Ledger } from "../ledgers/ledgers.types.js";
 import { VouchersRepository } from "./vouchers.repository.js";
 import type { AccountsPostingRequest, VoucherLineInput, VoucherSavePayload, VoucherType } from "./vouchers.types.js";
@@ -8,7 +9,8 @@ const voucherTypes: VoucherType[] = ["sales", "purchase", "receipt", "payment", 
 export class VouchersService {
   constructor(
     private readonly repository = new VouchersRepository(),
-    private readonly ledgers = new LedgersRepository()
+    private readonly ledgers = new LedgersRepository(),
+    private readonly settings = new AccountsSettingsRepository()
   ) {}
 
   list(databaseName: string, search = "") {
@@ -21,6 +23,10 @@ export class VouchersService {
 
   async create(databaseName: string, input: VoucherSavePayload) {
     const payload = this.normalize(input);
+    const settings = await this.settings.get(databaseName);
+    if (!payload.voucherNo?.trim() && settings.voucherNumbering.mode === "manual") {
+      throw new Error("Voucher number is required when manual numbering is enabled.");
+    }
     await this.assertPeriodOpen(databaseName, payload.voucherDate);
     const totals = totalsFor(payload.lines);
     assertBalanced(totals);
@@ -98,7 +104,8 @@ export class VouchersService {
   private async payloadFromPosting(databaseName: string, request: AccountsPostingRequest): Promise<VoucherSavePayload> {
     const party = await this.partyLedger(databaseName, request);
     const trade = await this.requiredLedger(databaseName, request.sourceModule === "purchase" ? "PURCHASE" : "SALES");
-    const roundOff = await this.requiredLedger(databaseName, "ROUND_OFF");
+    const settings = await this.settings.get(databaseName);
+    const roundOff = await this.requiredLedger(databaseName, settings.postingRules.roundOffLedgerCode || "ROUND_OFF");
     const lines: VoucherLineInput[] = [];
     const taxAmount = round(Number(request.taxAmount ?? 0));
     const taxableAmount = round(Number(request.taxableAmount ?? Math.max(0, request.totalAmount - taxAmount - Number(request.roundOff ?? 0))));
@@ -175,6 +182,11 @@ export class VouchersService {
   }
 
   private async assertPeriodOpen(databaseName: string, date: string) {
+    const settings = await this.settings.get(databaseName);
+    const lockDate = settings.financialYear.lockDate;
+    if (lockDate && date <= lockDate && !settings.financialYear.allowBackdatedPosting) {
+      throw new Error(`Accounting period is locked up to ${lockDate}.`);
+    }
     if (await this.repository.isPeriodLocked(databaseName, date)) {
       throw new Error(`Accounting period is locked for ${date}. Use an adjustment voucher in an open period.`);
     }

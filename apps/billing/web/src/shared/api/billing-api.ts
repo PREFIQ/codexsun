@@ -16,10 +16,9 @@ export async function billingApiGet<T>(path: string) {
 }
 
 export async function billingApiPost<T>(path: string, body?: unknown) {
-  return billingApiRequest<T>(path, {
-    body: body === undefined ? undefined : JSON.stringify(body),
-    method: "POST"
-  });
+  const init: RequestInit = { method: "POST" };
+  if (body !== undefined) init.body = JSON.stringify(body);
+  return billingApiRequest<T>(path, init);
 }
 
 export async function billingApiPut<T>(path: string, body: unknown) {

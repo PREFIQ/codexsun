@@ -72,10 +72,14 @@ export function normalizeSaleInput(input: SaleSavePayload): SaleSavePayload {
 
 function normalizeSaleLineItem(item: SaleLineItemInput): SaleLineItemInput {
   return {
+    colour: item.colour?.trim() ?? "",
+    dcNo: item.dcNo?.trim().toUpperCase() ?? "",
     description: item.description.trim(),
     hsnCode: item.hsnCode.trim().toUpperCase(),
+    poNo: item.poNo?.trim().toUpperCase() ?? "",
     quantity: roundMoney(Number(item.quantity) || 0),
     rate: roundMoney(Number(item.rate) || 0),
+    size: item.size?.trim() ?? "",
     taxRate: roundMoney(Number(item.taxRate) || 0),
     unit: item.unit.trim().toUpperCase() || "NOS",
   };

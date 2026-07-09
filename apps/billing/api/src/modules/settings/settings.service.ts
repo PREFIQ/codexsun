@@ -1,22 +1,31 @@
 import { BillingSettingsRepository } from "./settings.repository.js";
-import { defaultBillingSalesSettings, type BillingSalesSettings } from "./settings.types.js";
+import { defaultBillingSettings, type BillingSettings } from "./settings.types.js";
 
 export class BillingSettingsService {
   constructor(private readonly repository = new BillingSettingsRepository()) {}
 
-  getSalesSettings(databaseName: string) {
-    return this.repository.getSalesSettings(databaseName);
+  getBillingSettings(databaseName: string) {
+    return this.repository.getBillingSettings(databaseName);
   }
 
-  saveSalesSettings(databaseName: string, input: BillingSalesSettings) {
-    return this.repository.saveSalesSettings(databaseName, normalizeSalesSettings(input));
+  saveBillingSettings(databaseName: string, input: BillingSettings) {
+    return this.repository.saveBillingSettings(databaseName, normalizeBillingSettings(input));
+  }
+
+  getSalesSettings(databaseName: string) {
+    return this.getBillingSettings(databaseName);
+  }
+
+  saveSalesSettings(databaseName: string, input: BillingSettings) {
+    return this.saveBillingSettings(databaseName, input);
   }
 }
 
-function normalizeSalesSettings(input: BillingSalesSettings): BillingSalesSettings {
+function normalizeBillingSettings(input: BillingSettings): BillingSettings {
   return {
-    ...defaultBillingSalesSettings,
+    ...defaultBillingSettings,
     ...input,
+    features: { ...defaultBillingSettings.features, ...(input.features ?? {}) },
     gstApiMode: input.gstApiMode === "eway_only" ? "eway_only" : "einvoice_eway"
   };
 }

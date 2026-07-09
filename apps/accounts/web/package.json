@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/accounts-web",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@codexsun/ui": "^1.0.7",
+    "@codexsun/ui": "^1.0.8",
     "@tanstack/react-query": "^5.100.10",
     "@vitejs/plugin-react": "^6.0.3",
     "lucide-react": "^1.22.0",

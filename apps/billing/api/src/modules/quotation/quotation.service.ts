@@ -43,6 +43,7 @@ function normalizeInput(input: QuotationSavePayload): QuotationSavePayload {
     notes: input.notes.trim(),
     quotationNumber: input.quotationNumber.trim().toUpperCase(),
     roundOff: Number(input.roundOff ?? 0) || 0,
+    salesLedger: input.salesLedger.trim(),
     shippingAddress: input.shippingAddress.trim(),
     status: input.status,
     taxType: input.taxType,

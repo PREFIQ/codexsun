@@ -1,10 +1,14 @@
 export type SaleStatus = "draft" | "confirmed" | "cancelled";
 
 export type SaleLineItemInput = {
+  colour: string;
+  dcNo: string;
   description: string;
   hsnCode: string;
+  poNo: string;
   quantity: number;
   rate: number;
+  size: string;
   taxRate: number;
   unit: string;
 };
@@ -76,10 +80,14 @@ export function createEmptySale(): SaleSavePayload {
 
 export function createEmptySaleItem(): SaleLineItemInput {
   return {
+    colour: "",
+    dcNo: "",
     description: "",
     hsnCode: "",
+    poNo: "",
     quantity: 1,
     rate: 0,
+    size: "",
     taxRate: 18,
     unit: "NOS",
   };

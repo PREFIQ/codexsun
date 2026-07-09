@@ -12,6 +12,7 @@ export type AuthTokenPayload = {
   jti: string;
   sessionIssuedAt: string;
   tenantCode?: string;
+  tenantDbName?: string;
   tenantId?: string;
   tenantUuid?: string;
   userId: string;

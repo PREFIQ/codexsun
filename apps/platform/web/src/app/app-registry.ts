@@ -2,10 +2,12 @@ import {
   Building2Icon,
   CircleGaugeIcon,
   CreditCardIcon,
+  FileSpreadsheetIcon,
   Globe2Icon,
   LandmarkIcon,
   MapPinnedIcon,
   PackageIcon,
+  ReceiptIndianRupeeIcon,
   Settings2Icon,
   UsersIcon,
   ClipboardListIcon,
@@ -123,10 +125,46 @@ export function appMenuFor(appId: PlatformAppId, activePage: string, onSelect: (
       title: "Accounts",
       items: [
         { title: "Overview", isActive: activePage === "accounts.overview", onSelect: () => onSelect("accounts.overview") },
-        { title: "Ledgers", isActive: activePage === "accounts.ledgers", onSelect: () => onSelect("accounts.ledgers") },
-        { title: "Vouchers", isActive: activePage === "accounts.vouchers", onSelect: () => onSelect("accounts.vouchers") },
-        { title: "Reports", isActive: activePage === "accounts.reports", onSelect: () => onSelect("accounts.reports") },
-        { title: "Accounts Settings", isActive: activePage === "accounts.settings", onSelect: () => onSelect("accounts.settings") }
+        {
+          title: "Masters",
+          isActive: activePage === "accounts.groups" || activePage === "accounts.ledgers" || activePage === "accounts.opening-balances",
+          items: [
+            { title: "Account Groups", isActive: activePage === "accounts.groups", onSelect: () => onSelect("accounts.groups") },
+            { title: "Ledgers", isActive: activePage === "accounts.ledgers", onSelect: () => onSelect("accounts.ledgers") },
+            { title: "Opening Balances", isActive: activePage === "accounts.opening-balances", onSelect: () => onSelect("accounts.opening-balances") }
+          ]
+        },
+        {
+          title: "Vouchers",
+          isActive: activePage === "accounts.vouchers" || activePage === "accounts.sales-postings" || activePage === "accounts.receipts-payments",
+          items: [
+            { title: "All Vouchers", isActive: activePage === "accounts.vouchers", onSelect: () => onSelect("accounts.vouchers") },
+            { title: "Billing Postings", isActive: activePage === "accounts.sales-postings", onSelect: () => onSelect("accounts.sales-postings") },
+            { title: "Receipts & Payments", isActive: activePage === "accounts.receipts-payments", onSelect: () => onSelect("accounts.receipts-payments") }
+          ]
+        },
+        {
+          title: "Reports",
+          isActive: activePage === "accounts.reports" || activePage === "accounts.trial-balance" || activePage === "accounts.ledger-statement" || activePage === "accounts.balance-sheet" || activePage === "accounts.profit-loss",
+          items: [
+            { title: "Reports Overview", isActive: activePage === "accounts.reports", onSelect: () => onSelect("accounts.reports") },
+            { title: "Trial Balance", isActive: activePage === "accounts.trial-balance", onSelect: () => onSelect("accounts.trial-balance") },
+            { title: "Ledger Statement", isActive: activePage === "accounts.ledger-statement", onSelect: () => onSelect("accounts.ledger-statement") },
+            { title: "Balance Sheet", isActive: activePage === "accounts.balance-sheet", onSelect: () => onSelect("accounts.balance-sheet") },
+            { title: "Profit & Loss", isActive: activePage === "accounts.profit-loss", onSelect: () => onSelect("accounts.profit-loss") }
+          ]
+        },
+        {
+          title: "Settings",
+          isActive: activePage === "accounts.settings" || activePage === "accounts.posting-rules" || activePage === "accounts.financial-year" || activePage === "accounts.voucher-numbering" || activePage === "accounts.tally-integration",
+          items: [
+            { title: "Accounts Settings", isActive: activePage === "accounts.settings", onSelect: () => onSelect("accounts.settings") },
+            { title: "Posting Rules", isActive: activePage === "accounts.posting-rules", onSelect: () => onSelect("accounts.posting-rules") },
+            { title: "Financial Year", isActive: activePage === "accounts.financial-year", onSelect: () => onSelect("accounts.financial-year") },
+            { title: "Voucher Numbering", isActive: activePage === "accounts.voucher-numbering", onSelect: () => onSelect("accounts.voucher-numbering") },
+            { title: "Tally Integration", isActive: activePage === "accounts.tally-integration", onSelect: () => onSelect("accounts.tally-integration") }
+          ]
+        }
       ]
     };
   }
@@ -197,12 +235,45 @@ export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSele
       {
         icon: LandmarkIcon,
         isActive: activePage.startsWith("accounts") && activePage !== "accounts.overview",
-        title: "Accounts",
+        title: "Masters",
         items: [
+          { title: "Account Groups", isActive: activePage === "accounts.groups", onSelect: () => onSelect("accounts.groups") },
           { title: "Ledgers", isActive: activePage === "accounts.ledgers", onSelect: () => onSelect("accounts.ledgers") },
-          { title: "Vouchers", isActive: activePage === "accounts.vouchers", onSelect: () => onSelect("accounts.vouchers") },
-          { title: "Reports", isActive: activePage === "accounts.reports", onSelect: () => onSelect("accounts.reports") },
-          { title: "Accounts Settings", isActive: activePage === "accounts.settings", onSelect: () => onSelect("accounts.settings") }
+          { title: "Opening Balances", isActive: activePage === "accounts.opening-balances", onSelect: () => onSelect("accounts.opening-balances") }
+        ]
+      },
+      {
+        icon: ReceiptIndianRupeeIcon,
+        isActive: activePage === "accounts.vouchers" || activePage === "accounts.sales-postings" || activePage === "accounts.receipts-payments",
+        title: "Vouchers",
+        items: [
+          { title: "All Vouchers", isActive: activePage === "accounts.vouchers", onSelect: () => onSelect("accounts.vouchers") },
+          { title: "Billing Postings", isActive: activePage === "accounts.sales-postings", onSelect: () => onSelect("accounts.sales-postings") },
+          { title: "Receipts & Payments", isActive: activePage === "accounts.receipts-payments", onSelect: () => onSelect("accounts.receipts-payments") }
+        ]
+      },
+      {
+        icon: FileSpreadsheetIcon,
+        isActive: activePage === "accounts.reports" || activePage === "accounts.trial-balance" || activePage === "accounts.ledger-statement" || activePage === "accounts.balance-sheet" || activePage === "accounts.profit-loss",
+        title: "Reports",
+        items: [
+          { title: "Reports Overview", isActive: activePage === "accounts.reports", onSelect: () => onSelect("accounts.reports") },
+          { title: "Trial Balance", isActive: activePage === "accounts.trial-balance", onSelect: () => onSelect("accounts.trial-balance") },
+          { title: "Ledger Statement", isActive: activePage === "accounts.ledger-statement", onSelect: () => onSelect("accounts.ledger-statement") },
+          { title: "Balance Sheet", isActive: activePage === "accounts.balance-sheet", onSelect: () => onSelect("accounts.balance-sheet") },
+          { title: "Profit & Loss", isActive: activePage === "accounts.profit-loss", onSelect: () => onSelect("accounts.profit-loss") }
+        ]
+      },
+      {
+        icon: Settings2Icon,
+        isActive: activePage === "accounts.settings" || activePage === "accounts.posting-rules" || activePage === "accounts.financial-year" || activePage === "accounts.voucher-numbering" || activePage === "accounts.tally-integration",
+        title: "Settings",
+        items: [
+          { title: "Accounts Settings", isActive: activePage === "accounts.settings", onSelect: () => onSelect("accounts.settings") },
+          { title: "Posting Rules", isActive: activePage === "accounts.posting-rules", onSelect: () => onSelect("accounts.posting-rules") },
+          { title: "Financial Year", isActive: activePage === "accounts.financial-year", onSelect: () => onSelect("accounts.financial-year") },
+          { title: "Voucher Numbering", isActive: activePage === "accounts.voucher-numbering", onSelect: () => onSelect("accounts.voucher-numbering") },
+          { title: "Tally Integration", isActive: activePage === "accounts.tally-integration", onSelect: () => onSelect("accounts.tally-integration") }
         ]
       }
     ];

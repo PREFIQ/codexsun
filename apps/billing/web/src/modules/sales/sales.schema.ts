@@ -1,10 +1,14 @@
 import { z } from "zod";
 
 export const saleLineItemSchema = z.object({
+  colour: z.string(),
+  dcNo: z.string(),
   description: z.string().trim().min(1, "Item description is required."),
   hsnCode: z.string().trim().min(1, "HSN code is required."),
+  poNo: z.string(),
   quantity: z.number().positive("Quantity must be greater than zero."),
   rate: z.number().nonnegative("Rate must be zero or more."),
+  size: z.string(),
   taxRate: z.number().min(0, "Tax rate must be zero or more."),
   unit: z.string().trim().min(1, "Unit is required."),
 });
