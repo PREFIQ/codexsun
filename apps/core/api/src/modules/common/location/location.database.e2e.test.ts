@@ -45,6 +45,18 @@ describe.skipIf(!runDbE2e)("core common location database e2e", () => {
     expect(stateBody.data[0]?.name).toBe("-");
     expect(stateBody.data.some((state) => state.name === "Tamil Nadu" && state.gstStateCode === "33")).toBe(true);
 
+    const seededPincodes = await app.inject({ method: "GET", url: "/core/common/location/pincodes?cityId=global-city-coimbatore" });
+    expect(seededPincodes.statusCode).toBe(200);
+    const seededPincodeBody = seededPincodes.json() as {
+      data: Array<{ cityId: string | null; countryId: string | null; districtId: string | null; pincode: string | null; stateId: string | null }>
+    };
+    expect(seededPincodeBody.data.find((record) => record.pincode === "641041")).toMatchObject({
+      cityId: "global-city-coimbatore",
+      countryId: "global-country-in",
+      districtId: "global-district-coimbatore",
+      stateId: "global-state-tamil-nadu"
+    });
+
     const created = await app.inject({
       headers: { "x-tenant-id": "tenant-alpha" },
       method: "POST",
@@ -75,6 +87,269 @@ describe.skipIf(!runDbE2e)("core common location database e2e", () => {
     expect(betaBody.data.some((city) => city.name === "Tenant Alpha City")).toBe(false);
     expect(betaBody.data.some((city) => city.name === "Coimbatore" && city.tenantId === "global")).toBe(true);
 
+    const countryCreated = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "POST",
+      payload: {
+        code: "ALPHA",
+        name: "Tenant Alpha Country",
+        sortOrder: 1000,
+        status: "active"
+      },
+      url: "/core/common/location/countries"
+    });
+    expect(countryCreated.statusCode).toBe(200);
+    const country = (countryCreated.json() as { data: { id: string; status: string } }).data;
+
+    const duplicateCountryCode = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "POST",
+      payload: {
+        code: "ALPHA",
+        name: "Different Country Name",
+        sortOrder: 1000,
+        status: "active"
+      },
+      url: "/core/common/location/countries"
+    });
+    expect(duplicateCountryCode.statusCode).toBe(409);
+    expect((duplicateCountryCode.json() as { error: { message: string } }).error.message)
+      .toBe("Country code already exists. Enter a unique code.");
+
+    const duplicateCountryName = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "POST",
+      payload: {
+        code: "DIFFERENT",
+        name: "Tenant Alpha Country",
+        sortOrder: 1000,
+        status: "active"
+      },
+      url: "/core/common/location/countries"
+    });
+    expect(duplicateCountryName.statusCode).toBe(409);
+    expect((duplicateCountryName.json() as { error: { message: string } }).error.message)
+      .toBe("Country name already exists. Enter a unique name.");
+
+    const countrySuspended = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "POST",
+      url: `/core/common/location/countries/${country.id}/deactivate`
+    });
+    expect(countrySuspended.statusCode).toBe(200);
+    expect((countrySuspended.json() as { data: { status: string } }).data.status).toBe("inactive");
+
+    const stateCreated = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "POST",
+      payload: {
+        code: "99",
+        countryId: country.id,
+        countryName: "Tenant Alpha Country",
+        gstStateCode: "99",
+        name: "Tenant Alpha State",
+        sortOrder: 1000,
+        status: "active"
+      },
+      url: "/core/common/location/states"
+    });
+    expect(stateCreated.statusCode).toBe(200);
+    const state = (stateCreated.json() as { data: { id: string } }).data;
+
+    const districtCreated = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "POST",
+      payload: {
+        code: "ALPHA-DISTRICT",
+        countryId: country.id,
+        countryName: "Tenant Alpha Country",
+        name: "Tenant Alpha District",
+        sortOrder: 1000,
+        stateId: state.id,
+        stateName: "Tenant Alpha State",
+        status: "active"
+      },
+      url: "/core/common/location/districts"
+    });
+    expect(districtCreated.statusCode).toBe(200);
+    const district = (districtCreated.json() as { data: { id: string } }).data;
+
+    const cityCreated = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "POST",
+      payload: {
+        code: "ALPHA-CITY-CHAIN",
+        countryId: country.id,
+        countryName: "Tenant Alpha Country",
+        districtId: district.id,
+        districtName: "Tenant Alpha District",
+        name: "Tenant Alpha Chain City",
+        sortOrder: 1000,
+        stateId: state.id,
+        stateName: "Tenant Alpha State",
+        status: "active"
+      },
+      url: "/core/common/location/cities"
+    });
+    expect(cityCreated.statusCode).toBe(200);
+    const chainCity = (cityCreated.json() as { data: { id: string } }).data;
+
+    const pincodeCreated = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "POST",
+      payload: {
+        areaName: "Tenant Alpha Area",
+        cityId: chainCity.id,
+        cityName: "Tenant Alpha Chain City",
+        code: "999999",
+        countryId: country.id,
+        countryName: "Tenant Alpha Country",
+        districtId: district.id,
+        districtName: "Tenant Alpha District",
+        name: "999999",
+        pincode: "999999",
+        sortOrder: 1000,
+        stateId: state.id,
+        stateName: "Tenant Alpha State",
+        status: "active"
+      },
+      url: "/core/common/location/pincodes"
+    });
+    expect(pincodeCreated.statusCode).toBe(200);
+    const pincode = (pincodeCreated.json() as { data: { id: string } }).data;
+
+    const referencedCountryDelete = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/location/countries/${country.id}/force`
+    });
+    expect(referencedCountryDelete.statusCode).toBe(409);
+    expect((referencedCountryDelete.json() as { error: { message: string } }).error.message)
+      .toBe("Country cannot be force deleted because it is referenced by 1 states, 1 districts, 1 cities, 1 pincodes. Remove those references first.");
+
+    const globalCountryDelete = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: "/core/common/location/countries/global-country-in/force"
+    });
+    expect(globalCountryDelete.statusCode).toBe(404);
+
+    const referencedStateDelete = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/location/states/${state.id}/force`
+    });
+    expect(referencedStateDelete.statusCode).toBe(409);
+
+    const referencedDistrictDelete = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/location/districts/${district.id}/force`
+    });
+    expect(referencedDistrictDelete.statusCode).toBe(409);
+
+    const referencedCityDelete = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/location/cities/${chainCity.id}/force`
+    });
+    expect(referencedCityDelete.statusCode).toBe(409);
+
+    const pincodeDeleted = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/location/pincodes/${pincode.id}/force`
+    });
+    expect(pincodeDeleted.statusCode).toBe(200);
+
+    const cityDeleted = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/location/cities/${chainCity.id}/force`
+    });
+    expect(cityDeleted.statusCode).toBe(200);
+
+    const districtDeleted = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/location/districts/${district.id}/force`
+    });
+    expect(districtDeleted.statusCode).toBe(200);
+
+    const stateDeleted = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/location/states/${state.id}/force`
+    });
+    expect(stateDeleted.statusCode).toBe(200);
+
+    const countryDeleted = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/location/countries/${country.id}/force`
+    });
+    expect(countryDeleted.statusCode).toBe(200);
+
+    const deletedCountry = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "GET",
+      url: `/core/common/location/countries/${country.id}`
+    });
+    expect(deletedCountry.statusCode).toBe(404);
+
+    const seededCitiesResponse = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "GET",
+      url: "/core/common/location/cities"
+    });
+    const seededCities = (seededCitiesResponse.json() as { data: Array<Record<string, unknown> & { id: string; name: string }> }).data;
+    const editableSeededCity = seededCities.find((record) => record.name === "Coimbatore");
+    const protectedPlaceholderCity = seededCities.find((record) => record.name === "-");
+    expect(editableSeededCity).toBeDefined();
+    expect(protectedPlaceholderCity).toBeDefined();
+    if (!editableSeededCity || !protectedPlaceholderCity) {
+      throw new Error("Expected seeded editable and placeholder cities.");
+    }
+
+    const seededCityUpdated = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "PUT",
+      payload: { ...editableSeededCity, name: "Coimbatore Edited" },
+      url: `/core/common/location/cities/${editableSeededCity.id}`
+    });
+    expect(seededCityUpdated.statusCode).toBe(200);
+    expect((seededCityUpdated.json() as { data: { name: string; tenantId: string } }).data)
+      .toMatchObject({ name: "Coimbatore Edited", tenantId: "global" });
+
+    const seededCitySuspended = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "POST",
+      url: `/core/common/location/cities/${editableSeededCity.id}/deactivate`
+    });
+    expect(seededCitySuspended.statusCode).toBe(200);
+
+    const placeholderCityUpdate = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "PUT",
+      payload: protectedPlaceholderCity,
+      url: `/core/common/location/cities/${protectedPlaceholderCity.id}`
+    });
+    expect(placeholderCityUpdate.statusCode).toBe(404);
+
+    const placeholderCityDelete = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/location/cities/${protectedPlaceholderCity.id}/force`
+    });
+    expect(placeholderCityDelete.statusCode).toBe(404);
+
+    const seededCityDeleted = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/location/cities/${editableSeededCity.id}/force`
+    });
+    expect(seededCityDeleted.statusCode).toBe(409);
+
     const commonMasterPaths = [
       "/core/common/contacts/contact-groups",
       "/core/common/contacts/contact-types",
@@ -104,8 +379,104 @@ describe.skipIf(!runDbE2e)("core common location database e2e", () => {
     for (const url of commonMasterPaths) {
       const response = await app.inject({ headers: { "x-tenant-id": "tenant-alpha" }, method: "GET", url });
       expect(response.statusCode, url).toBe(200);
-      expect(Array.isArray(response.json().data), url).toBe(true);
+      const data = response.json().data as Array<Record<string, unknown>>;
+      expect(Array.isArray(data), url).toBe(true);
+      expect(Object.values(data[0] ?? {}).some((value) => value === "-"), `${url} protected seed`).toBe(true);
     }
+
+    const seededGroupsResponse = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "GET",
+      url: "/core/common/contacts/contact-groups"
+    });
+    const seededGroups = (seededGroupsResponse.json() as { data: Array<{ id: string; name: string }> }).data;
+    expect(seededGroups[0]?.name).toBe("-");
+    expect(seededGroups.map((record) => record.name)).toEqual(expect.arrayContaining(["-", "Business", "Web Clients"]));
+
+    const seededTypesResponse = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "GET",
+      url: "/core/common/contacts/contact-types"
+    });
+    const seededTypes = (seededTypesResponse.json() as { data: Array<{ name: string }> }).data;
+    expect(seededTypes[0]?.name).toBe("-");
+    expect(seededTypes.map((record) => record.name)).toEqual(expect.arrayContaining([
+      "-", "Customer", "Supplier", "Vendor Customer", "Staff", "Employee"
+    ]));
+
+    const seededBanksResponse = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "GET",
+      url: "/core/common/contacts/bank-names"
+    });
+    const seededBanks = (seededBanksResponse.json() as { data: Array<{ name: string }> }).data;
+    expect(seededBanks.length).toBeGreaterThan(140);
+    expect(seededBanks[0]?.name).toBe("-");
+    expect(seededBanks.map((record) => record.name)).toEqual(expect.arrayContaining([
+      "State Bank of India",
+      "HDFC Bank Limited",
+      "Tamil Nadu Grama Bank",
+      "Airtel Payments Bank Limited",
+      "Standard Chartered Bank",
+      "Tamil Nadu State Apex Co-operative Bank Limited"
+    ]));
+    expect(seededBanks.some((record) => record.name === "Paytm Payments Bank Limited")).toBe(false);
+
+    const seededCurrenciesResponse = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "GET",
+      url: "/core/common/others/currencies"
+    });
+    const seededCurrencies = (seededCurrenciesResponse.json() as {
+      data: Array<{ name: string; symbol: string }>
+    }).data;
+    expect(seededCurrencies.find((record) => record.name === "INR")?.symbol).toBe("₹");
+    expect(seededCurrencies.find((record) => record.name === "USD")?.symbol).toBe("$");
+
+    const accountingMonthsResponse = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "GET",
+      url: "/core/common/others/months"
+    });
+    const accountingMonths = (accountingMonthsResponse.json() as {
+      data: Array<{ fromDate: string; name: string; toDate: string }>
+    }).data;
+    expect(accountingMonths.find((record) => record.name === "April-2026")).toMatchObject({
+      fromDate: "2026-04-01",
+      toDate: "2026-04-30"
+    });
+    expect(accountingMonths.find((record) => record.name === "March-2027")).toMatchObject({
+      fromDate: "2027-03-01",
+      toDate: "2027-03-31"
+    });
+
+    const businessGroup = seededGroups.find((record) => record.name === "Business");
+    const placeholderGroup = seededGroups.find((record) => record.name === "-");
+    if (!businessGroup || !placeholderGroup) throw new Error("Expected seeded contact groups.");
+
+    const businessGroupUpdated = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "PUT",
+      payload: { isActive: true, name: "Business Contacts", sortOrder: 2 },
+      url: `/core/common/contacts/contact-groups/${businessGroup.id}`
+    });
+    expect((businessGroupUpdated.json() as { data: { name: string; tenantId: string } }).data)
+      .toMatchObject({ name: "Business Contacts", tenantId: "global" });
+
+    const placeholderGroupUpdate = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "PUT",
+      payload: { isActive: true, name: "Changed", sortOrder: 1 },
+      url: `/core/common/contacts/contact-groups/${placeholderGroup.id}`
+    });
+    expect((placeholderGroupUpdate.json() as { data: null }).data).toBeNull();
+
+    const businessGroupDeleted = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "DELETE",
+      url: `/core/common/contacts/contact-groups/${businessGroup.id}/force`
+    });
+    expect((businessGroupDeleted.json() as { data: { name: string } }).data.name).toBe("Business Contacts");
 
     const contactGroup = await app.inject({
       headers: { "x-tenant-id": "tenant-alpha" },

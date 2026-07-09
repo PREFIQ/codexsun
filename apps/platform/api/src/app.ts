@@ -17,7 +17,8 @@ import { projectManagerModule } from "./modules/project-manager/index.js";
 import { startQueueManagerWorker } from "./modules/queue-manager/queue-manager.runtime.js";
 import { seedDefaultTenant } from "./modules/tenant/tenant.seed.js";
 import { env } from "./env.js";
-import { bootstrapPlatformDatabase } from "./database/platform-database.js";
+import { bootstrapPlatformDatabase, closePlatformDatabase } from "./database/platform-database.js";
+import { closeAllTenantDatabases } from "./database/tenant-database.js";
 
 export async function createApp() {
   console.info("[platform.boot] bootstrap started");
@@ -28,7 +29,17 @@ export async function createApp() {
     appName: "CODEXSUN Platform API",
     cookieSecret: env.JWT_SECRET,
     corsOrigins: [env.PLATFORM_WEB_ORIGIN],
-    environment: env.NODE_ENV
+    environment: env.NODE_ENV,
+    shutdownHooks: [
+      async () => {
+        console.info("[shutdown] closing tenant MariaDB pools");
+        await closeAllTenantDatabases();
+      },
+      async () => {
+        console.info("[shutdown] closing platform MariaDB pools");
+        await closePlatformDatabase();
+      }
+    ]
   });
 
   const healthChecks: HealthCheck[] = [

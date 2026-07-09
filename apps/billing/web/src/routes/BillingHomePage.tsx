@@ -35,7 +35,7 @@ export function BillingHomePage() {
           <Card className="billing-card">
             <span>API</span>
             <strong>Billing API</strong>
-            <p>Available locally at port 5550 with `/billing/sales` list and detail endpoints.</p>
+            <p>Available at the configured billing API endpoint with `/billing/sales` list and detail endpoints.</p>
           </Card>
         </section>
       </main>

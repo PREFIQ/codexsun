@@ -63,6 +63,14 @@ export function createLocationRoutes(definition: LocationDefinition) {
       if (!record) return reply.code(404).send(notFound(request.id));
       return ok(record, { requestId: request.id, tenantId });
     });
+
+    app.delete(`${definition.collectionPath}/:id/force`, async (request, reply) => {
+      const tenantId = resolveLocationTenantId(request);
+      const { id } = request.params as { id: string };
+      const record = await service.forceDelete(tenantId, id);
+      if (!record) return reply.code(404).send(notFound(request.id));
+      return ok(record, { requestId: request.id, tenantId });
+    });
   };
 }
 

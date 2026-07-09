@@ -1,4 +1,6 @@
-const apiBaseUrl = import.meta.env.VITE_PLATFORM_API_URL || "http://127.0.0.1:5510";
+import { requiredClientEnv } from "../env/client-env";
+
+const apiBaseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 
 export type Desk = "sa" | "admin" | "tenant";
 

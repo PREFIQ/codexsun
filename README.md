@@ -20,9 +20,36 @@ tools resolve dependencies from the root `node_modules`; workspace-local
 `node_modules` folders are removed automatically and rejected by
 `npm run dependencies:check`.
 
-Platform API: <http://127.0.0.1:5510>
+Platform API: <http://127.0.0.1:7010>
 
-Platform web: <http://127.0.0.1:5520>
+Platform web: <http://127.0.0.1:7020>
+
+## Docker Deployment
+
+Docker deployment files live in `.container/`. The stack runs Platform,
+Core, Billing, Accounts, MariaDB/Redis options, and file storage as separate
+containers while reusing one built application image.
+
+```bash
+cp .container/deploy.env.example .container/deploy.env
+bash .container/setup.sh
+```
+
+For normal CI/CD upgrades use:
+
+```bash
+bash .container/upgrade-containers.sh
+```
+
+For a clean Docker reinstall of the app/file/Redis containers and volumes use:
+
+```bash
+bash .container/hard-reinstall.sh
+```
+
+See `.container/README.md` for internal/external MariaDB, Redis, file server,
+Docker admin, MariaDB admin, Redis admin, and GitHub Actions deployment
+details.
 
 ## Workspace
 

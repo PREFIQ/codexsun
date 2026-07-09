@@ -64,8 +64,9 @@ export function registerGracefulShutdown(
     forceExitTimer.unref();
 
     try {
+      app.log.info("Closing HTTP listeners");
       await app.close();
-      app.log.info("Graceful shutdown complete");
+      app.log.info("HTTP listeners closed and shutdown hooks completed");
       clearTimeout(forceExitTimer);
       process.exit(0);
     } catch (error) {

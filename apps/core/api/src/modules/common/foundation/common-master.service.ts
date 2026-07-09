@@ -20,6 +20,7 @@ export class CommonMasterService {
   }
   activate(tenantId: string, id: string) { return this.repository.setActive(tenantId, id, true); }
   deactivate(tenantId: string, id: string) { return this.repository.setActive(tenantId, id, false); }
+  forceDelete(tenantId: string, id: string) { return this.repository.forceDelete(tenantId, id); }
 
   private validate(input: Record<string, unknown>) {
     for (const field of this.definition.fields) {

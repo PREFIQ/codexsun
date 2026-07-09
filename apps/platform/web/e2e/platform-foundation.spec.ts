@@ -1,6 +1,12 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-const apiBaseUrl = process.env.VITE_PLATFORM_API_URL ?? "http://127.0.0.1:5510";
+function requiredEnv(name: string) {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`Missing required environment value: ${name}`);
+  return value;
+}
+
+const apiBaseUrl = requiredEnv("VITE_PLATFORM_API_URL");
 const superAdminEmail = process.env.SUPER_ADMIN_EMAIL ?? "sundar@sundar.com";
 const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD ?? "Kalarani1";
 let superAdminToken = "";

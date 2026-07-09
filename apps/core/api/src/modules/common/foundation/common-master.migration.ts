@@ -17,6 +17,15 @@ export async function migrateCommonMaster(database: Kysely<CoreDatabase>, defini
       INDEX ${definition.tableName}_tenant_idx (tenant_id)
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `).execute(database);
+
+  const tables = await database.introspection.getTables();
+  const table = tables.find((candidate) => candidate.name === definition.tableName);
+  for (const field of definition.fields) {
+    if (table?.columns.some((column) => column.name === field.column)) continue;
+    await sql.raw(
+      `ALTER TABLE \`${definition.tableName}\` ADD COLUMN \`${field.column}\` ${columnType(field)} NULL`
+    ).execute(database);
+  }
 }
 
 function columnType(field: CommonMasterField) {

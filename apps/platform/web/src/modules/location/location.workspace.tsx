@@ -1,20 +1,39 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Plus, RefreshCw, Save } from "lucide-react"
+import { CheckCircle2, Plus, RefreshCw, Save, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@codexsun/ui/components/alert-dialog"
 import { Button } from "@codexsun/ui/components/button"
 import { Input } from "@codexsun/ui/components/input"
 import { Switch } from "@codexsun/ui/components/switch"
 import { WorkspaceFilters } from "@codexsun/ui/workspace/filters"
 import { WorkspaceLookup, type WorkspaceLookupOption } from "@codexsun/ui/workspace/lookup"
 import { WorkspacePage } from "@codexsun/ui/workspace/page"
+import { WorkspacePagination } from "@codexsun/ui/workspace/pagination"
+import { WorkspaceProtectedIndicator } from "@codexsun/ui/workspace/protected-indicator"
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions"
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status"
 import { WorkspaceTableEmptyState, WorkspaceTableHeaderCell, WorkspaceTablePanel, WorkspaceTableSkeletonRows } from "@codexsun/ui/workspace/table"
 import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormFooter, WorkspaceFormGrid, WorkspaceUpsertDialog } from "@codexsun/ui/workspace/upsert"
+import { buildShowingLabel } from "@codexsun/ui/workspace/utils"
 import { cn } from "@codexsun/ui/lib/utils"
 import { locationDefinitions } from "./location.definitions"
-import { createLocationRecord, listLocationRecords, updateLocationRecord } from "./location.services"
+import {
+  createLocationRecord,
+  forceDeleteLocationRecord,
+  listLocationRecords,
+  suspendLocationRecord,
+  updateLocationRecord
+} from "./location.services"
 import type { LocationDefinition, LocationKind, LocationRecord, LocationSavePayload } from "./location.types"
 
 export function LocationWorkspace({ kind }: { kind: LocationKind }) {
@@ -22,7 +41,11 @@ export function LocationWorkspace({ kind }: { kind: LocationKind }) {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState("all")
+  const [page, setPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(100)
   const [editing, setEditing] = useState<LocationRecord | null | undefined>(undefined)
+  const [viewing, setViewing] = useState<LocationRecord | null>(null)
+  const [pendingAction, setPendingAction] = useState<{ record: LocationRecord; type: "delete" | "suspend" } | null>(null)
   const recordsQuery = useQuery({
     queryKey: ["core", "location", kind],
     queryFn: () => listLocationRecords(definition.path)
@@ -40,6 +63,22 @@ export function LocationWorkspace({ kind }: { kind: LocationKind }) {
       description: error instanceof Error ? error.message : "Please try again."
     })
   })
+  const rowActionMutation = useMutation({
+    mutationFn: async ({ record, type }: { record: LocationRecord; type: "delete" | "suspend" }) =>
+      type === "delete"
+        ? forceDeleteLocationRecord(definition.path, record.id)
+        : suspendLocationRecord(definition.path, record.id),
+    onSuccess: async (record, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["core", "location", kind] })
+      toast.success(variables.type === "delete" ? `${definition.label} force deleted` : `${definition.label} suspended`, {
+        description: `${record.name} ${variables.type === "delete" ? "was permanently removed." : "is now inactive."}`
+      })
+      setPendingAction(null)
+    },
+    onError: (error) => toast.error(`Unable to update ${definition.label.toLowerCase()}`, {
+      description: error instanceof Error ? error.message : "Please try again."
+    })
+  })
 
   const records = recordsQuery.data ?? []
   const filteredRecords = useMemo(() => {
@@ -50,6 +89,13 @@ export function LocationWorkspace({ kind }: { kind: LocationKind }) {
       return matchesStatus && matchesSearch
     })
   }, [records, search, status])
+  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / rowsPerPage))
+  const currentPage = Math.min(page, totalPages)
+  const pageRecords = filteredRecords.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
 
   return (
     <WorkspacePage
@@ -76,16 +122,41 @@ export function LocationWorkspace({ kind }: { kind: LocationKind }) {
           { id: "inactive", label: "Inactive" }
         ]}
         filterValue={status}
-        onFilterValueChange={setStatus}
-        onSearchValueChange={setSearch}
+        onFilterValueChange={(value) => {
+          setStatus(value)
+          setPage(1)
+        }}
+        onSearchValueChange={(value) => {
+          setSearch(value)
+          setPage(1)
+        }}
         searchPlaceholder={`Search ${definition.plural.toLowerCase()}`}
         searchValue={search}
       />
       <LocationTable
         definition={definition}
         loading={recordsQuery.isFetching && records.length === 0}
-        records={filteredRecords}
+        records={pageRecords}
+        startIndex={(currentPage - 1) * rowsPerPage}
         onEdit={(record) => setEditing(record)}
+        onForceDelete={(record) => setPendingAction({ record, type: "delete" })}
+        onSuspend={(record) => setPendingAction({ record, type: "suspend" })}
+        {...(kind === "country" || kind === "state" ? { onView: setViewing } : {})}
+      />
+      <WorkspacePagination
+        page={currentPage}
+        rowsPerPage={rowsPerPage}
+        showingLabel={buildShowingLabel(currentPage, rowsPerPage, filteredRecords.length)}
+        singularLabel={definition.plural.toLowerCase()}
+        totalCount={filteredRecords.length}
+        totalPages={totalPages}
+        onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
+        onPageChange={setPage}
+        onPreviousPage={() => setPage((value) => Math.max(1, value - 1))}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value)
+          setPage(1)
+        }}
       />
       <LocationUpsertDialog
         definition={definition}
@@ -97,6 +168,33 @@ export function LocationWorkspace({ kind }: { kind: LocationKind }) {
         onClose={() => setEditing(undefined)}
         onSubmit={(payload) => mutation.mutate(payload)}
       />
+      <LocationViewDialog definition={definition} onClose={() => setViewing(null)} record={viewing} />
+      <AlertDialog open={pendingAction !== null} onOpenChange={(open) => !open && setPendingAction(null)}>
+        <AlertDialogContent className="rounded-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingAction?.type === "delete"
+                ? `Force delete ${definition.label.toLowerCase()}?`
+                : `Suspend ${definition.label.toLowerCase()}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction?.type === "delete"
+                ? `${pendingAction.record.name} will be permanently removed. This action cannot be undone.`
+                : `${pendingAction?.record.name ?? `This ${definition.label.toLowerCase()}`} will become unavailable for new selections.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={rowActionMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={pendingAction?.type === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+              disabled={rowActionMutation.isPending || !pendingAction}
+              onClick={() => pendingAction && rowActionMutation.mutate(pendingAction)}
+            >
+              {pendingAction?.type === "delete" ? "Force delete" : "Suspend"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </WorkspacePage>
   )
 }
@@ -105,12 +203,20 @@ export function LocationTable({
   definition,
   loading,
   onEdit,
-  records
+  onForceDelete,
+  onSuspend,
+  onView,
+  records,
+  startIndex
 }: {
   definition: LocationDefinition
   loading: boolean
   onEdit: (record: LocationRecord) => void
+  onForceDelete?: (record: LocationRecord) => void
+  onSuspend?: (record: LocationRecord) => void
+  onView?: (record: LocationRecord) => void
   records: LocationRecord[]
+  startIndex?: number
 }) {
   return (
     <WorkspaceTablePanel>
@@ -124,23 +230,53 @@ export function LocationTable({
             </tr>
           </thead>
           <tbody>
-            {records.map((record, index) => (
+            {records.map((record, index) => {
+              const canMutate = canMutateLocationRow(definition.kind, record)
+              const protectedRow = isProtectedLocationRow(record)
+              return (
               <tr className="border-b border-border/70 last:border-b-0" key={record.id}>
-                <td className="px-4 py-2.5 text-muted-foreground">{index + 1}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{(startIndex ?? 0) + index + 1}</td>
                 {definition.columns.map((column) => (
                   <td className={cn("px-4 py-2.5", column.key === "name" && "font-medium")} key={column.key}>
                     {column.key === "status"
                       ? <WorkspaceStatusBadge label={record.status} tone={record.status === "active" ? "success" : "neutral"} />
-                      : String(record[column.key] ?? "-")}
+                      : isPrimaryLocationColumn(definition.kind, column.key) && canMutate
+                        ? (
+                            <button
+                              className="cursor-pointer text-left font-medium text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              onClick={() => onEdit(record)}
+                              type="button"
+                            >
+                              {String(record[column.key] ?? "-")}
+                            </button>
+                          )
+                        : String(record[column.key] ?? "-")}
                   </td>
                 ))}
                 <td className="px-4 py-1.5 text-right">
-                  {record.tenantId === "global"
+                  {protectedRow
+                    ? <WorkspaceProtectedIndicator />
+                    : !canMutate && !onView
                     ? <span className="text-xs text-muted-foreground">Shared</span>
-                    : <WorkspaceRowActions onEdit={() => onEdit(record)} title={record.name} />}
+                    : <WorkspaceRowActions
+                        deleteLabel="Suspend"
+                        {...(canMutate ? { onEdit: () => onEdit(record) } : {})}
+                        title={record.name}
+                        {...(onForceDelete && canMutate ? {
+                          actions: [{
+                            id: "force-delete",
+                            icon: <Trash2 className="size-4" />,
+                            label: "Force delete",
+                            onSelect: () => onForceDelete(record),
+                            tone: "destructive" as const
+                          }]
+                        } : {})}
+                        {...(onSuspend && canMutate ? { onDelete: () => onSuspend(record) } : {})}
+                        {...(onView ? { onView: () => onView(record) } : {})}
+                      />}
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
@@ -150,7 +286,21 @@ export function LocationTable({
   )
 }
 
+function canMutateLocationRow(kind: LocationKind, record: LocationRecord) {
+  if (isProtectedLocationRow(record)) return false
+  return record.tenantId !== "global" || kind === "district" || kind === "city" || kind === "pincode"
+}
+
+function isProtectedLocationRow(record: LocationRecord) {
+  return record.name.trim() === "-" || record.code.trim() === "-"
+}
+
+function isPrimaryLocationColumn(kind: LocationKind, key: keyof LocationRecord) {
+  return key === "name" || (kind === "pincode" && key === "pincode")
+}
+
 type LocationParents = {
+  cities: LocationRecord[]
   countries: LocationRecord[]
   districts: LocationRecord[]
   states: LocationRecord[]
@@ -158,21 +308,27 @@ type LocationParents = {
 
 function useLocationParents(kind: LocationKind): LocationParents {
   const countries = useQuery({
-    enabled: kind === "state" || kind === "district" || kind === "city",
+    enabled: kind === "state" || kind === "district" || kind === "city" || kind === "pincode",
     queryKey: ["core", "location", "country"],
     queryFn: () => listLocationRecords(locationDefinitions.country.path)
   })
   const states = useQuery({
-    enabled: kind === "district" || kind === "city",
+    enabled: kind === "district" || kind === "city" || kind === "pincode",
     queryKey: ["core", "location", "state"],
     queryFn: () => listLocationRecords(locationDefinitions.state.path)
   })
   const districts = useQuery({
-    enabled: kind === "city",
+    enabled: kind === "city" || kind === "pincode",
     queryKey: ["core", "location", "district"],
     queryFn: () => listLocationRecords(locationDefinitions.district.path)
   })
+  const cities = useQuery({
+    enabled: kind === "pincode",
+    queryKey: ["core", "location", "city"],
+    queryFn: () => listLocationRecords(locationDefinitions.city.path)
+  })
   return {
+    cities: cities.data ?? [],
     countries: countries.data ?? [],
     districts: districts.data ?? [],
     states: states.data ?? []
@@ -245,14 +401,15 @@ function LocationForm({
     const next = { ...value, ...patch }
     setValue(next)
   }
-  const choose = (field: "country" | "district" | "state", id: string, records: LocationRecord[], selectedLabel?: string) => {
+  const choose = (field: "city" | "country" | "district" | "state", id: string, records: LocationRecord[], selectedLabel?: string) => {
     const selected = records.find((item) => item.id === id)
     const relation = {
       [`${field}Id`]: id,
       [`${field}Name`]: selected?.name ?? selectedLabel ?? null
     }
-    if (field === "country") update({ ...relation, stateId: null, stateName: null, districtId: null, districtName: null })
-    else if (field === "state") update({ ...relation, districtId: null, districtName: null })
+    if (field === "country") update({ ...relation, stateId: null, stateName: null, districtId: null, districtName: null, cityId: null, cityName: null })
+    else if (field === "state") update({ ...relation, districtId: null, districtName: null, cityId: null, cityName: null })
+    else if (field === "district") update({ ...relation, cityId: null, cityName: null })
     else update(relation)
   }
   const createParent = async (kind: "country" | "district" | "state", name: string): Promise<WorkspaceLookupOption | undefined> => {
@@ -291,39 +448,44 @@ function LocationForm({
   return (
     <form onSubmit={(event) => {
       event.preventDefault()
-      onSubmit(definition.kind === "city" ? { ...value, code: value.code || codeFromName(value.name) } : value)
+      onSubmit(
+        definition.kind === "city" || definition.kind === "district"
+          ? { ...value, code: value.code || codeFromName(value.name) }
+          : definition.kind === "state"
+            ? { ...value, code: value.gstStateCode?.trim() || value.code }
+            : value
+      )
     }}>
       {error ? <WorkspaceFormBanner title="Unable to save">{error}</WorkspaceFormBanner> : null}
-      <WorkspaceFormGrid columns={definition.kind === "city" ? 1 : 2}>
+      <WorkspaceFormGrid columns={1}>
         {definition.kind === "pincode" ? (
           <>
             <Field label="Pincode" required><Input required value={value.pincode ?? ""} onChange={(event) => update({ code: event.target.value, name: event.target.value, pincode: event.target.value })} /></Field>
             <Field label="Area name" required><Input required value={value.areaName ?? ""} onChange={(event) => update({ areaName: event.target.value })} /></Field>
-            <Field label="City"><Input value={value.cityName ?? ""} onChange={(event) => update({ cityName: event.target.value })} /></Field>
-            <Field label="State"><Input value={value.stateName ?? ""} onChange={(event) => update({ stateName: event.target.value })} /></Field>
-            <Field label="Country"><Input value={value.countryName ?? ""} onChange={(event) => update({ countryName: event.target.value })} /></Field>
+            <SelectField label="Country" required value={value.countryId ?? ""} records={parents.countries} onChange={(id) => choose("country", id, parents.countries)} />
+            <SelectField label="State" required value={value.stateId ?? ""} records={parents.states.filter((item) => item.countryId === value.countryId)} onChange={(id) => choose("state", id, parents.states)} />
+            <SelectField label="District" required value={value.districtId ?? ""} records={parents.districts.filter((item) => item.stateId === value.stateId)} onChange={(id) => choose("district", id, parents.districts)} />
+            <SelectField label="City" required value={value.cityId ?? ""} records={parents.cities.filter((item) => item.districtId === value.districtId)} onChange={(id) => choose("city", id, parents.cities)} />
           </>
         ) : (
           <>
             <Field label={`${definition.label} name`} required><Input required value={value.name} onChange={(event) => update({ name: event.target.value })} /></Field>
-            {definition.kind !== "city" ? (
+            {definition.kind === "country" ? (
               <Field label={`${definition.label} code`} required><Input className="font-mono" required value={value.code} onChange={(event) => update({ code: event.target.value })} /></Field>
             ) : null}
           </>
         )}
-        {definition.kind === "country" ? (
-          <>
-            <Field label="ISO 2"><Input maxLength={2} value={value.iso2 ?? ""} onChange={(event) => update({ iso2: event.target.value })} /></Field>
-            <Field label="ISO 3"><Input maxLength={3} value={value.iso3 ?? ""} onChange={(event) => update({ iso3: event.target.value })} /></Field>
-            <Field label="Dial code"><Input value={value.dialCode ?? ""} onChange={(event) => update({ dialCode: event.target.value })} /></Field>
-            <Field label="Currency code"><Input maxLength={3} value={value.currencyCode ?? ""} onChange={(event) => update({ currencyCode: event.target.value })} /></Field>
-          </>
-        ) : null}
         {definition.kind === "state" ? (
           <>
+            <Field label="GST State code" required>
+              <Input
+                className="font-mono"
+                required
+                value={value.gstStateCode ?? ""}
+                onChange={(event) => update({ code: event.target.value, gstStateCode: event.target.value })}
+              />
+            </Field>
             <SelectField label="Country" required value={value.countryId ?? ""} records={parents.countries} onChange={(id) => choose("country", id, parents.countries)} />
-            <Field label="GST state code"><Input value={value.gstStateCode ?? ""} onChange={(event) => update({ gstStateCode: event.target.value })} /></Field>
-            <Field label="Short code"><Input value={value.shortCode ?? ""} onChange={(event) => update({ shortCode: event.target.value })} /></Field>
           </>
         ) : null}
         {definition.kind === "district" ? (
@@ -339,13 +501,21 @@ function LocationForm({
             <LookupField createLabel="Create district" disabled={!value.stateId} label="District" required value={value.districtId ?? ""} records={parents.districts.filter((item) => item.stateId === value.stateId)} onChange={(id, label) => choose("district", id, parents.districts, label)} onCreate={(name) => createParent("district", name)} />
           </>
         ) : null}
-        <Field label="Sort order"><Input min={0} type="number" value={value.sortOrder} onChange={(event) => update({ sortOrder: Number(event.target.value) })} /></Field>
-        <WorkspaceFormField label="Active">
-          <div className="flex h-11 items-center gap-3 rounded-md border border-border/80 px-3">
-            <Switch checked={value.status === "active"} onCheckedChange={(checked) => update({ status: checked ? "active" : "inactive" })} />
-            <span className="text-sm text-muted-foreground">{value.status === "active" ? "Available" : "Inactive"}</span>
-          </div>
-        </WorkspaceFormField>
+        <div className={cn(
+          "flex h-11 items-center gap-2 rounded-md border px-3",
+          value.status === "active"
+            ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+            : "border-border/80 bg-muted/30 text-muted-foreground"
+        )}>
+          <CheckCircle2 className="size-4 shrink-0" />
+          <span className="text-sm font-medium">Active</span>
+          <Switch
+            aria-label="Active"
+            checked={value.status === "active"}
+            className="ml-auto"
+            onCheckedChange={(checked) => update({ status: checked ? "active" : "inactive" })}
+          />
+        </div>
       </WorkspaceFormGrid>
       <WorkspaceFormFooter
         className="mt-6 border-t pt-4"
@@ -355,6 +525,74 @@ function LocationForm({
         primaryProps={{ children: <><Save className="size-4" />Save</> }}
       />
     </form>
+  )
+}
+
+function LocationViewDialog({
+  definition,
+  onClose,
+  record
+}: {
+  definition: LocationDefinition
+  onClose: () => void
+  record: LocationRecord | null
+}) {
+  return (
+    <WorkspaceUpsertDialog
+      className="sm:max-w-lg"
+      description={`Review the ${definition.label.toLowerCase()} details without leaving the list.`}
+      onClose={onClose}
+      open={record !== null}
+      title={`View ${definition.label.toLowerCase()}`}
+    >
+      {record ? (
+        <div className="space-y-5">
+          <WorkspaceFormGrid columns={1}>
+            {definition.kind === "pincode" ? (
+              <>
+                <Field label="Pincode"><Input className="font-mono" readOnly value={record.pincode ?? record.code} /></Field>
+                <Field label="Area name"><Input readOnly value={record.areaName ?? "-"} /></Field>
+                <Field label="Country"><Input readOnly value={record.countryName ?? "-"} /></Field>
+                <Field label="State"><Input readOnly value={record.stateName ?? "-"} /></Field>
+                <Field label="District"><Input readOnly value={record.districtName ?? "-"} /></Field>
+                <Field label="City"><Input readOnly value={record.cityName ?? "-"} /></Field>
+              </>
+            ) : (
+              <>
+                <Field label={`${definition.label} name`}><Input readOnly value={record.name} /></Field>
+                {definition.kind === "country" ? (
+                  <Field label="Country code"><Input className="font-mono" readOnly value={record.code} /></Field>
+                ) : null}
+                {definition.kind === "state" ? (
+                  <Field label="GST State code"><Input className="font-mono" readOnly value={record.gstStateCode ?? record.code} /></Field>
+                ) : null}
+                {definition.kind !== "country" ? (
+                  <Field label="Country"><Input readOnly value={record.countryName ?? "-"} /></Field>
+                ) : null}
+                {definition.kind === "district" || definition.kind === "city" ? (
+                  <Field label="State"><Input readOnly value={record.stateName ?? "-"} /></Field>
+                ) : null}
+                {definition.kind === "city" ? (
+                  <Field label="District"><Input readOnly value={record.districtName ?? "-"} /></Field>
+                ) : null}
+              </>
+            )}
+            <div className={cn(
+              "flex h-11 items-center gap-2 rounded-md border px-3",
+              record.status === "active"
+                ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                : "border-border/80 bg-muted/30 text-muted-foreground"
+            )}>
+              <CheckCircle2 className="size-4 shrink-0" />
+              <span className="text-sm font-medium">{record.status === "active" ? "Active" : "Inactive"}</span>
+            </div>
+          </WorkspaceFormGrid>
+          <div className="border-t pt-4">
+            <Button onClick={onClose} type="button" variant="outline">Close</Button>
+          </div>
+        </div>
+      ) : null}
+    </WorkspaceUpsertDialog>
   )
 }
 

@@ -4,6 +4,7 @@ import { createConnection } from "mysql2/promise";
 import { env } from "../env.js";
 import { migrateCommonModule } from "../modules/common/common.migration.js";
 import { seedCommonModule } from "../modules/common/common.seed.js";
+import { migrateEntriesModule } from "../modules/entries/index.js";
 
 export type CoreDatabase = Record<string, unknown>;
 
@@ -39,6 +40,7 @@ export async function bootstrapCoreDatabase() {
   const db = getCoreDatabase();
 
   await migrateCommonModule(db);
+  await migrateEntriesModule(db);
   await seedCommonModule();
 }
 

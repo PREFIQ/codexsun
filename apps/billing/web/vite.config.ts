@@ -4,11 +4,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import { requireEnvNumber } from "@codexsun/framework/env";
 
 const configDir = fileURLToPath(new URL(".", import.meta.url));
 const rootPackage = JSON.parse(readFileSync(resolve(configDir, "../../../package.json"), "utf8")) as { version: string };
 
-export default defineConfig({
+export default defineConfig(() => ({
   build: {
     chunkSizeWarningLimit: 900,
     emptyOutDir: true,
@@ -40,6 +41,6 @@ export default defineConfig({
       "Permissions-Policy": "unload=*"
     },
     host: "127.0.0.1",
-    port: Number(process.env.BILLING_WEB_PORT) || 5560
+    port: requireEnvNumber(process.env.BILLING_WEB_PORT, "BILLING_WEB_PORT")
   }
-});
+}));

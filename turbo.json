@@ -1,5 +1,22 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "PLATFORM_API_PORT",
+    "PLATFORM_WEB_PORT",
+    "CORE_API_PORT",
+    "CORE_WEB_PORT",
+    "BILLING_API_PORT",
+    "BILLING_WEB_PORT",
+    "ACCOUNTS_API_PORT",
+    "ACCOUNTS_WEB_PORT",
+    "DB_HOST",
+    "DB_PORT",
+    "DB_USER",
+    "DB_PASSWORD",
+    "DB_MASTER_NAME",
+    "JWT_SECRET",
+    "CODEXSUN_REDIS_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

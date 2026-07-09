@@ -15,6 +15,7 @@ import {
 } from "../../../../components/sidebar"
 
 export type SidemenuSubItem = {
+  icon?: LucideIcon
   isActive?: boolean
   items?: SidemenuSubItem[]
   onSelect?: () => void
@@ -94,6 +95,7 @@ function SidemenuSubItemNode({ item }: { item: SidemenuSubItem }) {
   const hasChildren = children.length > 0
   const childActive = children.some((child) => child.isActive || child.items?.some((nested) => nested.isActive))
   const active = item.isActive ?? childActive
+  const Icon = item.icon
 
   if (hasChildren) {
     return (
@@ -107,6 +109,7 @@ function SidemenuSubItemNode({ item }: { item: SidemenuSubItem }) {
             <CollapsibleTrigger asChild>
               <SidebarMenuSubButton asChild isActive={active}>
                 <button type="button">
+                  {Icon ? <Icon className="size-4 shrink-0" /> : null}
                   <span>{item.title}</span>
                   <SidemenuChevron className="group-data-[state=open]/sub-collapsible:rotate-45" />
                 </button>
@@ -130,10 +133,12 @@ function SidemenuSubItemNode({ item }: { item: SidemenuSubItem }) {
       <SidebarMenuSubButton asChild isActive={active}>
         {item.onSelect ? (
         <button type="button" onClick={item.onSelect}>
+          {Icon ? <Icon className="size-4 shrink-0" /> : null}
           <span>{item.title}</span>
         </button>
         ) : (
           <a href={item.url ?? "#"}>
+            {Icon ? <Icon className="size-4 shrink-0" /> : null}
             <span>{item.title}</span>
           </a>
         )}

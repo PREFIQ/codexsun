@@ -1,0 +1,55 @@
+name: Deploy CODEXSUN
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      PLATFORM_API_PORT: 7010
+      PLATFORM_WEB_PORT: 7020
+      CORE_API_PORT: 7030
+      CORE_WEB_PORT: 7040
+      BILLING_API_PORT: 7050
+      BILLING_WEB_PORT: 7060
+      ACCOUNTS_API_PORT: 7070
+      ACCOUNTS_WEB_PORT: 7080
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: codexsun
+      DB_PASSWORD: build-placeholder
+      DB_MASTER_NAME: codexsun_master
+      JWT_SECRET: build-placeholder
+      CODEXSUN_REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check:module-boundaries
+      - run: npm run typecheck
+      - run: npm run build
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.CODEXSUN_DEPLOY_HOST }}
+          username: ${{ secrets.CODEXSUN_DEPLOY_USER }}
+          key: ${{ secrets.CODEXSUN_DEPLOY_KEY }}
+          script_stop: true
+          script: |
+            cd "${{ secrets.CODEXSUN_DEPLOY_PATH }}"
+            git fetch origin main
+            git reset --hard origin/main
+            bash .container/upgrade-containers.sh

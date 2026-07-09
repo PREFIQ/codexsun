@@ -2,8 +2,11 @@ import { Kysely, MysqlDialect } from "kysely";
 import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
 import { env } from "../env.js";
+import { migrateQuotationModule } from "../modules/quotation/quotation.migration.js";
 import { migrateSalesModule } from "../modules/sales/sales.migration.js";
 import { seedSalesModule } from "../modules/sales/sales.seed.js";
+import { migrateBillingSettingsModule } from "../modules/settings/settings.migration.js";
+import { BillingSettingsRepository } from "../modules/settings/settings.repository.js";
 
 export type BillingDatabase = {
   billing_sales: BillingSalesTable;
@@ -42,7 +45,11 @@ export async function bootstrapBillingDatabase(databaseName = env.DB_MASTER_NAME
   await ensureDatabase(name);
   const db = openBillingDatabase(name);
   await migrateSalesModule(db);
+  await migrateQuotationModule(db);
+  await migrateBillingSettingsModule(db);
   await seedSalesModule(db);
+  const settingsRepository = new BillingSettingsRepository();
+  await settingsRepository.saveSalesSettings(name, await settingsRepository.getSalesSettings(name));
   migrated.add(name);
 }
 
@@ -83,6 +90,13 @@ async function ensureDatabase(databaseName: string) {
   } finally {
     await connection.end();
   }
+}
+
+export async function closeAllBillingDatabases() {
+  const openConnections = Array.from(connections.values());
+  connections.clear();
+  migrated.clear();
+  await Promise.all(openConnections.map(async (database) => database.destroy()));
 }
 
 function assertDatabaseName(value: string) {

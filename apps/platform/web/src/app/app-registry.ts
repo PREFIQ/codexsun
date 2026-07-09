@@ -3,6 +3,8 @@ import {
   CircleGaugeIcon,
   CreditCardIcon,
   Globe2Icon,
+  LandmarkIcon,
+  MapPinnedIcon,
   PackageIcon,
   Settings2Icon,
   UsersIcon,
@@ -14,7 +16,7 @@ import {
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
 import { commonMasterDefinitions } from "../modules/common/registry";
 
-export type PlatformAppId = "application" | "billing";
+export type PlatformAppId = "application" | "billing" | "accounts";
 
 export type PlatformAppDefinition = {
   accentClass: string;
@@ -25,7 +27,7 @@ export type PlatformAppDefinition = {
   icon: LucideIcon;
   label: string;
   moduleKey: string;
-  stack: "platform" | "billing";
+  stack: "platform" | "billing" | "accounts";
 };
 
 export const platformAppRegistry: PlatformAppDefinition[] = [
@@ -50,6 +52,17 @@ export const platformAppRegistry: PlatformAppDefinition[] = [
     label: "Billing",
     moduleKey: "billing.sales",
     stack: "billing"
+  },
+  {
+    accentClass: "bg-blue-700",
+    alwaysEnabled: false,
+    defaultLanding: false,
+    description: "Ledgers, vouchers, double-entry postings, balances, reports, and Tally-ready accounting.",
+    icon: LandmarkIcon,
+    id: "accounts",
+    label: "Accounts",
+    moduleKey: "accounts.ledgers",
+    stack: "accounts"
   }
 ];
 
@@ -84,6 +97,7 @@ export function appMenuFor(appId: PlatformAppId, activePage: string, onSelect: (
           isActive: activePage.startsWith("core.common"),
           items: [
             {
+              icon: MapPinnedIcon,
               title: "Location",
               isActive: activePage.startsWith("core.common.location"),
               items: [
@@ -98,6 +112,21 @@ export function appMenuFor(appId: PlatformAppId, activePage: string, onSelect: (
           ]
         },
         { title: "Billing Settings", isActive: activePage === "billing.settings", onSelect: () => onSelect("billing.settings") }
+      ]
+    };
+  }
+
+  if (appId === "accounts") {
+    return {
+      icon: LandmarkIcon,
+      isActive: activePage.startsWith("accounts"),
+      title: "Accounts",
+      items: [
+        { title: "Overview", isActive: activePage === "accounts.overview", onSelect: () => onSelect("accounts.overview") },
+        { title: "Ledgers", isActive: activePage === "accounts.ledgers", onSelect: () => onSelect("accounts.ledgers") },
+        { title: "Vouchers", isActive: activePage === "accounts.vouchers", onSelect: () => onSelect("accounts.vouchers") },
+        { title: "Reports", isActive: activePage === "accounts.reports", onSelect: () => onSelect("accounts.reports") },
+        { title: "Accounts Settings", isActive: activePage === "accounts.settings", onSelect: () => onSelect("accounts.settings") }
       ]
     };
   }
@@ -126,9 +155,10 @@ export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSele
       },
       {
         icon: ReceiptTextIcon,
-        isActive: activePage === "billing.sales" || activePage === "billing.settings",
+        isActive: activePage === "billing.quotation" || activePage === "billing.sales" || activePage === "billing.settings",
         title: "Billing",
         items: [
+          { title: "Quotation", isActive: activePage === "billing.quotation", onSelect: () => onSelect("billing.quotation") },
           { title: "Sales", isActive: activePage === "billing.sales", onSelect: () => onSelect("billing.sales") },
           { title: "Billing Settings", isActive: activePage === "billing.settings", onSelect: () => onSelect("billing.settings") }
         ]
@@ -139,6 +169,7 @@ export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSele
         title: "Common",
         items: [
           {
+            icon: MapPinnedIcon,
             title: "Location",
             isActive: activePage.startsWith("core.common.location"),
             items: [
@@ -150,6 +181,28 @@ export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSele
             ]
           },
           ...commonMasterMenuGroups(activePage, onSelect)
+        ]
+      }
+    ];
+  }
+
+  if (appId === "accounts") {
+    return [
+      {
+        icon: CircleGaugeIcon,
+        isActive: activePage === "accounts.overview",
+        onSelect: () => onSelect("accounts.overview"),
+        title: "Overview"
+      },
+      {
+        icon: LandmarkIcon,
+        isActive: activePage.startsWith("accounts") && activePage !== "accounts.overview",
+        title: "Accounts",
+        items: [
+          { title: "Ledgers", isActive: activePage === "accounts.ledgers", onSelect: () => onSelect("accounts.ledgers") },
+          { title: "Vouchers", isActive: activePage === "accounts.vouchers", onSelect: () => onSelect("accounts.vouchers") },
+          { title: "Reports", isActive: activePage === "accounts.reports", onSelect: () => onSelect("accounts.reports") },
+          { title: "Accounts Settings", isActive: activePage === "accounts.settings", onSelect: () => onSelect("accounts.settings") }
         ]
       }
     ];
@@ -183,12 +236,13 @@ export function appWorkspaceItems(enabledApps: PlatformAppId[], activeApp: Platf
       description: app.description,
       icon: app.icon,
       title: app.label,
-      url: app.id === "application" ? "/app/application/overview" : "/app/billing/overview"
+      url: `/app/${app.id}/overview`
     }));
 }
 
 export const applicationPageIcons = {
   application: Building2Icon,
+  accounts: LandmarkIcon,
   billing: CreditCardIcon,
   core: Globe2Icon,
   settings: Settings2Icon

@@ -45,8 +45,14 @@ export type LocationListFilters = {
 };
 
 export type LocationDefinition = {
+  allowGlobalMutations: boolean;
   collectionPath: string;
   defaultSortLabel: string;
+  dependents: Array<{
+    columnName: "city_id" | "country_id" | "district_id" | "state_id";
+    label: string;
+    tableName: string;
+  }>;
   kind: LocationKind;
   label: string;
   notFoundCode: string;

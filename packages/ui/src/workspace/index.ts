@@ -15,6 +15,7 @@ export {
 export { WorkspaceFilters } from "./filters"
 export { WorkspacePagination } from "./pagination"
 export { WorkspaceRowActions } from "./row-actions"
+export { WorkspaceProtectedIndicator } from "./protected-indicator"
 export { WorkspaceShowLayout, WorkspaceShowCard, WorkspaceDetailTable } from "./show"
 export {
   WorkspaceUpsertPage,

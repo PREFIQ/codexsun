@@ -10,7 +10,7 @@ export async function createTestApiApp(options?: {
   return createApiApp({
     appName: options?.appName ?? "Test API App",
     cookieSecret: options?.cookieSecret ?? "test-cookie-secret-min-length-16-chars",
-    corsOrigins: options?.corsOrigins ?? ["http://localhost:5520"],
+    corsOrigins: options?.corsOrigins ?? ["http://localhost"],
     environment: options?.environment ?? "test"
   });
 }

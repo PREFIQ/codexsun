@@ -26,7 +26,7 @@ export function CoreHomePage() {
         <Card className="core-card">
           <span>API</span>
           <strong>Core API</strong>
-          <p>Available locally at port 5530 with `/core/common/location/*` endpoints.</p>
+          <p>Available at the configured core API endpoint with `/core/common/location/*` endpoints.</p>
         </Card>
       </section>
     </main>

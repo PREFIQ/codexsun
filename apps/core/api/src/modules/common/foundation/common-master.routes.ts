@@ -25,5 +25,9 @@ export function createCommonMasterRoutes(definition: CommonMasterDefinition) {
       const { id } = request.params as { id: string };
       return ok(await service.deactivate(resolveLocationTenantId(request), id), { requestId: request.id });
     });
+    app.delete(`${definition.path}/:id/force`, async (request) => {
+      const { id } = request.params as { id: string };
+      return ok(await service.forceDelete(resolveLocationTenantId(request), id), { requestId: request.id });
+    });
   };
 }

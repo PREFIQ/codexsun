@@ -38,7 +38,7 @@ export type PlatformAppsTable = {
   id: Generated<number>;
   label: string;
   module_key: string;
-  stack: "platform" | "billing";
+  stack: "platform" | "billing" | "accounts";
   updated_at: TimestampColumn;
   uuid: string;
 };

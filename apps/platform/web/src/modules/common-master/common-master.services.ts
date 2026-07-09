@@ -1,7 +1,8 @@
 import { getTenantId, getToken } from "../../shared/api/platform-api";
+import { requiredClientEnv } from "../../shared/env/client-env";
 import type { CommonMasterRecord, CommonMasterValue } from "./common-master.types";
 
-const baseUrl = import.meta.env.VITE_CORE_API_URL || "http://127.0.0.1:5530";
+const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
 type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
 async function request<T>(path: string, options: RequestInit = {}) {
@@ -10,7 +11,7 @@ async function request<T>(path: string, options: RequestInit = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantId ? { "x-tenant-id": tenantId } : {}),
       ...options.headers
@@ -30,4 +31,7 @@ export function updateCommonMaster(path: string, id: string, payload: Record<str
 }
 export function setCommonMasterActive(path: string, id: string, active: boolean) {
   return request<CommonMasterRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, { method: "POST" });
+}
+export function forceDeleteCommonMaster(path: string, id: string) {
+  return request<CommonMasterRecord>(`${path}/${id}/force`, { method: "DELETE" });
 }

@@ -4,9 +4,7 @@ export const locationDefinitions: Record<LocationKind, LocationDefinition> = {
   country: {
     columns: [
       { key: "name", label: "Country" },
-      { key: "iso2", label: "ISO 2" },
-      { key: "dialCode", label: "Dial code" },
-      { key: "currencyCode", label: "Currency" },
+      { key: "code", label: "Country code" },
       { key: "status", label: "Status" }
     ],
     kind: "country",
@@ -17,8 +15,7 @@ export const locationDefinitions: Record<LocationKind, LocationDefinition> = {
   state: {
     columns: [
       { key: "name", label: "State" },
-      { key: "gstStateCode", label: "GST code" },
-      { key: "shortCode", label: "Short code" },
+      { key: "gstStateCode", label: "GST State code" },
       { key: "countryName", label: "Country" },
       { key: "status", label: "Status" }
     ],

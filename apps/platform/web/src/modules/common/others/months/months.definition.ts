@@ -6,6 +6,18 @@ export const monthsDefinition: CommonMasterDefinition = {
       "label": "Name",
       "type": "string",
       "required": true
+    },
+    {
+      "key": "fromDate",
+      "label": "From date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "key": "toDate",
+      "label": "To date",
+      "type": "date",
+      "required": true
     }
   ],
   "group": "others",

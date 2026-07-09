@@ -1,4 +1,4 @@
-export type PlatformAppId = "application" | "billing";
+export type PlatformAppId = "application" | "billing" | "accounts";
 
 export type PlatformAppDefinition = {
   alwaysEnabled: boolean;
@@ -8,7 +8,7 @@ export type PlatformAppDefinition = {
   appId: string;
   label: string;
   moduleKey: string;
-  stack: "platform" | "billing";
+  stack: "platform" | "billing" | "accounts";
   uuid: string;
 };
 

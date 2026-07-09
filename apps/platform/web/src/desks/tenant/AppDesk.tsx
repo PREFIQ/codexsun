@@ -5,6 +5,7 @@ import {
   CreditCardIcon,
   FileTextIcon,
   IndianRupeeIcon,
+  LandmarkIcon,
   LayoutDashboardIcon,
   ReceiptIndianRupeeIcon,
   ReceiptTextIcon,
@@ -23,6 +24,8 @@ import { getTenantRuntime } from "../../modules/tenant/tenant.services";
 import { LocationWorkspace, type LocationKind } from "../../modules/location";
 import { CommonMasterWorkspace } from "../../modules/common-master";
 import { commonMasterDefinitions } from "../../modules/common/registry";
+import { BillingEntriesWorkspace } from "../../modules/entries";
+import { AccountsWorkspace } from "../../modules/accounts";
 import { getToken } from "../../shared/api/platform-api";
 
 type AppPage =
@@ -31,8 +34,14 @@ type AppPage =
   | "application.profile"
   | "application.settings"
   | "billing.overview"
+  | "billing.quotation"
   | "billing.sales"
   | "billing.settings"
+  | "accounts.overview"
+  | "accounts.ledgers"
+  | "accounts.vouchers"
+  | "accounts.reports"
+  | "accounts.settings"
   | "core.common.location.countries"
   | "core.common.location.states"
   | "core.common.location.districts"
@@ -57,7 +66,11 @@ export function AppDesk() {
   const runtimeLandingApp = runtime?.defaultLandingApp ?? defaultLandingApp(runtime?.tenant?.defaultLandingApp, moduleKeys);
   const landingApp = publishedLandingApp && enabledApps.includes(publishedLandingApp) ? publishedLandingApp : runtimeLandingApp;
   const activeApp = appFromPage(page, landingApp, switchableApps);
-  const safePage = (page.startsWith("billing") || page.startsWith("core")) && !switchableApps.includes("billing") ? pageForApp(landingApp) : page;
+  const safePage =
+    ((page.startsWith("billing") || page.startsWith("core")) && !switchableApps.includes("billing")) ||
+    (page.startsWith("accounts") && !switchableApps.includes("accounts"))
+      ? pageForApp(landingApp)
+      : page;
 
   useEffect(() => {
     if (publishedLandingApp && !enabledApps.includes(publishedLandingApp)) {
@@ -86,18 +99,18 @@ export function AppDesk() {
     window.localStorage.setItem(LANDING_APP_STORAGE_KEY, nextLandingApp);
   }
 
-  const activeWorkspaceTitle = activeApp === "billing" ? "Billing" : "Application";
+  const activeWorkspaceTitle = activeApp === "billing" ? "Billing" : activeApp === "accounts" ? "Accounts" : "Application";
   const menuItems = appMenuItemsFor(activeApp, safePage, (nextPage) => selectPage(nextPage as AppPage));
   const workspaceItems = appWorkspaceItems(switchableApps, activeApp).map((item) => ({
     ...item,
-    url: item.title === "Application" ? "/app/application/overview" : "/app/billing/overview"
+    url: item.title === "Application" ? "/app/application/overview" : item.title === "Billing" ? "/app/billing/overview" : "/app/accounts/overview"
   }));
 
   return (
     <AuthGate desk="tenant">
       <ApplicationLayout
         brand={{
-          href: activeApp === "billing" ? "/app/billing/overview" : "/app/application/overview",
+          href: activeApp === "billing" ? "/app/billing/overview" : activeApp === "accounts" ? "/app/accounts/overview" : "/app/application/overview",
           subtitle: `${activeWorkspaceTitle.toLowerCase()} workspace`,
           title: activeWorkspaceTitle
         }}
@@ -119,8 +132,14 @@ export function AppDesk() {
           {safePage === "application.profile" ? <ApplicationProfile /> : null}
           {safePage === "application.settings" ? <ApplicationSettings /> : null}
           {safePage === "billing.overview" ? <BillingOverview /> : null}
+          {safePage === "billing.quotation" ? <BillingEntriesWorkspace kind="quotation" /> : null}
           {safePage === "billing.sales" ? <BillingSales /> : null}
           {safePage === "billing.settings" ? <BillingSettings /> : null}
+          {safePage === "accounts.overview" ? <AccountsWorkspace page="overview" /> : null}
+          {safePage === "accounts.ledgers" ? <AccountsWorkspace page="ledgers" /> : null}
+          {safePage === "accounts.vouchers" ? <AccountsWorkspace page="vouchers" /> : null}
+          {safePage === "accounts.reports" ? <AccountsWorkspace page="reports" /> : null}
+          {safePage === "accounts.settings" ? <AccountsSettings /> : null}
           {isCoreLocationPage(safePage) ? <LocationWorkspace kind={locationKindFromPage(safePage)} /> : null}
           {isCommonMasterPage(safePage) ? <CommonMasterWorkspace definition={definitionFromPage(safePage)} /> : null}
         </main>
@@ -130,7 +149,7 @@ export function AppDesk() {
 }
 
 function uniqueApps(apps: PlatformAppId[]) {
-  return Array.from(new Set(["application" as PlatformAppId, "billing" as PlatformAppId, ...apps]));
+  return Array.from(new Set(["application" as PlatformAppId, ...apps]));
 }
 
 function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
@@ -144,9 +163,15 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "application.profile" ||
     key === "application.settings" ||
     key === "billing.overview" ||
+    key === "billing.quotation" ||
     key === "billing.desk" ||
     key === "billing.sales" ||
     key === "billing.settings" ||
+    key === "accounts.overview" ||
+    key === "accounts.ledgers" ||
+    key === "accounts.vouchers" ||
+    key === "accounts.reports" ||
+    key === "accounts.settings" ||
     key === "core.common.location.countries" ||
     key === "core.common.location.states" ||
     key === "core.common.location.districts" ||
@@ -179,11 +204,13 @@ function LandingDesk({
     description:
       appId === "billing"
         ? "Sales, purchase, receipt, payment, report, master, common, and billing settings."
+        : appId === "accounts"
+          ? "Ledgers, vouchers, balances, reports, and Tally-ready accounting."
         : "Shared workspace, company setup, roles, and cross-app launch desk.",
-    icon: appId === "billing" ? CreditCardIcon : LayoutDashboardIcon,
-    iconClass: appId === "billing" ? "bg-emerald-600 text-white" : "bg-slate-950 text-white",
+    icon: appId === "billing" ? CreditCardIcon : appId === "accounts" ? LandmarkIcon : LayoutDashboardIcon,
+    iconClass: appId === "billing" ? "bg-emerald-600 text-white" : appId === "accounts" ? "bg-blue-700 text-white" : "bg-slate-950 text-white",
     id: appId,
-    label: appId === "billing" ? "Billing" : "Application"
+    label: appId === "billing" ? "Billing" : appId === "accounts" ? "Accounts" : "Application"
   })) satisfies Array<{
     description: string;
     icon: typeof LayoutDashboardIcon;
@@ -414,14 +441,7 @@ function ApplicationSettings() {
 }
 
 function BillingSales() {
-  return (
-    <Card title="Billing Sales" description="Billing sales entry point for this tenant.">
-      <div className="flex items-center gap-3">
-        <CreditCardIcon className="size-5 text-muted-foreground" />
-        <StatusBadge tone="green">Enabled</StatusBadge>
-      </div>
-    </Card>
-  );
+  return <BillingEntriesWorkspace kind="sales" />;
 }
 
 function BillingOverview() {
@@ -605,6 +625,14 @@ function BillingSettings() {
   );
 }
 
+function AccountsSettings() {
+  return (
+    <Card title="Accounts Settings" description="Financial year, posting policy, period locks, voucher numbering, and Tally sync settings.">
+      <StatusBadge tone="green">Accounts enabled</StatusBadge>
+    </Card>
+  );
+}
+
 function isCoreLocationPage(page: AppPage): page is Extract<AppPage, `core.common.location.${string}`> {
   return page.startsWith("core.common.location.");
 }
@@ -641,8 +669,14 @@ function titleForPage(page: AppPage) {
     "application.profile": "Application Profile",
     "application.settings": "Application Settings",
     "billing.overview": "Overview",
+    "billing.quotation": "Quotation",
     "billing.sales": "Sales",
     "billing.settings": "Billing Settings",
+    "accounts.overview": "Overview",
+    "accounts.ledgers": "Ledgers",
+    "accounts.vouchers": "Vouchers",
+    "accounts.reports": "Accounts Reports",
+    "accounts.settings": "Accounts Settings",
     "core.common.location.cities": "Cities",
     "core.common.location.countries": "Countries",
     "core.common.location.districts": "Districts",
@@ -654,10 +688,12 @@ function titleForPage(page: AppPage) {
 
 function appFromPage(page: AppPage, landingApp: PlatformAppId, enabledApps: PlatformAppId[]): PlatformAppId {
   if (page.startsWith("billing") || page.startsWith("core")) return enabledApps.includes("billing") ? "billing" : landingApp;
+  if (page.startsWith("accounts")) return enabledApps.includes("accounts") ? "accounts" : landingApp;
   return "application";
 }
 
 function pageForApp(app: PlatformAppId): AppPage {
+  if (app === "accounts") return "accounts.overview";
   return app === "billing" ? "billing.overview" : "application.overview";
 }
 
@@ -668,7 +704,7 @@ function isAppRootPath() {
 function readPublishedLandingApp(): PlatformAppId | null {
   try {
     const stored = window.localStorage.getItem(LANDING_APP_STORAGE_KEY);
-    return stored === "application" || stored === "billing" ? stored : null;
+    return stored === "application" || stored === "billing" || stored === "accounts" ? stored : null;
   } catch {
     return null;
   }

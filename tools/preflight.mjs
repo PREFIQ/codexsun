@@ -10,12 +10,29 @@ const root = resolve(import.meta.dirname, "..");
 const app = process.argv[2];
 
 const apps = {
+  "accounts-api": {
+    displayName: "accounts-api",
+    cwd: "apps/accounts/api",
+    envKey: "ACCOUNTS_API_PORT",
+    hostKey: "ACCOUNTS_API_HOST",
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
+  },
+  "accounts-web": {
+    displayName: "accounts-web",
+    cwd: "apps/accounts/web",
+    envKey: "ACCOUNTS_WEB_PORT",
+    hostKey: "ACCOUNTS_WEB_HOST",
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
+  },
   "billing-api": {
     displayName: "billing-api",
     cwd: "apps/billing/api",
     envKey: "BILLING_API_PORT",
     hostKey: "BILLING_API_HOST",
-    fallbackPort: 5550,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
@@ -25,7 +42,6 @@ const apps = {
     cwd: "apps/billing/web",
     envKey: "BILLING_WEB_PORT",
     hostKey: "BILLING_WEB_HOST",
-    fallbackPort: 5560,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
@@ -35,7 +51,6 @@ const apps = {
     cwd: "apps/core/api",
     envKey: "CORE_API_PORT",
     hostKey: "CORE_API_HOST",
-    fallbackPort: 5530,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
@@ -45,7 +60,6 @@ const apps = {
     cwd: "apps/core/web",
     envKey: "CORE_WEB_PORT",
     hostKey: "CORE_WEB_HOST",
-    fallbackPort: 5540,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
@@ -55,7 +69,6 @@ const apps = {
     cwd: "apps/platform/api",
     envKey: "PLATFORM_API_PORT",
     hostKey: "PLATFORM_API_HOST",
-    fallbackPort: 5510,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
@@ -65,7 +78,6 @@ const apps = {
     cwd: "apps/platform/web",
     envKey: "PLATFORM_WEB_PORT",
     hostKey: "PLATFORM_WEB_HOST",
-    fallbackPort: 5520,
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
@@ -79,11 +91,11 @@ if (!app || !apps[app]) {
 
 const config = apps[app];
 const env = loadDotEnv();
-const port = Number(process.env[config.envKey] || env[config.envKey]) || config.fallbackPort;
+const port = parseRequiredPort(process.env[config.envKey] || env[config.envKey], config.envKey);
 const host = process.env[config.hostKey] || env[config.hostKey] || config.fallbackHost;
 await freePort(port, host);
 
-if (app === "platform-api" || app === "core-api" || app === "billing-api") {
+if (app === "platform-api" || app === "core-api" || app === "billing-api" || app === "accounts-api") {
   ensurePlatformApiDependencies();
 }
 
@@ -138,6 +150,22 @@ function parseEnvValue(value) {
   }
 
   return trimmed.replace(/\s+#.*$/, "").trim();
+}
+
+function parseRequiredPort(value, envKey) {
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    console.error(`  x Missing required port configuration: ${envKey}`);
+    process.exit(1);
+  }
+
+  const port = Number(raw);
+  if (!Number.isInteger(port) || port <= 0) {
+    console.error(`  x Invalid port configuration for ${envKey}: ${raw}`);
+    process.exit(1);
+  }
+
+  return port;
 }
 
 function ensurePlatformApiDependencies() {

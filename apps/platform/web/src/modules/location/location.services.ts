@@ -1,7 +1,8 @@
 import { getTenantId, getToken } from "../../shared/api/platform-api"
+import { requiredClientEnv } from "../../shared/env/client-env"
 import type { LocationRecord, LocationSavePayload } from "./location.types"
 
-const coreApiBaseUrl = import.meta.env.VITE_CORE_API_URL || "http://127.0.0.1:5530"
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL")
 
 type ApiEnvelope<T> =
   | { data: T; success: true }
@@ -14,7 +15,7 @@ async function request<T>(path: string, options: RequestInit = {}) {
     ...options,
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantId ? { "x-tenant-id": tenantId } : {}),
       ...options.headers
@@ -37,4 +38,12 @@ export function createLocationRecord(path: string, payload: LocationSavePayload)
 
 export function updateLocationRecord(path: string, id: string, payload: LocationSavePayload) {
   return request<LocationRecord>(`${path}/${id}`, { body: JSON.stringify(payload), method: "PUT" })
+}
+
+export function suspendLocationRecord(path: string, id: string) {
+  return request<LocationRecord>(`${path}/${id}/deactivate`, { method: "POST" })
+}
+
+export function forceDeleteLocationRecord(path: string, id: string) {
+  return request<LocationRecord>(`${path}/${id}/force`, { method: "DELETE" })
 }

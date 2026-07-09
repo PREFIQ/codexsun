@@ -23,6 +23,17 @@ export const platformAppRegistry: PlatformAppDefinition[] = [
     moduleKey: "billing.sales",
     stack: "billing",
     uuid: ""
+  },
+  {
+    alwaysEnabled: false,
+    defaultLanding: false,
+    description: "Ledgers, vouchers, double-entry postings, balances, reports, and Tally-ready accounting.",
+    appId: "accounts",
+    id: 0,
+    label: "Accounts",
+    moduleKey: "accounts.ledgers",
+    stack: "accounts",
+    uuid: ""
   }
 ];
 

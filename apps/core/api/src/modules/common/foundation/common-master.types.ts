@@ -11,6 +11,7 @@ export type CommonMasterField = {
 export type CommonMasterSeed = Record<string, boolean | number | string | null>;
 
 export type CommonMasterDefinition = {
+  allowGlobalMutations?: boolean;
   fields: CommonMasterField[];
   group: "contacts" | "others" | "products" | "workorder";
   key: string;

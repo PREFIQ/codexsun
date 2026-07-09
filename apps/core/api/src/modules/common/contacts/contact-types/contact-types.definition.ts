@@ -1,6 +1,7 @@
 import type { CommonMasterDefinition } from "../../foundation/common-master.types.js";
 
 export const contactTypesDefinition: CommonMasterDefinition = {
+  "allowGlobalMutations": true,
   "fields": [
     {
       "key": "name",
@@ -16,10 +17,19 @@ export const contactTypesDefinition: CommonMasterDefinition = {
   "path": "/core/common/contacts/contact-types",
   "seeds": [
     {
+      "name": "-"
+    },
+    {
       "name": "Customer"
     },
     {
       "name": "Supplier"
+    },
+    {
+      "name": "Vendor Customer"
+    },
+    {
+      "name": "Staff"
     },
     {
       "name": "Employee"

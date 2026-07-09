@@ -7,7 +7,7 @@ export type Tenant = {
   dbType: string;
   dbUser: string;
   enabledModuleKeys: string[];
-  defaultLandingApp: "application" | "billing";
+  defaultLandingApp: "application" | "billing" | "accounts";
   id: number;
   mobile: string | null;
   payloadSettings: Record<string, unknown>;
@@ -31,7 +31,7 @@ export type TenantSavePayload = {
   dbType: string;
   dbUser: string;
   enabledModuleKeys: string[];
-  defaultLandingApp: "application" | "billing";
+  defaultLandingApp: "application" | "billing" | "accounts";
   mobile: string | null;
   payloadSettings: Record<string, unknown>;
   primaryDomain: string;
@@ -54,11 +54,11 @@ export type TenantRuntime = {
     defaultLanding: boolean;
     description: string;
     enabled: boolean;
-    id: "application" | "billing";
+    id: "application" | "billing" | "accounts";
     label: string;
     moduleKey: string;
-    stack: "platform" | "billing";
+    stack: "platform" | "billing" | "accounts";
   }>;
-  defaultLandingApp: "application" | "billing";
+  defaultLandingApp: "application" | "billing" | "accounts";
   tenant: Tenant | null;
 };

@@ -8,6 +8,13 @@ export const currenciesDefinition: CommonMasterDefinition = {
       "label": "Name",
       "type": "string",
       "required": true
+    },
+    {
+      "key": "symbol",
+      "column": "symbol",
+      "label": "Symbol",
+      "type": "string",
+      "required": true
     }
   ],
   "group": "others",
@@ -16,10 +23,12 @@ export const currenciesDefinition: CommonMasterDefinition = {
   "path": "/core/common/others/currencies",
   "seeds": [
     {
-      "name": "INR"
+      "name": "INR",
+      "symbol": "₹"
     },
     {
-      "name": "USD"
+      "name": "USD",
+      "symbol": "$"
     }
   ],
   "tableName": "core_common_currencies"

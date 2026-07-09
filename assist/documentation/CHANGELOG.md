@@ -36,6 +36,29 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 #### App Codebase Changes
 
+- Simplified the tenant Countries list and editor to show only country name, country code, status, and active control;
+  ISO, dial, currency, and sort-order fields remain backend-compatible but are hidden from the tenant frontend.
+- Added tenant Country row actions for view, edit, suspend, and guarded force delete, with global country protection.
+- Restyled the location Active control as a compact input-height status switch without helper text.
+- Fixed bodyless location action requests so Suspend and Force delete are not rejected as empty JSON payloads.
+- Replaced generic location duplicate failures with exact name/code conflict messages in the form error banner.
+- Simplified the tenant State editor to State name, GST State code, Country, and Active in the same full-width tone as Country.
+- Added State view, edit, suspend, and guarded force-delete row actions.
+- Added reusable location dependency checks that block force deletion while child location records still reference a parent.
+- Applied the finalized full-width master form and row-action pattern to Districts, Cities, and Pincodes.
+- Replaced Pincode parent-name inputs with cascading Country, State, District, and City references.
+- Enabled editing, suspension, and guarded deletion of seeded District, City, and Pincode rows inside each isolated tenant database.
+- Made primary District, City, and Pincode values open Edit directly, removed redundant View actions, and protected the `-` placeholder rows.
+- Backfilled seeded Pincodes with Country, State, District, and City IDs so legacy records populate relationship controls and participate in dependency checks.
+- Added Tenant-pattern pagination to every location master list with rows-per-page controls, filtered totals, stable row numbering, and page reset on filter changes.
+- Applied the finalized master-list pattern to Contact Groups, Contact Types, Address Types, and Bank Names.
+- Added protected `-` seeds, editable seeded rows, pagination, clickable names, lifecycle menus, compact Active controls, and force delete for those four masters.
+- Seeded Contact Groups with Business and Web Clients, and Contact Types with Customer, Supplier, Vendor Customer, Staff, and Employee.
+- Expanded Bank Names from the current RBI directory across public, private, local-area, small-finance, payments, regional-rural, foreign, and state cooperative banks.
+- Replaced protected-row text with a shared amber shield indicator and hover tooltip across location and contact masters.
+- Extended the finalized protected-row, editable seed, pagination, lifecycle menu, compact Active, and no-sort-order pattern to all Product, Work Order, and Other common masters.
+- Added persisted Currency symbols with INR and USD seed backfill, plus reusable missing-column migration support for common masters.
+- Converted Months into FY 2026-27 accounting periods with Name, From date, To date, and Active.
 - Added loud CLI/startup warnings before destructive database lifecycle actions.
 - Added stable migration preflight/list/run/local-test, dump, restore-test, and backup-verification command names.
 - Added explicit safety guards for restored-dump migration tests, sandbox restore tests, production backup verification, and backup artifact verification.

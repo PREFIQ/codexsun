@@ -245,16 +245,26 @@ function city(code: string, name: string, id: string, districtId: string, distri
 }
 
 function pincode(code: string, areaName: string, cityName: string, sortOrder: number) {
+  const cityRecord = citySeeds.find((record) => record.name === cityName);
+  if (!cityRecord) throw new Error(`Pincode seed city was not found: ${cityName}`);
+  if (!cityRecord.districtId || !cityRecord.districtName) {
+    throw new Error(`Pincode seed city has no district relation: ${cityName}`);
+  }
+  const districtId = cityRecord.districtId;
+  const districtName = cityRecord.districtName;
+
   return {
+    ...tamilNadu,
     areaName,
+    cityId: cityRecord.id,
     cityName,
     code,
-    countryName: "India",
+    districtId,
+    districtName,
     id: `global-pincode-${slug(code)}`,
     name: code === "-" ? "-" : `${code} - ${areaName}`,
     pincode: code,
     sortOrder,
-    stateName: "Tamil Nadu",
     status: "active" as const
   };
 }

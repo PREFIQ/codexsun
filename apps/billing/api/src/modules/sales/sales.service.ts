@@ -1,3 +1,4 @@
+import { env } from "../../env.js";
 import { SalesRepository } from "./sales.repository.js";
 import type { Sale, SaleLineItem, SaleLineItemInput, SaleSavePayload } from "./sales.types.js";
 
@@ -13,11 +14,15 @@ export class SalesService {
   }
 
   async createSale(databaseName: string, input: SaleSavePayload) {
-    return this.repository.create(databaseName, normalizeSaleInput(input));
+    const sale = await this.repository.create(databaseName, normalizeSaleInput(input));
+    await postSaleToAccounts(databaseName, sale, "create");
+    return sale;
   }
 
   async updateSale(databaseName: string, id: string, input: SaleSavePayload) {
-    return this.repository.update(databaseName, id, normalizeSaleInput(input));
+    const sale = await this.repository.update(databaseName, id, normalizeSaleInput(input));
+    if (sale) await postSaleToAccounts(databaseName, sale, "update");
+    return sale;
   }
 
   async confirmSale(databaseName: string, id: string) {
@@ -25,7 +30,9 @@ export class SalesService {
   }
 
   async cancelSale(databaseName: string, id: string) {
-    return this.repository.setStatus(databaseName, id, "cancelled");
+    const sale = await this.repository.setStatus(databaseName, id, "cancelled");
+    if (sale) await postSaleToAccounts(databaseName, sale, "cancel");
+    return sale;
   }
 }
 
@@ -101,4 +108,33 @@ export function buildSaleTotals(input: SaleSavePayload): Pick<Sale, "amount" | "
 
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+async function postSaleToAccounts(databaseName: string, sale: Sale, operation: "create" | "update" | "cancel") {
+  const response = await fetch(`${env.ACCOUNTS_API_URL}/accounts/postings/billing`, {
+    body: JSON.stringify({
+      documentDate: sale.issuedOn,
+      operation,
+      partyLedgerName: sale.customerName,
+      placeOfSupply: "cgst-sgst",
+      roundOff: sale.roundOff,
+      sourceApp: "billing",
+      sourceDocumentId: sale.id,
+      sourceDocumentNo: sale.invoiceNumber,
+      sourceModule: "sales",
+      taxableAmount: sale.subtotal,
+      taxAmount: sale.taxAmount,
+      totalAmount: sale.amount
+    }),
+    headers: {
+      "Content-Type": "application/json",
+      "x-tenant-db": databaseName
+    },
+    method: "POST"
+  });
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(`Accounts posting failed for ${sale.invoiceNumber}: ${message || response.statusText}`);
+  }
 }

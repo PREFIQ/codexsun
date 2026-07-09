@@ -1,6 +1,7 @@
+import { requiredClientEnv } from "../../shared/env/client-env";
 import type { Sale, SaleSavePayload, SaleStatus } from "./sales.types";
 
-const API_BASE_URL = import.meta.env.VITE_BILLING_API_URL ?? "http://127.0.0.1:5550";
+const API_BASE_URL = requiredClientEnv("VITE_BILLING_API_URL");
 
 type ApiEnvelope<T> = {
   data: T;

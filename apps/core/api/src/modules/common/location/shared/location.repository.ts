@@ -75,21 +75,52 @@ export class LocationRepository {
 
   async update(tenantId: string, id: string, input: LocationSavePayload) {
     const existing = await this.find(tenantId, id);
-    if (!existing || existing.tenantId === GLOBAL_LOCATION_TENANT_ID) return null;
-    const record = { ...toPersistedRecord(id, tenantId, input), uuid: existing.uuid };
-    await updateLocation(this.definition.tableName, id, tenantId, record);
+    if (!existing || !this.canMutate(existing, tenantId)) return null;
+    const record = { ...toPersistedRecord(id, existing.tenantId, input), uuid: existing.uuid };
+    await updateLocation(this.definition.tableName, id, existing.tenantId, record);
     return record;
   }
 
   async setStatus(tenantId: string, id: string, status: LocationRecord["status"]) {
     const existing = await this.find(tenantId, id);
-    if (!existing || existing.tenantId === GLOBAL_LOCATION_TENANT_ID) return null;
+    if (!existing || !this.canMutate(existing, tenantId)) return null;
     await sql`
       UPDATE ${sql.table(this.definition.tableName)}
       SET status = ${status}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id} AND tenant_id = ${tenantId}
+      WHERE id = ${id} AND tenant_id = ${existing.tenantId}
     `.execute(getCoreDatabase());
     return { ...existing, status };
+  }
+
+  async forceDelete(tenantId: string, id: string) {
+    const existing = await this.find(tenantId, id);
+    if (!existing || !this.canMutate(existing, tenantId)) return null;
+    await sql`
+      DELETE FROM ${sql.table(this.definition.tableName)}
+      WHERE id = ${id} AND tenant_id = ${existing.tenantId}
+    `.execute(getCoreDatabase());
+    return existing;
+  }
+
+  async findDependents(tenantId: string, id: string) {
+    const dependents: Array<{ count: number; label: string }> = [];
+    for (const reference of this.definition.dependents) {
+      const result = await sql<{ count: number | string }>`
+        SELECT COUNT(*) AS count
+        FROM ${sql.table(reference.tableName)}
+        WHERE ${sql.ref(reference.columnName)} = ${id}
+          AND tenant_id = ${tenantId}
+      `.execute(getCoreDatabase());
+      const count = Number(result.rows[0]?.count ?? 0);
+      if (count > 0) dependents.push({ count, label: reference.label });
+    }
+    return dependents;
+  }
+
+  canMutate(existing: LocationRecord | null, tenantId: string) {
+    if (!existing || isPlaceholder(existing)) return false;
+    return existing.tenantId === tenantId
+      || (existing.tenantId === GLOBAL_LOCATION_TENANT_ID && this.definition.allowGlobalMutations);
   }
 }
 
@@ -231,4 +262,8 @@ function like(value: string | undefined) {
 
 function slug(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "record";
+}
+
+function isPlaceholder(record: LocationRecord) {
+  return record.name.trim() === "-" || record.code.trim() === "-";
 }

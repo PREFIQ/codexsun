@@ -417,6 +417,9 @@ function seedModules() {
     { groupId: "group-tenant-billing", id: "module-purchases", key: "tenant.billing.purchases", name: "Purchases", routePath: "/tenant/billing/purchases", sortOrder: 20 },
     { groupId: "group-tenant-stock", id: "module-stock-items", key: "tenant.stock.items", name: "Stock Items", routePath: "/tenant/stock/items", sortOrder: 10 },
     { groupId: "group-tenant-accounts", id: "module-ledgers", key: "tenant.accounts.ledgers", name: "Ledgers", routePath: "/tenant/accounts/ledgers", sortOrder: 10 },
+    { groupId: "group-tenant-accounts", id: "module-vouchers", key: "tenant.accounts.vouchers", name: "Vouchers", routePath: "/tenant/accounts/vouchers", sortOrder: 20 },
+    { groupId: "group-tenant-accounts", id: "module-account-reports", key: "tenant.accounts.reports", name: "Reports", routePath: "/tenant/accounts/reports", sortOrder: 30 },
+    { groupId: "group-tenant-accounts", id: "module-account-settings", key: "tenant.accounts.settings", name: "Accounts Settings", routePath: "/tenant/accounts/settings", sortOrder: 40 },
     { groupId: "group-tenant-integrations", id: "module-tally", key: "tenant.integrations.tally", name: "Tally", sortOrder: 10 },
     { groupId: "group-tenant-integrations", id: "module-frappe", key: "tenant.integrations.frappe", name: "Frappe", sortOrder: 20 },
     { groupId: "group-tenant-integrations", id: "module-tconnect", key: "tenant.integrations.tconnect", name: "TConnect", sortOrder: 30 }

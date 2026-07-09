@@ -1,8 +1,9 @@
 import { apiGet, apiPost, getToken } from "../../shared/api/platform-api";
+import { requiredClientEnv } from "../../shared/env/client-env";
 import type { StorageBrowserState, StorageListing, StorageRootSummary } from "./storage-manager.types";
 import { cleanStorageState } from "./storage-manager.schema";
 
-const apiBaseUrl = import.meta.env.VITE_PLATFORM_API_URL || "http://127.0.0.1:5510";
+const apiBaseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 
 export function getStorageRoots() {
   return apiGet<StorageRootSummary>("/admin/storage/roots", "sa");

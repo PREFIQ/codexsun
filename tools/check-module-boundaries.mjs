@@ -3,6 +3,10 @@ import { join } from "node:path";
 
 const moduleRoots = [
   {
+    app: "accounts-api",
+    path: join(process.cwd(), "apps", "accounts", "api", "src", "modules")
+  },
+  {
     app: "billing-api",
     path: join(process.cwd(), "apps", "billing", "api", "src", "modules")
   },
@@ -30,6 +34,10 @@ const requiredBackendRoles = [
 ];
 
 const webModuleRoots = [
+  {
+    app: "accounts-web",
+    path: join(process.cwd(), "apps", "accounts", "web", "src", "modules")
+  },
   {
     app: "billing-web",
     path: join(process.cwd(), "apps", "billing", "web", "src", "modules")

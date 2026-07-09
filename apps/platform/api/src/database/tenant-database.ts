@@ -64,6 +64,12 @@ export async function closeTenantDatabase(tenant: Tenant) {
   await existing.destroy();
 }
 
+export async function closeAllTenantDatabases() {
+  const openConnections = Array.from(tenantConnections.values());
+  tenantConnections.clear();
+  await Promise.all(openConnections.map(async (database) => database.destroy()));
+}
+
 export async function dropTenantDatabase(tenant: Tenant) {
   await closeTenantDatabase(tenant);
   console.warn(`[database] dropping tenant database "${tenant.dbName}" for tenant "${tenant.tenantCode}"`);

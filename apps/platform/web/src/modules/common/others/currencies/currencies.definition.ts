@@ -6,6 +6,12 @@ export const currenciesDefinition: CommonMasterDefinition = {
       "label": "Name",
       "type": "string",
       "required": true
+    },
+    {
+      "key": "symbol",
+      "label": "Symbol",
+      "type": "string",
+      "required": true
     }
   ],
   "group": "others",
