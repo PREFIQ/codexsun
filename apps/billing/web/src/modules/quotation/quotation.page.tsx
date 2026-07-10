@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
-import { Eye, Plus, Printer, RefreshCw, Save, Trash2, X } from "lucide-react";
+import { Eye, Pencil, Plus, Printer, RefreshCw, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
@@ -11,15 +11,17 @@ import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
+import { WorkspaceDatePicker } from "@codexsun/ui/workspace/date-picker";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceTableEmptyState, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
+import { WorkspaceFormActions, WorkspaceFormSurface, WorkspaceFormTabbedBody } from "@codexsun/ui/workspace/upsert";
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 import { cn } from "@codexsun/ui/lib/utils";
 import { PageTitle } from "../../shared/document/PageTitle";
 import { BillingLayout } from "../../shared/layout/BillingLayout";
 import { useSalesSettings } from "../settings";
 import { defaultBillingSettings, formatDocumentNumber, type BillingDocumentLayoutSettings, type BillingDocumentNumberSettings } from "../settings/settings.types";
-import { createEmptyQuotation, createEmptyQuotationItem, type Quotation, type QuotationLineItemInput, type QuotationSavePayload, type QuotationTaxType, type QuotationView } from "./quotation.types";
+import { createEmptyQuotation, type Quotation, type QuotationSavePayload, type QuotationTaxType, type QuotationView } from "./quotation.types";
 import { createQuotation, formatDate, formatMoney, quotationToPayload, setQuotationStatus, totalQuotationQuantity, updateQuotation } from "./quotation.services";
 import { useQuotationList } from "./quotation.hooks";
 
@@ -46,7 +48,7 @@ export function QuotationPage() {
   );
 }
 
-function QuotationWorkspace() {
+export function QuotationWorkspace() {
   const queryClient = useQueryClient();
   const quotationsQuery = useQuotationList();
   const settingsQuery = useSalesSettings();
@@ -110,7 +112,6 @@ function QuotationWorkspace() {
     return (
       <QuotationShowPage
         quotation={freshQuotation}
-        settings={quotationLayout}
         onBack={() => setView({ mode: "list" })}
         onEdit={() => setView({ mode: "upsert", quotation: freshQuotation, returnTo: "show" })}
         onNew={() => setView({ mode: "upsert", quotation: null, returnTo: "list" })}
@@ -259,28 +260,70 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
     ...createEmptyQuotation(),
     quotationNumber: numbering.automatic ? formatDocumentNumber(numbering) : createEmptyQuotation().quotationNumber,
   });
-  const [draftItem, setDraftItem] = useState<QuotationLineItemInput>(() => createEmptyQuotationItem());
-  const totals = buildClientTotals(form);
+  const [itemDraft, setItemDraft] = useState(() => createEmptyQuotation().items[0] ?? {
+    colour: "",
+    dcNo: "",
+    description: "",
+    hsnCode: "",
+    poNo: "",
+    productName: "",
+    quantity: 1,
+    rate: 0,
+    size: "",
+    taxRate: 18,
+    unit: "Nos",
+  });
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
 
   function patch(next: Partial<QuotationSavePayload>) {
     setForm((current) => ({ ...current, ...next }));
   }
 
-  function patchItem(next: Partial<QuotationLineItemInput>) {
-    setDraftItem((current) => ({ ...current, ...next }));
+  function patchDraft(next: Partial<typeof itemDraft>) {
+    setItemDraft((current) => ({ ...current, ...next }));
   }
 
-  function addItem() {
-    if (!draftItem.productName.trim()) {
+  function resetDraft() {
+    setItemDraft({
+      colour: "",
+      dcNo: "",
+      description: "",
+      hsnCode: "",
+      poNo: "",
+      productName: "",
+      quantity: 1,
+      rate: 0,
+      size: "",
+      taxRate: 18,
+      unit: "Nos",
+    });
+    setEditingItemIndex(null);
+  }
+
+  function addOrUpdateItem() {
+    if (!itemDraft.productName.trim()) {
       toast.error("Product name is required");
       return;
     }
-    setForm((current) => ({ ...current, items: [...current.items, draftItem] }));
-    setDraftItem(createEmptyQuotationItem());
+    setForm((current) => ({
+      ...current,
+      items: editingItemIndex === null
+        ? [...current.items, { ...itemDraft }]
+        : current.items.map((item, index) => index === editingItemIndex ? { ...itemDraft } : item),
+    }));
+    resetDraft();
+  }
+
+  function editItem(index: number) {
+    const item = form.items[index];
+    if (!item) return;
+    setItemDraft({ ...item });
+    setEditingItemIndex(index);
   }
 
   function removeItem(index: number) {
     setForm((current) => ({ ...current, items: current.items.filter((_, itemIndex) => itemIndex !== index) }));
+    if (editingItemIndex === index) resetDraft();
   }
 
   const tabs: WorkspaceAnimatedTab[] = [
@@ -288,13 +331,14 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
       value: "details",
       label: "Details",
       content: (
-        <div className="space-y-5">
-          <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-4">
             <Field label="Customer name" required><Input required value={form.customerName} onChange={(event) => patch({ customerName: event.target.value })} /></Field>
-            <Field label="Quotation no"><Input disabled={!quotation && numbering.automatic} value={form.quotationNumber} onChange={(event) => patch({ quotationNumber: event.target.value })} /></Field>
-            <Field label="Work Order no"><Input value={form.workOrderNo} onChange={(event) => patch({ workOrderNo: event.target.value })} /></Field>
-            <Field label="Date"><Input type="date" value={form.date} onChange={(event) => patch({ date: event.target.value })} /></Field>
-            <Field label="Sales Ledger"><Input value={form.salesLedger} onChange={(event) => patch({ salesLedger: event.target.value })} /></Field>
+            <Field label="Work order no"><Input value={form.workOrderNo} onChange={(event) => patch({ workOrderNo: event.target.value })} /></Field>
+          </div>
+          <div className="space-y-4">
+            <Field label="Quotation number"><Input disabled={!quotation && numbering.automatic} value={form.quotationNumber} onChange={(event) => patch({ quotationNumber: event.target.value })} /></Field>
+            <Field label="Date"><WorkspaceDatePicker value={form.date} onValueChange={(value) => patch({ date: value })} /></Field>
             <Field label="Quotation tax type">
               <WorkspaceSelect
                 value={form.taxType}
@@ -303,16 +347,15 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
               />
             </Field>
           </div>
-          <QuotationItemsEditor
-            draftItem={draftItem}
-            form={form}
-            onAddItem={addItem}
-            onPatchItem={patchItem}
-            onRoundOffChange={(roundOff) => patch({ roundOff })}
-            onRemoveItem={removeItem}
-            settings={settings}
-            totals={totals}
-          />
+        </div>
+      ),
+    },
+    {
+      value: "other-details",
+      label: "Other Details",
+      content: (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Field label="Sales ledger"><Input value={form.salesLedger} onChange={(event) => patch({ salesLedger: event.target.value })} /></Field>
         </div>
       ),
     },
@@ -343,11 +386,11 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
       toast.error("Customer name is required");
       return;
     }
-    if (form.items.length === 0) {
-      toast.error("Add at least one quotation item");
+    if (!form.items.length) {
+      toast.error("Add at least one item");
       return;
     }
-    onSubmit({ ...form, roundOff: totals.roundOff }, printAfter);
+    onSubmit(form, printAfter);
   }
 
   return (
@@ -356,90 +399,39 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
       description="Create or update a tenant-isolated quotation voucher."
       actions={<Button className="h-9 rounded-md" onClick={onBack} type="button" variant="outline"><X className="size-4" />Cancel</Button>}
     >
-      <div className="rounded-md border border-border/70 bg-card/95 shadow-sm">
-        <div className="border-b border-border/70 px-6 pt-1">
-          <WorkspaceAnimatedTabs tabs={tabs} value={activeTab} onValueChange={setActiveTab} listClassName="rounded-none border-0 bg-transparent shadow-none" contentClassName="px-0 pb-6" />
-        </div>
+      <WorkspaceFormSurface>
+        <WorkspaceFormTabbedBody className="border-b border-border/90 pb-6">
+          <WorkspaceAnimatedTabs
+            tabs={tabs}
+            value={activeTab}
+            onValueChange={setActiveTab}
+            contentClassName="px-0"
+          />
+        </WorkspaceFormTabbedBody>
         {errorMessage ? <div className="mx-6 mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div> : null}
-        <div className="border-t border-border/70 px-6 py-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button disabled={loading} onClick={() => submit()} type="button"><Save className="size-4" />Save</Button>
-            <Button disabled={loading} onClick={() => submit(true)} type="button" variant="outline"><Printer className="size-4" />Save & Print</Button>
-            <Button onClick={onBack} type="button" variant="outline"><X className="size-4" />Cancel</Button>
-          </div>
-        </div>
-      </div>
+        <QuotationItemsSection
+          draft={itemDraft}
+          editing={editingItemIndex !== null}
+          items={form.items}
+          settings={settings}
+          taxType={form.taxType}
+          onAdd={addOrUpdateItem}
+          onDraftChange={patchDraft}
+          onEdit={editItem}
+          onRemove={removeItem}
+          onReset={resetDraft}
+        />
+        <WorkspaceFormActions>
+          <Button disabled={loading} onClick={() => submit()} type="button"><Save className="size-4" />Save</Button>
+          <Button disabled={loading} onClick={() => submit(true)} type="button" variant="outline"><Printer className="size-4" />Save & Print</Button>
+          <Button onClick={onBack} type="button" variant="outline"><X className="size-4" />Cancel</Button>
+        </WorkspaceFormActions>
+      </WorkspaceFormSurface>
     </WorkspacePage>
   );
 }
 
-function QuotationItemsEditor({ draftItem, form, onAddItem, onPatchItem, onRemoveItem, onRoundOffChange, readOnly = false, settings, totals }: { draftItem: QuotationLineItemInput; form: QuotationSavePayload; onAddItem: () => void; onPatchItem: (next: Partial<QuotationLineItemInput>) => void; onRemoveItem: (index: number) => void; onRoundOffChange: (roundOff: number) => void; readOnly?: boolean; settings: BillingDocumentLayoutSettings; totals: ReturnType<typeof buildClientTotals> }) {
-  const showSplitTax = form.taxType !== "igst";
-  return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-semibold underline underline-offset-2">Quotation Items</h2>
-      {readOnly ? null : (
-        <div className="grid gap-2" style={{ gridTemplateColumns: `minmax(220px, 2fr) minmax(180px, 1.2fr) ${settings.usePo ? "minmax(120px, .8fr) " : ""}${settings.useDc ? "minmax(120px, .8fr) " : ""}${settings.useColour ? "minmax(130px, .8fr) " : ""}${settings.useSize ? "minmax(120px, .7fr) " : ""}minmax(90px, .6fr) minmax(110px, .7fr) 74px` }}>
-          <LineField label="Product name"><Input value={draftItem.productName} onChange={(event) => onPatchItem({ productName: event.target.value })} /></LineField>
-          <LineField label="Description"><Input value={draftItem.description} onChange={(event) => onPatchItem({ description: event.target.value })} /></LineField>
-          {settings.usePo ? <LineField label="PO"><Input value={draftItem.poNo} onChange={(event) => onPatchItem({ poNo: event.target.value })} /></LineField> : null}
-          {settings.useDc ? <LineField label="DC"><Input value={draftItem.dcNo} onChange={(event) => onPatchItem({ dcNo: event.target.value })} /></LineField> : null}
-          {settings.useColour ? <LineField label="Colour"><Input value={draftItem.colour} onChange={(event) => onPatchItem({ colour: event.target.value })} /></LineField> : null}
-          {settings.useSize ? <LineField label="Size"><Input value={draftItem.size} onChange={(event) => onPatchItem({ size: event.target.value })} /></LineField> : null}
-          <LineField label="Quantity"><Input min={0} type="number" value={draftItem.quantity} onChange={(event) => onPatchItem({ quantity: Number(event.target.value) })} /></LineField>
-          <LineField label="Price"><Input min={0} step="0.01" type="number" value={draftItem.rate} onChange={(event) => onPatchItem({ rate: Number(event.target.value) })} /></LineField>
-          <div className="flex items-end"><Button className="h-11 w-full rounded-md" onClick={onAddItem} type="button"><Plus className="size-4" />Add</Button></div>
-        </div>
-      )}
-      <div className="overflow-x-auto rounded-md border border-border/70">
-        <table className="w-full min-w-[980px] border-collapse text-sm">
-          <thead className="bg-muted/40">
-            <tr>
-              {["#", "Particulars", "HSN Code", settings.usePo ? "PO" : "", settings.useDc ? "DC" : "", settings.useColour ? "Colour" : "", settings.useSize ? "Size" : "", "Qty", "Rate", "Unit", "Taxable", "GST %", showSplitTax ? "CGST" : "IGST", showSplitTax ? "SGST" : "", "Total", readOnly ? "" : "Action"].filter(Boolean).map((heading) => (
-                <th key={heading} className="border-b border-border/70 px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground">{heading}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {totals.items.map((item, index) => (
-              <tr key={`${item.productName}-${index}`} className="border-b border-border/70 last:border-0">
-                <td className="px-3 py-2.5">{index + 1}</td>
-                <td className="px-3 py-2.5 font-medium">{item.productName}</td>
-                <td className="px-3 py-2.5">{item.hsnCode || "-"}</td>
-                {settings.usePo ? <td className="px-3 py-2.5">{item.poNo || "-"}</td> : null}
-                {settings.useDc ? <td className="px-3 py-2.5">{item.dcNo || "-"}</td> : null}
-                {settings.useColour ? <td className="px-3 py-2.5">{item.colour || "-"}</td> : null}
-                {settings.useSize ? <td className="px-3 py-2.5">{item.size || "-"}</td> : null}
-                <td className="px-3 py-2.5 text-right">{item.quantity}</td>
-                <td className="px-3 py-2.5 text-right">{formatMoney(item.rate)}</td>
-                <td className="px-3 py-2.5">{item.unit}</td>
-                <td className="px-3 py-2.5 text-right">{formatMoney(item.taxableAmount)}</td>
-                <td className="px-3 py-2.5 text-right">{item.taxRate}%</td>
-                <td className="px-3 py-2.5 text-right">{formatMoney(showSplitTax ? item.cgstAmount : item.igstAmount)}</td>
-                {showSplitTax ? <td className="px-3 py-2.5 text-right">{formatMoney(item.sgstAmount)}</td> : null}
-                <td className="px-3 py-2.5 text-right font-semibold">{formatMoney(item.lineTotal)}</td>
-                {readOnly ? null : <td className="px-3 py-2.5"><Button className="size-8 rounded-md" onClick={() => onRemoveItem(index)} size="icon" type="button" variant="ghost"><Trash2 className="size-4 text-destructive" /></Button></td>}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {totals.items.length === 0 ? <WorkspaceTableEmptyState>No quotation items added.</WorkspaceTableEmptyState> : null}
-      </div>
-      <div className="ml-auto grid max-w-md gap-3 text-sm">
-        <TotalLine label="Taxable amount" value={formatMoney(totals.subtotal)} />
-        <TotalLine label="GST total" value={formatMoney(totals.taxAmount)} />
-        <div className="grid grid-cols-[1fr_auto_140px] items-center gap-3">
-          <span className="text-muted-foreground">Round off</span><span>:</span>
-          <Input className="h-9 text-right" disabled={readOnly} step="0.01" type="number" value={form.roundOff ?? 0} onChange={(event) => onRoundOffChange(Number(event.target.value))} />
-        </div>
-        <TotalLine strong label="Grand total" value={formatMoney(totals.amount)} />
-      </div>
-    </div>
-  );
-}
-
-function QuotationShowPage({ onBack, onEdit, onNew, onPrint, quotation, settings }: { onBack: () => void; onEdit: () => void; onNew: () => void; onPrint: () => void; quotation: Quotation; settings: BillingDocumentLayoutSettings }) {
-  const totals = buildClientTotals(quotationToPayload(quotation));
+function QuotationShowPage({ onBack, onEdit, onNew, onPrint, quotation }: { onBack: () => void; onEdit: () => void; onNew: () => void; onPrint: () => void; quotation: Quotation }) {
   return (
     <WorkspacePage
       title={quotation.quotationNumber}
@@ -461,7 +453,6 @@ function QuotationShowPage({ onBack, onEdit, onNew, onPrint, quotation, settings
             <Detail label="Work order" value={quotation.workOrderNo || "-"} />
             <Detail label="Sales ledger" value={quotation.salesLedger || "-"} />
           </div>
-          <div className="mt-6"><QuotationItemsReadOnly form={quotationToPayload(quotation)} settings={settings} totals={totals} /></div>
         </div>
         <div className="space-y-4">
           <div className="rounded-md border border-border/70 bg-card/95 p-5 shadow-sm">
@@ -478,55 +469,134 @@ function QuotationShowPage({ onBack, onEdit, onNew, onPrint, quotation, settings
   );
 }
 
-function QuotationItemsReadOnly({ form, settings, totals }: { form: QuotationSavePayload; settings: BillingDocumentLayoutSettings; totals: ReturnType<typeof buildClientTotals> }) {
-  return (
-    <QuotationItemsEditor
-      draftItem={createEmptyQuotationItem()}
-      form={form}
-      onAddItem={() => undefined}
-      onPatchItem={() => undefined}
-      onRoundOffChange={() => undefined}
-      onRemoveItem={() => undefined}
-      readOnly
-      settings={settings}
-      totals={totals}
-    />
-  );
-}
+function QuotationItemsSection({
+  draft,
+  editing,
+  items,
+  settings,
+  taxType,
+  onAdd,
+  onDraftChange,
+  onEdit,
+  onRemove,
+  onReset,
+}: {
+  draft: QuotationSavePayload["items"][number];
+  editing: boolean;
+  items: QuotationSavePayload["items"];
+  settings: BillingDocumentLayoutSettings;
+  taxType: QuotationTaxType;
+  onAdd: () => void;
+  onDraftChange: (next: Partial<QuotationSavePayload["items"][number]>) => void;
+  onEdit: (index: number) => void;
+  onRemove: (index: number) => void;
+  onReset: () => void;
+}) {
+  const showPo = settings.usePo;
+  const showDc = settings.useDc;
+  const showColour = settings.useColour;
+  const showSize = settings.useSize;
+  const totals = computeQuotationTotals(items, taxType);
+  const templateColumns = [
+    ...(showPo ? ["minmax(6.5rem,0.7fr)"] : []),
+    ...(showDc ? ["minmax(6.5rem,0.7fr)"] : []),
+    "minmax(16rem,2fr)",
+    "minmax(14rem,1.2fr)",
+    ...(showColour ? ["minmax(7rem,0.8fr)"] : []),
+    ...(showSize ? ["minmax(7rem,0.8fr)"] : []),
+    "minmax(6rem,0.7fr)",
+    "minmax(7rem,0.7fr)",
+    "auto",
+  ].join(" ");
 
-function buildClientTotals(form: QuotationSavePayload) {
-  const isSplitTax = form.taxType !== "igst";
-  const items = form.items.map((item, index) => {
-    const taxableAmount = roundMoney(Number(item.quantity || 0) * Number(item.rate || 0));
-    const taxAmount = roundMoney((taxableAmount * Number(item.taxRate || 0)) / 100);
-    const splitTaxAmount = roundMoney(taxAmount / 2);
-    return {
-      ...item,
-      cgstAmount: isSplitTax ? splitTaxAmount : 0,
-      id: `item-${index + 1}`,
-      igstAmount: isSplitTax ? 0 : taxAmount,
-      lineTotal: roundMoney(taxableAmount + taxAmount),
-      sgstAmount: isSplitTax ? splitTaxAmount : 0,
-      taxableAmount,
-      taxAmount,
-    };
-  });
-  const subtotal = roundMoney(items.reduce((sum, item) => sum + item.taxableAmount, 0));
-  const taxAmount = roundMoney(items.reduce((sum, item) => sum + item.taxAmount, 0));
-  const roundOff = Number(form.roundOff ?? 0);
-  return { amount: roundMoney(subtotal + taxAmount + roundOff), items, roundOff, subtotal, taxAmount };
+  return (
+    <div className="px-6 pb-5">
+      <div className="border-t border-border/70 pt-5">
+        <h3 className="text-[1.65rem] font-semibold tracking-normal text-foreground">Quotation Items</h3>
+        <div className="mt-4 overflow-x-auto">
+          <div className="min-w-[980px]">
+            <div className="grid gap-2" style={{ gridTemplateColumns: templateColumns }}>
+              {showPo ? <Field label="PO"><Input value={draft.poNo} onChange={(event) => onDraftChange({ poNo: event.target.value })} /></Field> : null}
+              {showDc ? <Field label="DC"><Input value={draft.dcNo} onChange={(event) => onDraftChange({ dcNo: event.target.value })} /></Field> : null}
+              <Field label="Product name"><Input value={draft.productName} onChange={(event) => onDraftChange({ productName: event.target.value })} /></Field>
+              <Field label="Description"><Input value={draft.description} onChange={(event) => onDraftChange({ description: event.target.value })} /></Field>
+              {showColour ? <Field label="Colour"><Input placeholder="Search colour" value={draft.colour} onChange={(event) => onDraftChange({ colour: event.target.value })} /></Field> : null}
+              {showSize ? <Field label="Size"><Input placeholder="Search size" value={draft.size} onChange={(event) => onDraftChange({ size: event.target.value })} /></Field> : null}
+              <Field label="Quantity"><Input min="1" type="number" value={String(draft.quantity)} onChange={(event) => onDraftChange({ quantity: Number(event.target.value || 0) })} /></Field>
+              <Field label="Price"><Input min="0" step="0.01" type="number" value={String(draft.rate)} onChange={(event) => onDraftChange({ rate: Number(event.target.value || 0) })} /></Field>
+              <div className="flex items-end gap-2 pb-0.5">
+                <Button className="h-11 rounded-md px-4" type="button" variant="outline" onClick={onAdd}>
+                  <Plus className="size-4" />
+                  {editing ? "Update" : "Add"}
+                </Button>
+                {editing ? <Button className="h-11 rounded-md px-4" type="button" variant="outline" onClick={onReset}><X className="size-4" />Cancel</Button> : null}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-5 overflow-x-auto rounded-md border border-border/70">
+          <table className="w-full min-w-[1120px] border-collapse text-sm">
+            <thead className="bg-muted/30">
+              <tr>
+                {["#", ...(showPo ? ["PO"] : []), ...(showDc ? ["DC"] : []), "Particulars", "HSN Code", ...(showColour ? ["Colour"] : []), ...(showSize ? ["Size"] : []), "Qty", "Rate", "Unit", "Taxable", "GST %", "CGST", "SGST", "Total", "Action"].map((heading) => (
+                  <th key={heading} className="border-b border-r border-border/70 px-3 py-2 text-left text-sm font-medium text-muted-foreground last:border-r-0">{heading}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, index) => {
+                const line = computeQuotationLine(item, taxType);
+                return (
+                  <tr key={`${item.productName}-${index}`} className="border-b border-border/70 last:border-b-0">
+                    <td className="border-r border-border/70 px-3 py-2">{index + 1}</td>
+                    {showPo ? <td className="border-r border-border/70 px-3 py-2">{item.poNo || "-"}</td> : null}
+                    {showDc ? <td className="border-r border-border/70 px-3 py-2">{item.dcNo || "-"}</td> : null}
+                    <td className="border-r border-border/70 px-3 py-2">{item.productName}</td>
+                    <td className="border-r border-border/70 px-3 py-2">{item.hsnCode || "-"}</td>
+                    {showColour ? <td className="border-r border-border/70 px-3 py-2">{item.colour || "-"}</td> : null}
+                    {showSize ? <td className="border-r border-border/70 px-3 py-2">{item.size || "-"}</td> : null}
+                    <td className="border-r border-border/70 px-3 py-2">{item.quantity}</td>
+                    <td className="border-r border-border/70 px-3 py-2 text-right">{formatMoney(item.rate)}</td>
+                    <td className="border-r border-border/70 px-3 py-2">{item.unit || "Nos"}</td>
+                    <td className="border-r border-border/70 px-3 py-2 text-right">{formatMoney(line.taxableAmount)}</td>
+                    <td className="border-r border-border/70 px-3 py-2">{item.taxRate}%</td>
+                    <td className="border-r border-border/70 px-3 py-2 text-right">{formatMoney(line.cgstAmount)}</td>
+                    <td className="border-r border-border/70 px-3 py-2 text-right">{formatMoney(line.sgstAmount + line.igstAmount)}</td>
+                    <td className="border-r border-border/70 px-3 py-2 text-right font-semibold">{formatMoney(line.lineTotal)}</td>
+                    <td className="px-2 py-2">
+                      <div className="flex items-center justify-center gap-2">
+                        <button className="rounded-md border border-border/70 p-1.5 text-muted-foreground hover:bg-muted" type="button" onClick={() => onEdit(index)}><Pencil className="size-4" /></button>
+                        <button className="rounded-md border border-red-200 p-1.5 text-red-600 hover:bg-red-50" type="button" onClick={() => onRemove(index)}><Trash2 className="size-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!items.length ? (
+                <tr>
+                  <td className="px-3 py-6 text-center text-sm text-muted-foreground" colSpan={11 + (showPo ? 1 : 0) + (showDc ? 1 : 0) + (showColour ? 1 : 0) + (showSize ? 1 : 0)}>
+                    Add quotation items to see them here.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-6 flex justify-end">
+          <div className="grid w-full max-w-[25rem] gap-3 text-sm">
+            <TotalRow label="Taxable amount" value={formatMoney(totals.taxableAmount)} />
+            <TotalRow label="GST total" value={formatMoney(totals.taxAmount)} />
+            <TotalRow label="Round off" value={formatMoney(0)} />
+            <TotalRow label="Grand total" strong value={formatMoney(totals.amount)} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Field({ children, label, required }: { children: ReactNode; label: string; required?: boolean }) {
   return <label className="block space-y-2 text-sm font-medium text-muted-foreground">{label}{required ? <span className="text-destructive"> *</span> : null}{children}</label>;
-}
-
-function LineField({ children, label }: { children: ReactNode; label: string }) {
-  return <label className="block space-y-1.5 text-sm font-medium text-muted-foreground">{label}{children}</label>;
-}
-
-function TotalLine({ label, strong, value }: { label: string; strong?: boolean; value: string }) {
-  return <div className="grid grid-cols-[1fr_auto_140px] items-center gap-3"><span className={cn("text-muted-foreground", strong && "font-semibold text-foreground")}>{label}</span><span>:</span><span className={cn("text-right", strong && "font-semibold")}>{value}</span></div>;
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
@@ -538,6 +608,44 @@ function StatusPill({ status }: { status: Quotation["status"] }) {
   return <span className={cn("inline-flex h-7 items-center rounded-full border px-3 text-xs font-semibold capitalize", tone)}>{status}</span>;
 }
 
-function roundMoney(value: number) {
-  return Math.round(value * 100) / 100;
+function computeQuotationLine(item: QuotationSavePayload["items"][number], taxType: QuotationTaxType) {
+  const taxableAmount = Number(item.quantity || 0) * Number(item.rate || 0);
+  const taxAmount = taxableAmount * Number(item.taxRate || 0) / 100;
+  const igstAmount = taxType === "igst" ? taxAmount : 0;
+  const cgstAmount = taxType === "cgst-sgst" ? taxAmount / 2 : 0;
+  const sgstAmount = taxType === "cgst-sgst" ? taxAmount / 2 : 0;
+  return {
+    amount: taxableAmount + taxAmount,
+    cgstAmount,
+    igstAmount,
+    lineTotal: taxableAmount + taxAmount,
+    sgstAmount,
+    taxAmount,
+    taxableAmount,
+  };
 }
+
+function computeQuotationTotals(items: QuotationSavePayload["items"], taxType: QuotationTaxType) {
+  return items.reduce(
+    (totals, item) => {
+      const line = computeQuotationLine(item, taxType);
+      return {
+        amount: totals.amount + line.amount,
+        taxAmount: totals.taxAmount + line.taxAmount,
+        taxableAmount: totals.taxableAmount + line.taxableAmount,
+      };
+    },
+    { amount: 0, taxAmount: 0, taxableAmount: 0 },
+  );
+}
+
+function TotalRow({ label, strong, value }: { label: string; strong?: boolean; value: string }) {
+  return (
+    <div className={cn("grid grid-cols-[1fr_auto_auto] items-center gap-4", strong && "font-semibold")}>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-muted-foreground">:</span>
+      <span className="text-right">{value}</span>
+    </div>
+  );
+}
+

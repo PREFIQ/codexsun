@@ -93,7 +93,20 @@ export function appMenuFor(appId: PlatformAppId, activePage: string, onSelect: (
       title: "Billing",
       items: [
         { title: "Overview", isActive: activePage === "billing.overview", onSelect: () => onSelect("billing.overview") },
+        { title: "Quotation", isActive: activePage === "billing.quotation", onSelect: () => onSelect("billing.quotation") },
         { title: "Sales", isActive: activePage === "billing.sales", onSelect: () => onSelect("billing.sales") },
+        { title: "Purchase", isActive: activePage === "billing.purchase", onSelect: () => onSelect("billing.purchase") },
+        { title: "Export Sales", isActive: activePage === "billing.export-sales", onSelect: () => onSelect("billing.export-sales") },
+        {
+          icon: PackageIcon,
+          title: "Master",
+          isActive: activePage === "core.master.contact" || activePage === "core.master.product" || activePage === "core.master.work-order",
+          items: [
+            { title: "Contact", isActive: activePage === "core.master.contact", onSelect: () => onSelect("core.master.contact") },
+            { title: "Product", isActive: activePage === "core.master.product", onSelect: () => onSelect("core.master.product") },
+            { title: "Work Order", isActive: activePage === "core.master.work-order", onSelect: () => onSelect("core.master.work-order") }
+          ]
+        },
         {
           title: "Common",
           isActive: activePage.startsWith("core.common"),
@@ -172,13 +185,27 @@ export function appMenuFor(appId: PlatformAppId, activePage: string, onSelect: (
 
   return {
     icon: Building2Icon,
-    isActive: activePage.startsWith("application"),
+    isActive: activePage.startsWith("application") || activePage === "core.organisation.company",
     title: "Application",
     items: [
       { title: "Overview", isActive: activePage === "application.overview", onSelect: () => onSelect("application.overview") },
-      { title: "Landing Desk", isActive: activePage === "application.landing", onSelect: () => onSelect("application.landing") },
-      { title: "Platform Profile", isActive: activePage === "application.profile", onSelect: () => onSelect("application.profile") },
-      { title: "Settings", isActive: activePage === "application.settings", onSelect: () => onSelect("application.settings") }
+      {
+        title: "Application",
+        isActive: activePage === "application.landing" || activePage === "application.profile" || activePage === "application.settings",
+        items: [
+          { title: "Landing Desk", isActive: activePage === "application.landing", onSelect: () => onSelect("application.landing") },
+          { title: "Platform Profile", isActive: activePage === "application.profile", onSelect: () => onSelect("application.profile") },
+          { title: "Settings", isActive: activePage === "application.settings", onSelect: () => onSelect("application.settings") }
+        ]
+      },
+      {
+        icon: Building2Icon,
+        title: "Organisation",
+        isActive: activePage === "core.organisation.company",
+        items: [
+          { title: "Company", isActive: activePage === "core.organisation.company", onSelect: () => onSelect("core.organisation.company") }
+        ]
+      }
     ]
   };
 }
@@ -194,13 +221,31 @@ export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSele
       },
       {
         icon: ReceiptTextIcon,
-        isActive: activePage === "billing.quotation" || activePage === "billing.sales" || activePage === "billing.settings" || activePage === "billing.document-settings",
+        isActive:
+          activePage === "billing.quotation" ||
+          activePage === "billing.sales" ||
+          activePage === "billing.purchase" ||
+          activePage === "billing.export-sales" ||
+          activePage === "billing.settings" ||
+          activePage === "billing.document-settings",
         title: "Billing",
         items: [
           { title: "Quotation", isActive: activePage === "billing.quotation", onSelect: () => onSelect("billing.quotation") },
           { title: "Sales", isActive: activePage === "billing.sales", onSelect: () => onSelect("billing.sales") },
+          { title: "Purchase", isActive: activePage === "billing.purchase", onSelect: () => onSelect("billing.purchase") },
+          { title: "Export Sales", isActive: activePage === "billing.export-sales", onSelect: () => onSelect("billing.export-sales") },
           { title: "Billing Settings", isActive: activePage === "billing.settings", onSelect: () => onSelect("billing.settings") },
           { title: "Document Settings", isActive: activePage === "billing.document-settings", onSelect: () => onSelect("billing.document-settings") }
+        ]
+      },
+      {
+        icon: PackageIcon,
+        isActive: activePage === "core.master.contact" || activePage === "core.master.product" || activePage === "core.master.work-order",
+        title: "Master",
+        items: [
+          { title: "Contact", isActive: activePage === "core.master.contact", onSelect: () => onSelect("core.master.contact") },
+          { title: "Product", isActive: activePage === "core.master.product", onSelect: () => onSelect("core.master.product") },
+          { title: "Work Order", isActive: activePage === "core.master.work-order", onSelect: () => onSelect("core.master.work-order") }
         ]
       },
       {
@@ -290,12 +335,20 @@ export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSele
     },
     {
       icon: Building2Icon,
-      isActive: activePage.startsWith("application") && activePage !== "application.overview",
+      isActive: activePage === "application.landing" || activePage === "application.profile" || activePage === "application.settings",
       title: "Application",
       items: [
         { title: "Landing Desk", isActive: activePage === "application.landing", onSelect: () => onSelect("application.landing") },
         { title: "Platform Profile", isActive: activePage === "application.profile", onSelect: () => onSelect("application.profile") },
         { title: "Settings", isActive: activePage === "application.settings", onSelect: () => onSelect("application.settings") }
+      ]
+    },
+    {
+      icon: Building2Icon,
+      isActive: activePage === "core.organisation.company",
+      title: "Organisation",
+      items: [
+        { title: "Company", isActive: activePage === "core.organisation.company", onSelect: () => onSelect("core.organisation.company") }
       ]
     }
   ];

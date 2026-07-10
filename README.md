@@ -12,8 +12,11 @@ version/changelog tooling.
 
 ```bash
 npm install
-npm run dev:platform
+npm run dev:api
+npm run dev:web
 ```
+
+Run API and web in separate terminals. During frontend-only work, keep `dev:api` running and restart only `dev:web`.
 
 Install dependencies only from this repository root. All apps, packages, and
 tools resolve dependencies from the root `node_modules`; workspace-local

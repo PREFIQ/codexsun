@@ -2,6 +2,7 @@ import { Kysely, MysqlDialect } from "kysely";
 import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
 import { env } from "../env.js";
+import { migrateEntriesModule } from "../modules/entries/index.js";
 import { migrateQuotationModule } from "../modules/quotation/quotation.migration.js";
 import { migrateSalesModule } from "../modules/sales/sales.migration.js";
 import { seedSalesModule } from "../modules/sales/sales.seed.js";
@@ -62,6 +63,7 @@ export async function bootstrapBillingDatabase(databaseName = env.DB_MASTER_NAME
 async function bootstrapBillingDatabaseOnce(name: string) {
   await ensureDatabase(name);
   const db = openBillingDatabase(name);
+  await migrateEntriesModule(db);
   await migrateSalesModule(db);
   await migrateQuotationModule(db);
   await migrateBillingSettingsModule(db);

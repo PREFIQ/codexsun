@@ -17,7 +17,7 @@ export default defineConfig({
     trace: "on-first-retry"
   },
   webServer: {
-    command: "npm run dev:platform",
+    command: "node tools/dev-stack.mjs platform",
     cwd: "../../..",
     reuseExistingServer: true,
     timeout: 120_000,

@@ -1,2 +1,1 @@
-export { BillingSettingsWorkspace } from "./billing-settings.workspace";
-export { DocumentSettingsWorkspace } from "./document-settings.workspace";
+export * from "@codexsun/billing-web/modules/billing-settings";

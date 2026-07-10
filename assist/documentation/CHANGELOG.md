@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.9
+Current version: 1.0.10
 
-Release tag: v-1.0.9
+Release tag: v-1.0.10
 
-Changelog label: v 1.0.9
+Changelog label: v 1.0.10
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,26 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.10
+
+### [v 1.0.10] 2026-07-10 12:00 pm - Core Work Order Module Ownership
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Added the protected Work Order placeholder seed (`WO-0000`) for `core_master_work_orders`.
+- Aligned master-record protection so global and placeholder records are blocked consistently in update, status, and force-delete flows.
+
+#### App Codebase Changes
+
+- Moved Work Order out of the shared master workspace/list wrappers into module-owned `work-order` workspace, list, form, hooks, services, and definition files.
+- Flattened the Work Order form into one owned panel and removed inherited Contact/Product tabs.
+- Removed Contact lookup and Contact list column from Work Order so the module no longer feels coupled to Contact master behavior.
+- Kept Work Order name and code as edit links for editable rows while protected rows render plain text with the protected indicator.
+- Removed Work Order-specific branches from the shared master workspace so future Contact/Product changes do not bleed into Work Order.
+- Verified the refactor with Core Web and Platform Web type checks.
+- Bumped workspace version to 1.0.10.
 
 ## v-1.0.9
 

@@ -3,7 +3,7 @@ import { AppLayout } from "@codexsun/ui/layouts/app-layout";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
 import type { SidebarBrand } from "@codexsun/ui/blocks/menu/sidemenu/app-sidebar";
 import type { TopMenuWorkspaceItem } from "@codexsun/ui/blocks/menu/sidemenu/top-menu";
-import { FileTextIcon, HomeIcon, LayoutDashboardIcon, ReceiptTextIcon, SettingsIcon } from "lucide-react";
+import { FileTextIcon, HomeIcon, LayoutDashboardIcon, ReceiptTextIcon, SettingsIcon, ShoppingCartIcon, ShipWheelIcon } from "lucide-react";
 
 const billingBrand: SidebarBrand = {
   href: "/billing",
@@ -68,6 +68,32 @@ export function BillingLayout({
       url: "/billing/quotation",
     },
     {
+      icon: ShoppingCartIcon,
+      isActive: currentPath.startsWith("/billing/purchase"),
+      items: [
+        {
+          isActive: currentPath === "/billing/purchase",
+          title: "Purchase list",
+          url: "/billing/purchase",
+        },
+      ],
+      title: "Purchase",
+      url: "/billing/purchase",
+    },
+    {
+      icon: ShipWheelIcon,
+      isActive: currentPath.startsWith("/billing/export-sales"),
+      items: [
+        {
+          isActive: currentPath === "/billing/export-sales",
+          title: "Export sales list",
+          url: "/billing/export-sales",
+        },
+      ],
+      title: "Export Sales",
+      url: "/billing/export-sales",
+    },
+    {
       icon: SettingsIcon,
       isActive: currentPath.startsWith("/billing/settings"),
       items: [
@@ -100,6 +126,8 @@ export function BillingLayout({
         { icon: HomeIcon, title: "Billing home", url: "/billing" },
         { icon: ReceiptTextIcon, title: "Sales", url: "/billing/sales" },
         { icon: FileTextIcon, title: "Quotation", url: "/billing/quotation" },
+        { icon: ShoppingCartIcon, title: "Purchase", url: "/billing/purchase" },
+        { icon: ShipWheelIcon, title: "Export Sales", url: "/billing/export-sales" },
         { icon: SettingsIcon, title: "Bill settings", url: "/billing/settings/sales" },
       ]}
       versionLabel="v 1.0.7"

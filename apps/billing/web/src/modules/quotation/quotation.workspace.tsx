@@ -1,5 +1,5 @@
-import { QuotationPage } from "./quotation.page";
+import { QuotationWorkspace as QuotationModuleWorkspace } from "./quotation.page";
 
 export function QuotationWorkspace() {
-  return <QuotationPage />;
+  return <QuotationModuleWorkspace />;
 }

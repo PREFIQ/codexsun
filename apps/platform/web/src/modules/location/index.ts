@@ -1,2 +1,1 @@
-export { LocationWorkspace } from "./location.workspace"
-export type { LocationKind } from "./location.types"
+export * from "@codexsun/core-web/modules/location";

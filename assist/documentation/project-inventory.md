@@ -106,9 +106,8 @@ shared styling.
 Important root commands:
 
 ```text
-npm run dev
-npm run dev:platform
-npm run dev:all
+npm run dev:api
+npm run dev:web
 npm run build
 npm run typecheck
 npm run lint

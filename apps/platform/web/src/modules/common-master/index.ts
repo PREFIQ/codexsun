@@ -1,2 +1,1 @@
-export * from "./common-master.types";
-export * from "./common-master.workspace";
+export * from "@codexsun/core-web/modules/common-master";

@@ -19,10 +19,14 @@ export { WorkspaceProtectedIndicator } from "./protected-indicator"
 export { WorkspaceShowLayout, WorkspaceShowCard, WorkspaceDetailTable } from "./show"
 export {
   WorkspaceUpsertPage,
+  WorkspaceFormActions,
+  WorkspaceFormBody,
   WorkspaceFormPanel,
   WorkspaceFormGrid,
   WorkspaceFormField,
   WorkspaceFormFooter,
+  WorkspaceFormSurface,
+  WorkspaceFormTabbedBody,
   WorkspaceUpsertDialog,
 } from "./upsert"
 export { WorkspaceLineTable, WorkspaceLineTableHeader } from "./line-table"

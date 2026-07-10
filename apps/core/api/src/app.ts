@@ -4,7 +4,8 @@ import { bootstrapCoreDatabase, closeCoreDatabase } from "./database/core-databa
 import { env } from "./env.js";
 import { commonModule } from "./modules/common/index.js";
 import { locationModules } from "./modules/common/location/location.module.js";
-import { entriesModule } from "./modules/entries/index.js";
+import { masterModule } from "./modules/master/index.js";
+import { organisationModule } from "./modules/organisation/index.js";
 
 export async function createApp() {
   await bootstrapCoreDatabase();
@@ -27,7 +28,7 @@ export async function createApp() {
       name: "core-api",
       check: () => ({
         details: {
-          modules: [commonModule.key, entriesModule.key, ...locationModules.map((module) => module.key)],
+          modules: [commonModule.key, organisationModule.key, masterModule.key, ...locationModules.map((module) => module.key)],
           runtime: "core-foundation"
         },
         status: "ok"
@@ -38,7 +39,8 @@ export async function createApp() {
   registerRequestLogging(app);
   registerHealthRoute(app, healthChecks);
   await commonModule.register(app);
-  await entriesModule.register(app);
+  await organisationModule.register(app);
+  await masterModule.register(app);
 
   return app;
 }

@@ -24,7 +24,12 @@ import { getTenantRuntime } from "../../modules/tenant/tenant.services";
 import { LocationWorkspace, type LocationKind } from "../../modules/location";
 import { CommonMasterWorkspace } from "../../modules/common-master";
 import { commonMasterDefinitions } from "../../modules/common/registry";
-import { BillingEntriesWorkspace } from "../../modules/entries";
+import { ContactWorkspace, ProductWorkspace, WorkOrderWorkspace } from "../../modules/master";
+import { CompanyWorkspace } from "../../modules/organisation";
+import { QuotationWorkspace } from "../../modules/quotation/quotation.workspace";
+import { SalesWorkspace } from "../../modules/sales/sales.workspace";
+import { PurchaseWorkspace } from "../../modules/purchase/purchase.workspace";
+import { ExportSalesWorkspace } from "../../modules/export-sales/export-sales.workspace";
 import { AccountsSettingsWorkspace, AccountsWorkspace } from "../../modules/accounts";
 import { BillingSettingsWorkspace, DocumentSettingsWorkspace } from "../../modules/billing-settings";
 import { getToken, setTenantDbName, setTenantId } from "../../shared/api/platform-api";
@@ -37,6 +42,8 @@ type AppPage =
   | "billing.overview"
   | "billing.quotation"
   | "billing.sales"
+  | "billing.purchase"
+  | "billing.export-sales"
   | "billing.settings"
   | "billing.document-settings"
   | "accounts.overview"
@@ -61,6 +68,10 @@ type AppPage =
   | "core.common.location.districts"
   | "core.common.location.cities"
   | "core.common.location.pincodes"
+  | "core.organisation.company"
+  | "core.master.contact"
+  | "core.master.product"
+  | "core.master.work-order"
   | `core.common.${"contacts" | "others" | "products" | "workorder"}.${string}`;
 const LANDING_APP_STORAGE_KEY = "codexsun.tenant.landing-app.live";
 
@@ -81,7 +92,7 @@ export function AppDesk() {
   const landingApp = publishedLandingApp && enabledApps.includes(publishedLandingApp) ? publishedLandingApp : runtimeLandingApp;
   const activeApp = appFromPage(page, landingApp, switchableApps);
   const safePage =
-    ((page.startsWith("billing") || page.startsWith("core")) && !switchableApps.includes("billing")) ||
+    ((page.startsWith("billing") || (page.startsWith("core") && !page.startsWith("core.organisation"))) && !switchableApps.includes("billing")) ||
     (page.startsWith("accounts") && !switchableApps.includes("accounts"))
       ? pageForApp(landingApp)
       : page;
@@ -154,14 +165,20 @@ export function AppDesk() {
           {safePage === "application.profile" ? <ApplicationProfile /> : null}
           {safePage === "application.settings" ? <ApplicationSettings /> : null}
           {safePage === "billing.overview" ? <BillingOverview /> : null}
-          {safePage === "billing.quotation" ? <BillingEntriesWorkspace kind="quotation" /> : null}
+          {safePage === "billing.quotation" ? <QuotationWorkspace /> : null}
           {safePage === "billing.sales" ? <BillingSales /> : null}
+          {safePage === "billing.purchase" ? <PurchaseWorkspace /> : null}
+          {safePage === "billing.export-sales" ? <ExportSalesWorkspace /> : null}
           {safePage === "billing.settings" ? <BillingSettingsWorkspace /> : null}
           {safePage === "billing.document-settings" ? <DocumentSettingsWorkspace /> : null}
           {isAccountsPage(safePage) && safePage !== "accounts.settings" && !isAccountsSettingsPage(safePage) ? <AccountsWorkspace page={accountsWorkspacePage(safePage)} /> : null}
           {isAccountsSettingsPage(safePage) ? <AccountsSettings page={safePage} /> : null}
+          {safePage === "core.organisation.company" ? <CompanyWorkspace /> : null}
           {isCoreLocationPage(safePage) ? <LocationWorkspace kind={locationKindFromPage(safePage)} /> : null}
           {isCommonMasterPage(safePage) ? <CommonMasterWorkspace definition={definitionFromPage(safePage)} /> : null}
+          {safePage === "core.master.contact" ? <ContactWorkspace key={safePage} /> : null}
+          {safePage === "core.master.product" ? <ProductWorkspace key={safePage} /> : null}
+          {safePage === "core.master.work-order" ? <WorkOrderWorkspace key={safePage} /> : null}
         </main>
       </ApplicationLayout>
     </AuthGate>
@@ -186,6 +203,8 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "billing.quotation" ||
     key === "billing.desk" ||
     key === "billing.sales" ||
+    key === "billing.purchase" ||
+    key === "billing.export-sales" ||
     key === "billing.settings" ||
     key === "billing.document-settings" ||
     key === "accounts.overview" ||
@@ -210,6 +229,10 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "core.common.location.districts" ||
     key === "core.common.location.cities" ||
     key === "core.common.location.pincodes" ||
+    key === "core.organisation.company" ||
+    key === "core.master.contact" ||
+    key === "core.master.product" ||
+    key === "core.master.work-order" ||
     commonMasterDefinitions.some((definition) => pageKeyForCommonMaster(definition.path) === key)
   ) {
     return (key === "billing.desk" ? "billing.overview" : key) as AppPage;
@@ -474,7 +497,7 @@ function ApplicationSettings() {
 }
 
 function BillingSales() {
-  return <BillingEntriesWorkspace kind="sales" />;
+  return <SalesWorkspace />;
 }
 
 function BillingOverview() {
@@ -711,6 +734,10 @@ function isCommonMasterPage(page: AppPage): page is Extract<AppPage, `core.commo
   return commonMasterDefinitions.some((definition) => pageKeyForCommonMaster(definition.path) === page);
 }
 
+function isMasterPage(page: AppPage): page is Extract<AppPage, `core.master.${string}`> {
+  return page === "core.master.contact" || page === "core.master.product" || page === "core.master.work-order";
+}
+
 function definitionFromPage(page: Extract<AppPage, `core.common.${"contacts" | "others" | "products" | "workorder"}.${string}`>) {
   const definition = commonMasterDefinitions.find((item) => pageKeyForCommonMaster(item.path) === page);
   if (!definition) throw new Error(`Unknown common master page: ${page}`);
@@ -732,6 +759,8 @@ function titleForPage(page: AppPage) {
     "billing.overview": "Overview",
     "billing.quotation": "Quotation",
     "billing.sales": "Sales",
+    "billing.purchase": "Purchase",
+    "billing.export-sales": "Export Sales",
     "billing.settings": "Billing Settings",
     "billing.document-settings": "Document Settings",
     "accounts.overview": "Overview",
@@ -755,12 +784,17 @@ function titleForPage(page: AppPage) {
     "core.common.location.countries": "Countries",
     "core.common.location.districts": "Districts",
     "core.common.location.pincodes": "Pincodes",
-    "core.common.location.states": "States"
+    "core.common.location.states": "States",
+    "core.organisation.company": "Company",
+    "core.master.contact": "Contact",
+    "core.master.product": "Product",
+    "core.master.work-order": "Work Order"
   };
   return labels[page] ?? "Application";
 }
 
 function appFromPage(page: AppPage, landingApp: PlatformAppId, enabledApps: PlatformAppId[]): PlatformAppId {
+  if (page.startsWith("core.organisation")) return "application";
   if (page.startsWith("billing") || page.startsWith("core")) return enabledApps.includes("billing") ? "billing" : landingApp;
   if (page.startsWith("accounts")) return enabledApps.includes("accounts") ? "accounts" : landingApp;
   return "application";

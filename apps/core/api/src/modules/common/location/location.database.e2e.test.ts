@@ -216,7 +216,39 @@ describe.skipIf(!runDbE2e)("core common location database e2e", () => {
       url: "/core/common/location/pincodes"
     });
     expect(pincodeCreated.statusCode).toBe(200);
-    const pincode = (pincodeCreated.json() as { data: { id: string } }).data;
+    const pincode = (pincodeCreated.json() as {
+      data: {
+        cityId: string | null;
+        countryId: string | null;
+        districtId: string | null;
+        id: string;
+        pincode: string | null;
+        stateId: string | null;
+      }
+    }).data;
+    expect(pincode).toMatchObject({
+      cityId: chainCity.id,
+      countryId: country.id,
+      districtId: district.id,
+      pincode: "999999",
+      stateId: state.id
+    });
+
+    const cityPincodes = await app.inject({
+      headers: { "x-tenant-id": "tenant-alpha" },
+      method: "GET",
+      url: `/core/common/location/pincodes?cityId=${chainCity.id}`
+    });
+    expect(cityPincodes.statusCode).toBe(200);
+    const cityPincodeBody = cityPincodes.json() as {
+      data: Array<{ cityId: string | null; countryId: string | null; districtId: string | null; pincode: string | null; stateId: string | null }>
+    };
+    expect(cityPincodeBody.data.find((record) => record.pincode === "999999")).toMatchObject({
+      cityId: chainCity.id,
+      countryId: country.id,
+      districtId: district.id,
+      stateId: state.id
+    });
 
     const referencedCountryDelete = await app.inject({
       headers: { "x-tenant-id": "tenant-alpha" },

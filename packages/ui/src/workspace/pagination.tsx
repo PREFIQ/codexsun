@@ -38,11 +38,11 @@ export function WorkspacePagination({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2.5 rounded-md border border-border/70 bg-card/95 px-4 py-1.5 text-sm text-muted-foreground shadow-sm lg:flex-row lg:items-center lg:justify-between",
+        "flex flex-col gap-2.5 rounded-md border border-border/70 bg-card/95 px-4 py-2 text-sm text-muted-foreground shadow-sm lg:flex-row lg:items-center lg:justify-between",
         className,
       )}
     >
-      <div className="flex min-w-max shrink-0 flex-nowrap items-center gap-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
         <span className="whitespace-nowrap">
           Total {singularLabel}: <span className="font-semibold text-foreground">{totalCount}</span>
         </span>
@@ -65,9 +65,9 @@ export function WorkspacePagination({
           </Select>
         </div>
       </div>
-      <div className="flex min-w-0 flex-wrap items-center justify-end gap-2.5">
+      <div className="flex min-w-0 flex-wrap items-center justify-start gap-2.5 lg:justify-end">
         <span className="whitespace-nowrap">{showingLabel}</span>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
           <Button
             className="h-8 rounded-md px-2 text-muted-foreground"
             disabled={page <= 1}

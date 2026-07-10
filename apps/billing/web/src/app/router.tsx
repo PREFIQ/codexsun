@@ -1,4 +1,8 @@
 import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import { ExportSalesPage } from "../modules/export-sales/export-sales.page";
+import { ExportSalesPrintRoutePage } from "../modules/export-sales/export-sales.print";
+import { PurchasePage } from "../modules/purchase/purchase.page";
+import { PurchasePrintRoutePage } from "../modules/purchase/purchase.print";
 import { QuotationPage } from "../modules/quotation";
 import { SalesPage } from "../modules/sales/sales.page";
 import { SalesPrintRoutePage } from "../modules/sales/sales.print";
@@ -30,6 +34,30 @@ const quotationRoute = createRoute({
   path: "/billing/quotation"
 });
 
+const purchaseRoute = createRoute({
+  component: PurchasePage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/purchase"
+});
+
+const purchasePrintRoute = createRoute({
+  component: PurchasePrintRoutePage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/purchase/print"
+});
+
+const exportSalesRoute = createRoute({
+  component: ExportSalesPage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/export-sales"
+});
+
+const exportSalesPrintRoute = createRoute({
+  component: ExportSalesPrintRoutePage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/export-sales/print"
+});
+
 const salesPrintRoute = createRoute({
   component: SalesPrintRoutePage,
   getParentRoute: () => rootRoute,
@@ -42,7 +70,18 @@ const salesSettingsRoute = createRoute({
   path: "/billing/settings/sales"
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, billingRoute, salesRoute, quotationRoute, salesPrintRoute, salesSettingsRoute]);
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  billingRoute,
+  salesRoute,
+  quotationRoute,
+  purchaseRoute,
+  purchasePrintRoute,
+  exportSalesRoute,
+  exportSalesPrintRoute,
+  salesPrintRoute,
+  salesSettingsRoute
+]);
 
 export const router = createRouter({ routeTree });
 

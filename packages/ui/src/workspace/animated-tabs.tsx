@@ -1,6 +1,6 @@
 "use client"
 
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { type ReactNode } from "react"
 import { motion } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/tabs"
 import { cn } from "../lib/utils"
@@ -30,49 +30,33 @@ export function WorkspaceAnimatedTabs({
   triggerClassName?: string
   value: string
 }) {
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
-  const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0 })
-
-  useLayoutEffect(() => {
-    const activeIndex = tabs.findIndex((tab) => tab.value === value)
-    const activeTabElement = tabRefs.current[activeIndex]
-
-    if (activeTabElement) {
-      setUnderlineStyle({
-        left: activeTabElement.offsetLeft,
-        width: activeTabElement.offsetWidth,
-      })
-    }
-  }, [tabs, value])
-
   return (
     <Tabs value={value} onValueChange={onValueChange} className={cn("w-full", className)}>
       <TabsList
         className={cn(
-          "relative h-auto w-full justify-start rounded-md border border-border/70 bg-background p-0 shadow-sm",
+          "relative h-auto w-full flex-nowrap justify-start overflow-x-auto overflow-y-hidden rounded-none border-0 border-b border-border/90 bg-transparent p-0 shadow-[inset_0_-1px_0_rgba(15,23,42,0.04)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           listClassName,
         )}
       >
-        {tabs.map((tab, index) => (
+        {tabs.map((tab) => (
           <TabsTrigger
             key={tab.value}
-            ref={(element) => {
-              tabRefs.current[index] = element
-            }}
             value={tab.value}
             className={cn(
-              "relative z-10 rounded-none border-0 bg-transparent px-5 py-3 text-sm font-medium text-muted-foreground shadow-none data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none",
+              "relative -mb-px shrink-0 overflow-visible rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors duration-200 data-[state=active]:border-transparent data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none",
               triggerClassName,
             )}
           >
             {tab.label}
+            {tab.value === value ? (
+              <motion.span
+                layoutId="workspace-tab-active-bar"
+                className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-foreground shadow-[0_1px_0_rgba(15,23,42,0.18)]"
+                transition={{ damping: 28, mass: 0.85, stiffness: 260, type: "spring" }}
+              />
+            ) : null}
           </TabsTrigger>
         ))}
-        <motion.div
-          className="absolute bottom-0 h-0.5 bg-primary"
-          animate={underlineStyle}
-          transition={{ damping: 40, stiffness: 400, type: "spring" }}
-        />
       </TabsList>
 
       {tabs.map((tab) => (
@@ -80,7 +64,7 @@ export function WorkspaceAnimatedTabs({
           key={tab.value}
           value={tab.value}
           {...(keepMounted ? { forceMount: true } : {})}
-          className={cn("mt-4", keepMounted && "data-[state=inactive]:hidden", contentClassName)}
+          className={cn("mt-6 pb-2", keepMounted && "data-[state=inactive]:hidden", contentClassName)}
         >
           {tab.content}
         </TabsContent>

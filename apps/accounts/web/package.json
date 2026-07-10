@@ -1,8 +1,12 @@
 {
   "name": "@codexsun/accounts-web",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./modules/accounts": "./src/modules/accounts/index.ts"
+  },
   "scripts": {
     "dev": "node ../../../tools/preflight.mjs accounts-web",
     "build": "tsc -p tsconfig.json && vite build",
@@ -10,7 +14,7 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@codexsun/ui": "^1.0.9",
+    "@codexsun/ui": "^1.0.10",
     "@tanstack/react-query": "^5.100.10",
     "@vitejs/plugin-react": "^6.0.3",
     "lucide-react": "^1.22.0",

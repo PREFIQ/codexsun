@@ -1,2 +1,1 @@
-export { AccountsSettingsWorkspace } from "./accounts.settings";
-export { AccountsWorkspace } from "./accounts.workspace";
+export * from "@codexsun/accounts-web/modules/accounts";

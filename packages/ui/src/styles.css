@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 @source ".";
+@source "../../../apps/accounts/web/src";
+@source "../../../apps/billing/web/src";
+@source "../../../apps/core/web/src";
 @source "../../../apps/platform/web/src";
 
 @custom-variant dark (&:is(.dark *));

@@ -59,9 +59,9 @@ export function WorkspaceFormPanel({
   title?: string
 }) {
   return (
-    <div className={cn("rounded-md border border-border/70 bg-card/95 shadow-sm", className)}>
+    <WorkspaceFormSurface {...(className ? { className } : {})}>
       {title || description ? (
-        <div className="border-b border-border/70 px-5 py-4">
+        <div className="border-b border-border/90 px-5 py-4">
           {title ? <h2 className="text-base font-medium text-foreground">{title}</h2> : null}
           {description ? (
             <p className={cn("text-sm text-muted-foreground", title && "mt-1")}>{description}</p>
@@ -70,10 +70,63 @@ export function WorkspaceFormPanel({
       ) : null}
       <div className="p-5">{children}</div>
       {footer ? (
-        <div className="flex flex-wrap items-center gap-3 border-t border-border/70 bg-muted/20 px-5 py-4">
+        <div className="flex flex-wrap items-center gap-3 border-t border-border/90 bg-muted/20 px-5 py-4">
           {footer}
         </div>
       ) : null}
+    </WorkspaceFormSurface>
+  )
+}
+
+export function WorkspaceFormSurface({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        "overflow-hidden rounded-md border border-border/90 bg-card/95 shadow-[0_14px_34px_rgba(15,23,42,0.08),0_2px_6px_rgba(15,23,42,0.06)] ring-1 ring-emerald-200/45",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
+export function WorkspaceFormBody({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return <div className={cn("px-4 py-5 sm:px-6 sm:py-6", className)}>{children}</div>
+}
+
+export function WorkspaceFormTabbedBody({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return <WorkspaceFormBody className={cn("pt-1 pb-10", className)}>{children}</WorkspaceFormBody>
+}
+
+export function WorkspaceFormActions({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn("border-t border-border/90 bg-card px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] sm:px-6", className)}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 [&>button]:w-full sm:[&>button]:w-auto">{children}</div>
     </div>
   )
 }

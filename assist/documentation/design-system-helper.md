@@ -113,6 +113,9 @@ All create/edit pages and popups must use the shared upsert structure.
 Required components:
 
 - `WorkspaceUpsertPage`
+- `WorkspaceFormSurface`
+- `WorkspaceFormBody` or `WorkspaceFormTabbedBody`
+- `WorkspaceFormActions`
 - `WorkspaceFormPanel`
 - `WorkspaceFormGrid`
 - `WorkspaceFormField`
@@ -150,6 +153,12 @@ Use consistent form density.
 
 - Inputs are normally full width inside a two-column grid on desktop.
 - Use one column on small screens.
+- Upsert pages use one shared outer shell: `WorkspaceFormSurface` for the border/card, `WorkspaceFormBody` or `WorkspaceFormTabbedBody` for content spacing, and `WorkspaceFormActions` for the footer divider and buttons.
+- Do not hand-roll form card markup such as local `rounded-md border bg-card` wrappers with custom footer borders. Promote layout changes into the shared workspace form blocks first.
+- Tabbed form bodies must leave a clear bottom buffer before the footer divider, matching popup and quotation spacing.
+- Form surfaces use a crisp border, subtle green ring, and small elevated shadow similar to the login card. Do not flatten these with local `shadow-sm` or soft divider overrides.
+- Tab and footer dividers use the sharper shared border tone so the panel reads clearly against the workspace background.
+- Company, Contact, Product, Work Order, and future master upsert forms must consume this shared shell. Do not create module-specific form card, tab, or footer variants for these masters.
 - Section panels use clean borders and small/medium radius.
 - Do not use oversized rounded fields.
 - Keep action buttons in a footer row.
@@ -213,6 +222,8 @@ Tabs:
 
 - Use `WorkspaceAnimatedTabs`.
 - Use animated underline tabs for multi-section edit forms.
+- Form tabs must use the shared CODEXSUN tone: transparent tab list, one bottom divider under the tab row, animated primary underline, and a small gap before the active tab content.
+- Do not hand-roll tab buttons inside modules. If a module needs a different tab layout, promote the variant into `WorkspaceAnimatedTabs` first.
 - Keep tab labels short.
 - Save/update should usually happen from the final or footer section, unless the module has a reason to save per tab.
 

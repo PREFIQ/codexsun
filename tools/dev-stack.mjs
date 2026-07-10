@@ -4,7 +4,6 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { join, resolve } from "node:path";
-import "./clean-workspace-artifacts.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const stackName = process.argv[2] ?? "platform";
@@ -21,11 +20,13 @@ const services = {
 };
 
 const stacks = {
+  api: ["platform-api", "core-api", "billing-api", "accounts-api"],
   all: ["platform-api", "core-api", "platform-web", "billing-api", "billing-web", "accounts-api", "accounts-web"],
   accounts: ["platform-api", "core-api", "accounts-api", "accounts-web"],
   billing: ["platform-api", "core-api", "billing-api", "billing-web"],
   core: ["platform-api", "core-api", "platform-web", "core-web"],
-  platform: ["platform-api", "core-api", "billing-api", "platform-web"]
+  platform: ["platform-api", "core-api", "billing-api", "accounts-api", "platform-web"],
+  web: ["platform-web"]
 };
 
 if (!stacks[stackName]) {
