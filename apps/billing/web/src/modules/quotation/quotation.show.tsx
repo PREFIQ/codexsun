@@ -7,42 +7,46 @@ import { Input } from "@codexsun/ui/components/input";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@codexsun/ui/components/dropdown-menu";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { cn } from "@codexsun/ui/lib/utils";
-import { formatDate, formatMoney } from "./sales.services";
-import { SalePrintDocument, type SalePrintCopy } from "./sales.print";
-import type { Sale } from "./sales.types";
+import { formatDate, formatMoney } from "./quotation.services";
+import { QuotationPrintDocument, type QuotationPrintCopy } from "./quotation.print";
+import type { Quotation } from "./quotation.types";
 
-const printCopyOptions: Array<{ label: string; value: SalePrintCopy }> = [
+const printCopyOptions: Array<{ label: string; value: QuotationPrintCopy }> = [
   { label: "Original", value: "original" },
   { label: "Duplicate", value: "duplicate" },
   { label: "Office Copy", value: "office-copy" },
 ];
 
-type SaleEntryToolId = "assign" | "attachments" | "downloadPdf" | "email" | "tags" | "whatsapp";
+type QuotationEntryToolId = "assign" | "attachments" | "downloadPdf" | "email" | "tags" | "whatsapp";
 
-export function SaleShowPage({
+export function QuotationShowPage({
   canEdit = true,
+  converting,
   onBack,
+  onConvert,
   onEdit,
   onNew,
   onNext,
   onPrevious,
   onPrint,
   onSuspend,
-  sale,
+  quotation,
 }: {
   canEdit?: boolean;
+  converting: boolean;
   onBack: () => void;
+  onConvert: () => void;
   onEdit: () => void;
   onNew: () => void;
   onNext?: () => void;
   onPrevious?: () => void;
   onPrint: () => void;
   onSuspend: () => void;
-  sale: Sale;
+  quotation: Quotation;
 }) {
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState<Array<{ body: string; createdAt: string; id: string }>>([]);
-  const [openTool, setOpenTool] = useState<SaleEntryToolId | null>(null);
+  const [openTool, setOpenTool] = useState<QuotationEntryToolId | null>(null);
   const [emailAddress, setEmailAddress] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [assigneeInput, setAssigneeInput] = useState("");
@@ -51,9 +55,9 @@ export function SaleShowPage({
   const [attachments, setAttachments] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [toolActivities, setToolActivities] = useState<Array<{ id: string; message: string; createdAt: string }>>([]);
-  const [printCopies, setPrintCopies] = useState<readonly SalePrintCopy[]>(["original"]);
+  const [printCopies, setPrintCopies] = useState<readonly QuotationPrintCopy[]>(["original"]);
 
-  const entryTools: Array<{ icon: typeof Mail; id: SaleEntryToolId; label: string }> = [
+  const entryTools: Array<{ icon: typeof Mail; id: QuotationEntryToolId; label: string }> = [
     { icon: Download, id: "downloadPdf", label: "Download PDF" },
     { icon: Mail, id: "email", label: "Send to Email" },
     { icon: UserRound, id: "assign", label: "Assign" },
@@ -65,13 +69,13 @@ export function SaleShowPage({
   const activityItems = useMemo(
     () => [
       ...toolActivities,
-      { createdAt: sale.updatedAt, id: "updated", message: `Sale updated${sale.generatedSalesInvoiceNo ? ` and linked to ${sale.generatedSalesInvoiceNo}` : ""}` },
-      { createdAt: sale.createdAt, id: "created", message: "Sale entry created" },
+      { createdAt: quotation.updatedAt, id: "updated", message: `Quotation updated${quotation.generatedSalesInvoiceNo ? ` and linked to ${quotation.generatedSalesInvoiceNo}` : ""}` },
+      { createdAt: quotation.createdAt, id: "created", message: "Quotation entry created" },
     ].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
-    [sale.createdAt, sale.generatedSalesInvoiceNo, sale.updatedAt, toolActivities],
+    [quotation.createdAt, quotation.generatedSalesInvoiceNo, quotation.updatedAt, toolActivities],
   );
 
-  function togglePrintCopy(copy: SalePrintCopy) {
+  function togglePrintCopy(copy: QuotationPrintCopy) {
     setPrintCopies((current) => {
       if (!current.includes(copy)) return [...current, copy];
       if (current.length === 1) return current;
@@ -106,8 +110,8 @@ export function SaleShowPage({
   return (
     <WorkspacePage
       className="max-w-[100rem]"
-      title={sale.customerName}
-      description={sale.saleNumber}
+      title={quotation.customerName}
+      description={quotation.quotationNumber}
       actions={<Button type="button" className="h-9 rounded-md" onClick={onNew}><Plus className="size-4" />New</Button>}
     >
       <main className="mx-auto w-full pb-8">
@@ -119,14 +123,17 @@ export function SaleShowPage({
               <Button type="button" variant="outline" className="h-9 rounded-xl" disabled={!onNext} onClick={onNext}><ChevronRight className="size-4" />Next</Button>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
+              {!quotation.generatedSalesInvoiceNo && quotation.status !== "cancelled" ? (
+                <Button disabled={converting} type="button" className="h-11 rounded-xl px-5 text-base font-semibold shadow-sm" onClick={onConvert}><Send className="size-4" />Convert</Button>
+              ) : null}
               <Button className="rounded-xl" onClick={onPrint} type="button"><Printer className="size-4" />Print</Button>
               {canEdit ? <Button type="button" variant="outline" className="rounded-xl" onClick={onEdit}><Pencil className="size-4" />Edit</Button> : null}
-              {sale.status !== "cancelled" ? (
+              {quotation.status !== "cancelled" ? (
                 <Button onClick={onSuspend} type="button" variant="destructive" className="rounded-xl"><Trash2 className="size-4" />Suspend</Button>
               ) : null}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button aria-label="Sale print options" title="Sale print options" type="button" variant="outline" className="size-9 rounded-xl p-0">
+                  <Button aria-label="Quotation print options" title="Quotation print options" type="button" variant="outline" className="size-9 rounded-xl p-0">
                     <MoreHorizontal className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -148,7 +155,7 @@ export function SaleShowPage({
           <div className="grid min-w-fit justify-center gap-6">
             {printCopies.map((copy) => (
               <div key={copy}>
-                <SalePrintDocument copy={copy} sale={sale} />
+                <QuotationPrintDocument copy={copy} quotation={quotation} />
               </div>
             ))}
           </div>
@@ -163,9 +170,9 @@ export function SaleShowPage({
                 <Input value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Type a reply / comment" className="h-10 rounded-md shadow-sm" />
                 <Button disabled={!comment.trim()} onClick={addComment} type="button" className="h-10 rounded-md px-4">Add</Button>
               </div>
-              {comments.length || sale.notes ? (
+              {comments.length || quotation.notes ? (
                 <div className="space-y-2">
-                  {sale.notes ? <SideNote body={sale.notes} meta="Saved notes" title="System" /> : null}
+                  {quotation.notes ? <SideNote body={quotation.notes} meta="Saved notes" title="System" /> : null}
                   {comments.map((item) => <SideNote key={item.id} body={item.body} meta={formatDateTime(item.createdAt)} title="Admin" />)}
                 </div>
               ) : null}
@@ -196,7 +203,7 @@ export function SaleShowPage({
                   <button
                     onClick={() => {
                       if (tool.id === "downloadPdf") {
-                        recordActivity(`Downloaded print preview for ${sale.saleNumber}`);
+                        recordActivity(`Downloaded print preview for ${quotation.quotationNumber}`);
                         toast.success("Print preview download queued");
                         return;
                       }
@@ -214,8 +221,8 @@ export function SaleShowPage({
                   {tool.id === "tags" && tags.length ? <div className="px-3 pb-2"><ToolPills values={tags} onRemove={(value) => removeListValue(value, setTags)} /></div> : null}
                   {openTool === tool.id ? (
                     <div className="px-3 pb-3">
-                      {tool.id === "email" ? <InlineSend value={emailAddress} placeholder="Email address" onChange={setEmailAddress} onSend={() => { const value = emailAddress.trim(); if (!value) return; recordActivity(`Queued sale email to ${value}`); setEmailAddress(""); }} /> : null}
-                      {tool.id === "assign" ? <Input value={assigneeInput} onChange={(event) => setAssigneeInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addListValue(assigneeInput, setAssigneeInput, setAssignees, (value) => `Assigned sale to ${value}`); } }} placeholder="User name or email" className="h-9 rounded-md" /> : null}
+                      {tool.id === "email" ? <InlineSend value={emailAddress} placeholder="Email address" onChange={setEmailAddress} onSend={() => { const value = emailAddress.trim(); if (!value) return; recordActivity(`Queued quotation email to ${value}`); setEmailAddress(""); }} /> : null}
+                      {tool.id === "assign" ? <Input value={assigneeInput} onChange={(event) => setAssigneeInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addListValue(assigneeInput, setAssigneeInput, setAssignees, (value) => `Assigned quotation to ${value}`); } }} placeholder="User name or email" className="h-9 rounded-md" /> : null}
                       {tool.id === "attachments" ? <Input type="file" multiple className="h-9 rounded-md" onChange={(event) => { const names = Array.from(event.target.files ?? []).map((file) => file.name); if (names.length) { setAttachments((current) => [...current, ...names.filter((name) => !current.includes(name))]); names.forEach((name) => recordActivity(`Attached file ${name}`)); } event.currentTarget.value = ""; }} /> : null}
                       {tool.id === "tags" ? <Input value={tagInput} onChange={(event) => setTagInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addListValue(tagInput, setTagInput, setTags, (value) => `Added tag ${value}`); } }} placeholder="Tag" className="h-9 rounded-md" /> : null}
                       {tool.id === "whatsapp" ? <InlineSend value={whatsappNumber} placeholder="WhatsApp number" onChange={setWhatsappNumber} onSend={() => { const value = whatsappNumber.trim(); if (!value) return; recordActivity(`Sent WhatsApp message to ${value}`); setWhatsappNumber(""); }} /> : null}
@@ -230,8 +237,6 @@ export function SaleShowPage({
     </WorkspacePage>
   );
 }
-
-export const SalesShowPage = SaleShowPage;
 
 function InlineSend({
   onChange,

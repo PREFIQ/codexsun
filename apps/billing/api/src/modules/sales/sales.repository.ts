@@ -18,10 +18,14 @@ type SalesTableRow = {
   notes: string | null;
   round_off: number | null;
   shipping_address: string | null;
+  sales_ledger: string | null;
   status: SaleStatus;
   subtotal: number | null;
   tax_amount: number | null;
+  tax_type: "cgst-sgst" | "igst";
+  terms: string | null;
   updated_at: string | null;
+  work_order_no: string | null;
 };
 
 type SalesDatabase = {
@@ -94,10 +98,14 @@ function toSale(row: SalesTableRow): Sale {
     notes: row.notes ?? "",
     roundOff: Number(row.round_off ?? 0),
     shippingAddress: row.shipping_address ?? "",
+    salesLedger: row.sales_ledger ?? "",
     status: row.status,
     subtotal: Number(row.subtotal ?? items.reduce((sum, item) => sum + item.taxableAmount, 0)),
     taxAmount: Number(row.tax_amount ?? items.reduce((sum, item) => sum + item.taxAmount, 0)),
+    taxType: row.tax_type ?? "cgst-sgst",
+    terms: row.terms ?? "",
     updatedAt: row.updated_at ?? row.created_at ?? "",
+    workOrderNo: row.work_order_no ?? "",
   };
 }
 
@@ -117,10 +125,14 @@ function toSaleRow(sale: Sale): SalesTableRow {
     notes: sale.notes,
     round_off: sale.roundOff,
     shipping_address: sale.shippingAddress,
+    sales_ledger: sale.salesLedger,
     status: sale.status,
     subtotal: sale.subtotal,
     tax_amount: sale.taxAmount,
+    tax_type: sale.taxType,
+    terms: sale.terms,
     updated_at: sale.updatedAt,
+    work_order_no: sale.workOrderNo,
   };
 }
 
@@ -142,10 +154,14 @@ function createSaleRecord(input: SaleSavePayload, current?: Partial<Pick<Sale, "
     notes: input.notes,
     roundOff: Number(input.roundOff ?? 0),
     shippingAddress: input.shippingAddress,
+    salesLedger: input.salesLedger ?? "",
     status: input.status,
     subtotal: totals.subtotal,
     taxAmount: totals.taxAmount,
+    taxType: input.taxType ?? "cgst-sgst",
+    terms: input.terms ?? "",
     updatedAt: now,
+    workOrderNo: input.workOrderNo ?? "",
   } satisfies Sale;
 }
 
@@ -163,10 +179,16 @@ function buildSaleTotals(input: SaleSavePayload) {
   const items = input.items.map((item, index) => {
     const taxableAmount = roundMoney(item.quantity * item.rate);
     const taxAmount = roundMoney(taxableAmount * item.taxRate / 100);
+    const cgstAmount = input.taxType === "igst" ? 0 : roundMoney(taxAmount / 2);
+    const sgstAmount = input.taxType === "igst" ? 0 : roundMoney(taxAmount / 2);
+    const igstAmount = input.taxType === "igst" ? taxAmount : 0;
     return {
       ...item,
+      cgstAmount,
       id: `item-${index + 1}`,
+      igstAmount,
       lineTotal: roundMoney(taxableAmount + taxAmount),
+      sgstAmount,
       taxableAmount,
       taxAmount,
     };

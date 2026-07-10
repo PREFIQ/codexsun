@@ -18,10 +18,39 @@ The first framework package provides:
 - Structured log shape helper.
 - MySQL/MariaDB connection contract.
 - Module registry.
+- Typed module composition through `defineModule()` and `registerModules()`.
 - Domain event contract and in-memory development publisher.
 - Queue job contract and in-memory development adapter.
 - Storage adapter contract.
 - Runtime health check runner and health route helper.
+- Zod-backed route contracts that validate inputs and successful response data.
+
+## Module Composition Standard
+
+Every runnable module is composed through `defineModule<TDependencies>()` and exposes a
+`register(dependencies)` function. Its dependencies are explicit, typed, and supplied
+only by the application composition root. Modules must not reach into another module's
+singleton or create hidden application-level dependencies.
+
+```ts
+export const ordersModule = defineModule<OrdersModuleDependencies>({
+  key: "billing.orders",
+  label: "Orders",
+  register: ({ app, orderService }) => registerOrderRoutes(app, orderService)
+});
+```
+
+Use `registerModules()` in the runnable app to reject duplicate module keys and provide
+one observable lifecycle for module registration.
+
+## Route Contract Standard
+
+New or materially changed API routes use `registerContractRoute()`. A route contract
+must declare Zod schemas for all inputs it accepts (`body`, `params`, and/or
+`querystring`) and for its successful `response` data. The framework parses inputs
+before the handler runs, validates response data before it is sent, and wraps success
+responses in the standard envelope. Invalid input becomes the standard
+`VALIDATION_ERROR` response; handlers use `AppError` for expected business failures.
 
 ## Package Subpaths
 

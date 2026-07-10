@@ -1,67 +1,56 @@
 import { WorkspacePrintSheet } from "@codexsun/ui/workspace/print";
-import { ArrowLeft, Printer, RefreshCw } from "lucide-react";
-import { Button } from "@codexsun/ui/components/button";
-import { WorkspacePage } from "@codexsun/ui/workspace/page";
-import { PageTitle } from "../../shared/document/PageTitle";
-import { useSaleRecord } from "./sales.hooks";
-import { formatDate, formatMoney } from "./sales.services";
-import type { Sale } from "./sales.types";
+import { formatDate, formatMoney } from "./quotation.services";
+import type { Quotation } from "./quotation.types";
 
-export type SalePrintCopy = "duplicate" | "office-copy" | "original";
+export type QuotationPrintCopy = "duplicate" | "office-copy" | "original";
 
-export function SalesPrintRoutePage() {
-  const saleId = new URLSearchParams(window.location.search).get("id");
-  const saleQuery = useSaleRecord(saleId, true);
-  return <WorkspacePage title={saleQuery.data ? `${saleQuery.data.saleNumber} print` : "Sales print"} description="Printable sales document." actions={<div className="flex gap-2"><Button type="button" variant="outline" onClick={() => window.history.back()}><ArrowLeft className="size-4" />Back</Button><Button type="button" variant="outline" onClick={() => void saleQuery.refetch()}><RefreshCw className={saleQuery.isFetching ? "size-4 animate-spin" : "size-4"} />Refresh</Button><Button type="button" onClick={() => window.print()}><Printer className="size-4" />Print</Button></div>}><PageTitle title="Sales Print" />{saleQuery.data ? <SalePrintDocument copy="original" sale={saleQuery.data} /> : <div className="px-4 py-8 text-sm text-muted-foreground">{saleQuery.isLoading ? "Loading sale print view..." : "Sale print record was not found."}</div>}</WorkspacePage>;
-}
-
-export function SalePrintDocument({
+export function QuotationPrintDocument({
   copy,
-  sale,
+  quotation,
 }: {
-  copy: SalePrintCopy;
-  sale: Sale;
+  copy: QuotationPrintCopy;
+  quotation: Quotation;
 }) {
-  const pages = chunkItems(sale.items, 12);
+  const pages = chunkItems(quotation.items, 12);
 
   return (
     <WorkspacePrintSheet>
       {pages.map((items, pageIndex) => (
-        <SalePrintPage
-          key={`sale-print-page-${pageIndex}`}
+        <QuotationPrintPage
+          key={`quotation-print-page-${pageIndex}`}
           copy={copy}
           items={items}
           isLastPage={pageIndex === pages.length - 1}
           isMultiPage={pages.length > 1}
           pageIndex={pageIndex}
           pageCount={pages.length}
-          sale={sale}
+          quotation={quotation}
         />
       ))}
     </WorkspacePrintSheet>
   );
 }
 
-const salePrintHeadings = ["S.no", "Particulars", "HSN", "PO", "DC", "Qty", "Rate", "Taxable", "GST %", "GST TAX", "Total"];
+const quotationPrintHeadings = ["S.no", "Particulars", "HSN", "PO", "DC", "Qty", "Rate", "Taxable", "GST %", "GST TAX", "Total"];
 
-function SalePrintPage({
+function QuotationPrintPage({
   copy,
   items,
   isLastPage,
   isMultiPage,
   pageIndex,
   pageCount,
-  sale,
+  quotation,
 }: {
-  copy: SalePrintCopy;
-  items: Array<{ item: Sale["items"][number]; index: number }>;
+  copy: QuotationPrintCopy;
+  items: Array<{ item: Quotation["items"][number]; index: number }>;
   isLastPage: boolean;
   isMultiPage: boolean;
   pageIndex: number;
   pageCount: number;
-  sale: Sale;
+  quotation: Quotation;
 }) {
-  const splitTax = sale.taxType === "cgst-sgst";
+  const splitTax = quotation.taxType === "cgst-sgst";
   const blankRows = Math.max(0, 12 - items.length);
 
   return (
@@ -101,16 +90,16 @@ function SalePrintPage({
         <section className="grid border-b border-slate-300 text-[10px] sm:grid-cols-2">
           <div className="px-2 py-2">
             <div className="font-medium">Buyer (Bill to)</div>
-            <div className="mt-1 font-semibold">M/s. {sale.customerName}</div>
-            <div className="mt-1 whitespace-pre-wrap">{sale.billingAddress || "Address not set"}</div>
+            <div className="mt-1 font-semibold">M/s. {quotation.customerName}</div>
+            <div className="mt-1 whitespace-pre-wrap">{quotation.billingAddress || "Address not set"}</div>
             <div className="mt-1 grid grid-cols-[7rem_1fr] gap-x-2">
               <span>GSTIN/UIN</span><span>:</span><span>State Name</span><span>:</span>
             </div>
           </div>
           <div className="space-y-1 border-t border-slate-300 px-2 py-2 sm:border-l sm:border-slate-300 sm:border-t-0">
-            <PrintPair label="Sale No:">{sale.saleNumber}</PrintPair>
-            <PrintPair label="Date:">{formatDate(sale.issuedOn)}</PrintPair>
-            <PrintPair label="Work Order:">{sale.workOrderNo || "-"}</PrintPair>
+            <PrintPair label="Quotation No:">{quotation.quotationNumber}</PrintPair>
+            <PrintPair label="Date:">{formatDate(quotation.date)}</PrintPair>
+            <PrintPair label="Work Order:">{quotation.workOrderNo || "-"}</PrintPair>
           </div>
         </section>
 
@@ -118,16 +107,16 @@ function SalePrintPage({
           <table className="w-full border-collapse text-[10px]">
             <thead>
               <tr className="border-b border-slate-300">
-                {salePrintHeadings.map((heading) => <th key={heading} className="border-r border-slate-300 px-2 py-2 text-center font-semibold last:border-r-0">{heading}</th>)}
+                {quotationPrintHeadings.map((heading) => <th key={heading} className="border-r border-slate-300 px-2 py-2 text-center font-semibold last:border-r-0">{heading}</th>)}
               </tr>
             </thead>
             <tbody>
-              {pageIndex > 0 ? <tr><td className="border-b border-slate-300 px-2 py-1 text-left font-semibold" colSpan={salePrintHeadings.length}>Carry forward from previous page</td></tr> : null}
+              {pageIndex > 0 ? <tr><td className="border-b border-slate-300 px-2 py-1 text-left font-semibold" colSpan={quotationPrintHeadings.length}>Carry forward from previous page</td></tr> : null}
               {items.map(({ item, index }) => (
-                <SalePrintItemRow key={item.id} item={item} index={index} />
+                <QuotationPrintItemRow key={item.id} item={item} index={index} />
               ))}
-              {Array.from({ length: blankRows }).map((_, index) => <SalePrintBlankRow key={`blank-${pageIndex}-${index}`} />)}
-              {isLastPage ? <SalePrintTotalRow sale={sale} /> : <tr><td className="border-t border-slate-300 px-2 py-2 text-right font-semibold" colSpan={salePrintHeadings.length}>To be continued...</td></tr>}
+              {Array.from({ length: blankRows }).map((_, index) => <QuotationPrintBlankRow key={`blank-${pageIndex}-${index}`} />)}
+              {isLastPage ? <QuotationPrintTotalRow quotation={quotation} /> : <tr><td className="border-t border-slate-300 px-2 py-2 text-right font-semibold" colSpan={quotationPrintHeadings.length}>To be continued...</td></tr>}
             </tbody>
           </table>
         </section>
@@ -139,14 +128,14 @@ function SalePrintPage({
                 <div className="font-medium">E&amp;OE</div>
                 <div className="mt-1">We hereby certify that our registration under the GST Act 2017 is in force on the date on which sale of goods specified in this invoice is made by us and the sale is effected in the regular course of business.</div>
                 <div className="mt-1 font-semibold">* Goods once sold will not be taken back unless agreed in writing.</div>
-                <div className="mt-5"><div className="font-medium">Amount (in words)</div><div className="mt-1">{amountInWords(sale.amount)}</div></div>
+                <div className="mt-5"><div className="font-medium">Amount (in words)</div><div className="mt-1">{amountInWords(quotation.amount)}</div></div>
               </div>
               <div className="text-[9px]">
-                <PrintTotal label="Taxable Value" value={money(sale.subtotal)} />
-                {splitTax ? <><PrintTotal label="Total CGST" value={money(sale.taxAmount / 2)} /><PrintTotal label="Total SGST" value={money(sale.taxAmount / 2)} /></> : <PrintTotal label="Total IGST" value={money(sale.taxAmount)} />}
-                <PrintTotal label="Total GST" value={money(sale.taxAmount)} />
-                <PrintTotal label="Round Off" value={money(sale.roundOff)} />
-                <PrintTotal label="GRAND TOTAL" strong value={money(sale.amount)} />
+                <PrintTotal label="Taxable Value" value={money(quotation.subtotal)} />
+                {splitTax ? <><PrintTotal label="Total CGST" value={money(quotation.taxAmount / 2)} /><PrintTotal label="Total SGST" value={money(quotation.taxAmount / 2)} /></> : <PrintTotal label="Total IGST" value={money(quotation.taxAmount)} />}
+                <PrintTotal label="Total GST" value={money(quotation.taxAmount)} />
+                <PrintTotal label="Round Off" value={money(quotation.roundOff)} />
+                <PrintTotal label="GRAND TOTAL" strong value={money(quotation.amount)} />
               </div>
             </section>
             <section className="grid min-h-[6rem] border-t border-slate-300 md:grid-cols-[1fr_18rem]">
@@ -161,7 +150,7 @@ function SalePrintPage({
   );
 }
 
-function SalePrintItemRow({ item, index }: { item: Sale["items"][number]; index: number }) {
+function QuotationPrintItemRow({ item, index }: { item: Quotation["items"][number]; index: number }) {
   return <tr className="align-top">
     <td className="border-r border-slate-200 px-2 py-2 text-center">{index + 1}</td>
     <td className="border-r border-slate-200 px-2 py-2"><div className="font-medium">{item.productName}</div><div>{[item.description, item.colour ? `Colour : ${item.colour}` : "", item.size ? `Size : ${item.size}` : ""].filter(Boolean).join(" - ")}</div></td>
@@ -177,24 +166,24 @@ function SalePrintItemRow({ item, index }: { item: Sale["items"][number]; index:
   </tr>;
 }
 
-function SalePrintBlankRow() {
-  return <tr className="h-8">{salePrintHeadings.map((heading, index) => <td key={heading} className={index === salePrintHeadings.length - 1 ? "" : "border-r border-slate-200"} />)}</tr>;
+function QuotationPrintBlankRow() {
+  return <tr className="h-8">{quotationPrintHeadings.map((heading, index) => <td key={heading} className={index === quotationPrintHeadings.length - 1 ? "" : "border-r border-slate-200"} />)}</tr>;
 }
 
-function SalePrintTotalRow({ sale }: { sale: Sale }) {
+function QuotationPrintTotalRow({ quotation }: { quotation: Quotation }) {
   return <tr className="border-t border-slate-300 font-semibold">
     <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={5}>Total</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-center">{sale.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</td>
+    <td className="border-r border-slate-200 px-2 py-2 text-center">{quotation.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</td>
     <td className="border-r border-slate-200 px-2 py-2" />
-    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(sale.subtotal)}</td>
+    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(quotation.subtotal)}</td>
     <td className="border-r border-slate-200 px-2 py-2" />
-    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(sale.taxAmount)}</td>
-    <td className="px-2 py-2 text-right">{money(sale.amount)}</td>
+    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(quotation.taxAmount)}</td>
+    <td className="px-2 py-2 text-right">{money(quotation.amount)}</td>
   </tr>;
 }
 
-function chunkItems(items: Sale["items"], size: number) {
-  const pages: Array<Array<{ item: Sale["items"][number]; index: number }>> = [];
+function chunkItems(items: Quotation["items"], size: number) {
+  const pages: Array<Array<{ item: Quotation["items"][number]; index: number }>> = [];
   for (let index = 0; index < items.length; index += size) pages.push(items.slice(index, index + size).map((item, offset) => ({ item, index: index + offset })));
   return pages.length > 0 ? pages : [[]];
 }
@@ -217,7 +206,7 @@ function PrintTotal({ label, strong, value }: { label: string; strong?: boolean;
   );
 }
 
-function printCopyLabel(copy: SalePrintCopy) {
+function printCopyLabel(copy: QuotationPrintCopy) {
   if (copy === "duplicate") return "Duplicate";
   if (copy === "office-copy") return "Office Copy";
   return "Original";

@@ -84,8 +84,12 @@ export function normalizeSaleInput(input: SaleSavePayload): SaleSavePayload {
     items,
     notes: input.notes.trim(),
     roundOff: Number(input.roundOff ?? 0) || 0,
+    salesLedger: input.salesLedger?.trim() ?? "",
     shippingAddress: input.shippingAddress.trim(),
     status: input.status,
+    taxType: input.taxType ?? "cgst-sgst",
+    terms: input.terms?.trim() ?? "",
+    workOrderNo: input.workOrderNo?.trim() ?? "",
   };
 }
 
@@ -108,10 +112,16 @@ export function buildSaleTotals(input: SaleSavePayload): Pick<Sale, "amount" | "
   const items: SaleLineItem[] = input.items.map((item, index) => {
     const taxableAmount = roundMoney(item.quantity * item.rate);
     const taxAmount = roundMoney(taxableAmount * item.taxRate / 100);
+    const cgstAmount = input.taxType === "igst" ? 0 : roundMoney(taxAmount / 2);
+    const sgstAmount = input.taxType === "igst" ? 0 : roundMoney(taxAmount / 2);
+    const igstAmount = input.taxType === "igst" ? taxAmount : 0;
     return {
       ...item,
+      cgstAmount,
       id: `item-${index + 1}`,
+      igstAmount,
       lineTotal: roundMoney(taxableAmount + taxAmount),
+      sgstAmount,
       taxableAmount,
       taxAmount,
     };
@@ -139,7 +149,7 @@ async function postSaleToAccounts(databaseName: string, sale: Sale, operation: "
       documentDate: sale.issuedOn,
       operation,
       partyLedgerName: sale.customerName,
-      placeOfSupply: "cgst-sgst",
+      placeOfSupply: sale.taxType,
       roundOff: sale.roundOff,
       sourceApp: "billing",
       sourceDocumentId: sale.id,

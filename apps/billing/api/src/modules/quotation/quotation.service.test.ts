@@ -96,4 +96,25 @@ describe("QuotationService", () => {
     expect(repository.setGeneratedSalesInvoice).toHaveBeenCalledWith("tenant_billing", "quotation-1", "SAL-0001");
     expect(queue.jobs[0]?.job.jobName).toBe("quotation.confirmation-sync");
   });
+
+  it("consolidates identical quotation rows while keeping different prices separate", async () => {
+    const { repository, sales, service } = createService();
+    repository.get = vi.fn(async (_database: string, id: string) => quotation({
+      id,
+      items: id === "quotation-1"
+        ? [quotation().items[0]!]
+        : [
+            { ...quotation().items[0]!, id: "item-2", quantity: 3 },
+            { ...quotation().items[0]!, id: "item-3", quantity: 4, rate: 50 },
+          ],
+    })) as never;
+
+    await service.convertManyToSale("tenant_billing", ["quotation-1", "quotation-2"]);
+
+    const saleCalls = (sales.createSale as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const saleInput = saleCalls[0]?.[1] as { items: Array<{ quantity: number; rate: number }> };
+    expect(saleInput.items).toHaveLength(2);
+    expect(saleInput.items.find((item) => item.rate === 100)?.quantity).toBe(5);
+    expect(saleInput.items.find((item) => item.rate === 50)?.quantity).toBe(4);
+  });
 });

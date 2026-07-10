@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Building2Icon,
   ClipboardListIcon,
@@ -52,12 +52,12 @@ import { TransportsWorkspace } from "@codexsun/core-web/modules/common/workorder
 import { WarehousesWorkspace } from "@codexsun/core-web/modules/common/workorder/warehouses";
 import { WorkOrderTypesWorkspace } from "@codexsun/core-web/modules/common/workorder/work-order-types";
 import { ContactWorkspace, ProductWorkspace, WorkOrderWorkspace } from "../../modules/master";
-import { CompanyWorkspace } from "../../modules/organisation";
+import { CompanyWorkspace, listCompanys } from "../../modules/organisation";
 import { QuotationWorkspace } from "../../modules/quotation/quotation.workspace";
 import { SalesWorkspace } from "../../modules/sales/sales.workspace";
 import { PurchaseWorkspace } from "../../modules/purchase/purchase.workspace";
 import { ExportSalesWorkspace } from "../../modules/export-sales/export-sales.workspace";
-import { AccountsSettingsWorkspace, AccountsWorkspace } from "../../modules/accounts";
+import { AccountsSettingsWorkspace, AccountsWorkspace, getAccountsSettings } from "../../modules/accounts";
 import { BillingSettingsWorkspace, DocumentSettingsWorkspace } from "../../modules/billing-settings";
 import { getToken, setTenantDbName, setTenantId } from "../../shared/api/platform-api";
 
@@ -101,6 +101,7 @@ type AppPage =
   | "core.master.work-order"
   | `core.common.${"contacts" | "others" | "products" | "workorder"}.${string}`;
 const LANDING_APP_STORAGE_KEY = "codexsun.tenant.landing-app.live";
+const COMPANY_CONTEXT_STORAGE_KEY = "codexsun.tenant.company-id";
 
 export function AppDesk() {
   const [page, setPage] = useState<AppPage>(() => pageFromUrl(readPublishedLandingApp()));
@@ -110,6 +111,17 @@ export function AppDesk() {
     queryFn: getTenantRuntime,
     queryKey: ["tenant", "runtime"]
   });
+  const companiesQuery = useQuery({
+    enabled: Boolean(runtimeQuery.data?.tenant?.uuid),
+    queryFn: () => listCompanys(),
+    queryKey: ["core", "organisation", "companies", runtimeQuery.data?.tenant?.uuid]
+  });
+  const accountingSettingsQuery = useQuery({
+    enabled: Boolean(runtimeQuery.data?.tenant?.uuid),
+    queryFn: getAccountsSettings,
+    queryKey: ["accounts", "settings", runtimeQuery.data?.tenant?.uuid]
+  });
+  const [selectedCompanyId, setSelectedCompanyId] = useState(() => readSelectedCompanyId());
 
   const runtime = runtimeQuery.data;
   const moduleKeys = runtime?.tenant?.enabledModuleKeys ?? ["platform.application"];
@@ -123,6 +135,9 @@ export function AppDesk() {
     (page.startsWith("accounts") && !switchableApps.includes("accounts"))
       ? pageForApp(landingApp)
       : page;
+  const activeCompanies = useMemo(() => (companiesQuery.data ?? []).filter((company) => company.isActive), [companiesQuery.data]);
+  const selectedCompany = activeCompanies.find((company) => company.id === selectedCompanyId) ?? activeCompanies[0] ?? null;
+  const accountingYear = financialYearLabel(accountingSettingsQuery.data?.financialYear);
 
   useEffect(() => {
     if (publishedLandingApp && !enabledApps.includes(publishedLandingApp)) {
@@ -137,6 +152,12 @@ export function AppDesk() {
       setTenantDbName(runtime.tenant.dbName);
     }
   }, [runtime?.tenant]);
+
+  useEffect(() => {
+    if (!selectedCompany || selectedCompany.id === selectedCompanyId) return;
+    setSelectedCompanyId(selectedCompany.id);
+    window.localStorage.setItem(COMPANY_CONTEXT_STORAGE_KEY, selectedCompany.id);
+  }, [selectedCompany, selectedCompanyId]);
 
   useEffect(() => {
     if (!shouldResolveLandingPath) return;
@@ -171,8 +192,14 @@ export function AppDesk() {
       <ApplicationLayout
         brand={{
           href: activeApp === "billing" ? "/app/billing/overview" : activeApp === "accounts" ? "/app/accounts/overview" : "/app/application/overview",
-          subtitle: `${activeWorkspaceTitle.toLowerCase()} workspace`,
-          title: activeWorkspaceTitle
+          options: activeCompanies.map((company) => ({ id: company.id, subtitle: `${company.code} · ${accountingYear}`, title: company.name })),
+          onOptionSelect: (id) => {
+            setSelectedCompanyId(id);
+            window.localStorage.setItem(COMPANY_CONTEXT_STORAGE_KEY, id);
+          },
+          ...(selectedCompany ? { selectedOptionId: selectedCompany.id } : {}),
+          subtitle: selectedCompany ? accountingYear : `${activeWorkspaceTitle.toLowerCase()} workspace`,
+          title: selectedCompany?.name ?? activeWorkspaceTitle
         }}
         headerTitle={titleForPage(safePage)}
         menuItems={menuItems}
@@ -210,6 +237,21 @@ export function AppDesk() {
       </ApplicationLayout>
     </AuthGate>
   );
+}
+
+function readSelectedCompanyId() {
+  try {
+    return window.localStorage.getItem(COMPANY_CONTEXT_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function financialYearLabel(value: { endDate: string; startDate: string } | undefined) {
+  if (!value?.startDate || !value.endDate) return "Accounting year";
+  const startYear = value.startDate.slice(0, 4);
+  const endYear = value.endDate.slice(2, 4);
+  return /^\d{4}$/.test(startYear) && /^\d{2}$/.test(endYear) ? `FY ${startYear}-${endYear}` : `${value.startDate} to ${value.endDate}`;
 }
 
 function uniqueApps(apps: PlatformAppId[]) {

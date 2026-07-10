@@ -51,6 +51,18 @@ export async function registerQuotationRoutes(app: FastifyInstance) {
     ok(await lookups.createAddressType(lookupHeaders(request), request.body as Record<string, unknown>), { requestId: request.id }),
   );
 
+  app.post("/billing/quotations/lookups/:kind", async (request, reply) => {
+    const { kind } = request.params as { kind: string };
+    if (!["colours", "products", "sizes", "workOrders", "productCategories", "hsnCodes", "units", "taxes"].includes(kind)) return reply.code(404).send(notFound(request.id));
+    return ok(await lookups.createLookup(kind as "colours" | "products" | "sizes" | "workOrders" | "productCategories" | "hsnCodes" | "units" | "taxes", lookupHeaders(request), request.body as Record<string, unknown>), { requestId: request.id });
+  });
+
+  app.put("/billing/quotations/lookups/:kind/:id", async (request, reply) => {
+    const { id, kind } = request.params as { id: string; kind: string };
+    if (!["products", "workOrders"].includes(kind)) return reply.code(404).send(notFound(request.id));
+    return ok(await lookups.updateLookup(kind as "products" | "workOrders", lookupHeaders(request), id, request.body as Record<string, unknown>), { requestId: request.id });
+  });
+
   app.get("/billing/quotations", async (request) =>
     ok(await service.list(databaseName(request.headers["x-tenant-db"])), { requestId: request.id }),
   );
@@ -87,11 +99,31 @@ export async function registerQuotationRoutes(app: FastifyInstance) {
     return ok(entry, { requestId: request.id });
   });
 
+  app.post("/billing/quotations/:id/revoke", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const entry = await service.revoke(databaseName(request.headers["x-tenant-db"]), id);
+    if (!entry) return reply.code(404).send(notFound(request.id));
+    return ok(entry, { requestId: request.id });
+  });
+
+  app.delete("/billing/quotations/:id", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const entry = await service.deleteDraft(databaseName(request.headers["x-tenant-db"]), id);
+    if (!entry) return reply.code(404).send(notFound(request.id));
+    return ok(entry, { requestId: request.id });
+  });
+
   app.post("/billing/quotations/:id/convert-to-sale", async (request, reply) => {
     const { id } = request.params as { id: string };
     const result = await service.convertToSale(databaseName(request.headers["x-tenant-db"]), id);
     if (!result) return reply.code(404).send(notFound(request.id));
     return ok(result, { requestId: request.id });
+  });
+
+  app.post("/billing/quotations/convert-to-sale", async (request) => {
+    const body = request.body as { quotationIds?: unknown };
+    const quotationIds = Array.isArray(body?.quotationIds) ? body.quotationIds.filter((id): id is string => typeof id === "string") : [];
+    return ok(await service.convertManyToSale(databaseName(request.headers["x-tenant-db"]), quotationIds), { requestId: request.id });
   });
 }
 

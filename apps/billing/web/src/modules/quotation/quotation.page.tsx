@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
-import { ArrowUpRight, Eye, Pencil, Plus, Printer, RefreshCw, Save, Send, Trash2, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Eye, Pencil, Plus, Printer, RefreshCw, RotateCcw, Save, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@codexsun/ui/components/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@codexsun/ui/components/dropdown-menu";
 import { Input } from "@codexsun/ui/components/input";
 import { Label } from "@codexsun/ui/components/label";
 import { Textarea } from "@codexsun/ui/components/textarea";
@@ -16,6 +17,7 @@ import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import { WorkspaceDatePicker } from "@codexsun/ui/workspace/date-picker";
 import { WorkspaceLookup } from "@codexsun/ui/workspace/lookup";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
+import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
 import { WorkspaceTableEmptyState, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
 import { WorkspaceFormActions, WorkspaceFormSurface, WorkspaceFormTabbedBody } from "@codexsun/ui/workspace/upsert";
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
@@ -25,33 +27,54 @@ import { BillingLayout } from "../../shared/layout/BillingLayout";
 import { useSalesSettings } from "../settings";
 import { defaultBillingSettings, formatDocumentNumber, type BillingDocumentLayoutSettings, type BillingDocumentNumberSettings } from "../settings/settings.types";
 import { createEmptyQuotation, type Quotation, type QuotationSavePayload, type QuotationTaxType, type QuotationView } from "./quotation.types";
+import { QuotationShowPage } from "./quotation.show";
+import {
+  buildQuotationAddressChoices,
+  findPreferredQuotationAddress,
+  formatQuotationAddress,
+  QuotationAddressDialog,
+  QuotationAddressField,
+  quotationAddressDraftFromText,
+  type QuotationAddressDraft,
+} from "./quotation-address-editor";
 import {
   createQuotation,
   createQuotationAddressType,
   createQuotationContact,
+  createQuotationLookup,
   createQuotationLocation,
   convertQuotationToSale,
+  convertQuotationsToSale,
+  deleteQuotation,
   formatDate,
   formatMoney,
   listQuotationColours,
   listQuotationContacts,
   listQuotationAddressTypes,
   listQuotationLocations,
+  listQuotationHsnCodes,
+  listQuotationProductCategories,
   listQuotationProducts,
   listQuotationSizes,
+  listQuotationTaxes,
+  listQuotationUnits,
   listQuotationWorkOrders,
   quotationToPayload,
   setQuotationStatus,
+  revokeQuotation,
   totalQuotationQuantity,
   updateQuotationContact,
+  updateQuotationLookup,
   updateQuotation,
   type QuotationContactSavePayload,
   type QuotationLocationKind,
   type QuotationLocationRecord,
   type QuotationLookupOption,
   type QuotationLookupRecord,
+  type QuotationMasterSavePayload,
 } from "./quotation.services";
 import { useQuotationList } from "./quotation.hooks";
+import { getToken } from "../../shared/api/tenant-context";
 
 const statusFilters = [
   { id: "all", label: "All quotations" },
@@ -59,6 +82,29 @@ const statusFilters = [
   { id: "confirmed", label: "Confirmed" },
   { id: "cancelled", label: "Cancelled" },
 ];
+
+const quotationColumnCatalog = [
+  { id: "date", label: "Date" },
+  { id: "customer", label: "Customer" },
+  { id: "items", label: "Items" },
+  { id: "taxable", label: "Taxable" },
+  { id: "gst", label: "GST" },
+  { id: "total", label: "Total" },
+  { id: "status", label: "Status" },
+  { id: "invoice", label: "Invoice" },
+  { id: "action", label: "Action" },
+] as const;
+
+function isAdminSession() {
+  const token = getToken("tenant");
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1] ?? "")) as { userType?: string };
+    return payload.userType === "staff" || payload.userType === "super_admin";
+  } catch {
+    return false;
+  }
+}
 
 export function QuotationPage() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -82,11 +128,15 @@ export function QuotationWorkspace() {
   const settingsQuery = useSalesSettings();
   const settings = settingsQuery.data ?? defaultBillingSettings;
   const quotationLayout = settings.layout;
+  const canAdminRevoke = isAdminSession();
   const [view, setView] = useState<QuotationView>({ mode: "list" });
   const [searchValue, setSearchValue] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [contactFilter, setContactFilter] = useState("all");
+  const [selectedQuotationIds, setSelectedQuotationIds] = useState<Set<string>>(() => new Set());
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => Object.fromEntries(quotationColumnCatalog.map((column) => [column.id, true])));
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
 
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: QuotationSavePayload }) => id ? updateQuotation(id, payload) : createQuotation(payload),
@@ -114,6 +164,28 @@ export function QuotationWorkspace() {
     },
   });
 
+  const revokeMutation = useMutation({
+    mutationFn: (id: string) => revokeQuotation(id),
+    onSuccess: async (quotation) => {
+      await queryClient.invalidateQueries({ queryKey: ["billing", "quotations"] });
+      toast.success("Quotation revoked", { description: `${quotation.quotationNumber} is editable again.` });
+    },
+    onError: (error) => {
+      toast.error("Quotation revoke failed", { description: error instanceof Error ? error.message : "Please try again." });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteQuotation(id),
+    onSuccess: async (quotation) => {
+      await queryClient.invalidateQueries({ queryKey: ["billing", "quotations"] });
+      toast.success("Quotation deleted", { description: quotation.quotationNumber });
+    },
+    onError: (error) => {
+      toast.error("Quotation could not be deleted", { description: error instanceof Error ? error.message : "Only draft quotations can be deleted." });
+    },
+  });
+
   const convertMutation = useMutation({
     mutationFn: (id: string) => convertQuotationToSale(id),
     onSuccess: async ({ quotation, sale }) => {
@@ -126,7 +198,20 @@ export function QuotationWorkspace() {
     },
   });
 
+  const batchConvertMutation = useMutation({
+    mutationFn: (ids: string[]) => convertQuotationsToSale(ids),
+    onSuccess: async ({ sale }) => {
+      await queryClient.invalidateQueries({ queryKey: ["billing", "quotations"] });
+      setSelectedQuotationIds(new Set());
+      toast.success("Draft sales invoice generated", { description: sale.invoiceNumber });
+    },
+    onError: (error) => {
+      toast.error("Invoice generation failed", { description: error instanceof Error ? error.message : "Please try again." });
+    },
+  });
+
   const entries = quotationsQuery.data ?? [];
+  const contactOptions = useMemo(() => buildQuotationContactFilterOptions(entries), [entries]);
   const filteredEntries = useMemo(() => {
     const term = searchValue.trim().toLowerCase();
     return entries.filter((quotation) => {
@@ -134,21 +219,78 @@ export function QuotationWorkspace() {
         quotation.quotationNumber,
         quotation.customerName,
         quotation.workOrderNo,
-        quotation.salesLedger,
         quotation.date,
         quotation.status,
         String(quotation.amount),
       ].some((value) => String(value ?? "").toLowerCase().includes(term));
       const matchesStatus = statusFilter === "all" || quotation.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesContact = contactFilter === "all" || quotationContactKey(quotation) === contactFilter;
+      return matchesSearch && matchesStatus && matchesContact;
     });
-  }, [entries, searchValue, statusFilter]);
+  }, [contactFilter, entries, searchValue, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEntries.length / rowsPerPage));
   const pageEntries = filteredEntries.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  const pageTotals = useMemo(() => pageEntries.reduce(
+    (totals, quotation) => ({
+      amount: totals.amount + quotation.amount,
+      quantity: totals.quantity + totalQuotationQuantity(quotation),
+      subtotal: totals.subtotal + quotation.subtotal,
+      taxAmount: totals.taxAmount + quotation.taxAmount,
+    }),
+    { amount: 0, quantity: 0, subtotal: 0, taxAmount: 0 },
+  ), [pageEntries]);
+  const selectedEntries = useMemo(() => entries.filter((quotation) => selectedQuotationIds.has(quotation.id)), [entries, selectedQuotationIds]);
+  const pageSelectableEntries = pageEntries.filter(canGenerateInvoiceFromQuotation);
+  const pageSelected = pageSelectableEntries.length > 0 && pageSelectableEntries.every((quotation) => selectedQuotationIds.has(quotation.id));
+
+  useEffect(() => {
+    setSelectedQuotationIds((current) => {
+      const available = new Set(entries.map((quotation) => quotation.id));
+      const next = new Set(Array.from(current).filter((id) => available.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [entries]);
+
+  function toggleQuotationSelection(quotation: Quotation, checked: boolean) {
+    if (!canGenerateInvoiceFromQuotation(quotation)) return;
+    setSelectedQuotationIds((current) => {
+      const next = new Set(current);
+      if (checked) next.add(quotation.id);
+      else next.delete(quotation.id);
+      return next;
+    });
+  }
+
+  function togglePageSelection(checked: boolean) {
+    setSelectedQuotationIds((current) => {
+      const next = new Set(current);
+      for (const quotation of pageSelectableEntries) {
+        if (checked) next.add(quotation.id);
+        else next.delete(quotation.id);
+      }
+      return next;
+    });
+  }
+
+  function generateInvoice() {
+    if (!selectedEntries.length) {
+      toast.error("Select at least one quotation.");
+      return;
+    }
+    const contact = quotationContactKey(selectedEntries[0]!);
+    if (selectedEntries.some((quotation) => quotationContactKey(quotation) !== contact)) {
+      toast.error("Selected quotations must belong to the same contact.");
+      return;
+    }
+    batchConvertMutation.mutate(selectedEntries.map((quotation) => quotation.id));
+  }
 
   if (view.mode === "show") {
     const freshQuotation = entries.find((entry) => entry.id === view.quotation.id) ?? view.quotation;
+    const currentIndex = entries.findIndex((entry) => entry.id === freshQuotation.id);
+    const previousQuotation = currentIndex > 0 ? entries[currentIndex - 1] : null;
+    const nextQuotation = currentIndex >= 0 && currentIndex < entries.length - 1 ? entries[currentIndex + 1] : null;
     return (
       <QuotationShowPage
         quotation={freshQuotation}
@@ -157,19 +299,25 @@ export function QuotationWorkspace() {
         onNew={() => setView({ mode: "upsert", quotation: null, returnTo: "list" })}
         onPrint={() => window.print()}
         onConvert={() => convertMutation.mutate(freshQuotation.id)}
+        onSuspend={() => statusMutation.mutate({ id: freshQuotation.id, status: "cancelled" })}
         converting={convertMutation.isPending}
+        canEdit={freshQuotation.status === "draft"}
+        {...(previousQuotation ? { onPrevious: () => setView({ mode: "show", quotation: previousQuotation }) } : {})}
+        {...(nextQuotation ? { onNext: () => setView({ mode: "show", quotation: nextQuotation }) } : {})}
       />
     );
   }
 
   if (view.mode === "upsert") {
     return (
-      <QuotationUpsertPage
+        <QuotationUpsertPage
         errorMessage={saveMutation.error instanceof Error ? saveMutation.error.message : ""}
         loading={saveMutation.isPending}
         quotation={view.quotation}
         settings={quotationLayout}
         numbering={settings.numbering.quotation}
+        canAdminRevoke={canAdminRevoke}
+        {...(view.quotation && canAdminRevoke ? { onRevoke: () => revokeMutation.mutate(view.quotation!.id) } : {})}
         onBack={() => setView(view.returnTo === "show" && view.quotation ? { mode: "show", quotation: view.quotation } : { mode: "list" })}
         onSubmit={(payload, printAfter) => {
           saveMutation.mutate(view.quotation ? { id: view.quotation.id, payload } : { payload }, {
@@ -193,6 +341,10 @@ export function QuotationWorkspace() {
             <RefreshCw className={cn("size-4", quotationsQuery.isFetching && "animate-spin")} />
             Refresh
           </Button>
+          <Button className="h-9 rounded-md" disabled={!selectedEntries.length || batchConvertMutation.isPending} onClick={generateInvoice} type="button" variant="secondary">
+            <Send className="size-4" />
+            Generate invoice{selectedEntries.length ? ` (${selectedEntries.length})` : ""}
+          </Button>
           <Button className="h-9 rounded-md" onClick={() => setView({ mode: "upsert", quotation: null, returnTo: "list" })} type="button">
             <Plus className="size-4" />
             New quotation
@@ -211,10 +363,38 @@ export function QuotationWorkspace() {
           setSearchValue(value);
           setCurrentPage(1);
         }}
-        searchPlaceholder="Search quotation, customer, work order, ledger, date, or total"
+        searchPlaceholder="Search quotation, customer, work order, date, or total"
         searchValue={searchValue}
-        toolbarAction={<div className="rounded-md border border-border/70 bg-muted/20 px-3 py-1.5 text-xs font-medium text-muted-foreground">Total value: {formatMoney(filteredEntries.reduce((sum, entry) => sum + entry.amount, 0))}</div>}
+        columnOptions={quotationColumnCatalog.map((column) => ({ ...column, checked: Boolean(visibleColumns[column.id]), onCheckedChange: (checked: boolean) => setVisibleColumns((current) => ({ ...current, [column.id]: checked })) }))}
+        onShowAllColumns={() => setVisibleColumns(Object.fromEntries(quotationColumnCatalog.map((column) => [column.id, true])))}
       />
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/70 bg-card px-4 py-3 text-sm shadow-sm">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <div className="ml-1 min-w-64">
+            <WorkspaceLookup
+              options={[{ label: "All contacts", value: "all" }, ...contactOptions.map((option) => ({ label: option.label, value: option.id }))]}
+              placeholder="Search contact"
+              value={contactFilter}
+              onTextChange={(value) => {
+                if (!value) {
+                  setContactFilter("all");
+                  setSelectedQuotationIds(new Set());
+                  setCurrentPage(1);
+                }
+              }}
+              onValueChange={(value) => {
+                setContactFilter(value || "all");
+                setSelectedQuotationIds(new Set());
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <span>{selectedEntries.length} selected</span>
+          <Button className="h-8 rounded-md px-2" disabled={!selectedEntries.length} onClick={() => setSelectedQuotationIds(new Set())} type="button" variant="ghost">Clear</Button>
+        </div>
+      </div>
       {quotationsQuery.isError ? (
         <WorkspaceTablePanel>
           <WorkspaceTableEmptyState>{quotationsQuery.error instanceof Error ? quotationsQuery.error.message : "Quotations could not be loaded."}</WorkspaceTableEmptyState>
@@ -225,10 +405,22 @@ export function QuotationWorkspace() {
         loading={quotationsQuery.isLoading}
         onEdit={(quotation) => setView({ mode: "upsert", quotation, returnTo: "list" })}
         onSetStatus={(quotation, status) => statusMutation.mutate({ id: quotation.id, status })}
+        onForceDelete={(quotation) => {
+          if (window.confirm(`Force delete ${quotation.quotationNumber}? This cannot be undone.`)) deleteMutation.mutate(quotation.id);
+        }}
+        onRevoke={(quotation) => revokeMutation.mutate(quotation.id)}
+        canAdminRevoke={canAdminRevoke}
         onView={(quotation) => setView({ mode: "show", quotation })}
         page={currentPage}
         rowsPerPage={rowsPerPage}
+        pageSelected={pageSelected}
+        pageSelectableCount={pageSelectableEntries.length}
+        selectedQuotationIds={selectedQuotationIds}
+        onTogglePageSelection={togglePageSelection}
+        onToggleSelection={toggleQuotationSelection}
+        visibleColumns={visibleColumns}
       />
+      <QuotationPageTotals amount={pageTotals.amount} quantity={pageTotals.quantity} subtotal={pageTotals.subtotal} taxAmount={pageTotals.taxAmount} />
       <WorkspacePagination
         page={currentPage}
         rowsPerPage={rowsPerPage}
@@ -248,14 +440,37 @@ export function QuotationWorkspace() {
   );
 }
 
-function QuotationList({ entries, loading, onEdit, onSetStatus, onView, page, rowsPerPage }: { entries: Quotation[]; loading: boolean; onEdit: (quotation: Quotation) => void; onSetStatus: (quotation: Quotation, status: "cancelled" | "confirmed") => void; onView: (quotation: Quotation) => void; page: number; rowsPerPage: number }) {
+function QuotationPageTotals({ amount, quantity, subtotal, taxAmount }: { amount: number; quantity: number; subtotal: number; taxAmount: number }) {
+  return (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md border border-border/70 bg-card px-4 py-2.5 shadow-sm md:grid-cols-4">
+      <PageTotal label="Total quantity" value={String(quantity)} />
+      <PageTotal label="Total taxable" value={formatMoney(subtotal)} />
+      <PageTotal label="Total GST" value={formatMoney(taxAmount)} />
+      <PageTotal label="Grand total" strong value={formatMoney(amount)} />
+    </div>
+  );
+}
+
+function PageTotal({ label, strong, value }: { label: string; strong?: boolean; value: string }) {
+  return (
+    <div className="flex h-full items-center justify-start gap-3 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={cn("font-medium text-foreground", strong && "font-semibold")}>{value}</span>
+    </div>
+  );
+}
+
+function QuotationList({ canAdminRevoke, entries, loading, onEdit, onForceDelete, onRevoke, onSetStatus, onView, page, pageSelected, pageSelectableCount, rowsPerPage, selectedQuotationIds, onTogglePageSelection, onToggleSelection, visibleColumns }: { canAdminRevoke: boolean; entries: Quotation[]; loading: boolean; onEdit: (quotation: Quotation) => void; onForceDelete: (quotation: Quotation) => void; onRevoke: (quotation: Quotation) => void; onSetStatus: (quotation: Quotation, status: "cancelled" | "confirmed") => void; onView: (quotation: Quotation) => void; page: number; pageSelected: boolean; pageSelectableCount: number; rowsPerPage: number; selectedQuotationIds: Set<string>; onTogglePageSelection: (checked: boolean) => void; onToggleSelection: (quotation: Quotation, checked: boolean) => void; visibleColumns: Record<string, boolean> }) {
   return (
     <WorkspaceTablePanel>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] border-collapse text-sm">
           <thead className="bg-muted/50">
             <tr>
-              {["#", "Quotation", "Date", "Customer", "Items", "Taxable", "GST", "Total", "Status", "Action"].map((heading) => (
+              <th className="w-12 border-b border-border/70 px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <input aria-label="Select quotations on this page" checked={pageSelected} className="size-4 accent-primary disabled:cursor-not-allowed disabled:opacity-40" disabled={pageSelectableCount === 0} onChange={(event) => onTogglePageSelection(event.target.checked)} type="checkbox" />
+              </th>
+              { ["Quotation", ...(visibleColumns.customer ? ["Customer"] : []), ...(visibleColumns.date ? ["Date"] : []), ...(visibleColumns.items ? ["Items"] : []), ...(visibleColumns.taxable ? ["Taxable"] : []), ...(visibleColumns.gst ? ["GST"] : []), ...(visibleColumns.total ? ["Total"] : []), ...(visibleColumns.status ? ["Status"] : []), ...(visibleColumns.invoice ? ["Invoice"] : []), ...(visibleColumns.action ? ["Action"] : [])].map((heading) => (
                 <th key={heading} className="border-b border-border/70 px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{heading}</th>
               ))}
             </tr>
@@ -263,28 +478,35 @@ function QuotationList({ entries, loading, onEdit, onSetStatus, onView, page, ro
           <tbody>
             {entries.map((quotation, index) => (
               <tr key={quotation.id} className="border-b border-border/70 transition-colors last:border-b-0 hover:bg-muted/20">
-                <td className="px-4 py-2.5">{(page - 1) * rowsPerPage + index + 1}</td>
-                <td className="px-4 py-2.5">
-                  <button className="font-semibold text-foreground underline-offset-4 hover:underline" onClick={() => quotation.status === "draft" ? onEdit(quotation) : onView(quotation)} type="button">{quotation.quotationNumber}</button>
+                <td className="px-4 py-2.5 text-center">
+                  <input aria-label={`Select ${quotation.quotationNumber}`} checked={selectedQuotationIds.has(quotation.id)} className="size-4 accent-primary disabled:cursor-not-allowed disabled:opacity-40" disabled={!canGenerateInvoiceFromQuotation(quotation)} onChange={(event) => onToggleSelection(quotation, event.target.checked)} title={quotation.generatedSalesInvoiceNo ? `Already invoiced by ${quotation.generatedSalesInvoiceNo}` : undefined} type="checkbox" />
                 </td>
-                <td className="px-4 py-2.5">{formatDate(quotation.date)}</td>
-                <td className="px-4 py-2.5">{quotation.customerName}</td>
-                <td className="px-4 py-2.5">{totalQuotationQuantity(quotation)}</td>
-                <td className="px-4 py-2.5">{formatMoney(quotation.subtotal)}</td>
-                <td className="px-4 py-2.5">{formatMoney(quotation.taxAmount)}</td>
-                <td className="px-4 py-2.5 font-semibold">{formatMoney(quotation.amount)}</td>
-                <td className="px-4 py-2.5"><StatusPill status={quotation.status} /></td>
                 <td className="px-4 py-2.5">
+                  <button className="font-semibold text-foreground underline-offset-4 hover:underline" onClick={() => onView(quotation)} title="View quotation" type="button">{quotation.quotationNumber}</button>
+                </td>
+                {visibleColumns.customer ? <td className="px-4 py-2.5">
+                  <button className={cn("font-medium underline-offset-4", quotation.status === "draft" ? "hover:underline" : "cursor-not-allowed text-muted-foreground")} disabled={quotation.status !== "draft"} onClick={() => onEdit(quotation)} title={quotation.status === "draft" ? "Edit quotation" : "Submitted quotations cannot be edited"} type="button">{quotation.customerName}</button>
+                </td> : null}
+                {visibleColumns.date ? <td className="px-4 py-2.5">{formatDate(quotation.date)}</td> : null}
+                {visibleColumns.items ? <td className="px-4 py-2.5">{totalQuotationQuantity(quotation)}</td> : null}
+                {visibleColumns.taxable ? <td className="px-4 py-2.5">{formatMoney(quotation.subtotal)}</td> : null}
+                {visibleColumns.gst ? <td className="px-4 py-2.5">{formatMoney(quotation.taxAmount)}</td> : null}
+                {visibleColumns.total ? <td className="px-4 py-2.5 font-semibold">{formatMoney(quotation.amount)}</td> : null}
+                {visibleColumns.status ? <td className="px-4 py-2.5"><StatusPill quotation={quotation} /></td> : null}
+                {visibleColumns.invoice ? <td className="px-4 py-2.5 font-semibold text-sky-700">{quotation.generatedSalesInvoiceNo || "-"}</td> : null}
+                {visibleColumns.action ? <td className="px-4 py-2.5">
                   <WorkspaceRowActions
-                    actions={quotation.status === "draft" ? [
-                      { id: "confirm", label: "Confirm", icon: <Eye className="size-4" />, onSelect: () => onSetStatus(quotation, "confirmed") },
-                    ] : []}
-                    {...(quotation.status !== "cancelled" && !quotation.generatedSalesInvoiceNo ? { deleteLabel: "Cancel", onDelete: () => onSetStatus(quotation, "cancelled") } : {})}
+                    actions={[
+                      ...(quotation.status === "draft" ? [{ id: "confirm", label: "Confirm", icon: <Eye className="size-4" />, onSelect: () => onSetStatus(quotation, "confirmed") }] : []),
+                      ...(canAdminRevoke && quotation.status === "confirmed" && !quotation.generatedSalesInvoiceNo ? [{ id: "revoke", label: "Revoke by admin", icon: <RotateCcw className="size-4" />, onSelect: () => onRevoke(quotation) }] : []),
+                      ...(quotation.status !== "cancelled" && !quotation.generatedSalesInvoiceNo ? [{ id: "suspend", label: "Suspend", icon: <Trash2 className="size-4" />, tone: "destructive" as const, onSelect: () => onSetStatus(quotation, "cancelled") }] : []),
+                      ...(quotation.status === "draft" ? [{ id: "force-delete", label: "Force delete", icon: <Trash2 className="size-4" />, tone: "destructive" as const, onSelect: () => onForceDelete(quotation) }] : []),
+                    ]}
                     {...(quotation.status === "draft" ? { onEdit: () => onEdit(quotation) } : {})}
                     onView={() => onView(quotation)}
                     title={quotation.quotationNumber}
                   />
-                </td>
+                </td> : null}
               </tr>
             ))}
           </tbody>
@@ -295,8 +517,9 @@ function QuotationList({ entries, loading, onEdit, onSetStatus, onView, page, ro
   );
 }
 
-function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmit, quotation, settings }: { errorMessage: string; loading: boolean; numbering: BillingDocumentNumberSettings; onBack: () => void; onSubmit: (payload: QuotationSavePayload, printAfter?: boolean) => void; quotation: Quotation | null; settings: BillingDocumentLayoutSettings }) {
+function QuotationUpsertPage({ canAdminRevoke, errorMessage, loading, numbering, onBack, onRevoke, onSubmit, quotation, settings }: { canAdminRevoke: boolean; errorMessage: string; loading: boolean; numbering: BillingDocumentNumberSettings; onBack: () => void; onRevoke?: () => void; onSubmit: (payload: QuotationSavePayload, printAfter?: boolean) => void; quotation: Quotation | null; settings: BillingDocumentLayoutSettings }) {
   const [activeTab, setActiveTab] = useState("details");
+  const [workflowAction, setWorkflowAction] = useState<"draft" | "submit" | "revoke">(quotation?.status === "confirmed" ? "revoke" : "draft");
   const [form, setForm] = useState<QuotationSavePayload>(() => quotation ? quotationToPayload(quotation) : {
     ...createEmptyQuotation(),
     quotationNumber: numbering.automatic ? formatDocumentNumber(numbering) : createEmptyQuotation().quotationNumber,
@@ -317,6 +540,14 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [itemResetSignal, setItemResetSignal] = useState(0);
   const [editingContact, setEditingContact] = useState<QuotationLookupOption["record"] | null>(null);
+  const [editingProduct, setEditingProduct] = useState<QuotationLookupRecord | null>(null);
+  const [editingWorkOrder, setEditingWorkOrder] = useState<QuotationLookupRecord | null>(null);
+  const [editingAddressKind, setEditingAddressKind] = useState<"billing" | "shipping" | null>(null);
+  const [roundOffManual, setRoundOffManual] = useState(Boolean(quotation && Number(quotation.roundOff || 0) !== 0));
+  const [billingAddressDraft, setBillingAddressDraft] = useState<QuotationAddressDraft>(() => quotationAddressDraftFromText(form.billingAddress, "Billing"));
+  const [shippingAddressDraft, setShippingAddressDraft] = useState<QuotationAddressDraft>(() => quotationAddressDraftFromText(form.shippingAddress, "Shipping"));
+  const [billingAddressChoice, setBillingAddressChoice] = useState("");
+  const [shippingAddressChoice, setShippingAddressChoice] = useState("");
   const contactsQuery = useQuery({ queryFn: listQuotationContacts, queryKey: ["billing", "quotation", "lookups", "contacts"] });
   const workOrdersQuery = useQuery({ queryFn: listQuotationWorkOrders, queryKey: ["billing", "quotation", "lookups", "work-orders"] });
   const productsQuery = useQuery({ queryFn: listQuotationProducts, queryKey: ["billing", "quotation", "lookups", "products"] });
@@ -325,7 +556,15 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
   const contactSaveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: QuotationContactSavePayload }) => id ? updateQuotationContact(id, payload) : createQuotationContact(payload),
   });
+  const masterSaveMutation = useMutation({
+    mutationFn: ({ id, kind, payload }: { id?: string; kind: "products" | "workOrders"; payload: QuotationMasterSavePayload }) =>
+      id ? updateQuotationLookup(kind, id, masterPayload(kind, payload)) : createQuotationLookup(kind, masterPayload(kind, payload)),
+  });
   const selectedContact = (contactsQuery.data ?? []).find((option) => option.value === form.customerName || option.label === form.customerName);
+  const selectedWorkOrder = (workOrdersQuery.data ?? []).find((option) => option.value === form.workOrderNo || option.label === form.workOrderNo);
+  const contactAddressChoices = useMemo(() => buildQuotationAddressChoices(selectedContact?.record), [selectedContact?.record]);
+  const itemTotals = useMemo(() => computeQuotationTotals(form.items, form.taxType), [form.items, form.taxType]);
+  const suggestedRoundOff = useMemo(() => computeSuggestedRoundOff(itemTotals.amount), [itemTotals.amount]);
 
   function patch(next: Partial<QuotationSavePayload>) {
     setForm((current) => ({ ...current, ...next }));
@@ -333,6 +572,50 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
 
   function patchDraft(next: Partial<typeof itemDraft>) {
     setItemDraft((current) => ({ ...current, ...next }));
+  }
+
+  useEffect(() => {
+    if (roundOffManual) return;
+    setForm((current) => current.roundOff === suggestedRoundOff ? current : { ...current, roundOff: suggestedRoundOff });
+  }, [roundOffManual, suggestedRoundOff]);
+
+  function applyAddressDraft(kind: "billing" | "shipping", draft: QuotationAddressDraft, choiceValue = "") {
+    const formatted = formatQuotationAddress(draft);
+    if (kind === "billing") {
+      setBillingAddressDraft(draft);
+      setBillingAddressChoice(choiceValue);
+      patch({ billingAddress: formatted });
+      return;
+    }
+    setShippingAddressDraft(draft);
+    setShippingAddressChoice(choiceValue);
+    patch({ shippingAddress: formatted });
+  }
+
+  function applyContactAddresses(record?: QuotationLookupRecord | null) {
+    const choices = buildQuotationAddressChoices(record);
+    const preferredBilling = findPreferredQuotationAddress(choices, "Billing");
+    const preferredShipping = findPreferredQuotationAddress(choices, "Shipping");
+    if (preferredBilling) applyAddressDraft("billing", preferredBilling.draft, preferredBilling.value);
+    if (preferredShipping) applyAddressDraft("shipping", preferredShipping.draft, preferredShipping.value);
+  }
+
+  function applyContactSelection(value: string, option?: QuotationLookupOption | null) {
+    patch({ customerName: option?.label ?? value });
+    if (option?.record) applyContactAddresses(option.record);
+  }
+
+  function applyRoundOff(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setRoundOffManual(false);
+      patch({ roundOff: suggestedRoundOff });
+      return;
+    }
+    const parsed = Number(trimmed);
+    if (Number.isNaN(parsed)) return;
+    setRoundOffManual(true);
+    patch({ roundOff: parsed });
   }
 
   function resetDraft() {
@@ -395,8 +678,9 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
       value: "details",
       label: "Details",
       content: (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-4">
+        <div className="space-y-0">
+          <div className="grid gap-x-6 gap-y-5 lg:grid-cols-2">
+          <div className="space-y-5">
             <Field label="Customer name" required>
               <WorkspaceLookup
                 createDescription="Add contact details and address without leaving this quotation."
@@ -406,11 +690,11 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
                 emptyLabel="No contacts found. Create a new contact."
                 loading={contactsQuery.isLoading}
                 options={contactsQuery.data ?? []}
-                placeholder="Search or select contact"
+                placeholder="Search contact"
                 required
                 value={form.customerName}
                 onTextChange={(value) => patch({ customerName: value })}
-                onValueChange={(value, option) => patch({ customerName: option?.label ?? value })}
+                onValueChange={(value, option) => applyContactSelection(value, option as QuotationLookupOption | null | undefined)}
                 renderCreateForm={({ initialName, onCancel, onCreated }) => (
                   <QuotationContactQuickForm
                     initialValue={contactDraftFromRecord(undefined, initialName)}
@@ -422,6 +706,8 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
                       const option = quotationContactOption(created);
                       onCreated(option);
                       patch({ customerName: option.label });
+                      applyContactAddresses(created);
+                      toast.success("Contact saved", { description: option.label });
                     }}
                     title="New contact"
                   />
@@ -442,16 +728,41 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
             </Field>
             <Field label="Work order no">
               <WorkspaceLookup
+                createDescription="Add a work order without leaving this quotation."
+                createLabel="New work order"
+                createMode="popup"
+                createTitle="New work order"
+                emptyLabel="No work orders found. Create a new work order."
                 loading={workOrdersQuery.isLoading}
                 options={workOrdersQuery.data ?? []}
-                placeholder="Search or select work order"
+                placeholder="Search work order"
                 value={form.workOrderNo}
                 onTextChange={(value) => patch({ workOrderNo: value })}
                 onValueChange={(value, option) => patch({ workOrderNo: option?.value ?? value })}
+                renderCreateForm={({ initialName, onCancel, onCreated }) => (
+                  <QuotationMasterQuickForm
+                    kind="workOrders"
+                    initialValue={masterDraftFromRecord(undefined, initialName)}
+                    loading={masterSaveMutation.isPending}
+                    onCancel={onCancel}
+                    onSave={async (payload) => {
+                      const created = await masterSaveMutation.mutateAsync({ kind: "workOrders", payload });
+                      await workOrdersQuery.refetch();
+                      const option = quotationWorkOrderOption(created);
+                      onCreated(option);
+                      patch({ workOrderNo: option.value });
+                      toast.success("Work order saved", { description: option.label });
+                    }}
+                    title="New work order"
+                  />
+                )}
+                trailingAction={selectedWorkOrder?.record ? (
+                  <button aria-label="Edit selected work order" className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Edit selected work order" type="button" onMouseDown={(event) => event.preventDefault()} onClick={(event) => { event.stopPropagation(); if (selectedWorkOrder.record) setEditingWorkOrder(selectedWorkOrder.record); }}><ArrowUpRight className="size-4" /></button>
+                ) : undefined}
               />
             </Field>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-5">
             <Field label="Quotation number"><Input disabled={!quotation && numbering.automatic} value={form.quotationNumber} onChange={(event) => patch({ quotationNumber: event.target.value })} /></Field>
             <Field label="Date"><WorkspaceDatePicker value={form.date} onValueChange={(value) => patch({ date: value })} /></Field>
             <Field label="Quotation tax type">
@@ -462,15 +773,70 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
               />
             </Field>
           </div>
-        </div>
-      ),
-    },
-    {
-      value: "other-details",
-      label: "Other Details",
-      content: (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Field label="Sales ledger"><Input value={form.salesLedger} onChange={(event) => patch({ salesLedger: event.target.value })} /></Field>
+          </div>
+          <QuotationItemsSection
+          draft={itemDraft}
+          editing={editingItemIndex !== null}
+          items={form.items}
+          colourOptions={coloursQuery.data ?? []}
+          coloursLoading={coloursQuery.isLoading}
+          productOptions={productsQuery.data ?? []}
+          productsLoading={productsQuery.isLoading}
+          resetSignal={itemResetSignal}
+          settings={settings}
+          sizeOptions={sizesQuery.data ?? []}
+          sizesLoading={sizesQuery.isLoading}
+          taxType={form.taxType}
+          roundOff={Number(form.roundOff ?? 0)}
+          roundOffManual={roundOffManual}
+          suggestedRoundOff={suggestedRoundOff}
+          onAdd={addOrUpdateItem}
+          onDraftChange={patchDraft}
+          onEdit={editItem}
+          onProductSelect={applyProductSelection}
+          onRoundOffChange={applyRoundOff}
+          onRemove={removeItem}
+          onResetRoundOff={() => {
+            setRoundOffManual(false);
+            patch({ roundOff: suggestedRoundOff });
+          }}
+          onReset={resetDraft}
+          onCreateColour={async (name) => {
+            const created = await createQuotationLookup("colours", { isActive: true, name });
+            await coloursQuery.refetch();
+            toast.success("Colour saved", { description: name });
+            return quotationCommonOption(created);
+          }}
+          onCreateProduct={async (name) => {
+            const created = await masterSaveMutation.mutateAsync({ kind: "products", payload: masterDraftFromRecord(undefined, name) });
+            await productsQuery.refetch();
+            toast.success("Product saved", { description: name });
+            return quotationProductOption(created);
+          }}
+          renderProductCreateForm={({ initialName, onCancel, onCreated }) => (
+            <QuotationMasterQuickForm
+              kind="products"
+              initialValue={masterDraftFromRecord(undefined, initialName)}
+              loading={masterSaveMutation.isPending}
+              onCancel={onCancel}
+              onSave={async (payload) => {
+                const created = await masterSaveMutation.mutateAsync({ kind: "products", payload });
+                await productsQuery.refetch();
+                const option = quotationProductOption(created);
+                onCreated(option);
+                toast.success("Product saved", { description: option.label });
+              }}
+              title="New product"
+            />
+          )}
+          onCreateSize={async (name) => {
+            const created = await createQuotationLookup("sizes", { isActive: true, name });
+            await sizesQuery.refetch();
+            toast.success("Size saved", { description: name });
+            return quotationCommonOption(created);
+          }}
+            onEditProduct={(record) => setEditingProduct(record)}
+          />
         </div>
       ),
     },
@@ -479,8 +845,24 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
       label: "Address",
       content: (
         <div className="grid gap-4 lg:grid-cols-2">
-          <Field label="Billing address"><Textarea className="min-h-32" value={form.billingAddress} onChange={(event) => patch({ billingAddress: event.target.value })} /></Field>
-          <Field label="Shipping address"><Textarea className="min-h-32" value={form.shippingAddress} onChange={(event) => patch({ shippingAddress: event.target.value })} /></Field>
+          <QuotationAddressField
+            choices={contactAddressChoices}
+            description={form.billingAddress}
+            disabled={!selectedContact?.record}
+            label="Billing address"
+            selectedValue={billingAddressChoice}
+            onEdit={() => setEditingAddressKind("billing")}
+            onSelect={(choice) => applyAddressDraft("billing", choice.draft, choice.value)}
+          />
+          <QuotationAddressField
+            choices={contactAddressChoices}
+            description={form.shippingAddress}
+            disabled={!selectedContact?.record}
+            label="Shipping address"
+            selectedValue={shippingAddressChoice}
+            onEdit={() => setEditingAddressKind("shipping")}
+            onSelect={(choice) => applyAddressDraft("shipping", choice.draft, choice.value)}
+          />
         </div>
       ),
     },
@@ -496,7 +878,7 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
     },
   ];
 
-  function submit(printAfter = false) {
+  function submit(printAfter = false, status: QuotationSavePayload["status"] = form.status) {
     if (!form.customerName.trim()) {
       toast.error("Customer name is required");
       return;
@@ -505,52 +887,62 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
       toast.error("Add at least one item");
       return;
     }
-    onSubmit(form, printAfter);
+    onSubmit({ ...form, status }, printAfter);
   }
 
   return (
     <WorkspacePage
+      className="max-w-[96rem]"
       title={quotation ? "Edit Quotation" : "New Quotation"}
       description="Create or update a tenant-isolated quotation voucher."
       actions={<Button className="h-9 rounded-md" onClick={onBack} type="button" variant="outline"><X className="size-4" />Cancel</Button>}
     >
       <WorkspaceFormSurface>
-        <WorkspaceFormTabbedBody className="border-b border-border/90 pb-6">
+        <WorkspaceFormTabbedBody className="pb-7">
           <WorkspaceAnimatedTabs
             tabs={tabs}
             value={activeTab}
             onValueChange={setActiveTab}
-            contentClassName="px-0"
+            className="min-w-0"
+            contentClassName="px-0 pb-0"
+            listClassName="border-border/80"
           />
         </WorkspaceFormTabbedBody>
         {errorMessage ? <div className="mx-6 mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div> : null}
-        <QuotationItemsSection
-          draft={itemDraft}
-          editing={editingItemIndex !== null}
-          items={form.items}
-          colourOptions={coloursQuery.data ?? []}
-          coloursLoading={coloursQuery.isLoading}
-          productOptions={productsQuery.data ?? []}
-          productsLoading={productsQuery.isLoading}
-          resetSignal={itemResetSignal}
-          settings={settings}
-          sizeOptions={sizesQuery.data ?? []}
-          sizesLoading={sizesQuery.isLoading}
-          taxType={form.taxType}
-          onAdd={addOrUpdateItem}
-          onDraftChange={patchDraft}
-          onEdit={editItem}
-          onProductSelect={applyProductSelection}
-          onRemove={removeItem}
-          onReset={resetDraft}
-        />
         <WorkspaceFormActions>
-          <Button disabled={loading} onClick={() => submit()} type="button"><Save className="size-4" />Save</Button>
+          <Button disabled={loading} onClick={() => submit(false, "draft")} type="button"><Save className="size-4" />Save</Button>
           <Button disabled={loading} onClick={() => submit(true)} type="button" variant="outline"><Printer className="size-4" />Save & Print</Button>
           <Button onClick={onBack} type="button" variant="outline"><X className="size-4" />Cancel</Button>
+          <div className="ml-auto flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  aria-label="Quotation workflow action"
+                  className={cn(
+                    "h-8 w-20 min-w-20 justify-center gap-1 px-2 text-xs transition-[background-color,border-color,color,transform] duration-300 ease-out",
+                    workflowAction === "draft" && "border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100",
+                    workflowAction === "submit" && "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                    workflowAction === "revoke" && "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100",
+                  )}
+                  disabled={loading}
+                  title="Quotation workflow action"
+                  type="button"
+                  variant="outline"
+                >
+                  {workflowAction === "draft" ? "Draft" : workflowAction === "submit" ? "Submit" : "Revoke"}
+                  <ChevronDown className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-20 min-w-20 rounded-md p-1">
+                <DropdownMenuItem className="gap-1 px-2 text-xs" onSelect={() => setWorkflowAction("draft")}><Save className="size-4" />Draft</DropdownMenuItem>
+                <DropdownMenuItem className="gap-1 px-2 text-xs" onSelect={() => setWorkflowAction("submit")}><Send className="size-4" />Submit</DropdownMenuItem>
+                {(workflowAction === "submit" || quotation?.status === "confirmed") && !quotation?.generatedSalesInvoiceNo ? <><DropdownMenuSeparator /><DropdownMenuItem className="gap-1 px-2 text-xs" onSelect={() => setWorkflowAction("revoke")}><RotateCcw className="size-4" />Revoke</DropdownMenuItem></> : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </WorkspaceFormActions>
         <Dialog open={Boolean(editingContact)} onOpenChange={(open) => !open && setEditingContact(null)}>
-          <DialogContent className="rounded-md sm:max-w-4xl" onInteractOutside={(event) => event.preventDefault()}>
+          <DialogContent className="rounded-md p-0 sm:max-w-3xl" onInteractOutside={(event) => event.preventDefault()}>
             {editingContact ? (
               <QuotationContactQuickForm
                 initialValue={contactDraftFromRecord(editingContact)}
@@ -560,7 +952,35 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
                   const saved = await contactSaveMutation.mutateAsync({ id: editingContact.id, payload });
                   await contactsQuery.refetch();
                   patch({ customerName: quotationContactOption(saved).label });
+                  applyContactAddresses(saved);
                   setEditingContact(null);
+                  toast.success("Contact saved", { description: quotationContactOption(saved).label });
+                }}
+                title="Edit contact"
+              />
+            ) : null}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={Boolean(editingProduct)} onOpenChange={(open) => !open && setEditingProduct(null)}>
+          <DialogContent className="rounded-md p-0 sm:max-w-3xl" onInteractOutside={(event) => event.preventDefault()}>
+            {editingProduct ? <QuotationMasterQuickForm kind="products" initialValue={masterDraftFromRecord(editingProduct)} loading={masterSaveMutation.isPending} onCancel={() => setEditingProduct(null)} onSave={async (payload) => { const saved = await masterSaveMutation.mutateAsync({ id: editingProduct.id, kind: "products", payload }); await productsQuery.refetch(); patchDraft({ productName: quotationProductOption(saved).label }); setEditingProduct(null); toast.success("Product saved", { description: quotationProductOption(saved).label }); }} title="Edit product" /> : null}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={Boolean(editingWorkOrder)} onOpenChange={(open) => !open && setEditingWorkOrder(null)}>
+          <DialogContent className="rounded-md p-0 sm:max-w-3xl" onInteractOutside={(event) => event.preventDefault()}>
+            {editingWorkOrder ? <QuotationMasterQuickForm kind="workOrders" initialValue={masterDraftFromRecord(editingWorkOrder)} loading={masterSaveMutation.isPending} onCancel={() => setEditingWorkOrder(null)} onSave={async (payload) => { const saved = await masterSaveMutation.mutateAsync({ id: editingWorkOrder.id, kind: "workOrders", payload }); await workOrdersQuery.refetch(); patch({ workOrderNo: quotationWorkOrderOption(saved).value }); setEditingWorkOrder(null); toast.success("Work order saved", { description: quotationWorkOrderOption(saved).label }); }} title="Edit work order" /> : null}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={Boolean(editingAddressKind)} onOpenChange={(open) => !open && setEditingAddressKind(null)}>
+          <DialogContent className="rounded-md p-0 sm:max-w-3xl" onInteractOutside={(event) => event.preventDefault()}>
+            {editingAddressKind ? (
+              <QuotationAddressDialog
+                draft={editingAddressKind === "billing" ? billingAddressDraft : shippingAddressDraft}
+                onCancel={() => setEditingAddressKind(null)}
+                onSave={(draft) => {
+                  applyAddressDraft(editingAddressKind, draft);
+                  setEditingAddressKind(null);
+                  toast.success(`${editingAddressKind === "billing" ? "Billing" : "Shipping"} address saved`);
                 }}
                 title="Edit contact"
               />
@@ -604,6 +1024,7 @@ function QuotationContactQuickForm({ initialValue, loading, onCancel, onSave, ti
     }
     const created = await createQuotationLocation(kind, locationPayload(kind, name, form));
     await ({ cities: citiesQuery, districts: districtsQuery, pincodes: pincodesQuery, states: statesQuery }[kind]).refetch();
+    toast.success(`${kind === "pincodes" ? "Pincode" : kind.slice(0, -1)} saved`, { description: name });
     return quotationLocationOption(created);
   }
 
@@ -612,8 +1033,8 @@ function QuotationContactQuickForm({ initialValue, loading, onCancel, onSave, ti
       content: (
         <div className="grid gap-4">
           <ContactQuickField label="Contact name" required value={form.name} onChange={(name) => setForm((current) => ({ ...current, name, ...(!legalNameManual ? { legalName: name.toUpperCase() } : {}) }))} />
-          <ContactQuickField label="Legal name" value={form.legalName} onChange={(legalName) => { setLegalNameManual(true); setForm((current) => ({ ...current, legalName: legalName.toUpperCase() })); }} />
-          <ContactQuickField label="GSTIN" value={form.gstin} onChange={(gstin) => setForm((current) => ({ ...current, gstin: gstin.toUpperCase() }))} />
+          <ContactQuickField forceUppercase label="Legal name" value={form.legalName} onChange={(legalName) => { setLegalNameManual(true); setForm((current) => ({ ...current, legalName })); }} />
+          <ContactQuickField forceUppercase label="GSTIN" value={form.gstin} onChange={(gstin) => setForm((current) => ({ ...current, gstin }))} />
           <ContactQuickField label="Phone" value={form.primaryPhone} onChange={(primaryPhone) => setForm((current) => ({ ...current, primaryPhone }))} />
         </div>
       ),
@@ -631,11 +1052,12 @@ function QuotationContactQuickForm({ initialValue, loading, onCancel, onSave, ti
               emptyLabel="No address types found. Type a value to create it."
               loading={addressTypesQuery.isLoading}
               options={(addressTypesQuery.data ?? []).filter((record) => record.isActive !== false).map(quotationContactOption)}
-              placeholder="Search or select address type"
+              placeholder="Search address type"
               value={form.addressTypeName}
               onCreate={async (name) => {
                 const created = await createQuotationAddressType(name);
                 await addressTypesQuery.refetch();
+                toast.success("Address type saved", { description: name });
                 return quotationContactOption(created);
               }}
               onValueChange={(value, option) => setForm((current) => ({ ...current, addressTypeName: option?.label ?? value }))}
@@ -643,7 +1065,7 @@ function QuotationContactQuickForm({ initialValue, loading, onCancel, onSave, ti
           </label>
           <ContactQuickField label="Address line 1" value={form.addressLine1} onChange={(addressLine1) => setForm((current) => ({ ...current, addressLine1 }))} />
           <ContactQuickField label="Address line 2" value={form.addressLine2} onChange={(addressLine2) => setForm((current) => ({ ...current, addressLine2 }))} />
-          <div className="grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <ContactLocationLookup label="State" kind="states" loading={statesQuery.isLoading} options={locations.states.filter((record) => !form.countryId || record.countryId === form.countryId)} value={form.stateId || form.stateName} onCreate={createLocation} onPick={(record) => setForm((current) => locationPatch("states", record, current))} />
             <ContactLocationLookup label="District" kind="districts" loading={districtsQuery.isLoading} options={locations.districts.filter((record) => !form.stateId || record.stateId === form.stateId)} value={form.districtId || form.districtName} onCreate={createLocation} onPick={(record) => setForm((current) => locationPatch("districts", record, current))} />
             <ContactLocationLookup label="City" kind="cities" loading={citiesQuery.isLoading} options={locations.cities.filter((record) => !form.districtId || record.districtId === form.districtId)} value={form.cityId || form.cityName} onCreate={createLocation} onPick={(record) => setForm((current) => locationPatch("cities", record, current))} />
@@ -658,17 +1080,17 @@ function QuotationContactQuickForm({ initialValue, loading, onCancel, onSave, ti
 
   return (
     <form
-      className="grid gap-5"
+      className="grid gap-0"
       onSubmit={(event) => {
         event.preventDefault();
         void onSave(form);
       }}
     >
-      <DialogHeader>
+      <DialogHeader className="border-b border-border/80 px-5 py-4 pr-12">
         <DialogTitle>{title}</DialogTitle>
       </DialogHeader>
-      <WorkspaceAnimatedTabs contentClassName="px-0" listClassName="rounded-none border-x-0 border-t-0 px-0 shadow-none" tabs={tabs} value={activeTab} onValueChange={setActiveTab} />
-      <DialogFooter>
+      <WorkspaceAnimatedTabs contentClassName="h-[26rem] overflow-y-auto px-5 pb-5" listClassName="rounded-none border-x-0 border-t-0 px-5 shadow-none" tabs={tabs} value={activeTab} onValueChange={setActiveTab} />
+      <DialogFooter className="border-t border-border/80 px-5 py-4">
         <Button disabled={loading} type="button" variant="outline" onClick={onCancel}><X className="size-4" />Cancel</Button>
         <Button disabled={loading || !form.name.trim()} type="submit"><Save className="size-4" />Save contact</Button>
       </DialogFooter>
@@ -676,11 +1098,11 @@ function QuotationContactQuickForm({ initialValue, loading, onCancel, onSave, ti
   );
 }
 
-function ContactQuickField({ className, label, onChange, required, type = "text", value }: { className?: string; label: string; onChange: (value: string) => void; required?: boolean; type?: string; value: string }) {
+function ContactQuickField({ className, forceUppercase = false, label, onChange, required, type = "text", value }: { className?: string; forceUppercase?: boolean; label: string; onChange: (value: string) => void; required?: boolean; type?: string; value: string }) {
   return (
     <label className={cn("grid gap-2", className)}>
       <Label>{label}{required ? <span className="text-destructive"> *</span> : null}</Label>
-      <Input autoFocus={label === "Contact name"} className="h-11 rounded-md" required={required} type={type} value={value} onChange={(event) => onChange(event.target.value)} />
+      <Input autoCapitalize={forceUppercase ? "characters" : "none"} autoFocus={label === "Contact name"} className={cn("h-11 rounded-md", forceUppercase && "uppercase")} required={required} type={type} value={value} onChange={(event) => onChange(forceUppercase ? event.target.value.toUpperCase() : event.target.value)} />
     </label>
   );
 }
@@ -710,11 +1132,8 @@ function ContactLocationLookup({ kind, label, loading, onCreate, onPick, options
 }
 
 function quotationLocationOption(record: QuotationLocationRecord): QuotationLookupOption {
-  const label = record.pincode && record.areaName && record.areaName !== record.pincode
-    ? `${record.pincode} - ${record.areaName}`
-    : record.pincode || record.name || record.code;
+  const label = record.name || record.pincode || record.code;
   return {
-    description: [record.cityName, record.districtName, record.stateName].filter(Boolean).join(", "),
     label,
     record,
     value: record.id,
@@ -826,43 +1245,59 @@ function quotationContactOption(record: QuotationLookupRecord): QuotationLookupO
   };
 }
 
-function QuotationShowPage({ converting, onBack, onConvert, onEdit, onNew, onPrint, quotation }: { converting: boolean; onBack: () => void; onConvert: () => void; onEdit: () => void; onNew: () => void; onPrint: () => void; quotation: Quotation }) {
+function QuotationMasterQuickForm({ initialValue, kind, loading, onCancel, onSave, title }: { initialValue: QuotationMasterSavePayload; kind: "products" | "workOrders"; loading: boolean; onCancel: () => void; onSave: (payload: QuotationMasterSavePayload) => Promise<void>; title: string }) {
+  const [form, setForm] = useState(initialValue);
+  const product = kind === "products";
   return (
-    <WorkspacePage
-      title={quotation.quotationNumber}
-      description={`${quotation.customerName} • ${formatDate(quotation.date)}`}
-      actions={<><Button onClick={onNew} type="button"><Plus className="size-4" />New</Button>{quotation.status === "draft" ? <Button onClick={onEdit} type="button" variant="outline">Edit</Button> : null}{!quotation.generatedSalesInvoiceNo && quotation.status !== "cancelled" ? <Button disabled={converting} onClick={onConvert} type="button" variant="outline"><Send className="size-4" />Convert to sale</Button> : null}<Button onClick={onPrint} type="button" variant="outline"><Printer className="size-4" />Print</Button><Button onClick={onBack} type="button" variant="outline">Back</Button></>}
-    >
-      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <div className="rounded-md border border-border/70 bg-card/95 p-6 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/70 pb-5">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Quotation</p>
-              <h2 className="mt-1 text-2xl font-semibold">{quotation.quotationNumber}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{quotation.customerName}</p>
-            </div>
-            <StatusPill status={quotation.status} />
-          </div>
-          <div className="mt-5 grid gap-4 text-sm md:grid-cols-3">
-            <Detail label="Date" value={formatDate(quotation.date)} />
-          <Detail label="Work order" value={quotation.workOrderNo || "-"} />
-          <Detail label="Sales ledger" value={quotation.salesLedger || "-"} />
-          <Detail label="Sales invoice" value={quotation.generatedSalesInvoiceNo || "Not converted"} />
-          </div>
-        </div>
-        <div className="space-y-4">
-          <div className="rounded-md border border-border/70 bg-card/95 p-5 shadow-sm">
-            <h3 className="font-semibold">Comments</h3>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{quotation.notes || "No comments added."}</p>
-          </div>
-          <div className="rounded-md border border-border/70 bg-card/95 p-5 shadow-sm">
-            <h3 className="font-semibold">Activities</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Created {formatDate(quotation.createdAt)}. Last updated {formatDate(quotation.updatedAt)}.</p>
-          </div>
-        </div>
+    <form className="grid gap-0" onSubmit={(event) => { event.preventDefault(); void onSave(form); }}>
+      <DialogHeader className="border-b border-border/80 px-5 py-4 pr-12"><DialogTitle>{title}</DialogTitle></DialogHeader>
+      <div className="grid gap-4 px-5 py-5">
+        <ContactQuickField label={product ? "Product name" : "Work order name"} required value={form.name} onChange={(name) => setForm((current) => ({ ...current, name }))} />
+        <ContactQuickField label="Code" value={form.code} onChange={(code) => setForm((current) => ({ ...current, code: code.toUpperCase() }))} />
+        {product ? <><ContactQuickField label="HSN code" value={form.hsnCode} onChange={(hsnCode) => setForm((current) => ({ ...current, hsnCode }))} /><ContactQuickField label="Unit" value={form.unitName} onChange={(unitName) => setForm((current) => ({ ...current, unitName }))} /><ContactQuickField label="Opening rate" type="number" value={String(form.openingRate)} onChange={(openingRate) => setForm((current) => ({ ...current, openingRate: Number(openingRate || 0) }))} /></> : <ContactQuickField label="Work order type" value={form.typeName} onChange={(typeName) => setForm((current) => ({ ...current, typeName }))} />}
       </div>
-    </WorkspacePage>
+      <DialogFooter className="border-t border-border/80 px-5 py-4"><Button disabled={loading} type="button" variant="outline" onClick={onCancel}><X className="size-4" />Cancel</Button><Button disabled={loading || !form.name.trim()} type="submit"><Save className="size-4" />Save</Button></DialogFooter>
+    </form>
   );
+}
+
+function masterDraftFromRecord(record?: QuotationLookupRecord, initialName = ""): QuotationMasterSavePayload {
+  return {
+    code: record?.code ?? "",
+    hsnCode: record?.hsnCode ?? "",
+    hsnCodeId: record?.hsnCodeId ?? "",
+    name: record?.name ?? initialName,
+    openingRate: Number(record?.openingRate ?? record?.price ?? 0),
+    productCategoryId: record?.productCategoryId ?? "",
+    productCategoryName: record?.productCategoryName ?? "",
+    taxId: record?.taxId ?? "",
+    taxName: record?.taxName ?? "",
+    taxRate: Number(record?.taxRate ?? record?.ratePercent ?? 0),
+    typeName: record?.typeName ?? "",
+    unitId: record?.unitId ?? "",
+    unitName: record?.unitName ?? "",
+  };
+}
+
+function masterPayload(kind: "products" | "workOrders", payload: QuotationMasterSavePayload) {
+  return kind === "products"
+    ? { code: payload.code.trim(), hsnCode: payload.hsnCode.trim(), hsnCodeId: payload.hsnCodeId || null, isActive: true, name: payload.name.trim(), openingRate: Number(payload.openingRate || 0), productCategoryId: payload.productCategoryId || null, productCategoryName: payload.productCategoryName?.trim() || null, taxId: payload.taxId || null, taxName: payload.taxName?.trim() || null, taxRate: Number(payload.taxRate || 0), unitId: payload.unitId || null, unitName: payload.unitName.trim() }
+    : { code: payload.code.trim(), isActive: true, name: payload.name.trim(), typeName: payload.typeName.trim() };
+}
+
+function quotationProductOption(record: QuotationLookupRecord): QuotationLookupOption {
+  const label = record.name || record.code || record.id;
+  return { description: [record.hsnCode, record.unitName].filter(Boolean).join(" | "), label, meta: record.code || "", record, value: label };
+}
+
+function quotationWorkOrderOption(record: QuotationLookupRecord): QuotationLookupOption {
+  const value = record.code || record.workOrderNo || record.name || record.id;
+  return { description: record.name || record.typeName || "", label: value, meta: record.typeName || "", record, value };
+}
+
+function quotationCommonOption(record: QuotationLookupRecord): QuotationLookupOption {
+  const label = record.name || record.code || record.id;
+  return { label, record, value: label };
 }
 
 function QuotationItemsSection({
@@ -878,11 +1313,21 @@ function QuotationItemsSection({
   sizeOptions,
   sizesLoading,
   taxType,
+  roundOff,
+  roundOffManual,
+  suggestedRoundOff,
   onAdd,
+  onCreateColour,
+  onCreateProduct,
+  onCreateSize,
+  renderProductCreateForm,
   onDraftChange,
+  onEditProduct,
   onEdit,
   onProductSelect,
+  onRoundOffChange,
   onRemove,
+  onResetRoundOff,
   onReset,
 }: {
   colourOptions: QuotationLookupOption[];
@@ -897,11 +1342,21 @@ function QuotationItemsSection({
   sizeOptions: QuotationLookupOption[];
   sizesLoading: boolean;
   taxType: QuotationTaxType;
+  roundOff: number;
+  roundOffManual: boolean;
+  suggestedRoundOff: number;
   onAdd: () => void;
+  onCreateColour: (name: string) => Promise<QuotationLookupOption | undefined>;
+  onCreateProduct: (name: string) => Promise<QuotationLookupOption | undefined>;
+  onCreateSize: (name: string) => Promise<QuotationLookupOption | undefined>;
+  renderProductCreateForm: (context: { initialName: string; onCancel: () => void; onCreated: (option: QuotationLookupOption) => void }) => ReactNode;
   onDraftChange: (next: Partial<QuotationSavePayload["items"][number]>) => void;
+  onEditProduct: (record: QuotationLookupRecord) => void;
   onEdit: (index: number) => void;
   onProductSelect: (value: string, option?: QuotationLookupOption | null) => void;
+  onRoundOffChange: (value: string) => void;
   onRemove: (index: number) => void;
+  onResetRoundOff: () => void;
   onReset: () => void;
 }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
@@ -909,7 +1364,9 @@ function QuotationItemsSection({
   const showDc = settings.useDc;
   const showColour = settings.useColour;
   const showSize = settings.useSize;
+  const splitTax = taxType === "cgst-sgst";
   const totals = computeQuotationTotals(items, taxType);
+  const grandTotal = totals.amount + roundOff;
   const templateColumns = [
     ...(showPo ? ["minmax(6.5rem,0.7fr)"] : []),
     ...(showDc ? ["minmax(6.5rem,0.7fr)"] : []),
@@ -930,9 +1387,9 @@ function QuotationItemsSection({
   }, [resetSignal]);
 
   return (
-    <div className="px-6 pb-5">
-      <div className="pt-5">
-        <h3 className="text-[1.65rem] font-semibold tracking-normal text-foreground">Quotation Items</h3>
+    <div className="mt-8 px-0 pb-0 pt-5">
+      <div>
+        <h3 className="text-lg font-semibold tracking-normal text-foreground underline decoration-foreground/70 underline-offset-4">Quotation Items</h3>
         <div className="-mx-1 mt-3 overflow-x-auto px-1 pb-1 pt-1.5">
           <div className="min-w-[980px]">
             <div ref={rowRef} className="grid gap-1" style={{ gridTemplateColumns: templateColumns }}>
@@ -940,47 +1397,65 @@ function QuotationItemsSection({
               {showDc ? <Field label="DC"><Input value={draft.dcNo} onChange={(event) => onDraftChange({ dcNo: event.target.value })} /></Field> : null}
               <Field label="Product name">
                 <WorkspaceLookup
+                  createDescription="Add a product without leaving this quotation."
+                  createLabel="New product"
+                  createMode="popup"
+                  createTitle="New product"
+                  emptyLabel="No products found. Create a new product."
                   loading={productsLoading}
                   options={productOptions}
-                  placeholder="Search or select product"
+                  placeholder="Search product"
                   value={draft.productName}
                   onTextChange={(value) => onDraftChange({ productName: value })}
                   onValueChange={(value, option) => onProductSelect(value, option as QuotationLookupOption | null | undefined)}
+                  onCreate={onCreateProduct}
+                  renderCreateForm={renderProductCreateForm}
+                  trailingAction={productOptions.find((option) => option.value === draft.productName || option.label === draft.productName)?.record ? (
+                    <button aria-label="Edit selected product" className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Edit selected product" type="button" onMouseDown={(event) => event.preventDefault()} onClick={(event) => { event.stopPropagation(); const record = productOptions.find((option) => option.value === draft.productName || option.label === draft.productName)?.record; if (record) onEditProduct(record); }}><ArrowUpRight className="size-4" /></button>
+                  ) : undefined}
                 />
               </Field>
               <Field label="Description"><Input value={draft.description} onChange={(event) => onDraftChange({ description: event.target.value })} /></Field>
               {showColour ? (
                 <Field label="Colour">
                   <WorkspaceLookup
+                    createLabel="Create colour"
+                    createMode="inline"
+                    emptyLabel="No colours found. Type a value to create it."
                     loading={coloursLoading}
                     options={colourOptions}
                     placeholder="Search colour"
                     value={draft.colour}
                     onTextChange={(value) => onDraftChange({ colour: value })}
                     onValueChange={(value, option) => onDraftChange({ colour: option?.label ?? value })}
+                    onCreate={onCreateColour}
                   />
                 </Field>
               ) : null}
               {showSize ? (
                 <Field label="Size">
                   <WorkspaceLookup
+                    createLabel="Create size"
+                    createMode="inline"
+                    emptyLabel="No sizes found. Type a value to create it."
                     loading={sizesLoading}
                     options={sizeOptions}
                     placeholder="Search size"
                     value={draft.size}
                     onTextChange={(value) => onDraftChange({ size: value })}
                     onValueChange={(value, option) => onDraftChange({ size: option?.label ?? value })}
+                    onCreate={onCreateSize}
                   />
                 </Field>
               ) : null}
-              <Field label="Quantity"><Input min="1" type="number" value={String(draft.quantity)} onChange={(event) => onDraftChange({ quantity: Number(event.target.value || 0) })} /></Field>
-              <Field label="Price"><Input min="0" step="0.01" type="number" value={String(draft.rate)} onChange={(event) => onDraftChange({ rate: Number(event.target.value || 0) })} /></Field>
+              <Field label="Quantity"><Input className="text-center" inputMode="numeric" type="text" value={String(draft.quantity)} onChange={(event) => onDraftChange({ quantity: Number(event.target.value || 0) })} /></Field>
+              <Field label="Price"><Input className="text-right" inputMode="decimal" type="text" value={String(draft.rate)} onChange={(event) => onDraftChange({ rate: Number(event.target.value || 0) })} /></Field>
               <div className="flex items-end gap-2 pb-0.5">
                 <Button className="h-11 rounded-md bg-blue-600 px-4 text-white shadow-sm hover:bg-blue-700" type="button" onClick={onAdd}>
                   <Plus className="size-4" />
                   {editing ? "Update" : "Add"}
                 </Button>
-                {editing ? <Button className="h-11 rounded-md px-4" type="button" variant="outline" onClick={onReset}><X className="size-4" />Cancel</Button> : null}
+                {editing ? <Button aria-label="Cancel item edit" className="size-11 rounded-md p-0" title="Cancel item edit" type="button" variant="outline" onClick={onReset}><X className="size-4" /></Button> : null}
               </div>
             </div>
           </div>
@@ -989,8 +1464,16 @@ function QuotationItemsSection({
           <table className="w-full min-w-[1120px] border-collapse text-sm">
             <thead className="bg-muted/60">
               <tr>
-                {["#", ...(showPo ? ["PO"] : []), ...(showDc ? ["DC"] : []), "Particulars", "HSN Code", ...(showColour ? ["Colour"] : []), ...(showSize ? ["Size"] : []), "Qty", "Rate", "Unit", "Taxable", "GST %", "CGST", "SGST", "Total", "Action"].map((heading) => (
-                  <th key={heading} className="border-b border-r border-border/70 px-3 py-2 text-left text-sm font-medium text-muted-foreground last:border-r-0">{heading}</th>
+                {["#", ...(showPo ? ["PO"] : []), ...(showDc ? ["DC"] : []), "Particulars", "HSN Code", ...(showColour ? ["Colour"] : []), ...(showSize ? ["Size"] : []), "Qty", "Rate", "Unit", "Taxable", "GST %", ...(splitTax ? ["CGST", "SGST"] : ["IGST"]), "Total", "Action"].map((heading) => (
+                  <th
+                    key={heading}
+                    className={cn(
+                      "border-b border-r border-border/70 px-3 py-2 text-sm font-medium text-muted-foreground last:border-r-0",
+                      heading === "Particulars" ? "text-left" : "text-center",
+                    )}
+                  >
+                    {heading}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -1003,16 +1486,22 @@ function QuotationItemsSection({
                     {showPo ? <td className="border-r border-border/70 px-3 py-2">{item.poNo || "-"}</td> : null}
                     {showDc ? <td className="border-r border-border/70 px-3 py-2">{item.dcNo || "-"}</td> : null}
                     <td className="border-r border-border/70 px-3 py-2">{[item.productName, item.description].filter(Boolean).join(" - ")}</td>
-                    <td className="border-r border-border/70 px-3 py-2">{item.hsnCode || "-"}</td>
+                    <td className="border-r border-border/70 px-3 py-2 text-center">{item.hsnCode || "-"}</td>
                     {showColour ? <td className="border-r border-border/70 px-3 py-2">{item.colour || "-"}</td> : null}
                     {showSize ? <td className="border-r border-border/70 px-3 py-2">{item.size || "-"}</td> : null}
-                    <td className="border-r border-border/70 px-3 py-2">{item.quantity}</td>
+                    <td className="border-r border-border/70 px-3 py-2 text-center">{item.quantity}</td>
                     <td className="border-r border-border/70 px-3 py-2 text-right">{formatMoney(item.rate)}</td>
                     <td className="border-r border-border/70 px-3 py-2">{item.unit || "Nos"}</td>
                     <td className="border-r border-border/70 px-3 py-2 text-right">{formatMoney(line.taxableAmount)}</td>
-                    <td className="border-r border-border/70 px-3 py-2">{item.taxRate}%</td>
-                    <td className="border-r border-border/70 px-3 py-2 text-right">{formatMoney(line.cgstAmount)}</td>
-                    <td className="border-r border-border/70 px-3 py-2 text-right">{formatMoney(line.sgstAmount + line.igstAmount)}</td>
+                    <td className="border-r border-border/70 px-3 py-2 text-center">{item.taxRate}%</td>
+                    {splitTax ? (
+                      <>
+                        <td className="border-r border-border/70 px-3 py-2 text-right">{formatMoney(line.cgstAmount)}</td>
+                        <td className="border-r border-border/70 px-3 py-2 text-right">{formatMoney(line.sgstAmount)}</td>
+                      </>
+                    ) : (
+                      <td className="border-r border-border/70 px-3 py-2 text-right">{formatMoney(line.igstAmount)}</td>
+                    )}
                     <td className="border-r border-border/70 px-3 py-2 text-right font-semibold">{formatMoney(line.lineTotal)}</td>
                     <td className="px-2 py-2">
                       <div className="flex items-center justify-center gap-2">
@@ -1025,7 +1514,7 @@ function QuotationItemsSection({
               })}
               {!items.length ? (
                 <tr>
-                  <td className="px-3 py-6 text-center text-sm text-muted-foreground" colSpan={11 + (showPo ? 1 : 0) + (showDc ? 1 : 0) + (showColour ? 1 : 0) + (showSize ? 1 : 0)}>
+                  <td className="px-3 py-6 text-center text-sm text-muted-foreground" colSpan={11 + (showPo ? 1 : 0) + (showDc ? 1 : 0) + (showColour ? 1 : 0) + (showSize ? 1 : 0) + (splitTax ? 2 : 1)}>
                     Add quotation items to see them here.
                   </td>
                 </tr>
@@ -1037,8 +1526,14 @@ function QuotationItemsSection({
           <div className="grid w-full max-w-[25rem] gap-3 text-sm">
             <TotalRow label="Taxable amount" value={formatMoney(totals.taxableAmount)} />
             <TotalRow label="GST total" value={formatMoney(totals.taxAmount)} />
-            <TotalRow label="Round off" value={formatMoney(0)} />
-            <TotalRow label="Grand total" strong value={formatMoney(totals.amount)} />
+            <RoundOffRow
+              manual={roundOffManual}
+              suggestedValue={suggestedRoundOff}
+              value={roundOff}
+              onChange={onRoundOffChange}
+              onReset={onResetRoundOff}
+            />
+            <TotalRow label="Grand total" strong value={formatMoney(grandTotal)} />
           </div>
         </div>
       </div>
@@ -1050,13 +1545,75 @@ function Field({ children, label, required }: { children: ReactNode; label: stri
   return <label className="block space-y-2 text-sm font-medium text-muted-foreground">{label}{required ? <span className="text-destructive"> *</span> : null}{children}</label>;
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
-  return <div><p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 font-medium">{value}</p></div>;
+function StatusPill({ quotation, status }: { quotation?: Quotation; status?: Quotation["status"] }) {
+  const label = quotation?.generatedSalesInvoiceNo ? "invoiced" : status ?? quotation?.status ?? "draft";
+  const tone = label === "invoiced" ? "info" : label === "confirmed" ? "success" : label === "cancelled" ? "danger" : "warning";
+  return <WorkspaceStatusBadge label={label} tone={tone} />;
 }
 
-function StatusPill({ status }: { status: Quotation["status"] }) {
-  const tone = status === "confirmed" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : status === "cancelled" ? "border-red-200 bg-red-50 text-red-700" : "border-amber-200 bg-amber-50 text-amber-700";
-  return <span className={cn("inline-flex h-7 items-center rounded-full border px-3 text-xs font-semibold capitalize", tone)}>{status}</span>;
+function QuotationProductQuickForm({ initialValue, loading, onCancel, onSave, title }: { initialValue: QuotationMasterSavePayload; loading: boolean; onCancel: () => void; onSave: (payload: QuotationMasterSavePayload) => Promise<void>; title: string }) {
+  const [form, setForm] = useState(initialValue);
+  const categoriesQuery = useQuery({ queryFn: listQuotationProductCategories, queryKey: ["billing", "quotation", "lookups", "product-categories"] });
+  const hsnCodesQuery = useQuery({ queryFn: listQuotationHsnCodes, queryKey: ["billing", "quotation", "lookups", "hsn-codes"] });
+  const unitsQuery = useQuery({ queryFn: listQuotationUnits, queryKey: ["billing", "quotation", "lookups", "units"] });
+  const taxesQuery = useQuery({ queryFn: listQuotationTaxes, queryKey: ["billing", "quotation", "lookups", "taxes"] });
+
+  function patchProduct(next: Partial<QuotationMasterSavePayload>) { setForm((current) => ({ ...current, ...next })); }
+
+  async function createOption(kind: "productCategories" | "hsnCodes" | "units" | "taxes", name: string) {
+    const value = name.trim();
+    const payload = kind === "hsnCodes"
+      ? { code: value.toUpperCase(), description: value, isActive: true }
+      : kind === "taxes"
+        ? { description: `GST ${Number(value.replace(/%/g, "")) || 0}%`, isActive: true, ratePercent: Number(value.replace(/%/g, "")) || 0 }
+        : { isActive: true, name: value };
+    const created = await createQuotationLookup(kind, payload);
+    const query = { productCategories: categoriesQuery, hsnCodes: hsnCodesQuery, units: unitsQuery, taxes: taxesQuery }[kind];
+    await query.refetch();
+    toast.success(`${kind === "productCategories" ? "Product category" : kind === "hsnCodes" ? "HSN code" : kind === "units" ? "Unit" : "GST tax rate"} saved`, { description: value });
+    return created;
+  }
+
+  const categoryOptions = (categoriesQuery.data ?? []).map(quotationCommonOption);
+  const hsnOptions = (hsnCodesQuery.data ?? []).map((record) => ({ ...quotationCommonOption(record), label: record.code || record.name || record.id, value: record.id }));
+  const unitOptions = (unitsQuery.data ?? []).map(quotationCommonOption);
+  const taxOptions = (taxesQuery.data ?? []).map((record) => ({ ...quotationCommonOption(record), label: record.name || record.code || `${record.ratePercent ?? record.taxRate ?? 0}%`, value: record.id }));
+
+  return (
+    <form className="grid gap-0" onSubmit={(event) => { event.preventDefault(); void onSave(form); }}>
+      <DialogHeader className="border-b border-border/80 px-5 py-4 pr-12"><DialogTitle>{title}</DialogTitle></DialogHeader>
+      <div className="grid gap-5 px-5 py-5 sm:grid-cols-2">
+        <ContactQuickField label="Product name" required value={form.name} onChange={(name) => patchProduct({ name })} />
+        <ProductPopupLookup label="Product category" loading={categoriesQuery.isLoading} options={categoryOptions} value={form.productCategoryId || form.productCategoryName || ""} placeholder="Search product category" onCreate={(name) => createOption("productCategories", name)} onValueChange={(value, option) => patchProduct({ productCategoryId: option?.value ?? value, productCategoryName: option?.label ?? value })} />
+        <ProductPopupLookup label="HSN code" loading={hsnCodesQuery.isLoading} options={hsnOptions} value={form.hsnCodeId || form.hsnCode || ""} placeholder="Search HSN code" onCreate={(name) => createOption("hsnCodes", name)} onValueChange={(value, option) => patchProduct({ hsnCodeId: option?.value ?? value, hsnCode: option?.label ?? value })} />
+        <ProductPopupLookup label="Units" loading={unitsQuery.isLoading} options={unitOptions} value={form.unitId || form.unitName || ""} placeholder="Search units" onCreate={(name) => createOption("units", name)} onValueChange={(value, option) => patchProduct({ unitId: option?.value ?? value, unitName: option?.label ?? value })} />
+        <ProductPopupLookup label="GST tax rate" loading={taxesQuery.isLoading} options={taxOptions} value={form.taxId || (form.taxRate !== undefined ? String(form.taxRate) : "")} placeholder="Search GST tax rate" onCreate={(name) => createOption("taxes", name)} onValueChange={(value, option) => { const record = option?.record; patchProduct({ taxId: option?.value ?? value, taxName: option?.label ?? value, taxRate: Number(record?.ratePercent ?? record?.taxRate ?? value) || 0 }); }} />
+        <ContactQuickField label="Opening price" type="number" value={String(form.openingRate)} onChange={(openingRate) => patchProduct({ openingRate: Number(openingRate || 0) })} />
+      </div>
+      <DialogFooter className="border-t border-border/80 px-5 py-4"><Button disabled={loading} type="button" variant="outline" onClick={onCancel}><X className="size-4" />Cancel</Button><Button disabled={loading || !form.name.trim()} type="submit"><Save className="size-4" />Save product</Button></DialogFooter>
+    </form>
+  );
+}
+
+function ProductPopupLookup({ label, loading, onCreate, onValueChange, options, placeholder, value }: { label: string; loading: boolean; onCreate: (name: string) => Promise<QuotationLookupRecord>; onValueChange: (value: string, option?: QuotationLookupOption | null) => void; options: QuotationLookupOption[]; placeholder: string; value: string }) {
+  return <label className="grid gap-2"><Label>{label}</Label><WorkspaceLookup createLabel={`Create ${label.toLowerCase()}`} createMode="inline" emptyLabel={`No ${label.toLowerCase()} found. Type a value to create it.`} loading={loading} options={options} placeholder={placeholder} value={value} onCreate={async (name) => quotationCommonOption(await onCreate(name))} onValueChange={onValueChange} /></label>;
+}
+
+function canGenerateInvoiceFromQuotation(quotation: Quotation) {
+  return quotation.status !== "cancelled" && !quotation.generatedSalesInvoiceNo;
+}
+
+function quotationContactKey(quotation: Quotation) {
+  return quotation.customerName.trim().toLowerCase();
+}
+
+function buildQuotationContactFilterOptions(entries: Quotation[]) {
+  const byKey = new Map<string, string>();
+  for (const quotation of entries) {
+    const key = quotationContactKey(quotation);
+    if (!byKey.has(key)) byKey.set(key, quotation.customerName || key);
+  }
+  return Array.from(byKey, ([id, label]) => ({ id, label })).sort((left, right) => left.label.localeCompare(right.label));
 }
 
 function computeQuotationLine(item: QuotationSavePayload["items"][number], taxType: QuotationTaxType) {
@@ -1090,6 +1647,11 @@ function computeQuotationTotals(items: QuotationSavePayload["items"], taxType: Q
   );
 }
 
+function computeSuggestedRoundOff(amount: number) {
+  const rounded = Math.round(Number(amount || 0));
+  return Number((rounded - Number(amount || 0)).toFixed(2));
+}
+
 function TotalRow({ label, strong, value }: { label: string; strong?: boolean; value: string }) {
   return (
     <div className={cn("grid grid-cols-[1fr_auto_auto] items-center gap-4", strong && "font-semibold")}>
@@ -1098,5 +1660,42 @@ function TotalRow({ label, strong, value }: { label: string; strong?: boolean; v
       <span className="text-right">{value}</span>
     </div>
   );
+}
+
+function RoundOffRow({
+  manual,
+  suggestedValue,
+  value,
+  onChange,
+  onReset,
+}: {
+  manual: boolean;
+  suggestedValue: number;
+  value: number;
+  onChange: (value: string) => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_auto_minmax(5.5rem,6.5rem)] items-center gap-4">
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground">Round off</span>
+        <button className="text-xs font-medium text-orange-500 underline-offset-4 hover:text-orange-600 hover:underline" type="button" onClick={onReset}>
+          Auto {manual ? formatSignedMoney(suggestedValue) : ""}
+        </button>
+      </div>
+      <span className="text-muted-foreground">:</span>
+      <Input
+        className="h-8 rounded-md px-2 text-right text-sm"
+        inputMode="decimal"
+        value={String(value)}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  );
+}
+
+function formatSignedMoney(value: number) {
+  const prefix = value > 0 ? "+" : "";
+  return `${prefix}${formatMoney(value)}`;
 }
 

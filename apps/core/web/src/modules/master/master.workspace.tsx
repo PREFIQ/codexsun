@@ -21,6 +21,7 @@ import { cn } from "@codexsun/ui/lib/utils";
 import { commonMasterDefinitions } from "../common/registry";
 import { createLocationRecord } from "../location/location.services";
 import { CompanyLogosTab } from "../organisation/company/company-logos.tab";
+import { getTenantId } from "../../shared/api/tenant-context";
 import { createCommonMaster } from "../common-master/common-master.services";
 import { locationDefinitions } from "../location/location.definitions";
 import type { LocationKind, LocationSavePayload } from "../location/location.types";
@@ -300,6 +301,7 @@ function MasterUpsert({ createCode, definition, error, existingRecords, loading,
   const [tab, setTab] = useState<MasterTab>("details");
   const [form, setForm] = useState<MasterSavePayload>(() => record ? { ...record } : blank(definition, existingRecords, createCode));
   const lookups = useMasterLookups();
+  const tenantId = getTenantId();
   const title = record ? `Edit ${definition.singular}` : `New ${definition.singular}`;
   const lookupCreators: LookupCreateHandlers = definition.kind === "contact" ? {
     contactGroups: (name) => createLookupRecord("contactGroups", name, queryClient),
@@ -307,7 +309,6 @@ function MasterUpsert({ createCode, definition, error, existingRecords, loading,
   } : definition.kind === "product" ? {
     hsnCodes: (name) => createLookupRecord("hsnCodes", name, queryClient),
     productCategories: (name) => createLookupRecord("productCategories", name, queryClient),
-    productGroups: (name) => createLookupRecord("productGroups", name, queryClient),
     productTypes: (name) => createLookupRecord("productTypes", name, queryClient),
     taxes: (name) => createLookupRecord("taxes", name, queryClient),
     units: (name) => createLookupRecord("units", name, queryClient)
@@ -318,7 +319,7 @@ function MasterUpsert({ createCode, definition, error, existingRecords, loading,
     value: item.id,
     content: (
       <>
-        {item.id === "details" ? <DetailsTab definition={definition} form={form} lookupCreators={lookupCreators} lookups={lookups} setForm={setForm} /> : null}
+        {item.id === "details" ? <DetailsTab definition={definition} form={form} lookupCreators={lookupCreators} lookups={lookups} setForm={setForm} tenantId={tenantId} /> : null}
         {item.id === "tax" ? <TaxTab form={form} setForm={setForm} /> : null}
         {item.id === "communication" ? <CommunicationTab form={form} setForm={setForm} /> : null}
         {item.id === "addresses" ? <AddressesTab form={form} lookups={lookups} setForm={setForm} /> : null}
@@ -360,13 +361,15 @@ function MasterUpsert({ createCode, definition, error, existingRecords, loading,
   );
 }
 
-function DetailsTab({ definition, form, lookupCreators, lookups, setForm }: TabProps & { definition: MasterDefinition; lookupCreators: LookupCreateHandlers; lookups: LookupState }) {
+function DetailsTab({ definition, form, lookupCreators, lookups, setForm, tenantId }: TabProps & { definition: MasterDefinition; lookupCreators: LookupCreateHandlers; lookups: LookupState; tenantId: string | null }) {
   return (
     <WorkspaceFormGrid columns={2}>
       <Field label="Name" required><Input value={String(form.name ?? "")} onBlur={() => autofillLegalName(setForm)} onChange={(event) => patch(setForm, { name: event.target.value })} /></Field>
       {definition.kind !== "product" ? <Field label="Legal name"><Input value={String(form.legalName ?? "")} onChange={(event) => patch(setForm, { legalName: event.target.value })} /></Field> : null}
+      {definition.kind === "company" ? <Field label="Tenant ID"><Input disabled value={tenantId ?? ""} /></Field> : null}
+      {definition.kind === "company" ? <LookupField label="Industry" options={lookups.industries} value={form.industryId ?? form.industryName} onPick={(id, label) => patch(setForm, { industryId: id, industryName: label })} /> : null}
       <LookupField createLabel={definition.kind === "product" ? "Create product type" : "Create contact type"} label={definition.kind === "product" ? "Product Type" : "Contact Type"} options={definition.kind === "product" ? lookups.productTypes : lookups.contactTypes} value={form.typeId ?? form.typeName} onCreate={definition.kind === "product" ? lookupCreators.productTypes : lookupCreators.contactTypes} onPick={(id, label) => patch(setForm, { typeId: id, typeName: label })} />
-      <LookupField createLabel={definition.kind === "product" ? "Create product group" : "Create contact group"} label={definition.kind === "product" ? "Product Group" : "Contact Group"} options={definition.kind === "product" ? lookups.productGroups : lookups.contactGroups} value={form.groupId ?? form.groupName} onCreate={definition.kind === "product" ? lookupCreators.productGroups : lookupCreators.contactGroups} onPick={(id, label) => patch(setForm, { groupId: id, groupName: label })} />
+      {definition.kind !== "product" ? <LookupField createLabel="Create contact group" label="Contact Group" options={lookups.contactGroups} value={form.groupId ?? form.groupName} onCreate={lookupCreators.contactGroups} onPick={(id, label) => patch(setForm, { groupId: id, groupName: label })} /> : null}
       {definition.kind === "product" ? <>
         <LookupField createLabel="Create product category" label="Product Category" options={lookups.productCategories} value={form.productCategoryId ?? form.productCategoryName} onCreate={lookupCreators.productCategories} onPick={(id, label) => patch(setForm, { productCategoryId: id, productCategoryName: label })} />
         <LookupField createLabel="Create unit" label="Unit" options={lookups.units} value={form.unitId ?? form.unitName} onCreate={lookupCreators.units} onPick={(id, label) => patch(setForm, { unitId: id, unitName: label })} />
@@ -466,7 +469,7 @@ function ContactMethodRow({ field, index, item, setForm, typeLabel, typeName, ty
 type TabProps = { form: MasterSavePayload; setForm: React.Dispatch<React.SetStateAction<MasterSavePayload>> };
 type MasterLookupOption = WorkspaceLookupOption & { record?: MasterLookupRecord };
 type LookupState = Record<LookupKey, MasterLookupOption[]>;
-type LookupKey = "addressTypes" | "bankNames" | "cities" | "contactGroups" | "contactTypes" | "countries" | "districts" | "hsnCodes" | "pincodes" | "productCategories" | "productGroups" | "productTypes" | "states" | "taxes" | "units";
+type LookupKey = "addressTypes" | "bankNames" | "cities" | "contactGroups" | "contactTypes" | "countries" | "districts" | "hsnCodes" | "industries" | "pincodes" | "productCategories" | "productTypes" | "states" | "taxes" | "units";
 type LookupCreateHandlers = Partial<Record<LookupKey, (name: string) => Promise<WorkspaceLookupOption | undefined>>>;
 
 function useMasterLookups(): LookupState {
@@ -479,9 +482,9 @@ function useMasterLookups(): LookupState {
     countries: locationDefinitions.country.path,
     districts: locationDefinitions.district.path,
     hsnCodes: lookupPath(commonMasterPathByKey, "hsnCodes"),
+    industries: "/core/organisation/industries",
     pincodes: locationDefinitions.pincode.path,
     productCategories: lookupPath(commonMasterPathByKey, "productCategories"),
-    productGroups: lookupPath(commonMasterPathByKey, "productGroups"),
     productTypes: lookupPath(commonMasterPathByKey, "productTypes"),
     states: locationDefinitions.state.path,
     taxes: lookupPath(commonMasterPathByKey, "taxes"),

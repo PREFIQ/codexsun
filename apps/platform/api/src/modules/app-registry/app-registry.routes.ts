@@ -1,20 +1,35 @@
 import type { FastifyInstance } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { AppRegistryService } from "./app-registry.service.js";
-import type { PlatformAppSavePayload } from "./app-registry.types.js";
+import { numericIdParamsSchema, platformAppListSchema, platformAppSaveSchema, platformAppSchema } from "./app-registry.schemas.js";
 
-const service = new AppRegistryService();
+export async function registerAppRegistryRoutes(app: FastifyInstance, service = new AppRegistryService()) {
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/admin/apps",
+    schemas: { response: platformAppListSchema },
+    handler: () => service.listApps()
+  });
 
-export async function registerAppRegistryRoutes(app: FastifyInstance) {
-  app.get("/admin/apps", async (request) => ok(await service.listApps(), { requestId: request.id }));
-  app.post("/admin/apps", async (request) => ok(await service.createApp(request.body as PlatformAppSavePayload), { requestId: request.id }));
-  app.put("/admin/apps/:id", async (request, reply) => {
-    const appRecord = await service.updateApp((request.params as { id: string }).id, request.body as PlatformAppSavePayload);
-    if (!appRecord) return reply.code(404).send(notFound("APP_NOT_FOUND", "App was not found.", request.id));
-    return ok(appRecord, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/admin/apps",
+    schemas: { body: platformAppSaveSchema, response: platformAppSchema },
+    handler: async ({ body }) => requireApp(await service.createApp(body))
+  });
+
+  registerContractRoute(app, {
+    method: "PUT",
+    url: "/admin/apps/:id",
+    schemas: { body: platformAppSaveSchema, params: numericIdParamsSchema, response: platformAppSchema },
+    handler: async ({ body, params }) => {
+      return requireApp(await service.updateApp(String(params.id), body));
+    }
   });
 }
 
-function notFound(code: string, message: string, requestId: string) {
-  return { error: { code, message }, meta: { requestId, timestamp: new Date().toISOString() }, success: false as const };
+function requireApp(appRecord: Awaited<ReturnType<AppRegistryService["createApp"]>>) {
+  if (!appRecord) throw new AppError({ code: "APP_NOT_FOUND", message: "App was not found.", statusCode: 404 });
+  return appRecord;
 }

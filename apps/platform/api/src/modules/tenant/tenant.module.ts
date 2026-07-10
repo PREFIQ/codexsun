@@ -1,10 +1,11 @@
-import type { FastifyInstance } from "fastify";
+import { defineModule } from "@codexsun/framework/modules";
+import type { PlatformModuleDependencies } from "../../module-dependencies.js";
 import { registerTenantRoutes } from "./tenant.routes.js";
 
-export const tenantModule = {
+export const tenantModule = defineModule<PlatformModuleDependencies>({
   key: "platform.tenant",
   label: "Tenant",
-  async register(app: FastifyInstance) {
+  async register({ app }) {
     await registerTenantRoutes(app);
   }
-};
+});

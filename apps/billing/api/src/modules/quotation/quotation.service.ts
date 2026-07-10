@@ -2,6 +2,7 @@ import { AppError } from "@codexsun/framework/errors";
 import { InMemoryEventPublisher, type EventPublisher } from "@codexsun/framework/events";
 import { InMemoryQueueAdapter, type QueueAdapter } from "@codexsun/framework/queue";
 import { SalesService } from "../sales/sales.service.js";
+import type { SaleLineItemInput } from "../sales/sales.types.js";
 import { createQuotationEvent } from "./quotation.events.js";
 import { QuotationRepository } from "./quotation.repository.js";
 import type { QuotationLineItemInput, QuotationSavePayload } from "./quotation.types.js";
@@ -60,12 +61,31 @@ export class QuotationService {
     return quotation;
   }
 
+  async deleteDraft(databaseName: string, id: string) {
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.status !== "draft" || current.generatedSalesInvoiceNo) {
+      throw AppError.conflict("Only draft quotations without an invoice can be force deleted.");
+    }
+    return this.repository.delete(databaseName, id);
+  }
+
   async confirm(databaseName: string, id: string) {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
     this.assertDraft(current.status, "confirm");
     const quotation = await this.repository.setStatus(databaseName, id, "confirmed");
     if (quotation) await this.publish("confirmed", quotation, databaseName);
+    return quotation;
+  }
+
+  async revoke(databaseName: string, id: string) {
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.generatedSalesInvoiceNo) throw AppError.conflict("An invoiced quotation cannot be revoked.");
+    if (current.status === "draft") throw AppError.conflict("A draft quotation does not need to be revoked.");
+    const quotation = await this.repository.setStatus(databaseName, id, "draft");
+    if (quotation) await this.publish("updated", quotation, databaseName);
     return quotation;
   }
 
@@ -125,6 +145,61 @@ export class QuotationService {
     if (!converted) throw AppError.notFound("Quotation not found.");
     await this.publish("converted", converted, databaseName, sale.invoiceNumber);
     return { quotation: converted, sale };
+  }
+
+  async convertManyToSale(databaseName: string, ids: string[]) {
+    const uniqueIds = Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
+    if (!uniqueIds.length) throw AppError.conflict("Select at least one quotation.");
+
+    const quotations = await Promise.all(uniqueIds.map((id) => this.repository.get(databaseName, id)));
+    if (quotations.some((quotation) => !quotation)) throw AppError.notFound("One or more quotations were not found.");
+    const selected = quotations.filter((quotation): quotation is NonNullable<typeof quotation> => Boolean(quotation));
+    if (!selected.length) throw AppError.notFound("One or more quotations were not found.");
+    const first = selected[0]!;
+    const contactKey = quotationContactKey(first);
+
+    if (selected.some((quotation) => quotationContactKey(quotation) !== contactKey)) {
+      throw AppError.conflict("Selected quotations must belong to the same contact.");
+    }
+    for (const quotation of selected) {
+      if (quotation.status === "cancelled") throw AppError.conflict(`Cancelled quotation ${quotation.quotationNumber} cannot be invoiced.`);
+      if (quotation.generatedSalesInvoiceNo) throw AppError.conflict(`Quotation ${quotation.quotationNumber} is already invoiced by ${quotation.generatedSalesInvoiceNo}.`);
+    }
+
+    const billingSettings = await this.settings.getBillingSettings(databaseName);
+    const salesNumbering = billingSettings.numbering.sales;
+    const sale = await this.sales.createSale(databaseName, {
+      billingAddress: first.billingAddress,
+      currencyCode: "INR",
+      customerEmail: "",
+      customerName: first.customerName,
+      customerPhone: "",
+      invoiceNumber: formatBillingDocumentNumber(salesNumbering),
+      issuedOn: new Date().toISOString().slice(0, 10),
+      items: mergeQuotationItems(selected),
+      notes: selected.map((quotation) => quotation.notes).filter(Boolean).join("\n"),
+      roundOff: selected.reduce((sum, quotation) => sum + quotation.roundOff, 0),
+      shippingAddress: first.shippingAddress,
+      status: "draft",
+    });
+    if (!salesNumbering.automatic) {
+      await this.settings.saveBillingSettings(databaseName, {
+        ...billingSettings,
+        numbering: {
+          ...billingSettings.numbering,
+          sales: { ...salesNumbering, nextNumber: salesNumbering.nextNumber + 1 },
+        },
+      });
+    }
+
+    const converted = [];
+    for (const quotation of selected) {
+      const updated = await this.repository.setGeneratedSalesInvoice(databaseName, quotation.id, sale.invoiceNumber);
+      if (!updated) throw AppError.notFound(`Quotation ${quotation.quotationNumber} was not found.`);
+      await this.publish("converted", updated, databaseName, sale.invoiceNumber);
+      converted.push(updated);
+    }
+    return { quotations: converted, sale };
   }
 
   private assertDraft(status: QuotationSavePayload["status"], action: string) {
@@ -188,6 +263,35 @@ function normalizeItem(item: QuotationLineItemInput): QuotationLineItemInput {
     taxRate: roundMoney(Number(item.taxRate) || 0),
     unit: item.unit.trim().toUpperCase() || "NOS",
   };
+}
+
+function quotationContactKey(quotation: { customerName: string }) {
+  return quotation.customerName.trim().toLowerCase();
+}
+
+function mergeQuotationItems(quotations: Array<{ items: QuotationLineItemInput[] }>): SaleLineItemInput[] {
+  const merged = new Map<string, SaleLineItemInput>();
+  for (const quotation of quotations) {
+    for (const item of quotation.items) {
+      const normalized = {
+        colour: item.colour,
+        dcNo: item.dcNo,
+        description: [item.productName, item.description].filter(Boolean).join(" - "),
+        hsnCode: item.hsnCode,
+        poNo: item.poNo,
+        quantity: item.quantity,
+        rate: item.rate,
+        size: item.size,
+        taxRate: item.taxRate,
+        unit: item.unit,
+      } satisfies SaleLineItemInput;
+      const key = [normalized.description, normalized.hsnCode, normalized.colour, normalized.dcNo, normalized.poNo, normalized.size, normalized.unit, normalized.rate, normalized.taxRate].map((value) => String(value ?? "").trim().toLowerCase()).join("|");
+      const existing = merged.get(key);
+      if (existing) existing.quantity += normalized.quantity;
+      else merged.set(key, { ...normalized });
+    }
+  }
+  return Array.from(merged.values());
 }
 
 function roundMoney(value: number) {

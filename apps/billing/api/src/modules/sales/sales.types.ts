@@ -14,8 +14,11 @@ export type SaleLineItemInput = {
 };
 
 export type SaleLineItem = SaleLineItemInput & {
+  cgstAmount: number;
   id: string;
+  igstAmount: number;
   lineTotal: number;
+  sgstAmount: number;
   taxableAmount: number;
   taxAmount: number;
 };
@@ -35,10 +38,14 @@ export type Sale = {
   notes: string;
   roundOff: number;
   shippingAddress: string;
+  salesLedger: string;
   status: SaleStatus;
   subtotal: number;
   taxAmount: number;
+  taxType: "cgst-sgst" | "igst";
+  terms: string;
   updatedAt: string;
+  workOrderNo: string;
 };
 
 export type SaleSavePayload = {
@@ -53,5 +60,9 @@ export type SaleSavePayload = {
   notes: string;
   roundOff?: number;
   shippingAddress: string;
+  salesLedger?: string;
   status: SaleStatus;
+  taxType?: "cgst-sgst" | "igst";
+  terms?: string;
+  workOrderNo?: string;
 };

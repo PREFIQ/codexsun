@@ -5,7 +5,7 @@ export type PlatformAppDefinition = {
   defaultLanding: boolean;
   description: string;
   id: number;
-  appId: string;
+  appId: PlatformAppId;
   label: string;
   moduleKey: string;
   stack: "platform" | "billing" | "accounts";

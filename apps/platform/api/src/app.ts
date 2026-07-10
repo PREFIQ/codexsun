@@ -1,4 +1,5 @@
 import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
+import { registerModules } from "@codexsun/framework/modules";
 import type { HealthCheck } from "@codexsun/framework/health";
 import { registerAuthRoutes } from "./auth/auth.routes.js";
 import { appRegistryModule } from "./modules/app-registry/index.js";
@@ -74,28 +75,17 @@ export async function createApp() {
   console.info("[platform.routes] health ready");
   await registerAuthRoutes(app);
   console.info("[platform.routes] auth ready");
-  await registerPlatformModule(appRegistryModule.key, () => appRegistryModule.register(app));
-  await registerPlatformModule(tenantModule.key, () => tenantModule.register(app));
-  await registerPlatformModule(tenantDomainModule.key, () => tenantDomainModule.register(app));
-  await registerPlatformModule(planModule.key, () => planModule.register(app));
-  await registerPlatformModule(subscriptionModule.key, () => subscriptionModule.register(app));
-  await registerPlatformModule(industryModule.key, () => industryModule.register(app));
-  await registerPlatformModule(entitlementModule.key, () => entitlementModule.register(app));
-  await registerPlatformModule(accessControlModule.key, () => accessControlModule.register(app));
-  await registerPlatformModule(platformActivityModule.key, () => platformActivityModule.register(app));
-  await registerPlatformModule(databaseMaintenanceModule.key, () => databaseMaintenanceModule.register(app));
-  await registerPlatformModule(queueManagerModule.key, () => queueManagerModule.register(app));
-  await registerPlatformModule(storageManagerModule.key, () => storageManagerModule.register(app));
-  await registerPlatformModule(projectManagerModule.key, () => projectManagerModule.register(app));
+  await registerModules(
+    [appRegistryModule, tenantModule, tenantDomainModule, planModule, subscriptionModule, industryModule, entitlementModule, accessControlModule, platformActivityModule, databaseMaintenanceModule, queueManagerModule, storageManagerModule, projectManagerModule],
+    { app },
+    {
+      onRegister: (module) => console.info(`[module.register] ${module.key}`),
+      onReady: (module) => console.info(`[module.ready] ${module.key}`)
+    }
+  );
   startQueueManagerWorker(app);
   console.info("[platform.worker] queue manager ready");
   console.info("[platform.boot] bootstrap completed");
 
   return app;
-}
-
-async function registerPlatformModule(key: string, register: () => Promise<unknown> | unknown) {
-  console.info(`[module.register] ${key}`);
-  await register();
-  console.info(`[module.ready] ${key}`);
 }

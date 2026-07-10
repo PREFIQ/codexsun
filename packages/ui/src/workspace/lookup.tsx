@@ -337,7 +337,7 @@ export function WorkspaceLookup({
       </div>
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent
-          className={cn("rounded-md", createDialogClassName)}
+          className={cn("rounded-md p-0 sm:max-w-3xl", createDialogClassName)}
           onInteractOutside={(event) => event.preventDefault()}
         >
           {renderCreateForm ? (
@@ -509,22 +509,22 @@ function DefaultCreateForm({
 
   return (
     <form
-      className="grid gap-5"
+      className="grid gap-0"
       onSubmit={(event) => {
         event.preventDefault()
         event.stopPropagation()
         onSubmit(name)
       }}
     >
-      <DialogHeader>
+      <DialogHeader className="border-b border-border/80 px-5 py-4 pr-12">
         <DialogTitle>{title}</DialogTitle>
         {description ? <DialogDescription>{description}</DialogDescription> : null}
       </DialogHeader>
-      <div className="grid gap-2">
+      <div className="grid gap-2 px-5 py-5">
         <Label>Name</Label>
         <Input autoFocus className="h-11 rounded-md" value={name} onChange={(event) => setName(event.target.value)} />
       </div>
-      <DialogFooter>
+      <DialogFooter className="border-t border-border/80 px-5 py-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           <X className="size-4" />
           Cancel

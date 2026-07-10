@@ -1,1 +1,5 @@
-export { QuotationWorkspace } from "@codexsun/billing-web/modules/quotation";
+import { QuotationWorkspace as OwnedQuotationWorkspace } from "@codexsun/billing-web/modules/quotation";
+
+export function QuotationWorkspace() {
+  return <OwnedQuotationWorkspace />;
+}

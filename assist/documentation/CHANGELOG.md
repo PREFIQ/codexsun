@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.13
+Current version: 1.0.15
 
-Release tag: v-1.0.13
+Release tag: v-1.0.15
 
-Changelog label: v 1.0.13
+Changelog label: v 1.0.15
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,42 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.15
+
+### [v 1.0.15] 2026-07-10 10:55 pm - Independent sales module clone
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Added sales migration fields for tax type, work order, sales ledger, terms, and GST split values.
+- Added the Sales-owned Core lookup proxy for contacts, addresses, products, categories, HSN codes, units, taxes, colours, sizes, and work orders.
+
+#### App Codebase Changes
+
+- Cloned the quotation list, upsert, show, print preview, and print route into independent Sales-owned UI code.
+- Added Sales item entry with product autocomplete, inline lookup creation, tax-aware CGST + SGST or IGST columns, totals, and round-off controls.
+- Added Sales contact and address autocomplete flows with editable billing and shipping address dialogs.
+- Added Sales comments, activity timeline, entry tools, print copies, navigation, status actions, and save toasts.
+- Removed the older Sales form/list implementation from the active module exports so the cloned Sales workflow is the only owned frontend path.
+- Bumped the workspace version to 1.0.15.
+
+## v-1.0.14
+
+### [v 1.0.14] 2026-07-10 10:02 pm - Quotation save, submit, revoke, and edit controls
+
+#### Database Changes
+
+- Database update: Yes (auto-check).
+- No quotation database schema changes were introduced by this work.
+
+#### App Codebase Changes
+
+- Added separate Save and save-action dropdown controls for saving drafts, submitting quotations, and admin revoke.
+- Added draft/submitted workflow handling with revoke support for eligible non-invoiced quotations.
+- Locked quotation editing after submission for regular users and kept invoiced quotations protected.
+- Added fixed footer New quotation navigation for starting a fresh quotation without leaving the workspace.
+- Bumped workspace version to 1.0.14.
 
 ## v-1.0.13
 
@@ -37,6 +73,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 - Added Billing API proxy routes for Quotation contact create/update so browser traffic remains within the Billing module boundary.
 - Split quick contact upsert into Details and Address tabs, added GSTIN and Address Type, and made State, District, City, and Pincode dependent lookup/create controls with India as the hidden default country.
 - Widened the contact dialog, changed the fast-entry fields to a single-column flow, removed Email from the form, and made Address Type a create-capable autocomplete.
+- Added Quotation-owned create/edit lookup popups for Products and Work Orders, inline Colour and Size creation, and an Items tab that contains both quotation lines and totals without the former tab-area divider.
 - Bumped workspace version to 1.0.13.
 
 ## v-1.0.12

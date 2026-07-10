@@ -28,6 +28,8 @@ export type MasterRecord = {
   description: string | null;
   logoPath: string | null;
   logoDarkPath: string | null;
+  industryId: string | null;
+  industryName: string | null;
   productCategoryId: string | null;
   productCategoryName: string | null;
   unitId: string | null;

@@ -2,7 +2,6 @@ import { createApiApp, registerHealthRoute, registerRequestLogging } from "@code
 import type { HealthCheck } from "@codexsun/framework/health";
 import { bootstrapBillingDatabase, closeAllBillingDatabases } from "./database/billing-database.js";
 import { env } from "./env.js";
-import { entriesModule } from "./modules/entries/index.js";
 import { exportSalesModule } from "./modules/export-sales/index.js";
 import { purchaseModule } from "./modules/purchase/index.js";
 import { quotationModule } from "./modules/quotation/index.js";
@@ -28,7 +27,7 @@ export async function createApp() {
       name: "billing-api",
       check: () => ({
         details: {
-          modules: [entriesModule.key, salesModule.key, purchaseModule.key, exportSalesModule.key, quotationModule.key, billingSettingsModule.key],
+          modules: [salesModule.key, purchaseModule.key, exportSalesModule.key, quotationModule.key, billingSettingsModule.key],
           runtime: "billing-foundation"
         },
         status: "ok"
@@ -38,7 +37,6 @@ export async function createApp() {
 
   registerRequestLogging(app);
   registerHealthRoute(app, healthChecks);
-  await entriesModule.register(app);
   await salesModule.register(app);
   await purchaseModule.register(app);
   await exportSalesModule.register(app);

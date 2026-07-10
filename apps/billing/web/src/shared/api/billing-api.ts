@@ -29,6 +29,10 @@ export async function billingApiPut<T>(path: string, body: unknown) {
   });
 }
 
+export async function billingApiDelete<T>(path: string) {
+  return billingApiRequest<T>(path, { method: "DELETE" });
+}
+
 async function billingApiRequest<T>(path: string, init?: RequestInit) {
   const token = getToken("tenant");
   const tenantId = getTenantId();

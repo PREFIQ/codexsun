@@ -10,6 +10,10 @@ const lookupPaths = {
   cities: "/core/common/location/cities",
   pincodes: "/core/common/location/pincodes",
   products: "/core/master/products",
+  productCategories: "/core/common/products/product-categories",
+  hsnCodes: "/core/common/products/hsn-codes",
+  units: "/core/common/products/units",
+  taxes: "/core/common/products/taxes",
   sizes: "/core/common/products/sizes",
   workOrders: "/core/master/work-orders",
 } as const;
@@ -42,6 +46,16 @@ export class QuotationLookupService {
 
   async createAddressType(headers: { authorization?: string | string[]; tenantId?: string | string[] }, input: Record<string, unknown>) {
     const response = await this.request(lookupPaths.addressTypes, headers, { body: JSON.stringify(input), method: "POST" });
+    return responseData(response);
+  }
+
+  async createLookup(kind: "colours" | "products" | "sizes" | "workOrders" | "productCategories" | "hsnCodes" | "units" | "taxes", headers: { authorization?: string | string[]; tenantId?: string | string[] }, input: Record<string, unknown>) {
+    const response = await this.request(lookupPaths[kind], headers, { body: JSON.stringify(input), method: "POST" });
+    return responseData(response);
+  }
+
+  async updateLookup(kind: "products" | "workOrders", headers: { authorization?: string | string[]; tenantId?: string | string[] }, id: string, input: Record<string, unknown>) {
+    const response = await this.request(`${lookupPaths[kind]}/${encodeURIComponent(id)}`, headers, { body: JSON.stringify(input), method: "PUT" });
     return responseData(response);
   }
 

@@ -1,4 +1,4 @@
-import { billingApiGet, billingApiPost, billingApiPut } from "../../shared/api/billing-api";
+import { billingApiDelete, billingApiGet, billingApiPost, billingApiPut } from "../../shared/api/billing-api";
 import type { Quotation, QuotationSavePayload, QuotationStatus } from "./quotation.types";
 import type { Sale } from "../sales/sales.types";
 
@@ -21,11 +21,17 @@ export type QuotationLookupRecord = {
   legalName?: string | null;
   name?: string | null;
   openingRate?: number | null;
+  productCategoryId?: string | null;
+  productCategoryName?: string | null;
   price?: number | null;
   primaryEmail?: string | null;
   primaryPhone?: string | null;
   taxName?: string | null;
   taxRate?: number | null;
+  ratePercent?: number | null;
+  unitId?: string | null;
+  hsnCodeId?: string | null;
+  taxId?: string | null;
   typeName?: string | null;
   unitName?: string | null;
   workOrderNo?: string | null;
@@ -71,6 +77,22 @@ export type QuotationLocationRecord = {
   status?: "active" | "inactive";
 };
 
+export type QuotationMasterSavePayload = {
+  code: string;
+  hsnCode: string;
+  hsnCodeId?: string;
+  name: string;
+  openingRate: number;
+  productCategoryId?: string;
+  productCategoryName?: string;
+  taxId?: string;
+  taxName?: string;
+  taxRate?: number;
+  typeName: string;
+  unitId?: string;
+  unitName: string;
+};
+
 export async function listQuotations() {
   return billingApiGet<Quotation[]>("/billing/quotations");
 }
@@ -87,12 +109,24 @@ export async function updateQuotation(id: string, payload: QuotationSavePayload)
   return billingApiPut<Quotation>(`/billing/quotations/${id}`, payload);
 }
 
+export async function deleteQuotation(id: string) {
+  return billingApiDelete<Quotation>(`/billing/quotations/${id}`);
+}
+
 export async function setQuotationStatus(id: string, status: Exclude<QuotationStatus, "draft">) {
   return billingApiPost<Quotation>(`/billing/quotations/${id}/${status === "confirmed" ? "confirm" : "cancel"}`);
 }
 
+export async function revokeQuotation(id: string) {
+  return billingApiPost<Quotation>(`/billing/quotations/${id}/revoke`);
+}
+
 export async function convertQuotationToSale(id: string) {
   return billingApiPost<{ quotation: Quotation; sale: Sale }>(`/billing/quotations/${id}/convert-to-sale`);
+}
+
+export async function convertQuotationsToSale(ids: string[]) {
+  return billingApiPost<{ quotations: Quotation[]; sale: Sale }>("/billing/quotations/convert-to-sale", { quotationIds: ids });
 }
 
 export function createQuotationContact(payload: QuotationContactSavePayload) {
@@ -117,6 +151,30 @@ export function listQuotationAddressTypes() {
 
 export function createQuotationAddressType(name: string) {
   return billingApiPost<QuotationLookupRecord>("/billing/quotations/lookups/address-types", { isActive: true, name: name.trim() });
+}
+
+export function createQuotationLookup(kind: "colours" | "products" | "sizes" | "workOrders" | "productCategories" | "hsnCodes" | "units" | "taxes", payload: Record<string, unknown>) {
+  return billingApiPost<QuotationLookupRecord>(`/billing/quotations/lookups/${kind}`, payload);
+}
+
+export function listQuotationProductCategories() {
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/productCategories");
+}
+
+export function listQuotationHsnCodes() {
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/hsnCodes");
+}
+
+export function listQuotationUnits() {
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/units");
+}
+
+export function listQuotationTaxes() {
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/taxes");
+}
+
+export function updateQuotationLookup(kind: "products" | "workOrders", id: string, payload: Record<string, unknown>) {
+  return billingApiPut<QuotationLookupRecord>(`/billing/quotations/lookups/${kind}/${id}`, payload);
 }
 
 export function listQuotationContacts() {
@@ -150,9 +208,7 @@ export function listQuotationProducts() {
   return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/products").then((records) =>
     records.filter(isActiveRecord).map((record) =>
       lookupOption(record, {
-        description: [record.hsnCode, record.unitName].filter(Boolean).join(" | "),
         label: record.name || record.code || record.id,
-        meta: record.code || "",
         value: record.name || record.code || record.id,
       }),
     ),

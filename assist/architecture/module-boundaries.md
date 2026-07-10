@@ -37,6 +37,17 @@ Each module should define:
 - UI routes.
 - Test scope.
 
+## Composition and HTTP Contracts
+
+Module definitions use the framework's typed `defineModule<TDependencies>()` contract.
+The module's `register(dependencies)` function receives only declared dependencies from
+the app composition root; hidden imports of application singletons are not allowed.
+
+New or materially changed HTTP endpoints must use `registerContractRoute()` with Zod
+schemas for request inputs and successful response data. Do not cast `request.body`,
+`request.params`, or `request.query` directly in a contract route. Return domain data
+from its handler and let the framework create the standard API envelope.
+
 ## Standard Module Folder Structure
 
 Modules must use one module folder with NestJS-like filenames. Do not create many nested boundary folders inside a module.

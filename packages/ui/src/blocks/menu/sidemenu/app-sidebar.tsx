@@ -35,6 +35,15 @@ export type SidebarBrand = {
   logoAlt?: string
   logoDarkSrc?: string
   logoSrc?: string
+  options?: Array<{
+    id: string
+    logoDarkSrc?: string
+    logoSrc?: string
+    subtitle: string
+    title: string
+  }>
+  onOptionSelect?: (id: string) => void
+  selectedOptionId?: string
   subtitle: string
   title: string
 }
@@ -96,23 +105,7 @@ export function AppSidebar({
       {...props}
     >
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild size="lg" tooltip={brand.title} className="h-14">
-              <a href={brand.href ?? "/workspace"}>
-                <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg border bg-background">
-                  <img alt={brand.logoAlt ?? brand.title} className="size-5 dark:hidden" src={brand.logoSrc ?? "/logo/logo.svg"} />
-                  <img alt={brand.logoAlt ?? brand.title} className="hidden size-5 dark:block" src={brand.logoDarkSrc ?? "/logo/logo-dark.svg"} />
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
-                  <span className="truncate font-semibold">{brand.title}</span>
-                  <span className="truncate text-xs text-muted-foreground">{brand.subtitle}</span>
-                </div>
-                <ChevronsUpDownIcon className="ml-auto size-4 text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden" />
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <SidebarBrandMenu brand={brand} />
       </SidebarHeader>
       <SidebarContent>
         <SidemenuSection items={items} />
@@ -171,4 +164,40 @@ export function AppSidebar({
       <SidebarRail />
     </Sidebar>
   )
+}
+
+function SidebarBrandMenu({ brand }: { brand: SidebarBrand }) {
+  const options = brand.options ?? [];
+  const active = options.find((option) => option.id === brand.selectedOptionId) ?? options[0];
+  const current = active ?? brand;
+  const trigger = <SidebarMenuButton size="lg" tooltip={current.title} className="h-14">
+    <BrandIdentity brand={current} fallback={brand} />
+    {options.length ? <ChevronsUpDownIcon className="ml-auto size-4 text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden" /> : null}
+  </SidebarMenuButton>;
+
+  return <SidebarMenu><SidebarMenuItem>
+    {options.length ? <DropdownMenu>
+      <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+      <DropdownMenuContent align="start" side="right" className="w-64 p-1">
+        {options.map((option) => <DropdownMenuItem key={option.id} onSelect={() => brand.onOptionSelect?.(option.id)}>
+          <BrandLogo brand={option} fallback={brand} compact />
+          <div className="min-w-0 flex-1"><div className="truncate font-medium">{option.title}</div><div className="truncate text-xs text-muted-foreground">{option.subtitle}</div></div>
+          {option.id === brand.selectedOptionId ? <BadgeCheckIcon className="size-4 text-primary" /> : null}
+        </DropdownMenuItem>)}
+      </DropdownMenuContent>
+    </DropdownMenu> : <a href={brand.href ?? "/workspace"}>{trigger}</a>}
+  </SidebarMenuItem></SidebarMenu>;
+}
+
+function BrandIdentity({ brand, fallback }: { brand: Pick<SidebarBrand, "logoAlt" | "logoDarkSrc" | "logoSrc" | "subtitle" | "title">; fallback: SidebarBrand }) {
+  return <><BrandLogo brand={brand} fallback={fallback} /><div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden"><span className="truncate font-semibold">{brand.title}</span><span className="truncate text-xs text-muted-foreground">{brand.subtitle}</span></div></>;
+}
+
+function BrandLogo({ brand, compact = false, fallback }: { brand: Pick<SidebarBrand, "logoAlt" | "logoDarkSrc" | "logoSrc" | "title">; compact?: boolean; fallback: SidebarBrand }) {
+  const size = compact ? "size-7" : "size-8";
+  const imageSize = compact ? "size-4" : "size-5";
+  return <div className={`flex aspect-square ${size} shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-background`}>
+    <img alt={brand.logoAlt ?? fallback.logoAlt ?? brand.title} className={`${imageSize} dark:hidden`} src={brand.logoSrc ?? fallback.logoSrc ?? "/logo/logo.svg"} />
+    <img alt={brand.logoAlt ?? fallback.logoAlt ?? brand.title} className={`hidden ${imageSize} dark:block`} src={brand.logoDarkSrc ?? fallback.logoDarkSrc ?? "/logo/logo-dark.svg"} />
+  </div>;
 }

@@ -8,6 +8,7 @@ const companyPaths = ["/core/organisation/companies", "/core/master/companies"] 
 
 export async function registerCompanyRoutes(app: FastifyInstance) {
   const service = new CompanyService();
+  app.get("/core/organisation/industries", async (request) => ok(await service.listIndustries(), { requestId: request.id }));
   for (const path of companyPaths) {
     app.get(path, async (request) => {
       const query = request.query as { search?: string };

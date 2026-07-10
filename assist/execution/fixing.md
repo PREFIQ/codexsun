@@ -12,6 +12,9 @@ Status: audit complete on 2026-07-10. No remediation in this checklist has been 
 
 - [x] P0 - Show the Organisation-owned Company workspace with Contact, Product, and Work Order in the Billing Master menu.
 - [x] P0 - Add Company Logo and Logo Dark SVG uploads, store them as `storage/{tenant}/logo/logo.svg` and `storage/{tenant}/logo/logo-dark.svg`, and persist both paths on the Company record.
+- [x] P0 - Seed one active default Company per tenant at Core bootstrap, using the registered tenant name and preserving later user edits.
+- [x] P1 - Connect Company records to the authenticated tenant and an active Industry lookup, with server-side Industry validation.
+- [x] P1 - Show the selected Company and configured Accounts financial year in the tenant sidebar, with a dropdown of active Companies.
 - [ ] P0 - Align Company routes with the Master contract: list, get, create, update, activate, deactivate, and force delete.
 - [ ] P0 - Remove or redirect the duplicate Organisation/Company navigation and route aliases after the target ownership is selected.
 - [ ] P0 - Enforce the location relationship chain on create and update: country -> state -> district -> city.

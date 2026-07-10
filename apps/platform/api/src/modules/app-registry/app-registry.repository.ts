@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { getPlatformDatabase } from "../../database/platform-database.js";
-import type { PlatformAppDefinition, PlatformAppSavePayload } from "./app-registry.types.js";
+import type { PlatformAppDefinition, PlatformAppId, PlatformAppSavePayload } from "./app-registry.types.js";
 
 export class AppRegistryRepository {
   async list() {
@@ -45,7 +45,7 @@ type AppRow = {
 function toAppDefinition(row: AppRow): PlatformAppDefinition {
   return {
     alwaysEnabled: Boolean(row.always_enabled),
-    appId: row.app_id,
+    appId: row.app_id as PlatformAppId,
     defaultLanding: Boolean(row.default_landing),
     description: row.description,
     id: Number(row.id),

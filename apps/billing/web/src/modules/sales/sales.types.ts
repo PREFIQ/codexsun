@@ -1,4 +1,5 @@
 export type SaleStatus = "draft" | "confirmed" | "cancelled";
+export type SaleTaxType = "cgst-sgst" | "igst";
 
 export type SaleLineItemInput = {
   colour: string;
@@ -6,6 +7,7 @@ export type SaleLineItemInput = {
   description: string;
   hsnCode: string;
   poNo: string;
+  productName: string;
   quantity: number;
   rate: number;
   size: string;
@@ -14,8 +16,11 @@ export type SaleLineItemInput = {
 };
 
 export type SaleLineItem = SaleLineItemInput & {
+  cgstAmount: number;
   id: string;
+  igstAmount: number;
   lineTotal: number;
+  sgstAmount: number;
   taxableAmount: number;
   taxAmount: number;
 };
@@ -24,71 +29,76 @@ export type Sale = {
   amount: number;
   billingAddress: string;
   createdAt: string;
-  currencyCode: string;
   customerEmail: string;
   customerName: string;
   customerPhone: string;
+  generatedSalesInvoiceNo?: string;
   id: string;
+  currencyCode: string;
   invoiceNumber: string;
-  issuedOn: string;
   items: SaleLineItem[];
+  issuedOn: string;
   notes: string;
   roundOff: number;
+  saleNumber: string;
+  salesLedger: string;
   shippingAddress: string;
   status: SaleStatus;
   subtotal: number;
   taxAmount: number;
+  taxType: SaleTaxType;
+  terms: string;
   updatedAt: string;
+  workOrderNo: string;
 };
 
 export type SaleSavePayload = {
   billingAddress: string;
-  currencyCode: string;
+  currencyCode?: string;
   customerEmail: string;
   customerName: string;
   customerPhone: string;
-  invoiceNumber: string;
   issuedOn: string;
+  invoiceNumber?: string;
   items: SaleLineItemInput[];
   notes: string;
-  roundOff: number;
+  roundOff?: number;
+  saleNumber: string;
+  salesLedger: string;
   shippingAddress: string;
   status: SaleStatus;
+  taxType: SaleTaxType;
+  terms: string;
+  workOrderNo: string;
 };
 
-export type SalesView =
+export type SaleView =
   | { mode: "list" }
   | { mode: "show"; sale: Sale }
   | { mode: "upsert"; sale: Sale | null; returnTo: "list" | "show" };
 
+export type SalesView = SaleView;
+
 export function createEmptySale(): SaleSavePayload {
   return {
     billingAddress: "",
-    currencyCode: "INR",
     customerEmail: "",
     customerName: "",
     customerPhone: "",
-    invoiceNumber: "",
     issuedOn: new Date().toISOString().slice(0, 10),
-    items: [createEmptySaleItem()],
+    items: [],
     notes: "",
     roundOff: 0,
+    saleNumber: "",
+    salesLedger: "",
     shippingAddress: "",
     status: "draft",
+    taxType: "cgst-sgst",
+    terms: "",
+    workOrderNo: "",
   };
 }
 
 export function createEmptySaleItem(): SaleLineItemInput {
-  return {
-    colour: "",
-    dcNo: "",
-    description: "",
-    hsnCode: "",
-    poNo: "",
-    quantity: 1,
-    rate: 0,
-    size: "",
-    taxRate: 18,
-    unit: "NOS",
-  };
+  return { colour: "", dcNo: "", description: "", hsnCode: "", poNo: "", productName: "", quantity: 1, rate: 0, size: "", taxRate: 18, unit: "Nos" };
 }

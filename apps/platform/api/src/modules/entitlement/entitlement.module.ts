@@ -1,10 +1,11 @@
-import type { FastifyInstance } from "fastify";
+import { defineModule } from "@codexsun/framework/modules";
+import type { PlatformModuleDependencies } from "../../module-dependencies.js";
 import { registerEntitlementRoutes } from "./entitlement.routes.js";
 
-export const entitlementModule = {
+export const entitlementModule = defineModule<PlatformModuleDependencies>({
   key: "platform.entitlement",
   label: "Entitlements",
-  register(app: FastifyInstance) {
+  register({ app }) {
     return registerEntitlementRoutes(app);
   }
-};
+});

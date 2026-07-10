@@ -2,9 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { ok } from "@codexsun/framework/http";
 import { resolveBillingDatabaseName } from "../../database/billing-database.js";
 import { SalesService } from "./sales.service.js";
+import { isSaleLookupKind, SaleLookupService } from "./sales.lookup.js";
 import type { SaleSavePayload } from "./sales.types.js";
 
 const salesService = new SalesService();
+const lookups = new SaleLookupService();
 
 function notFound(requestId: string) {
   return {
@@ -21,6 +23,34 @@ function notFound(requestId: string) {
 }
 
 export async function registerSalesRoutes(app: FastifyInstance) {
+  app.get("/billing/sales/lookups/:kind", async (request, reply) => {
+    const { kind } = request.params as { kind: string };
+    if (!isSaleLookupKind(kind)) return reply.code(404).send(notFound(request.id));
+    return ok(await lookups.list(kind, lookupHeaders(request)), { requestId: request.id });
+  });
+
+  app.post("/billing/sales/lookups/:kind", async (request, reply) => {
+    const { kind } = request.params as { kind: string };
+    if (!isSaleLookupKind(kind)) return reply.code(404).send(notFound(request.id));
+    return ok(await lookups.create(kind, lookupHeaders(request), request.body as Record<string, unknown>), { requestId: request.id });
+  });
+
+  app.post("/billing/sales/lookups/locations/:kind", async (request, reply) => {
+    const { kind } = request.params as { kind: string };
+    if (!(kind === "states" || kind === "districts" || kind === "cities" || kind === "pincodes")) return reply.code(404).send(notFound(request.id));
+    return ok(await lookups.create(kind, lookupHeaders(request), request.body as Record<string, unknown>), { requestId: request.id });
+  });
+
+  app.post("/billing/sales/lookups/address-types", async (request) =>
+    ok(await lookups.create("addressTypes", lookupHeaders(request), request.body as Record<string, unknown>), { requestId: request.id }),
+  );
+
+  app.put("/billing/sales/lookups/:kind/:id", async (request, reply) => {
+    const { id, kind } = request.params as { id: string; kind: string };
+    if (!(kind === "contacts" || kind === "products" || kind === "workOrders")) return reply.code(404).send(notFound(request.id));
+    return ok(await lookups.update(kind, lookupHeaders(request), id, request.body as Record<string, unknown>), { requestId: request.id });
+  });
+
   app.get("/billing/sales", async (request) =>
     ok(await salesService.listSales(tenantDatabaseName(request.headers["x-tenant-db"])), { requestId: request.id })
   );
@@ -58,6 +88,13 @@ export async function registerSalesRoutes(app: FastifyInstance) {
     if (!sale) return reply.code(404).send(notFound(request.id));
     return ok(sale, { requestId: request.id });
   });
+}
+
+function lookupHeaders(request: { headers: Record<string, string | string[] | undefined> }) {
+  return {
+    ...(request.headers.authorization ? { authorization: request.headers.authorization } : {}),
+    ...(request.headers["x-tenant-id"] ? { tenantId: request.headers["x-tenant-id"] } : {}),
+  };
 }
 
 function tenantDatabaseName(value: string | string[] | undefined) {

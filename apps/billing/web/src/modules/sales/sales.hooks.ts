@@ -8,6 +8,8 @@ export function useSalesList() {
   });
 }
 
+export const useSaleList = useSalesList;
+
 export function useSaleRecord(id: string | null, enabled = true) {
   return useQuery({
     enabled: Boolean(id) && enabled,

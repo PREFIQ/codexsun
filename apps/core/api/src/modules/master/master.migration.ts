@@ -9,7 +9,7 @@ export async function migrateMasterTable(database: Kysely<CoreDatabase>, tableNa
     "id VARCHAR(120) NOT NULL PRIMARY KEY, uuid CHAR(8) NOT NULL UNIQUE, tenant_id VARCHAR(80) NOT NULL, code VARCHAR(80) NOT NULL, name VARCHAR(191) NOT NULL, legal_name VARCHAR(191) NULL," +
     "type_id VARCHAR(120) NULL, type_name VARCHAR(191) NULL, group_id VARCHAR(120) NULL, group_name VARCHAR(191) NULL, primary_phone VARCHAR(80) NULL, primary_email VARCHAR(191) NULL," +
     "gstin VARCHAR(40) NULL, pan VARCHAR(40) NULL, msme_no VARCHAR(80) NULL, msme_category VARCHAR(80) NULL, tan_no VARCHAR(80) NULL, tds_available TINYINT(1) NOT NULL DEFAULT 0, tcs_available TINYINT(1) NOT NULL DEFAULT 0," +
-    "opening_balance DOUBLE NOT NULL DEFAULT 0, credit_limit DOUBLE NOT NULL DEFAULT 0, website VARCHAR(255) NULL, description TEXT NULL, logo_path VARCHAR(255) NULL, logo_dark_path VARCHAR(255) NULL, product_category_id VARCHAR(120) NULL, product_category_name VARCHAR(191) NULL," +
+    "opening_balance DOUBLE NOT NULL DEFAULT 0, credit_limit DOUBLE NOT NULL DEFAULT 0, website VARCHAR(255) NULL, description TEXT NULL, logo_path VARCHAR(255) NULL, logo_dark_path VARCHAR(255) NULL, industry_id VARCHAR(120) NULL, industry_name VARCHAR(191) NULL, product_category_id VARCHAR(120) NULL, product_category_name VARCHAR(191) NULL," +
     "unit_id VARCHAR(120) NULL, unit_name VARCHAR(120) NULL, hsn_code_id VARCHAR(120) NULL, hsn_code VARCHAR(80) NULL, tax_id VARCHAR(120) NULL, tax_name VARCHAR(191) NULL, opening_stock DOUBLE NOT NULL DEFAULT 0, opening_rate DOUBLE NOT NULL DEFAULT 0," +
     "status VARCHAR(32) NOT NULL DEFAULT 'active', is_active TINYINT(1) NOT NULL DEFAULT 1, emails_json JSON NULL, phones_json JSON NULL, addresses_json JSON NULL, bank_accounts_json JSON NULL, social_links_json JSON NULL," +
     "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
@@ -17,6 +17,10 @@ export async function migrateMasterTable(database: Kysely<CoreDatabase>, tableNa
   ).execute(database);
   await migrateOpeningStockColumns(database, tableName);
   await migrateCompanyLogoColumns(database, tableName);
+  await migrateIndustryColumns(database, tableName);
+  if (tableName === "core_master_products") {
+    await sql.raw("UPDATE core_master_products SET group_id = NULL, group_name = NULL WHERE group_id IS NOT NULL OR group_name IS NOT NULL").execute(database);
+  }
   await migrateChildTables(database, tableName);
 }
 
@@ -26,6 +30,15 @@ async function migrateCompanyLogoColumns(database: Kysely<CoreDatabase>, tableNa
   }
   if (!await columnExists(database, tableName, "logo_dark_path")) {
     await sql.raw(`ALTER TABLE ${tableName} ADD COLUMN logo_dark_path VARCHAR(255) NULL AFTER logo_path`).execute(database);
+  }
+}
+
+async function migrateIndustryColumns(database: Kysely<CoreDatabase>, tableName: string) {
+  if (!await columnExists(database, tableName, "industry_id")) {
+    await sql.raw(`ALTER TABLE ${tableName} ADD COLUMN industry_id VARCHAR(120) NULL AFTER logo_dark_path`).execute(database);
+  }
+  if (!await columnExists(database, tableName, "industry_name")) {
+    await sql.raw(`ALTER TABLE ${tableName} ADD COLUMN industry_name VARCHAR(191) NULL AFTER industry_id`).execute(database);
   }
 }
 

@@ -74,6 +74,14 @@ export class QuotationRepository {
     return record;
   }
 
+  async delete(databaseName: string, id: string) {
+    const db = await database(databaseName);
+    const existing = await db.selectFrom("billing_quotations").selectAll().where("id", "=", id).executeTakeFirst();
+    if (!existing) return null;
+    await db.deleteFrom("billing_quotations").where("id", "=", id).execute();
+    return toQuotation(existing);
+  }
+
   async setStatus(databaseName: string, id: string, status: QuotationStatus) {
     const db = await database(databaseName);
     const existing = await db.selectFrom("billing_quotations").selectAll().where("id", "=", id).executeTakeFirst();

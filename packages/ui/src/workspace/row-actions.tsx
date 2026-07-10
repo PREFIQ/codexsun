@@ -59,9 +59,9 @@ export function WorkspaceRowActions({
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40 rounded-md border-border/70 bg-popover p-1 text-popover-foreground shadow-md">
+      <DropdownMenuContent align="end" className="w-48 rounded-md border-border/80 bg-popover p-1.5 text-popover-foreground shadow-lg">
         {onView ? (
-          <DropdownMenuItem className="cursor-pointer gap-2 rounded-sm" onSelect={onView}>
+          <DropdownMenuItem className="cursor-pointer gap-2 rounded-sm px-3 py-2" onSelect={onView}>
             <Eye className="size-4" />
             View
           </DropdownMenuItem>
@@ -69,7 +69,7 @@ export function WorkspaceRowActions({
         {onEdit ? (
           <>
             {onView ? <DropdownMenuSeparator /> : null}
-            <DropdownMenuItem className="cursor-pointer gap-2 rounded-sm" onSelect={onEdit}>
+            <DropdownMenuItem className="cursor-pointer gap-2 rounded-sm px-3 py-2" onSelect={onEdit}>
               <Pencil className="size-4" />
               Edit
             </DropdownMenuItem>
@@ -79,13 +79,13 @@ export function WorkspaceRowActions({
           <>
             {onView || onEdit ? <DropdownMenuSeparator /> : null}
             {isSuspended && onRestore ? (
-              <DropdownMenuItem className="cursor-pointer gap-2 rounded-sm" onSelect={onRestore}>
+              <DropdownMenuItem className="cursor-pointer gap-2 rounded-sm px-3 py-2" onSelect={onRestore}>
                 <RotateCcw className="size-4" />
                 {restoreLabel}
               </DropdownMenuItem>
             ) : onDelete ? (
               <DropdownMenuItem
-                className="cursor-pointer gap-2 rounded-sm text-destructive focus:text-destructive"
+                className="cursor-pointer gap-2 rounded-sm px-3 py-2 text-destructive focus:text-destructive"
                 onSelect={onDelete}
               >
                 <Trash2 className="size-4" />
@@ -97,18 +97,20 @@ export function WorkspaceRowActions({
         {actions && actions.length > 0 ? (
           <>
             {hasMainActions ? <DropdownMenuSeparator /> : null}
-            {actions.map((action) => (
-              <DropdownMenuItem
-                key={action.id}
-                className={cn(
-                  "cursor-pointer gap-2 rounded-sm",
-                  action.tone === "destructive" && "text-destructive focus:text-destructive",
-                )}
-                onSelect={action.onSelect}
-              >
-                {action.icon}
-                {action.label}
-              </DropdownMenuItem>
+            {actions.map((action, index) => (
+              <div key={action.id}>
+                {index > 0 ? <DropdownMenuSeparator /> : null}
+                <DropdownMenuItem
+                  className={cn(
+                    "cursor-pointer gap-2 rounded-sm px-3 py-2",
+                    action.tone === "destructive" && "text-destructive focus:text-destructive",
+                  )}
+                  onSelect={action.onSelect}
+                >
+                  {action.icon}
+                  {action.label}
+                </DropdownMenuItem>
+              </div>
             ))}
           </>
         ) : null}
