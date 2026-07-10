@@ -3,7 +3,12 @@ import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
 import { env } from "../env.js";
 import { migrateQuotationModule } from "../modules/quotation/quotation.migration.js";
+import { migrateExportSalesModule } from "../modules/export-sales/export-sales.migration.js";
+import { migratePaymentModule } from "../modules/payment/payment.migration.js";
+import { migratePurchaseModule } from "../modules/purchase/purchase.migration.js";
 import { migrateSalesModule } from "../modules/sales/sales.migration.js";
+import { migrateReceiptModule } from "../modules/receipt/receipt.migration.js";
+import { SalesRepository } from "../modules/sales/sales.repository.js";
 import { seedSalesModule } from "../modules/sales/sales.seed.js";
 import { migrateBillingSettingsModule } from "../modules/settings/settings.migration.js";
 import { BillingSettingsRepository } from "../modules/settings/settings.repository.js";
@@ -63,17 +68,46 @@ async function bootstrapBillingDatabaseOnce(name: string) {
   await ensureDatabase(name);
   const db = openBillingDatabase(name);
   await migrateSalesModule(db);
+  await migratePurchaseModule(db);
+  await migrateExportSalesModule(db);
   await migrateQuotationModule(db);
+  await migratePaymentModule(db);
+  await migrateReceiptModule(db);
   await migrateBillingSettingsModule(db);
   migrated.add(name);
   try {
     await seedSalesModule(db);
     const settingsRepository = new BillingSettingsRepository();
-    await settingsRepository.saveSalesSettings(name, await settingsRepository.getSalesSettings(name));
+    const settings = await settingsRepository.getSalesSettings(name);
+    const sales = await new SalesRepository().list(name);
+    const nextNumber = nextAvailableSalesNumber(sales.map((sale) => sale.invoiceNumber), settings.numbering.sales);
+    await settingsRepository.saveSalesSettings(name, {
+      ...settings,
+      numbering: {
+        ...settings.numbering,
+        sales: { ...settings.numbering.sales, nextNumber },
+      },
+    });
   } catch (error) {
     migrated.delete(name);
     throw error;
   }
+}
+
+function nextAvailableSalesNumber(
+  invoiceNumbers: string[],
+  settings: { nextNumber: number; prefix: string; separator: string; suffix: string; usePrefix: boolean; useSeparator: boolean; useSuffix: boolean },
+) {
+  const prefix = `${settings.usePrefix ? settings.prefix : ""}${settings.useSeparator ? settings.separator : ""}`;
+  const suffix = settings.useSuffix ? settings.suffix : "";
+  const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedSuffix = suffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`^${escapedPrefix}(\\d+)${escapedSuffix}$`, "i");
+  const highestExisting = invoiceNumbers.reduce((highest, invoiceNumber) => {
+    const match = invoiceNumber.trim().match(pattern);
+    return Math.max(highest, match ? Number(match[1]) : 0);
+  }, 0);
+  return Math.max(1, settings.nextNumber, highestExisting + 1);
 }
 
 function openBillingDatabase(databaseName: string) {

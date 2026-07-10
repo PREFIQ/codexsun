@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, Mail, MessageCircle, MoreHorizontal, Paperclip, Pencil, Plus, Printer, Send, Settings2, Tag, Trash2, UserRound, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, Mail, MessageCircle, Paperclip, Pencil, Plus, Printer, Send, Settings2, Tag, Trash2, UserRound, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@codexsun/ui/components/card";
 import { Input } from "@codexsun/ui/components/input";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@codexsun/ui/components/dropdown-menu";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { cn } from "@codexsun/ui/lib/utils";
 import { formatDate, formatMoney } from "./quotation.services";
@@ -109,59 +108,60 @@ export function QuotationShowPage({
 
   return (
     <WorkspacePage
-      className="max-w-[100rem]"
+      className="billing-document-print-page max-w-[100rem]"
       title={quotation.customerName}
       description={quotation.quotationNumber}
       actions={<Button type="button" className="h-9 rounded-md" onClick={onNew}><Plus className="size-4" />New</Button>}
     >
       <main className="mx-auto w-full pb-8">
-        <div className="mb-4 grid gap-3">
+        <div className="mb-4 grid gap-3 print:hidden">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="order-2 flex shrink-0 flex-wrap items-center gap-2 sm:order-1">
               <Button type="button" variant="outline" className="h-9 rounded-xl" onClick={onBack}><ArrowLeft className="size-4" />Back</Button>
               <Button type="button" variant="outline" className="h-9 rounded-xl" disabled={!onPrevious} onClick={onPrevious}><ChevronLeft className="size-4" />Prev</Button>
               <Button type="button" variant="outline" className="h-9 rounded-xl" disabled={!onNext} onClick={onNext}><ChevronRight className="size-4" />Next</Button>
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {!quotation.generatedSalesInvoiceNo && quotation.status !== "cancelled" ? (
-                <Button disabled={converting} type="button" className="h-11 rounded-xl px-5 text-base font-semibold shadow-sm" onClick={onConvert}><Send className="size-4" />Convert</Button>
-              ) : null}
+            <div className="order-1 flex flex-wrap items-center justify-end gap-2 sm:order-2">
               <Button className="rounded-xl" onClick={onPrint} type="button"><Printer className="size-4" />Print</Button>
-              {canEdit ? <Button type="button" variant="outline" className="rounded-xl" onClick={onEdit}><Pencil className="size-4" />Edit</Button> : null}
+              <Button disabled={!canEdit} title={canEdit ? "Edit quotation" : "Submitted quotations cannot be edited"} type="button" variant="outline" className="rounded-xl" onClick={onEdit}><Pencil className="size-4" />Edit</Button>
               {quotation.status !== "cancelled" ? (
                 <Button onClick={onSuspend} type="button" variant="destructive" className="rounded-xl"><Trash2 className="size-4" />Suspend</Button>
               ) : null}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button aria-label="Quotation print options" title="Quotation print options" type="button" variant="outline" className="size-9 rounded-xl p-0">
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>Print copies</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {printCopyOptions.map((option) => (
-                    <DropdownMenuCheckboxItem key={option.value} checked={printCopies.includes(option.value)} onCheckedChange={() => togglePrintCopy(option.value)}>
-                      {option.label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
         </div>
 
-        <section className="overflow-x-auto py-2">
-          <div className="grid min-w-fit justify-center gap-6">
-            {printCopies.map((copy) => (
-              <div key={copy}>
-                <QuotationPrintDocument copy={copy} quotation={quotation} />
-              </div>
-            ))}
+        <section className="grid items-start gap-4 py-2 print:block print:py-0 xl:grid-cols-[minmax(0,1fr)_15rem]">
+          <div className="min-w-0 overflow-x-auto">
+            <div className="grid min-w-fit justify-center gap-6">
+              {printCopies.map((copy) => (
+                <div key={copy}>
+                  <QuotationPrintDocument copy={copy} quotation={quotation} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="h-fit space-y-3 pt-4 xl:sticky xl:top-4">
+            {!quotation.generatedSalesInvoiceNo && quotation.status !== "cancelled" ? (
+              <Button disabled={converting} type="button" className="h-11 w-full rounded-xl px-5 text-base font-semibold shadow-sm" onClick={onConvert}><Send className="size-4" />Convert to sale</Button>
+            ) : null}
+            <Card className="rounded-md border-border/70 shadow-sm print:hidden">
+              <CardHeader className="border-b border-border/70 px-4 py-3">
+                <CardTitle className="text-sm">Print copies</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 p-2">
+                {printCopyOptions.map((option) => (
+                  <label key={option.value} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                    <input type="checkbox" className="size-4 accent-primary" checked={printCopies.includes(option.value)} onChange={() => togglePrintCopy(option.value)} />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </CardContent>
+            </Card>
           </div>
         </section>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="mt-4 grid gap-4 print:hidden xl:grid-cols-[minmax(0,1fr)_280px]">
           <Card className="min-h-[350px] rounded-md border-border/70 shadow-none">
             <CardHeader><CardTitle className="text-lg">Comments</CardTitle></CardHeader>
             <CardContent className="space-y-8">

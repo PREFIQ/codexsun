@@ -50,6 +50,11 @@ export class ExportSalesRepository {
     return row ? toExportSale(row) : null;
   }
 
+  async findByInvoiceNumber(databaseName: string, invoiceNumber: string) {
+    const row = await (await exportSalesDatabase(databaseName)).selectFrom("billing_export_sales").selectAll().where("invoice_number", "=", invoiceNumber).executeTakeFirst();
+    return row ? toExportSale(row) : null;
+  }
+
   async create(databaseName: string, input: ExportSaleSavePayload) {
     const sale = createExportSaleRecord(input);
     await (await exportSalesDatabase(databaseName)).insertInto("billing_export_sales").values(toExportSaleRow(sale)).execute();

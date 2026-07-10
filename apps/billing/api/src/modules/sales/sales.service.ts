@@ -1,8 +1,9 @@
 import { env } from "../../env.js";
+import { AppError } from "@codexsun/framework/errors";
 import { SalesRepository } from "./sales.repository.js";
 import type { Sale, SaleLineItem, SaleLineItemInput, SaleSavePayload } from "./sales.types.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
-import { formatBillingDocumentNumber } from "../settings/settings.types.js";
+import { formatBillingDocumentNumber, nextBillingDocumentNumber } from "../settings/settings.types.js";
 
 export class SalesService {
   constructor(
@@ -21,16 +22,15 @@ export class SalesService {
   async createSale(databaseName: string, input: SaleSavePayload) {
     const billingSettings = await this.settings.getBillingSettings(databaseName);
     const numbering = billingSettings.numbering.sales;
-    const normalizedInput = numbering.automatic
-      ? { ...input, invoiceNumber: formatBillingDocumentNumber(numbering) }
-      : input;
+    const { generated, input: numberedInput, nextNumber } = await resolveNextSaleNumber(databaseName, input, numbering, this.repository);
+    const normalizedInput = numberedInput;
     const sale = await this.repository.create(databaseName, normalizeSaleInput(normalizedInput));
-    if (numbering.automatic) {
+    if (numbering.automatic && (generated || nextNumber > numbering.nextNumber)) {
       await this.settings.saveBillingSettings(databaseName, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
-          sales: { ...numbering, nextNumber: numbering.nextNumber + 1 }
+          sales: { ...numbering, nextNumber }
         }
       });
     }
@@ -39,6 +39,8 @@ export class SalesService {
   }
 
   async updateSale(databaseName: string, id: string, input: SaleSavePayload) {
+    const duplicate = await this.repository.findByInvoiceNumber(databaseName, input.invoiceNumber.trim().toUpperCase());
+    if (duplicate && duplicate.id !== id) throw AppError.conflict("Sales invoice number already exists. Enter a unique number.");
     const sale = await this.repository.update(databaseName, id, normalizeSaleInput(input));
     if (sale) await postSaleToAccounts(databaseName, sale, "update");
     return sale;
@@ -61,16 +63,16 @@ export function normalizeSaleInput(input: SaleSavePayload): SaleSavePayload {
     .filter((item) => item.description.length > 0 && item.quantity > 0);
 
   if (!input.customerName.trim()) {
-    throw new Error("Customer name is required.");
+    throw AppError.validation("Customer name is required.");
   }
   if (!input.invoiceNumber.trim()) {
-    throw new Error("Invoice number is required.");
+    throw AppError.validation("Invoice number is required.");
   }
   if (!input.issuedOn.trim()) {
-    throw new Error("Invoice date is required.");
+    throw AppError.validation("Invoice date is required.");
   }
   if (items.length === 0) {
-    throw new Error("At least one sale item is required.");
+    throw AppError.validation("Add at least one sale item with a product or description.");
   }
 
   return {
@@ -93,13 +95,49 @@ export function normalizeSaleInput(input: SaleSavePayload): SaleSavePayload {
   };
 }
 
+export function resolveSaleNumber(input: SaleSavePayload, numbering: Parameters<typeof formatBillingDocumentNumber>[0]): SaleSavePayload & { generated: boolean } {
+  const generatedNumber = formatBillingDocumentNumber(numbering);
+  const enteredNumber = input.invoiceNumber.trim();
+  const generated = numbering.automatic && (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
+  return { ...(enteredNumber ? input : { ...input, invoiceNumber: generatedNumber }), generated };
+}
+
+async function resolveNextSaleNumber(
+  databaseName: string,
+  input: SaleSavePayload,
+  numbering: Parameters<typeof formatBillingDocumentNumber>[0],
+  repository: Pick<SalesRepository, "findByInvoiceNumber">,
+) {
+  const enteredNumber = input.invoiceNumber.trim();
+  const configuredNumber = formatBillingDocumentNumber(numbering);
+  const generated = numbering.automatic && (!enteredNumber || enteredNumber.toUpperCase() === configuredNumber.toUpperCase());
+
+  if (!generated) {
+    const duplicate = await repository.findByInvoiceNumber(databaseName, enteredNumber.toUpperCase());
+    if (duplicate) throw AppError.conflict("Sales invoice number already exists. Enter a unique number.");
+    return { generated: false, input, nextNumber: nextBillingDocumentNumber(numbering, enteredNumber) };
+  }
+
+  let nextNumber = Math.max(1, numbering.nextNumber);
+  while (true) {
+    const invoiceNumber = formatBillingDocumentNumber({ ...numbering, nextNumber });
+    const duplicate = await repository.findByInvoiceNumber(databaseName, invoiceNumber);
+    if (!duplicate) {
+      return { generated: true, input: { ...input, invoiceNumber }, nextNumber: nextNumber + 1 };
+    }
+    nextNumber += 1;
+  }
+}
+
 function normalizeSaleLineItem(item: SaleLineItemInput): SaleLineItemInput {
+  const productName = item.productName?.trim() ?? "";
   return {
     colour: item.colour?.trim() ?? "",
     dcNo: item.dcNo?.trim().toUpperCase() ?? "",
-    description: item.description.trim(),
+    description: item.description.trim() || productName,
     hsnCode: item.hsnCode.trim().toUpperCase(),
     poNo: item.poNo?.trim().toUpperCase() ?? "",
+    productName,
     quantity: roundMoney(Number(item.quantity) || 0),
     rate: roundMoney(Number(item.rate) || 0),
     size: item.size?.trim() ?? "",
@@ -144,30 +182,34 @@ function roundMoney(value: number) {
 }
 
 async function postSaleToAccounts(databaseName: string, sale: Sale, operation: "create" | "update" | "cancel") {
-  const response = await fetch(`${env.ACCOUNTS_API_URL}/accounts/postings/billing`, {
-    body: JSON.stringify({
-      documentDate: sale.issuedOn,
-      operation,
-      partyLedgerName: sale.customerName,
-      placeOfSupply: sale.taxType,
-      roundOff: sale.roundOff,
-      sourceApp: "billing",
-      sourceDocumentId: sale.id,
-      sourceDocumentNo: sale.invoiceNumber,
-      sourceModule: "sales",
-      taxableAmount: sale.subtotal,
-      taxAmount: sale.taxAmount,
-      totalAmount: sale.amount
-    }),
-    headers: {
-      "Content-Type": "application/json",
-      "x-tenant-db": databaseName
-    },
-    method: "POST"
-  });
+  try {
+    const response = await fetch(`${env.ACCOUNTS_API_URL}/accounts/postings/billing`, {
+      body: JSON.stringify({
+        documentDate: sale.issuedOn,
+        operation,
+        partyLedgerName: sale.customerName,
+        placeOfSupply: sale.taxType,
+        roundOff: sale.roundOff,
+        sourceApp: "billing",
+        sourceDocumentId: sale.id,
+        sourceDocumentNo: sale.invoiceNumber,
+        sourceModule: "sales",
+        taxableAmount: sale.subtotal,
+        taxAmount: sale.taxAmount,
+        totalAmount: sale.amount
+      }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-tenant-db": databaseName
+      },
+      method: "POST"
+    });
 
-  if (!response.ok) {
-    const message = await response.text().catch(() => "");
-    throw new Error(`Accounts posting failed for ${sale.invoiceNumber}: ${message || response.statusText}`);
+    if (!response.ok) {
+      const message = await response.text().catch(() => "");
+      console.warn(`[sales] Accounts posting deferred for ${sale.invoiceNumber}: ${message || response.statusText}`);
+    }
+  } catch (error) {
+    console.warn(`[sales] Accounts posting deferred for ${sale.invoiceNumber}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

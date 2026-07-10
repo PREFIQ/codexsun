@@ -24,9 +24,38 @@ export default defineConfig(() => ({
           if (normalizedId.includes("node_modules/@dnd-kit")) return "dnd";
           if (normalizedId.includes("node_modules/framer-motion") || normalizedId.includes("node_modules/motion-")) return "motion";
           if (normalizedId.includes("node_modules/recharts") || normalizedId.includes("node_modules/d3-")) return "charts";
+          if (normalizedId.includes("/packages/ui/src/workspace/")) return "ui-workspace";
+          if (normalizedId.includes("/packages/ui/src/design-system/")) return "ui-design-system";
           if (normalizedId.includes("/packages/ui/src/blocks/")) return "ui-blocks";
-          if (normalizedId.includes("/packages/ui/src/components/")) return "ui-components";
-          if (normalizedId.includes("/packages/ui/src/")) return "codexsun-ui";
+          if (normalizedId.includes("/packages/ui/src/layouts/")) return "ui-layouts";
+          if (
+            normalizedId.includes("/packages/ui/src/components/dialog") ||
+            normalizedId.includes("/packages/ui/src/components/drawer") ||
+            normalizedId.includes("/packages/ui/src/components/dropdown-menu") ||
+            normalizedId.includes("/packages/ui/src/components/hover-card") ||
+            normalizedId.includes("/packages/ui/src/components/menubar") ||
+            normalizedId.includes("/packages/ui/src/components/navigation-menu") ||
+            normalizedId.includes("/packages/ui/src/components/popover") ||
+            normalizedId.includes("/packages/ui/src/components/select") ||
+            normalizedId.includes("/packages/ui/src/components/sheet") ||
+            normalizedId.includes("/packages/ui/src/components/tabs") ||
+            normalizedId.includes("/packages/ui/src/components/toast") ||
+            normalizedId.includes("/packages/ui/src/components/toaster") ||
+            normalizedId.includes("/packages/ui/src/components/sonner") ||
+            normalizedId.includes("/packages/ui/src/components/tooltip")
+          ) return "ui-overlays";
+          if (
+            normalizedId.includes("/packages/ui/src/components/calendar") ||
+            normalizedId.includes("/packages/ui/src/components/carousel") ||
+            normalizedId.includes("/packages/ui/src/components/chart") ||
+            normalizedId.includes("/packages/ui/src/components/pagination") ||
+            normalizedId.includes("/packages/ui/src/components/progress") ||
+            normalizedId.includes("/packages/ui/src/components/resizable") ||
+            normalizedId.includes("/packages/ui/src/components/scroll-area") ||
+            normalizedId.includes("/packages/ui/src/components/skeleton") ||
+            normalizedId.includes("/packages/ui/src/components/table")
+          ) return "ui-data";
+          if (normalizedId.includes("/packages/ui/src/components/") || normalizedId.includes("/packages/ui/src/lib/")) return "codexsun-ui";
         }
       }
     }

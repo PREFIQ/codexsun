@@ -1,8 +1,9 @@
 import { env } from "../../env.js";
+import { AppError } from "@codexsun/framework/errors";
 import { ExportSalesRepository } from "./export-sales.repository.js";
 import type { ExportSale, ExportSaleLineItem, ExportSaleLineItemInput, ExportSaleSavePayload } from "./export-sales.types.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
-import { formatBillingDocumentNumber } from "../settings/settings.types.js";
+import { formatBillingDocumentNumber, nextBillingDocumentNumber } from "../settings/settings.types.js";
 
 export class ExportSalesService {
   constructor(
@@ -21,16 +22,20 @@ export class ExportSalesService {
   async createExportSale(databaseName: string, input: ExportSaleSavePayload) {
     const billingSettings = await this.settings.getBillingSettings(databaseName);
     const numbering = billingSettings.numbering.exportSales;
-    const normalizedInput = numbering.automatic
-      ? { ...input, invoiceNumber: formatBillingDocumentNumber(numbering) }
-      : input;
+    const generatedNumber = formatBillingDocumentNumber(numbering);
+    const enteredNumber = input.invoiceNumber.trim();
+    const generated = numbering.automatic && (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
+    const normalizedInput = enteredNumber ? input : { ...input, invoiceNumber: generatedNumber };
+    const duplicate = await this.repository.findByInvoiceNumber(databaseName, normalizedInput.invoiceNumber.trim().toUpperCase());
+    if (duplicate) throw AppError.conflict("Export sales invoice number already exists. Enter a unique number.");
     const sale = await this.repository.create(databaseName, normalizeExportSaleInput(normalizedInput));
-    if (numbering.automatic) {
+    const nextNumber = nextBillingDocumentNumber(numbering, normalizedInput.invoiceNumber);
+    if (numbering.automatic && (generated || nextNumber > numbering.nextNumber)) {
       await this.settings.saveBillingSettings(databaseName, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
-          exportSales: { ...numbering, nextNumber: numbering.nextNumber + 1 }
+          exportSales: { ...numbering, nextNumber }
         }
       });
     }
@@ -39,6 +44,8 @@ export class ExportSalesService {
   }
 
   async updateExportSale(databaseName: string, id: string, input: ExportSaleSavePayload) {
+    const duplicate = await this.repository.findByInvoiceNumber(databaseName, input.invoiceNumber.trim().toUpperCase());
+    if (duplicate && duplicate.id !== id) throw AppError.conflict("Export sales invoice number already exists. Enter a unique number.");
     const sale = await this.repository.update(databaseName, id, normalizeExportSaleInput(input));
     if (sale) await postExportSaleToAccounts(databaseName, sale, "update");
     return sale;

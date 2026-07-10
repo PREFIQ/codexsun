@@ -27,16 +27,39 @@ export function WorkspacePrintPreview({
 
 export function WorkspacePrintSheet({
   children,
+  className,
 }: {
   children: ReactNode
+  className?: string
 }) {
   return (
     <>
       <style>{`
         @page { size: A4 portrait; margin: 7mm 4mm 5mm; }
-        @media print { .print-sheet { width: 210mm; } }
+        @media print {
+          .print-sheet { width: 210mm; }
+          body:has(.billing-print-document) { background: #fff !important; }
+          body:has(.billing-print-document) [data-sidebar="sidebar"],
+          body:has(.billing-print-document) [data-sidebar="gap"],
+          body:has(.billing-print-document) [data-sidebar="rail"],
+          main:has(.billing-print-document) > header,
+          main:has(.billing-print-document) > div > div > div:first-child,
+          .billing-document-print-page > :first-child,
+          .billing-document-print-page > main > :first-child,
+          .billing-print-document ~ :not(:has(.billing-print-document)) {
+            display: none !important;
+          }
+          main:has(.billing-print-document),
+          main:has(.billing-print-document) > div,
+          main:has(.billing-print-document) > div > div {
+            display: block !important;
+            margin: 0 !important;
+            width: auto !important;
+          }
+          .billing-print-document { break-inside: avoid; }
+        }
       `}</style>
-      <div className="print-sheet mx-auto w-[210mm] max-w-full origin-top bg-white font-sans text-[10px] text-black print:mx-0 print:mt-0 print:w-[198mm] print:max-w-none">
+      <div className={`print-sheet mx-auto w-[210mm] max-w-full origin-top bg-white font-sans text-[10px] text-black print:mx-0 print:mt-0 print:w-[198mm] print:max-w-none ${className ?? ""}`}>
         {children}
       </div>
     </>

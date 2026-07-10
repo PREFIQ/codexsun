@@ -6,6 +6,7 @@ export type SaleLineItemInput = {
   description: string;
   hsnCode: string;
   poNo?: string;
+  productName?: string;
   quantity: number;
   rate: number;
   size?: string;

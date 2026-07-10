@@ -1,6 +1,6 @@
 export type BillingGstApiMode = "einvoice_eway" | "eway_only";
 
-export type BillingDocumentKind = "quotation" | "sales" | "purchase";
+export type BillingDocumentKind = "quotation" | "sales" | "purchase" | "payment" | "receipt";
 export type BillingNumberDocumentKind = BillingDocumentKind | "exportSales";
 export type BillingDocumentNumberSettings = {
   automatic: boolean;
@@ -81,12 +81,14 @@ export const defaultBillingSettings: BillingSettings = {
   layout: { ...defaultBillingDocumentLayoutSettings },
   numbering: {
     exportSales: { automatic: true, nextNumber: 1, padding: 4, prefix: "EXP", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
+    payment: { automatic: true, nextNumber: 1, padding: 4, prefix: "PAY", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
     purchase: { automatic: true, nextNumber: 1, padding: 4, prefix: "PUR", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
     quotation: { automatic: true, nextNumber: 1, padding: 4, prefix: "QUO", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
+    receipt: { automatic: true, nextNumber: 1, padding: 4, prefix: "REC", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
     sales: { automatic: true, nextNumber: 1, padding: 4, prefix: "SAL", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
   },
   customise: {
-    documentTitles: { purchase: "Purchase", quotation: "Quotation", sales: "Tax Invoice" },
+    documentTitles: { payment: "Payment Voucher", purchase: "Purchase", quotation: "Quotation", receipt: "Receipt Voucher", sales: "Tax Invoice" },
     printLanguage: "english",
   },
   printing: {

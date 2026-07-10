@@ -306,8 +306,12 @@ function toApiPayload(payload: SaleSavePayload) {
     items: payload.items,
     notes: payload.notes,
     roundOff: payload.roundOff,
+    salesLedger: payload.salesLedger,
     shippingAddress: payload.shippingAddress,
     status: payload.status,
+    taxType: payload.taxType,
+    terms: payload.terms,
+    workOrderNo: payload.workOrderNo,
   };
 }
 

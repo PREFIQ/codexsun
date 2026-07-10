@@ -1,0 +1,4 @@
+export type ReceiptStatus = "draft" | "posted" | "cancelled";
+export type ReceiptAllocation = { documentNo: string; documentDate: string; documentTotal: number; previousBalance: number; allocatedAmount: number };
+export type Receipt = { id: string; receiptNumber: string; receiptDate: string; partyName: string; partyId: string; partyType: string; receiptMode: string; bankAccount: string; referenceNo: string; referenceDate: string; amount: number; tdsAmount: number; discountAmount: number; roundOff: number; totalAmount: number; allocatedAmount: number; unallocatedAmount: number; status: ReceiptStatus; notes: string; allocations: ReceiptAllocation[]; createdAt: string; updatedAt: string };
+export type ReceiptInput = Omit<Partial<Receipt>, "id" | "createdAt" | "updatedAt" | "totalAmount" | "allocatedAmount" | "unallocatedAmount"> & { receiptNumber?: string; receiptDate: string; partyName: string; amount: number; allocations?: ReceiptAllocation[] };

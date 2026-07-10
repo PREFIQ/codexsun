@@ -34,7 +34,6 @@ export function ExportSalesList({
         <table className="w-full min-w-[1080px] border-collapse text-sm">
           <thead className="bg-muted/50">
             <tr>
-              <WorkspaceTableHeaderCell>#</WorkspaceTableHeaderCell>
               {visibleColumns.invoice ? <WorkspaceTableHeaderCell>Invoice</WorkspaceTableHeaderCell> : null}
               {visibleColumns.date ? <WorkspaceTableHeaderCell>Date</WorkspaceTableHeaderCell> : null}
               {visibleColumns.customer ? <WorkspaceTableHeaderCell>Customer</WorkspaceTableHeaderCell> : null}
@@ -50,7 +49,6 @@ export function ExportSalesList({
           <tbody>
             {entries.map((sale, index) => (
               <tr key={sale.id} className={cn("border-b border-border/70 last:border-b-0", sale.status === "cancelled" && "bg-muted/20 text-muted-foreground")}>
-                <td className="px-4 py-2.5 text-muted-foreground">{(currentPage - 1) * rowsPerPage + index + 1}</td>
                 {visibleColumns.invoice ? <td className="px-4 py-2.5">
                   <button className="font-medium hover:underline" type="button" onClick={() => onView(sale)}>
                     {sale.invoiceNumber}

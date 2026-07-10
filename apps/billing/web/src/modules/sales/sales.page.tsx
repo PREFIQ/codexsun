@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
-import { ArrowUpRight, ChevronDown, Eye, Pencil, Plus, Printer, RefreshCw, RotateCcw, Save, Send, Trash2, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Eye, Pencil, Plus, Printer, RefreshCw, RotateCcw, Save, Send, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@codexsun/ui/components/dialog";
@@ -139,7 +139,10 @@ export function SaleWorkspace() {
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: SaleSavePayload }) => id ? updateSale(id, payload) : createSale(payload),
     onSuccess: async (sale) => {
-      await queryClient.invalidateQueries({ queryKey: ["billing", "sales"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["billing", "sales"] }),
+        queryClient.invalidateQueries({ queryKey: ["billing", "settings"] }),
+      ]);
       toast.success(view.mode === "upsert" && view.sale ? "Sale updated" : "Sale created", {
         description: `${sale.saleNumber} is ready.`,
       });
@@ -226,6 +229,11 @@ export function SaleWorkspace() {
     });
   }, [entries]);
 
+  async function openNewSale() {
+    await settingsQuery.refetch();
+    setView({ mode: "upsert", sale: null, returnTo: "list" });
+  }
+
   function toggleSaleSelection(sale: Sale, checked: boolean) {
     if (!canGenerateInvoiceFromSale(sale)) return;
     setSelectedSaleIds((current) => {
@@ -257,7 +265,7 @@ export function SaleWorkspace() {
         sale={freshSale}
         onBack={() => setView({ mode: "list" })}
         onEdit={() => setView({ mode: "upsert", sale: freshSale, returnTo: "show" })}
-        onNew={() => setView({ mode: "upsert", sale: null, returnTo: "list" })}
+        onNew={() => void openNewSale()}
         onPrint={() => window.print()}
         onSuspend={() => statusMutation.mutate({ id: freshSale.id, status: "cancelled" })}
         canEdit={freshSale.status === "draft"}
@@ -300,7 +308,7 @@ export function SaleWorkspace() {
             <RefreshCw className={cn("size-4", salesQuery.isFetching && "animate-spin")} />
             Refresh
           </Button>
-          <Button className="h-9 rounded-md" onClick={() => setView({ mode: "upsert", sale: null, returnTo: "list" })} type="button">
+          <Button className="h-9 rounded-md" onClick={() => void openNewSale()} type="button">
             <Plus className="size-4" />
             New sale
           </Button>
@@ -481,6 +489,11 @@ function SaleUpsertPage({ canAdminRevoke, errorMessage, loading, numbering, onBa
     ...createEmptySale(),
     saleNumber: numbering.automatic ? formatDocumentNumber(numbering) : createEmptySale().saleNumber,
   });
+  useEffect(() => {
+    if (sale || !numbering.automatic) return;
+    const nextSaleNumber = formatDocumentNumber(numbering);
+    setForm((current) => current.saleNumber === nextSaleNumber ? current : { ...current, saleNumber: nextSaleNumber });
+  }, [numbering, sale]);
   const [itemDraft, setItemDraft] = useState(() => createEmptySale().items[0] ?? {
     colour: "",
     dcNo: "",
@@ -720,7 +733,7 @@ function SaleUpsertPage({ canAdminRevoke, errorMessage, loading, numbering, onBa
             </Field>
           </div>
           <div className="space-y-5">
-            <Field label="Sale number"><Input disabled={!sale && numbering.automatic} value={form.saleNumber} onChange={(event) => patch({ saleNumber: event.target.value })} /></Field>
+            <Field label="Sale number"><Input value={form.saleNumber} onChange={(event) => patch({ saleNumber: event.target.value.toUpperCase() })} /></Field>
             <Field label="Date"><WorkspaceDatePicker value={form.issuedOn} onValueChange={(value) => patch({ issuedOn: value })} /></Field>
             <Field label="Sale tax type">
               <WorkspaceSelect
@@ -771,8 +784,7 @@ function SaleUpsertPage({ canAdminRevoke, errorMessage, loading, numbering, onBa
             return saleProductOption(created);
           }}
           renderProductCreateForm={({ initialName, onCancel, onCreated }) => (
-            <SaleMasterQuickForm
-              kind="products"
+            <SaleProductQuickForm
               initialValue={masterDraftFromRecord(undefined, initialName)}
               loading={masterSaveMutation.isPending}
               onCancel={onCancel}
@@ -920,7 +932,7 @@ function SaleUpsertPage({ canAdminRevoke, errorMessage, loading, numbering, onBa
         </Dialog>
         <Dialog open={Boolean(editingProduct)} onOpenChange={(open) => !open && setEditingProduct(null)}>
           <DialogContent className="rounded-md p-0 sm:max-w-3xl" onInteractOutside={(event) => event.preventDefault()}>
-            {editingProduct ? <SaleMasterQuickForm kind="products" initialValue={masterDraftFromRecord(editingProduct)} loading={masterSaveMutation.isPending} onCancel={() => setEditingProduct(null)} onSave={async (payload) => { const saved = await masterSaveMutation.mutateAsync({ id: editingProduct.id, kind: "products", payload }); await productsQuery.refetch(); patchDraft({ productName: saleProductOption(saved).label }); setEditingProduct(null); toast.success("Product saved", { description: saleProductOption(saved).label }); }} title="Edit product" /> : null}
+            {editingProduct ? <SaleProductQuickForm initialValue={masterDraftFromRecord(editingProduct)} loading={masterSaveMutation.isPending} onCancel={() => setEditingProduct(null)} onSave={async (payload) => { const saved = await masterSaveMutation.mutateAsync({ id: editingProduct.id, kind: "products", payload }); await productsQuery.refetch(); patchDraft({ productName: saleProductOption(saved).label }); setEditingProduct(null); toast.success("Product saved", { description: saleProductOption(saved).label }); }} title="Edit product" /> : null}
           </DialogContent>
         </Dialog>
         <Dialog open={Boolean(editingWorkOrder)} onOpenChange={(open) => !open && setEditingWorkOrder(null)}>
@@ -990,7 +1002,7 @@ function SaleContactQuickForm({ initialValue, loading, onCancel, onSave, title }
       content: (
         <div className="grid gap-4">
           <ContactQuickField label="Contact name" required value={form.name} onChange={(name) => setForm((current) => ({ ...current, name, ...(!legalNameManual ? { legalName: name.toUpperCase() } : {}) }))} />
-          <ContactQuickField forceUppercase label="Legal name" value={form.legalName} onChange={(legalName) => { setLegalNameManual(true); setForm((current) => ({ ...current, legalName })); }} />
+          <ContactQuickField forceUppercase label="Legal name" value={form.legalName} onChange={(legalName) => { setLegalNameManual(true); setForm((current) => ({ ...current, legalName })); }} onMagic={() => { setLegalNameManual(false); setForm((current) => ({ ...current, legalName: current.name.trim().toUpperCase() })); }} />
           <ContactQuickField forceUppercase label="GSTIN" value={form.gstin} onChange={(gstin) => setForm((current) => ({ ...current, gstin }))} />
           <ContactQuickField label="Phone" value={form.primaryPhone} onChange={(primaryPhone) => setForm((current) => ({ ...current, primaryPhone }))} />
         </div>
@@ -1055,10 +1067,10 @@ function SaleContactQuickForm({ initialValue, loading, onCancel, onSave, title }
   );
 }
 
-function ContactQuickField({ className, forceUppercase = false, label, onChange, required, type = "text", value }: { className?: string; forceUppercase?: boolean; label: string; onChange: (value: string) => void; required?: boolean; type?: string; value: string }) {
+function ContactQuickField({ className, forceUppercase = false, label, onChange, onMagic, required, type = "text", value }: { className?: string; forceUppercase?: boolean; label: string; onChange: (value: string) => void; onMagic?: () => void; required?: boolean; type?: string; value: string }) {
   return (
     <label className={cn("grid gap-2", className)}>
-      <Label>{label}{required ? <span className="text-destructive"> *</span> : null}</Label>
+      <div className="flex items-center justify-between gap-2"><Label>{label}{required ? <span className="text-destructive"> *</span> : null}</Label>{onMagic ? <Button aria-label="Refresh legal name from contact name" className="size-7 rounded-md p-0" onClick={(event) => { event.preventDefault(); onMagic(); }} title="Refresh legal name from contact name" type="button" variant="outline"><Sparkles className="size-3.5" /></Button> : null}</div>
       <Input autoCapitalize={forceUppercase ? "characters" : "none"} autoFocus={label === "Contact name"} className={cn("h-11 rounded-md", forceUppercase && "uppercase")} required={required} type={type} value={value} onChange={(event) => onChange(forceUppercase ? event.target.value.toUpperCase() : event.target.value)} />
     </label>
   );
@@ -1544,7 +1556,7 @@ function SaleProductQuickForm({ initialValue, loading, onCancel, onSave, title }
         <ProductPopupLookup label="Product category" loading={categoriesQuery.isLoading} options={categoryOptions} value={form.productCategoryId || form.productCategoryName || ""} placeholder="Search product category" onCreate={(name) => createOption("productCategories", name)} onValueChange={(value, option) => patchProduct({ productCategoryId: option?.value ?? value, productCategoryName: option?.label ?? value })} />
         <ProductPopupLookup label="HSN code" loading={hsnCodesQuery.isLoading} options={hsnOptions} value={form.hsnCodeId || form.hsnCode || ""} placeholder="Search HSN code" onCreate={(name) => createOption("hsnCodes", name)} onValueChange={(value, option) => patchProduct({ hsnCodeId: option?.value ?? value, hsnCode: option?.label ?? value })} />
         <ProductPopupLookup label="Units" loading={unitsQuery.isLoading} options={unitOptions} value={form.unitId || form.unitName || ""} placeholder="Search units" onCreate={(name) => createOption("units", name)} onValueChange={(value, option) => patchProduct({ unitId: option?.value ?? value, unitName: option?.label ?? value })} />
-        <ProductPopupLookup label="GST tax rate" loading={taxesQuery.isLoading} options={taxOptions} value={form.taxId || (form.taxRate !== undefined ? String(form.taxRate) : "")} placeholder="Search GST tax rate" onCreate={(name) => createOption("taxes", name)} onValueChange={(value, option) => { const record = option?.record; patchProduct({ taxId: option?.value ?? value, taxName: option?.label ?? value, taxRate: Number(record?.ratePercent ?? record?.taxRate ?? value) || 0 }); }} />
+        <ProductPopupLookup numericOnly label="GST tax rate" loading={taxesQuery.isLoading} options={taxOptions} value={form.taxId || (form.taxRate !== undefined ? String(form.taxRate) : "")} placeholder="Search GST tax rate" onCreate={(name) => createOption("taxes", name)} onValueChange={(value, option) => { const record = option?.record; patchProduct({ taxId: option?.value ?? value, taxName: option?.label ?? value, taxRate: Number(record?.ratePercent ?? record?.taxRate ?? value) || 0 }); }} />
         <ContactQuickField label="Opening price" type="number" value={String(form.openingRate)} onChange={(openingRate) => patchProduct({ openingRate: Number(openingRate || 0) })} />
       </div>
       <DialogFooter className="border-t border-border/80 px-5 py-4"><Button disabled={loading} type="button" variant="outline" onClick={onCancel}><X className="size-4" />Cancel</Button><Button disabled={loading || !form.name.trim()} type="submit"><Save className="size-4" />Save product</Button></DialogFooter>
@@ -1552,8 +1564,9 @@ function SaleProductQuickForm({ initialValue, loading, onCancel, onSave, title }
   );
 }
 
-function ProductPopupLookup({ label, loading, onCreate, onValueChange, options, placeholder, value }: { label: string; loading: boolean; onCreate: (name: string) => Promise<SaleLookupRecord>; onValueChange: (value: string, option?: SaleLookupOption | null) => void; options: SaleLookupOption[]; placeholder: string; value: string }) {
-  return <label className="grid gap-2"><Label>{label}</Label><WorkspaceLookup createLabel={`Create ${label.toLowerCase()}`} createMode="inline" emptyLabel={`No ${label.toLowerCase()} found. Type a value to create it.`} loading={loading} options={options} placeholder={placeholder} value={value} onCreate={async (name) => saleCommonOption(await onCreate(name))} onValueChange={onValueChange} /></label>;
+function ProductPopupLookup({ label, loading, numericOnly = false, onCreate, onValueChange, options, placeholder, value }: { label: string; loading: boolean; numericOnly?: boolean; onCreate: (name: string) => Promise<SaleLookupRecord>; onValueChange: (value: string, option?: SaleLookupOption | null) => void; options: SaleLookupOption[]; placeholder: string; value: string }) {
+  const sanitize = numericOnly ? (input: string) => input.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1") : undefined;
+  return <label className="grid gap-2"><Label>{label}</Label><WorkspaceLookup createLabel={`Create ${label.toLowerCase()}`} createMode="inline" emptyLabel={`No ${label.toLowerCase()} found. Type a value to create it.`} loading={loading} options={options} placeholder={placeholder} value={value} {...(sanitize ? { sanitizeInput: sanitize } : {})} onCreate={async (name) => saleCommonOption(await onCreate(sanitize ? sanitize(name) : name))} onValueChange={onValueChange} /></label>;
 }
 
 function canGenerateInvoiceFromSale(sale: Sale) {

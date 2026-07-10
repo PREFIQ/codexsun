@@ -52,6 +52,11 @@ export class SalesRepository {
     return row ? toSale(row) : null;
   }
 
+  async findByInvoiceNumber(databaseName: string, invoiceNumber: string) {
+    const row = await (await salesDatabase(databaseName)).selectFrom("billing_sales").selectAll().where("invoice_number", "=", invoiceNumber).executeTakeFirst();
+    return row ? toSale(row) : null;
+  }
+
   async create(databaseName: string, input: SaleSavePayload) {
     const sale = createSaleRecord(input);
     await (await salesDatabase(databaseName)).insertInto("billing_sales").values(toSaleRow(sale)).execute();

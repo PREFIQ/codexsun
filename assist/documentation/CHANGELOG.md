@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.15
+Current version: 1.0.16
 
-Release tag: v-1.0.15
+Release tag: v-1.0.16
 
-Changelog label: v 1.0.15
+Changelog label: v 1.0.16
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,18 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.16
+
+### [v 1.0.16] 2026-07-10 11:22 pm - Contact legal name magic autofill
+
+#### Database Changes
+
+- Database update: No (auto-check).
+
+#### App Codebase Changes
+
+- Bumped workspace version to 1.0.16.
 
 ## v-1.0.15
 

@@ -52,6 +52,11 @@ export class PurchaseRepository {
     return row ? toPurchase(row) : null;
   }
 
+  async findByInvoiceNumber(databaseName: string, invoiceNumber: string) {
+    const row = await (await purchaseDatabase(databaseName)).selectFrom("billing_purchase").selectAll().where("invoice_number", "=", invoiceNumber).executeTakeFirst();
+    return row ? toPurchase(row) : null;
+  }
+
   async create(databaseName: string, input: PurchaseSavePayload) {
     const sale = createPurchaseRecord(input);
     await (await purchaseDatabase(databaseName)).insertInto("billing_purchase").values(toPurchaseRow(sale)).execute();
@@ -74,6 +79,18 @@ export class PurchaseRepository {
     const updatedAt = new Date().toISOString();
     await db.updateTable("billing_purchase").set({ status, updated_at: updatedAt }).where("id", "=", id).execute();
     return { ...toPurchase(existing), status, updatedAt };
+  }
+
+  async revoke(databaseName: string, id: string) {
+    return this.setStatus(databaseName, id, "draft");
+  }
+
+  async delete(databaseName: string, id: string) {
+    const db = await purchaseDatabase(databaseName);
+    const existing = await db.selectFrom("billing_purchase").selectAll().where("id", "=", id).executeTakeFirst();
+    if (!existing || existing.status !== "draft") return null;
+    await db.deleteFrom("billing_purchase").where("id", "=", id).execute();
+    return toPurchase(existing);
   }
 }
 

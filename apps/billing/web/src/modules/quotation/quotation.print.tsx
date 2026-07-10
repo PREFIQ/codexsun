@@ -14,7 +14,7 @@ export function QuotationPrintDocument({
   const pages = chunkItems(quotation.items, 12);
 
   return (
-    <WorkspacePrintSheet>
+    <WorkspacePrintSheet className="billing-print-document">
       {pages.map((items, pageIndex) => (
         <QuotationPrintPage
           key={`quotation-print-page-${pageIndex}`}

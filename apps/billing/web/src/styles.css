@@ -2,6 +2,37 @@ body {
   margin: 0;
 }
 
+/* A billing document can be opened from a show page or a dedicated print route.
+   Keep only the document sheet in the browser print tree in both cases. */
+@media print {
+  body:has(.billing-print-document) {
+    background: #fff !important;
+  }
+
+  body:has(.billing-print-document) [data-sidebar="sidebar"],
+  body:has(.billing-print-document) [data-sidebar="gap"],
+  body:has(.billing-print-document) [data-sidebar="rail"],
+  main:has(.billing-print-document) > header,
+  main:has(.billing-print-document) > div > div > div:first-child,
+  .billing-document-print-page > :first-child,
+  .billing-document-print-page > main > :first-child,
+  .billing-print-document ~ :not(:has(.billing-print-document)) {
+    display: none !important;
+  }
+
+  main:has(.billing-print-document),
+  main:has(.billing-print-document) > div,
+  main:has(.billing-print-document) > div > div {
+    display: block !important;
+    margin: 0 !important;
+    width: auto !important;
+  }
+
+  .billing-print-document {
+    break-inside: avoid;
+  }
+}
+
 .billing-shell {
   display: grid;
   gap: 24px;

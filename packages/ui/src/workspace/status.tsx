@@ -24,22 +24,25 @@ const toneIcons: Record<WorkspaceStatusTone, ReactNode> = {
 export function WorkspaceStatusBadge({
   className,
   label,
+  status,
   tone = "neutral",
 }: {
   className?: string
-  label: string
+  label?: string
+  status?: string
   tone?: WorkspaceStatusTone
 }) {
+  const resolvedTone = status ? status === "posted" || status === "confirmed" ? "success" : status === "cancelled" ? "danger" : "warning" : tone
   return (
     <span
       className={cn(
         "inline-flex h-6 items-center gap-1 rounded-md border px-2 text-[11px] font-medium",
-        toneStyles[tone],
+        toneStyles[resolvedTone],
         className,
       )}
     >
-      {toneIcons[tone]}
-      {label}
+      {toneIcons[resolvedTone]}
+      {label ?? status ?? "Unknown"}
     </span>
   )
 }

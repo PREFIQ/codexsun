@@ -3,7 +3,7 @@ import { AppLayout } from "@codexsun/ui/layouts/app-layout";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
 import type { SidebarBrand } from "@codexsun/ui/blocks/menu/sidemenu/app-sidebar";
 import type { TopMenuWorkspaceItem } from "@codexsun/ui/blocks/menu/sidemenu/top-menu";
-import { FileTextIcon, HomeIcon, LayoutDashboardIcon, ReceiptTextIcon, SettingsIcon, ShoppingCartIcon, ShipWheelIcon } from "lucide-react";
+import { FileTextIcon, HomeIcon, LayoutDashboardIcon, ReceiptTextIcon, SettingsIcon, ShoppingCartIcon, ShipWheelIcon, WalletCardsIcon } from "lucide-react";
 
 const billingBrand: SidebarBrand = {
   href: "/billing",
@@ -94,6 +94,20 @@ export function BillingLayout({
       url: "/billing/export-sales",
     },
     {
+      icon: WalletCardsIcon,
+      isActive: currentPath.startsWith("/billing/payment"),
+      items: [{ isActive: currentPath === "/billing/payment", title: "Payment list", url: "/billing/payment" }],
+      title: "Payment",
+      url: "/billing/payment",
+    },
+    {
+      icon: WalletCardsIcon,
+      isActive: currentPath.startsWith("/billing/receipt"),
+      items: [{ isActive: currentPath === "/billing/receipt", title: "Receipt list", url: "/billing/receipt" }],
+      title: "Receipt",
+      url: "/billing/receipt",
+    },
+    {
       icon: SettingsIcon,
       isActive: currentPath.startsWith("/billing/settings"),
       items: [
@@ -128,6 +142,8 @@ export function BillingLayout({
         { icon: FileTextIcon, title: "Quotation", url: "/billing/quotation" },
         { icon: ShoppingCartIcon, title: "Purchase", url: "/billing/purchase" },
         { icon: ShipWheelIcon, title: "Export Sales", url: "/billing/export-sales" },
+        { icon: WalletCardsIcon, title: "Payment", url: "/billing/payment" },
+        { icon: WalletCardsIcon, title: "Receipt", url: "/billing/receipt" },
         { icon: SettingsIcon, title: "Bill settings", url: "/billing/settings/sales" },
       ]}
       versionLabel="v 1.0.7"

@@ -1,8 +1,9 @@
 import { env } from "../../env.js";
+import { AppError } from "@codexsun/framework/errors";
 import { PurchaseRepository } from "./purchase.repository.js";
 import type { Purchase, PurchaseLineItem, PurchaseLineItemInput, PurchaseSavePayload } from "./purchase.types.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
-import { formatBillingDocumentNumber } from "../settings/settings.types.js";
+import { formatBillingDocumentNumber, nextBillingDocumentNumber } from "../settings/settings.types.js";
 
 export class PurchaseService {
   constructor(
@@ -21,16 +22,20 @@ export class PurchaseService {
   async createPurchase(databaseName: string, input: PurchaseSavePayload) {
     const billingSettings = await this.settings.getBillingSettings(databaseName);
     const numbering = billingSettings.numbering.purchase;
-    const normalizedInput = numbering.automatic
-      ? { ...input, invoiceNumber: formatBillingDocumentNumber(numbering) }
-      : input;
+    const generatedNumber = formatBillingDocumentNumber(numbering);
+    const enteredNumber = input.invoiceNumber.trim();
+    const generated = numbering.automatic && (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
+    const normalizedInput = enteredNumber ? input : { ...input, invoiceNumber: generatedNumber };
+    const duplicate = await this.repository.findByInvoiceNumber(databaseName, normalizedInput.invoiceNumber.trim().toUpperCase());
+    if (duplicate) throw AppError.conflict("Purchase invoice number already exists. Enter a unique number.");
     const sale = await this.repository.create(databaseName, normalizePurchaseInput(normalizedInput));
-    if (numbering.automatic) {
+    const nextNumber = nextBillingDocumentNumber(numbering, normalizedInput.invoiceNumber);
+    if (numbering.automatic && (generated || nextNumber > numbering.nextNumber)) {
       await this.settings.saveBillingSettings(databaseName, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
-          purchase: { ...numbering, nextNumber: numbering.nextNumber + 1 }
+          purchase: { ...numbering, nextNumber }
         }
       });
     }
@@ -39,6 +44,8 @@ export class PurchaseService {
   }
 
   async updatePurchase(databaseName: string, id: string, input: PurchaseSavePayload) {
+    const duplicate = await this.repository.findByInvoiceNumber(databaseName, input.invoiceNumber.trim().toUpperCase());
+    if (duplicate && duplicate.id !== id) throw AppError.conflict("Purchase invoice number already exists. Enter a unique number.");
     const sale = await this.repository.update(databaseName, id, normalizePurchaseInput(input));
     if (sale) await postPurchaseToAccounts(databaseName, sale, "update");
     return sale;
@@ -53,6 +60,14 @@ export class PurchaseService {
     if (sale) await postPurchaseToAccounts(databaseName, sale, "cancel");
     return sale;
   }
+
+  async revokePurchase(databaseName: string, id: string) {
+    return this.repository.revoke(databaseName, id);
+  }
+
+  async deletePurchase(databaseName: string, id: string) {
+    return this.repository.delete(databaseName, id);
+  }
 }
 
 export function normalizePurchaseInput(input: PurchaseSavePayload): PurchaseSavePayload {
@@ -61,16 +76,16 @@ export function normalizePurchaseInput(input: PurchaseSavePayload): PurchaseSave
     .filter((item) => item.description.length > 0 && item.quantity > 0);
 
   if (!input.customerName.trim()) {
-    throw new Error("Supplier name is required.");
+    throw AppError.validation("Supplier name is required.");
   }
   if (!input.invoiceNumber.trim()) {
-    throw new Error("Invoice number is required.");
+    throw AppError.validation("Invoice number is required.");
   }
   if (!input.issuedOn.trim()) {
-    throw new Error("Invoice date is required.");
+    throw AppError.validation("Invoice date is required.");
   }
   if (items.length === 0) {
-    throw new Error("At least one purchase item is required.");
+    throw AppError.validation("Add at least one purchase item with a product or description.");
   }
 
   return {
@@ -96,13 +111,14 @@ export function normalizePurchaseInput(input: PurchaseSavePayload): PurchaseSave
 export const normalizeSaleInput = normalizePurchaseInput;
 
 function normalizePurchaseLineItem(item: PurchaseLineItemInput): PurchaseLineItemInput {
+  const productName = item.productName?.trim() ?? "";
   return {
     colour: item.colour?.trim() ?? "",
     dcNo: item.dcNo?.trim().toUpperCase() ?? "",
-    description: item.description.trim(),
+    description: item.description.trim() || productName,
     hsnCode: item.hsnCode.trim().toUpperCase(),
     poNo: item.poNo?.trim().toUpperCase() ?? "",
-    productName: item.productName.trim(),
+    productName,
     quantity: roundMoney(Number(item.quantity) || 0),
     rate: roundMoney(Number(item.rate) || 0),
     size: item.size?.trim() ?? "",
@@ -141,30 +157,34 @@ function roundMoney(value: number) {
 }
 
 async function postPurchaseToAccounts(databaseName: string, sale: Purchase, operation: "create" | "update" | "cancel") {
-  const response = await fetch(`${env.ACCOUNTS_API_URL}/accounts/postings/billing`, {
-    body: JSON.stringify({
-      documentDate: sale.issuedOn,
-      operation,
-      partyLedgerName: sale.customerName,
-      placeOfSupply: sale.taxType,
-      roundOff: sale.roundOff,
-      sourceApp: "billing",
-      sourceDocumentId: sale.id,
-      sourceDocumentNo: sale.invoiceNumber,
-      sourceModule: "purchase",
-      taxableAmount: sale.subtotal,
-      taxAmount: sale.taxAmount,
-      totalAmount: sale.amount
-    }),
-    headers: {
-      "Content-Type": "application/json",
-      "x-tenant-db": databaseName
-    },
-    method: "POST"
-  });
+  try {
+    const response = await fetch(`${env.ACCOUNTS_API_URL}/accounts/postings/billing`, {
+      body: JSON.stringify({
+        documentDate: sale.issuedOn,
+        operation,
+        partyLedgerName: sale.customerName,
+        placeOfSupply: sale.taxType,
+        roundOff: sale.roundOff,
+        sourceApp: "billing",
+        sourceDocumentId: sale.id,
+        sourceDocumentNo: sale.invoiceNumber,
+        sourceModule: "purchase",
+        taxableAmount: sale.subtotal,
+        taxAmount: sale.taxAmount,
+        totalAmount: sale.amount
+      }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-tenant-db": databaseName
+      },
+      method: "POST"
+    });
 
-  if (!response.ok) {
-    const message = await response.text().catch(() => "");
-    throw new Error(`Accounts posting failed for ${sale.invoiceNumber}: ${message || response.statusText}`);
+    if (!response.ok) {
+      const message = await response.text().catch(() => "");
+      console.warn(`[purchase] Accounts posting deferred for ${sale.invoiceNumber}: ${message || response.statusText}`);
+    }
+  } catch (error) {
+    console.warn(`[purchase] Accounts posting deferred for ${sale.invoiceNumber}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

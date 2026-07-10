@@ -45,6 +45,7 @@ export function WorkspaceLookup({
   onValueChange,
   options,
   placeholder = "",
+  sanitizeInput,
   renderCreateForm,
   required = false,
   trailingAction,
@@ -68,6 +69,7 @@ export function WorkspaceLookup({
   onValueChange: (value: string, option?: WorkspaceLookupOption | null) => void
   options: WorkspaceLookupOption[]
   placeholder?: string
+  sanitizeInput?: ((value: string) => string) | undefined
   required?: boolean
   trailingAction?: ReactNode | undefined
   renderCreateForm?: ((context: {
@@ -246,7 +248,7 @@ export function WorkspaceLookup({
               }, 120)
             }}
             onChange={(event) => {
-              const nextQuery = event.target.value
+              const nextQuery = sanitizeInput ? sanitizeInput(event.target.value) : event.target.value
               const matchingOption = allOptions.find((option) => isExactMatch(option, nextQuery.trim().toLowerCase()))
               setQuery(nextQuery)
               setSelectedDisplayValue("")

@@ -4,8 +4,10 @@ import { bootstrapBillingDatabase, closeAllBillingDatabases } from "./database/b
 import { env } from "./env.js";
 import { exportSalesModule } from "./modules/export-sales/index.js";
 import { purchaseModule } from "./modules/purchase/index.js";
+import { paymentModule } from "./modules/payment/index.js";
 import { quotationModule } from "./modules/quotation/index.js";
 import { salesModule } from "./modules/sales/index.js";
+import { receiptModule } from "./modules/receipt/index.js";
 import { billingSettingsModule } from "./modules/settings/index.js";
 
 export async function createApp() {
@@ -27,7 +29,7 @@ export async function createApp() {
       name: "billing-api",
       check: () => ({
         details: {
-          modules: [salesModule.key, purchaseModule.key, exportSalesModule.key, quotationModule.key, billingSettingsModule.key],
+          modules: [salesModule.key, purchaseModule.key, exportSalesModule.key, quotationModule.key, paymentModule.key, receiptModule.key, billingSettingsModule.key],
           runtime: "billing-foundation"
         },
         status: "ok"
@@ -41,6 +43,8 @@ export async function createApp() {
   await purchaseModule.register(app);
   await exportSalesModule.register(app);
   await quotationModule.register(app);
+  await paymentModule.register(app);
+  await receiptModule.register(app);
   await billingSettingsModule.register(app);
   void bootstrapBillingDatabase()
     .then(() => {

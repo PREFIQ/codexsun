@@ -7,7 +7,7 @@ import { createQuotationEvent } from "./quotation.events.js";
 import { QuotationRepository } from "./quotation.repository.js";
 import type { QuotationLineItemInput, QuotationSavePayload } from "./quotation.types.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
-import { formatBillingDocumentNumber } from "../settings/settings.types.js";
+import { formatBillingDocumentNumber, nextBillingDocumentNumber } from "../settings/settings.types.js";
 
 export class QuotationService {
   constructor(
@@ -29,19 +29,21 @@ export class QuotationService {
   async create(databaseName: string, input: QuotationSavePayload) {
     const billingSettings = await this.settings.getBillingSettings(databaseName);
     const numbering = billingSettings.numbering.quotation;
-    const normalizedInput = numbering.automatic
-      ? { ...input, quotationNumber: formatBillingDocumentNumber(numbering) }
-      : input;
+    const generatedNumber = formatBillingDocumentNumber(numbering);
+    const enteredNumber = input.quotationNumber.trim();
+    const generated = numbering.automatic && (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
+    const normalizedInput = enteredNumber ? input : { ...input, quotationNumber: generatedNumber };
     const payload = normalizeInput(normalizedInput);
     const existing = await this.repository.findByNumber(databaseName, payload.quotationNumber);
     if (existing) throw AppError.conflict("Quotation number already exists. Enter a unique quotation number.");
     const quotation = await this.repository.create(databaseName, payload);
-    if (numbering.automatic) {
+    const nextNumber = nextBillingDocumentNumber(numbering, payload.quotationNumber);
+    if (numbering.automatic && (generated || nextNumber > numbering.nextNumber)) {
       await this.settings.saveBillingSettings(databaseName, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
-          quotation: { ...numbering, nextNumber: numbering.nextNumber + 1 }
+          quotation: { ...numbering, nextNumber: nextNumber }
         }
       });
     }

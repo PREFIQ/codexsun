@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { WorkspacePrintSheet } from "@codexsun/ui/workspace/print";
 import { ArrowLeft, Printer, RefreshCw } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@codexsun/ui/components/card";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { PageTitle } from "../../shared/document/PageTitle";
 import { useSaleRecord } from "./sales.hooks";
@@ -12,8 +14,24 @@ export type SalePrintCopy = "duplicate" | "office-copy" | "original";
 export function SalesPrintRoutePage() {
   const saleId = new URLSearchParams(window.location.search).get("id");
   const saleQuery = useSaleRecord(saleId, true);
-  return <WorkspacePage title={saleQuery.data ? `${saleQuery.data.saleNumber} print` : "Sales print"} description="Printable sales document." actions={<div className="flex gap-2"><Button type="button" variant="outline" onClick={() => window.history.back()}><ArrowLeft className="size-4" />Back</Button><Button type="button" variant="outline" onClick={() => void saleQuery.refetch()}><RefreshCw className={saleQuery.isFetching ? "size-4 animate-spin" : "size-4"} />Refresh</Button><Button type="button" onClick={() => window.print()}><Printer className="size-4" />Print</Button></div>}><PageTitle title="Sales Print" />{saleQuery.data ? <SalePrintDocument copy="original" sale={saleQuery.data} /> : <div className="px-4 py-8 text-sm text-muted-foreground">{saleQuery.isLoading ? "Loading sale print view..." : "Sale print record was not found."}</div>}</WorkspacePage>;
+  const [printCopies, setPrintCopies] = useState<readonly SalePrintCopy[]>(["original"]);
+  const sale = saleQuery.data;
+  function togglePrintCopy(copy: SalePrintCopy) {
+    setPrintCopies((current) => !current.includes(copy) ? [...current, copy] : current.length === 1 ? current : current.filter((value) => value !== copy));
+  }
+  return (
+    <WorkspacePage className="billing-document-print-page" title={sale ? `${sale.saleNumber} print` : "Sales print"} description="Printable sales document." actions={<div className="flex gap-2 print:hidden"><Button type="button" variant="outline" onClick={() => window.history.back()}><ArrowLeft className="size-4" />Back</Button><Button type="button" variant="outline" onClick={() => void saleQuery.refetch()}><RefreshCw className={saleQuery.isFetching ? "size-4 animate-spin" : "size-4"} />Refresh</Button><Button type="button" onClick={() => window.print()}><Printer className="size-4" />Print</Button></div>}>
+      <div className="print:hidden"><PageTitle title="Sales Print" /></div>
+      {sale ? <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_15rem]"><div className="min-w-0 overflow-x-auto"><div className="grid min-w-fit justify-center gap-6">{printCopies.map((copy) => <div key={copy}><SalePrintDocument copy={copy} sale={sale} /></div>)}</div></div><Card className="h-fit rounded-md border-border/70 shadow-sm print:hidden xl:sticky xl:top-4 xl:mt-4"><CardHeader className="border-b border-border/70 px-4 py-3"><CardTitle className="text-sm">Print copies</CardTitle></CardHeader><CardContent className="space-y-1 p-2">{printCopyOptions.map((option) => <label key={option.value} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><input type="checkbox" className="size-4 accent-primary" checked={printCopies.includes(option.value)} onChange={() => togglePrintCopy(option.value)} /><span>{option.label}</span></label>)}</CardContent></Card></section> : <div className="px-4 py-8 text-sm text-muted-foreground">{saleQuery.isLoading ? "Loading sale print view..." : "Sale print record was not found."}</div>}
+    </WorkspacePage>
+  );
 }
+
+const printCopyOptions: Array<{ label: string; value: SalePrintCopy }> = [
+  { label: "Original", value: "original" },
+  { label: "Duplicate", value: "duplicate" },
+  { label: "Office Copy", value: "office-copy" },
+];
 
 export function SalePrintDocument({
   copy,
@@ -25,7 +43,7 @@ export function SalePrintDocument({
   const pages = chunkItems(sale.items, 12);
 
   return (
-    <WorkspacePrintSheet>
+    <WorkspacePrintSheet className="billing-print-document">
       {pages.map((items, pageIndex) => (
         <SalePrintPage
           key={`sale-print-page-${pageIndex}`}
@@ -42,7 +60,7 @@ export function SalePrintDocument({
   );
 }
 
-const salePrintHeadings = ["S.no", "Particulars", "HSN", "PO", "DC", "Qty", "Rate", "Taxable", "GST %", "GST TAX", "Total"];
+const salePrintHeadings = ["S.no", "Particulars", "HSN", "Qty", "Rate", "Taxable", "GST %", "CGST", "SGST", "Total"];
 
 function SalePrintPage({
   copy,
@@ -70,12 +88,12 @@ function SalePrintPage({
         <header className="border-b border-slate-300 px-3 py-2">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center">
             <span />
-            <h1 className="text-center text-[11px] font-semibold tracking-wide">QUOTATION</h1>
+            <h1 className="text-center text-[11px] font-semibold tracking-wide">TAX INVOICE</h1>
             <span className="text-right text-[9px]">{printCopyLabel(copy)}{isMultiPage ? ` - Page ${pageIndex + 1} of ${pageCount}` : ""}</span>
           </div>
         </header>
 
-        <section className="grid min-h-[11.5rem] grid-cols-[8rem_1fr] border-b border-slate-300">
+        <section className="grid min-h-[8.75rem] grid-cols-[8rem_1fr] border-b border-slate-300">
           <div className="flex items-center justify-center p-4">
             <div className="grid size-[5.5rem] place-items-center rounded-[1rem] border-[3px] border-slate-700 text-slate-700">
               <div className="relative size-[3.6rem]">
@@ -89,17 +107,24 @@ function SalePrintPage({
           </div>
           <div className="grid place-items-center px-6 py-5 text-center">
             <div>
-              <div className="text-[1.95rem] font-semibold tracking-tight">CODEXSUN</div>
-              <div className="mt-2 text-[11px] leading-5">
+              <div className="font-serif text-[1.95rem] font-bold tracking-tight">CODEXSUN</div>
+              <div className="mt-1 text-[10px] leading-4">
                 <div>address1, ADDRESS 2</div>
                 <div>Tiruppur, Tiruppur-Dist, Tamil Nadu, India - 641602</div>
+                <div className="font-semibold">GSTIN/UIN: -</div>
               </div>
             </div>
           </div>
         </section>
 
+        <section className="space-y-1 border-b border-slate-300 px-2 py-2 text-[10px]">
+          <PrintPair label="Invoice No:">{sale.invoiceNumber || sale.saleNumber}</PrintPair>
+          <PrintPair label="Date:">{formatDate(sale.issuedOn)}</PrintPair>
+          <PrintPair label="Work Order:">{sale.workOrderNo || "-"}</PrintPair>
+        </section>
+
         <section className="grid border-b border-slate-300 text-[10px] sm:grid-cols-2">
-          <div className="px-2 py-2">
+          <div className="min-h-[7.75rem] px-2 py-2">
             <div className="font-medium">Buyer (Bill to)</div>
             <div className="mt-1 font-semibold">M/s. {sale.customerName}</div>
             <div className="mt-1 whitespace-pre-wrap">{sale.billingAddress || "Address not set"}</div>
@@ -107,10 +132,13 @@ function SalePrintPage({
               <span>GSTIN/UIN</span><span>:</span><span>State Name</span><span>:</span>
             </div>
           </div>
-          <div className="space-y-1 border-t border-slate-300 px-2 py-2 sm:border-l sm:border-slate-300 sm:border-t-0">
-            <PrintPair label="Sale No:">{sale.saleNumber}</PrintPair>
-            <PrintPair label="Date:">{formatDate(sale.issuedOn)}</PrintPair>
-            <PrintPair label="Work Order:">{sale.workOrderNo || "-"}</PrintPair>
+          <div className="min-h-[7.75rem] border-t border-slate-300 px-2 py-2 sm:border-l sm:border-t-0 sm:border-slate-300">
+            <div className="font-medium">Buyer (Ship to)</div>
+            <div className="mt-1 font-semibold">M/s. {sale.customerName}</div>
+            <div className="mt-1 whitespace-pre-wrap">{sale.shippingAddress || sale.billingAddress || "Address not set"}</div>
+            <div className="mt-1 grid grid-cols-[7rem_1fr] gap-x-2">
+              <span>GSTIN/UIN</span><span>:</span><span>State Name</span><span>:</span>
+            </div>
           </div>
         </section>
 
@@ -166,13 +194,12 @@ function SalePrintItemRow({ item, index }: { item: Sale["items"][number]; index:
     <td className="border-r border-slate-200 px-2 py-2 text-center">{index + 1}</td>
     <td className="border-r border-slate-200 px-2 py-2"><div className="font-medium">{item.productName}</div><div>{[item.description, item.colour ? `Colour : ${item.colour}` : "", item.size ? `Size : ${item.size}` : ""].filter(Boolean).join(" - ")}</div></td>
     <td className="border-r border-slate-200 px-2 py-2 text-center">{item.hsnCode || "-"}</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-center">{item.poNo || "-"}</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-center">{item.dcNo || "-"}</td>
     <td className="border-r border-slate-200 px-2 py-2 text-center">{item.quantity}</td>
     <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.rate)}</td>
     <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.taxableAmount)}</td>
     <td className="border-r border-slate-200 px-2 py-2 text-center">{item.taxRate}%</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.taxAmount)}</td>
+    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.cgstAmount)}</td>
+    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.sgstAmount)}</td>
     <td className="px-2 py-2 text-right">{money(item.lineTotal)}</td>
   </tr>;
 }
@@ -183,12 +210,13 @@ function SalePrintBlankRow() {
 
 function SalePrintTotalRow({ sale }: { sale: Sale }) {
   return <tr className="border-t border-slate-300 font-semibold">
-    <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={5}>Total</td>
+    <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={3}>Total</td>
     <td className="border-r border-slate-200 px-2 py-2 text-center">{sale.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</td>
     <td className="border-r border-slate-200 px-2 py-2" />
     <td className="border-r border-slate-200 px-2 py-2 text-right">{money(sale.subtotal)}</td>
     <td className="border-r border-slate-200 px-2 py-2" />
-    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(sale.taxAmount)}</td>
+    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(sale.taxAmount / 2)}</td>
+    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(sale.taxAmount / 2)}</td>
     <td className="px-2 py-2 text-right">{money(sale.amount)}</td>
   </tr>;
 }

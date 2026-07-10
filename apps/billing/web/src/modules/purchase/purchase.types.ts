@@ -1,4 +1,5 @@
 export type PurchaseStatus = "draft" | "confirmed" | "cancelled";
+export type PurchaseTaxType = "cgst-sgst" | "igst";
 
 export type PurchaseLineItemInput = {
   colour: string;
@@ -15,8 +16,11 @@ export type PurchaseLineItemInput = {
 };
 
 export type PurchaseLineItem = PurchaseLineItemInput & {
+  cgstAmount: number;
   id: string;
+  igstAmount: number;
   lineTotal: number;
+  sgstAmount: number;
   taxableAmount: number;
   taxAmount: number;
 };
@@ -26,6 +30,7 @@ export type Purchase = {
   billingAddress: string;
   createdAt: string;
   currencyCode: string;
+  generatedSalesInvoiceNo?: string;
   customerEmail: string;
   customerName: string;
   customerPhone: string;
@@ -41,14 +46,15 @@ export type Purchase = {
   supplierBillDate: string;
   supplierBillNo: string;
   taxAmount: number;
-  taxType: string;
+  taxType: PurchaseTaxType;
+  terms: string;
   updatedAt: string;
   workOrderNo: string;
 };
 
 export type PurchaseSavePayload = {
   billingAddress: string;
-  currencyCode: string;
+  currencyCode?: string;
   customerEmail: string;
   customerName: string;
   customerPhone: string;
@@ -56,53 +62,42 @@ export type PurchaseSavePayload = {
   issuedOn: string;
   items: PurchaseLineItemInput[];
   notes: string;
-  roundOff: number;
+  roundOff?: number;
   shippingAddress: string;
   status: PurchaseStatus;
-  supplierBillDate: string;
-  supplierBillNo: string;
-  taxType: string;
+  supplierBillDate?: string;
+  supplierBillNo?: string;
+  taxType: PurchaseTaxType;
+  terms: string;
   workOrderNo: string;
 };
 
 export type PurchaseView =
   | { mode: "list" }
-  | { mode: "show"; sale: Purchase }
-  | { mode: "upsert"; sale: Purchase | null; returnTo: "list" | "show" };
+  | { mode: "show"; purchase: Purchase }
+  | { mode: "upsert"; purchase: Purchase | null; returnTo: "list" | "show" };
 
 export function createEmptyPurchase(): PurchaseSavePayload {
   return {
     billingAddress: "",
-    currencyCode: "INR",
     customerEmail: "",
     customerName: "",
     customerPhone: "",
     invoiceNumber: "",
     issuedOn: new Date().toISOString().slice(0, 10),
-    items: [createEmptyPurchaseItem()],
+    items: [],
     notes: "",
     roundOff: 0,
     shippingAddress: "",
     status: "draft",
     supplierBillDate: "",
     supplierBillNo: "",
-    taxType: "CGST + SGST",
+    taxType: "cgst-sgst",
+    terms: "",
     workOrderNo: "",
   };
 }
 
 export function createEmptyPurchaseItem(): PurchaseLineItemInput {
-  return {
-    colour: "",
-    dcNo: "",
-    description: "",
-    hsnCode: "",
-    poNo: "",
-    productName: "",
-    quantity: 1,
-    rate: 0,
-    size: "",
-    taxRate: 18,
-    unit: "NOS",
-  };
+  return { colour: "", dcNo: "", description: "", hsnCode: "", poNo: "", productName: "", quantity: 1, rate: 0, size: "", taxRate: 18, unit: "Nos" };
 }

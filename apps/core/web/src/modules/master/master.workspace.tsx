@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, Plus, RefreshCw, Save, Trash2, X } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Plus, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
@@ -365,7 +365,7 @@ function DetailsTab({ definition, form, lookupCreators, lookups, setForm, tenant
   return (
     <WorkspaceFormGrid columns={2}>
       <Field label="Name" required><Input value={String(form.name ?? "")} onBlur={() => autofillLegalName(setForm)} onChange={(event) => patch(setForm, { name: event.target.value })} /></Field>
-      {definition.kind !== "product" ? <Field label="Legal name"><Input value={String(form.legalName ?? "")} onChange={(event) => patch(setForm, { legalName: event.target.value })} /></Field> : null}
+      {definition.kind !== "product" ? <Field action={definition.kind === "contact" ? <Button aria-label="Capitalise legal name from name" className="size-7 rounded-md p-0" onClick={() => refreshLegalName(setForm)} title="Capitalise legal name from name" type="button" variant="outline"><Sparkles className="size-3.5" /></Button> : undefined} label="Legal name"><Input className="uppercase" value={String(form.legalName ?? "")} onChange={(event) => patch(setForm, { legalName: event.target.value.toUpperCase() })} /></Field> : null}
       {definition.kind === "company" ? <Field label="Tenant ID"><Input disabled value={tenantId ?? ""} /></Field> : null}
       {definition.kind === "company" ? <LookupField label="Industry" options={lookups.industries} value={form.industryId ?? form.industryName} onPick={(id, label) => patch(setForm, { industryId: id, industryName: label })} /> : null}
       <LookupField createLabel={definition.kind === "product" ? "Create product type" : "Create contact type"} label={definition.kind === "product" ? "Product Type" : "Contact Type"} options={definition.kind === "product" ? lookups.productTypes : lookups.contactTypes} value={form.typeId ?? form.typeName} onCreate={definition.kind === "product" ? lookupCreators.productTypes : lookupCreators.contactTypes} onPick={(id, label) => patch(setForm, { typeId: id, typeName: label })} />
@@ -735,8 +735,8 @@ function stringOrNull(value: unknown) {
   return text || null;
 }
 
-function Field({ children, label, required }: { children: React.ReactNode; label: string; required?: boolean }) {
-  return <WorkspaceFormField label={label} {...(required ? { required: true } : {})}>{children}</WorkspaceFormField>;
+function Field({ action, children, label, required }: { action?: React.ReactNode; children: React.ReactNode; label: string; required?: boolean }) {
+  return <WorkspaceFormField label={<span className="flex items-center justify-between gap-2">{label}{action}</span>} {...(required ? { required: true } : {})}>{children}</WorkspaceFormField>;
 }
 
 function SwitchRow({ checked, compact = false, label, onChange }: { checked: boolean; compact?: boolean; label: string; onChange: (checked: boolean) => void }) {
@@ -785,6 +785,13 @@ function autofillLegalName(setForm: TabProps["setForm"]) {
     const legalName = String(current.legalName ?? "").trim();
     if (!name || legalName) return current;
     return { ...current, legalName: name.toUpperCase() };
+  });
+}
+
+function refreshLegalName(setForm: TabProps["setForm"]) {
+  setForm((current) => {
+    const name = String(current.name ?? "").trim();
+    return name ? { ...current, legalName: name.toUpperCase() } : current;
   });
 }
 

@@ -115,8 +115,10 @@ function normalizeSettings(value: string | null): BillingSettings {
 function normalizeNumbering(value: Partial<BillingSettings["numbering"]> | undefined): BillingSettings["numbering"] {
   return {
     exportSales: { ...defaultBillingSettings.numbering.exportSales, ...(value?.exportSales ?? {}) },
+    payment: { ...defaultBillingSettings.numbering.payment, ...(value?.payment ?? {}) },
     purchase: { ...defaultBillingSettings.numbering.purchase, ...(value?.purchase ?? {}) },
     quotation: { ...defaultBillingSettings.numbering.quotation, ...(value?.quotation ?? {}) },
+    receipt: { ...defaultBillingSettings.numbering.receipt, ...(value?.receipt ?? {}) },
     sales: { ...defaultBillingSettings.numbering.sales, ...(value?.sales ?? {}) },
   };
 }

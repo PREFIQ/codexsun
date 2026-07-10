@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
-import { ArrowUpRight, ChevronDown, Eye, Pencil, Plus, Printer, RefreshCw, RotateCcw, Save, Send, Trash2, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Eye, Pencil, Plus, Printer, RefreshCw, RotateCcw, Save, Send, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@codexsun/ui/components/dialog";
@@ -141,7 +141,10 @@ export function QuotationWorkspace() {
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: QuotationSavePayload }) => id ? updateQuotation(id, payload) : createQuotation(payload),
     onSuccess: async (quotation) => {
-      await queryClient.invalidateQueries({ queryKey: ["billing", "quotations"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["billing", "quotations"] }),
+        queryClient.invalidateQueries({ queryKey: ["billing", "settings"] }),
+      ]);
       toast.success(view.mode === "upsert" && view.quotation ? "Quotation updated" : "Quotation created", {
         description: `${quotation.quotationNumber} is ready.`,
       });
@@ -524,6 +527,11 @@ function QuotationUpsertPage({ canAdminRevoke, errorMessage, loading, numbering,
     ...createEmptyQuotation(),
     quotationNumber: numbering.automatic ? formatDocumentNumber(numbering) : createEmptyQuotation().quotationNumber,
   });
+  useEffect(() => {
+    if (quotation || !numbering.automatic) return;
+    const nextQuotationNumber = formatDocumentNumber(numbering);
+    setForm((current) => current.quotationNumber === nextQuotationNumber ? current : { ...current, quotationNumber: nextQuotationNumber });
+  }, [numbering, quotation]);
   const [itemDraft, setItemDraft] = useState(() => createEmptyQuotation().items[0] ?? {
     colour: "",
     dcNo: "",
@@ -763,7 +771,7 @@ function QuotationUpsertPage({ canAdminRevoke, errorMessage, loading, numbering,
             </Field>
           </div>
           <div className="space-y-5">
-            <Field label="Quotation number"><Input disabled={!quotation && numbering.automatic} value={form.quotationNumber} onChange={(event) => patch({ quotationNumber: event.target.value })} /></Field>
+            <Field label="Quotation number"><Input value={form.quotationNumber} onChange={(event) => patch({ quotationNumber: event.target.value.toUpperCase() })} /></Field>
             <Field label="Date"><WorkspaceDatePicker value={form.date} onValueChange={(value) => patch({ date: value })} /></Field>
             <Field label="Quotation tax type">
               <WorkspaceSelect
@@ -814,8 +822,7 @@ function QuotationUpsertPage({ canAdminRevoke, errorMessage, loading, numbering,
             return quotationProductOption(created);
           }}
           renderProductCreateForm={({ initialName, onCancel, onCreated }) => (
-            <QuotationMasterQuickForm
-              kind="products"
+            <QuotationProductQuickForm
               initialValue={masterDraftFromRecord(undefined, initialName)}
               loading={masterSaveMutation.isPending}
               onCancel={onCancel}
@@ -963,7 +970,7 @@ function QuotationUpsertPage({ canAdminRevoke, errorMessage, loading, numbering,
         </Dialog>
         <Dialog open={Boolean(editingProduct)} onOpenChange={(open) => !open && setEditingProduct(null)}>
           <DialogContent className="rounded-md p-0 sm:max-w-3xl" onInteractOutside={(event) => event.preventDefault()}>
-            {editingProduct ? <QuotationMasterQuickForm kind="products" initialValue={masterDraftFromRecord(editingProduct)} loading={masterSaveMutation.isPending} onCancel={() => setEditingProduct(null)} onSave={async (payload) => { const saved = await masterSaveMutation.mutateAsync({ id: editingProduct.id, kind: "products", payload }); await productsQuery.refetch(); patchDraft({ productName: quotationProductOption(saved).label }); setEditingProduct(null); toast.success("Product saved", { description: quotationProductOption(saved).label }); }} title="Edit product" /> : null}
+            {editingProduct ? <QuotationProductQuickForm initialValue={masterDraftFromRecord(editingProduct)} loading={masterSaveMutation.isPending} onCancel={() => setEditingProduct(null)} onSave={async (payload) => { const saved = await masterSaveMutation.mutateAsync({ id: editingProduct.id, kind: "products", payload }); await productsQuery.refetch(); patchDraft({ productName: quotationProductOption(saved).label }); setEditingProduct(null); toast.success("Product saved", { description: quotationProductOption(saved).label }); }} title="Edit product" /> : null}
           </DialogContent>
         </Dialog>
         <Dialog open={Boolean(editingWorkOrder)} onOpenChange={(open) => !open && setEditingWorkOrder(null)}>
@@ -1033,7 +1040,7 @@ function QuotationContactQuickForm({ initialValue, loading, onCancel, onSave, ti
       content: (
         <div className="grid gap-4">
           <ContactQuickField label="Contact name" required value={form.name} onChange={(name) => setForm((current) => ({ ...current, name, ...(!legalNameManual ? { legalName: name.toUpperCase() } : {}) }))} />
-          <ContactQuickField forceUppercase label="Legal name" value={form.legalName} onChange={(legalName) => { setLegalNameManual(true); setForm((current) => ({ ...current, legalName })); }} />
+          <ContactQuickField forceUppercase label="Legal name" value={form.legalName} onChange={(legalName) => { setLegalNameManual(true); setForm((current) => ({ ...current, legalName })); }} onMagic={() => { setLegalNameManual(false); setForm((current) => ({ ...current, legalName: current.name.trim().toUpperCase() })); }} />
           <ContactQuickField forceUppercase label="GSTIN" value={form.gstin} onChange={(gstin) => setForm((current) => ({ ...current, gstin }))} />
           <ContactQuickField label="Phone" value={form.primaryPhone} onChange={(primaryPhone) => setForm((current) => ({ ...current, primaryPhone }))} />
         </div>
@@ -1098,10 +1105,10 @@ function QuotationContactQuickForm({ initialValue, loading, onCancel, onSave, ti
   );
 }
 
-function ContactQuickField({ className, forceUppercase = false, label, onChange, required, type = "text", value }: { className?: string; forceUppercase?: boolean; label: string; onChange: (value: string) => void; required?: boolean; type?: string; value: string }) {
+function ContactQuickField({ className, forceUppercase = false, label, onChange, onMagic, required, type = "text", value }: { className?: string; forceUppercase?: boolean; label: string; onChange: (value: string) => void; onMagic?: () => void; required?: boolean; type?: string; value: string }) {
   return (
     <label className={cn("grid gap-2", className)}>
-      <Label>{label}{required ? <span className="text-destructive"> *</span> : null}</Label>
+      <div className="flex items-center justify-between gap-2"><Label>{label}{required ? <span className="text-destructive"> *</span> : null}</Label>{onMagic ? <Button aria-label="Refresh legal name from contact name" className="size-7 rounded-md p-0" onClick={(event) => { event.preventDefault(); onMagic(); }} title="Refresh legal name from contact name" type="button" variant="outline"><Sparkles className="size-3.5" /></Button> : null}</div>
       <Input autoCapitalize={forceUppercase ? "characters" : "none"} autoFocus={label === "Contact name"} className={cn("h-11 rounded-md", forceUppercase && "uppercase")} required={required} type={type} value={value} onChange={(event) => onChange(forceUppercase ? event.target.value.toUpperCase() : event.target.value)} />
     </label>
   );
@@ -1587,7 +1594,7 @@ function QuotationProductQuickForm({ initialValue, loading, onCancel, onSave, ti
         <ProductPopupLookup label="Product category" loading={categoriesQuery.isLoading} options={categoryOptions} value={form.productCategoryId || form.productCategoryName || ""} placeholder="Search product category" onCreate={(name) => createOption("productCategories", name)} onValueChange={(value, option) => patchProduct({ productCategoryId: option?.value ?? value, productCategoryName: option?.label ?? value })} />
         <ProductPopupLookup label="HSN code" loading={hsnCodesQuery.isLoading} options={hsnOptions} value={form.hsnCodeId || form.hsnCode || ""} placeholder="Search HSN code" onCreate={(name) => createOption("hsnCodes", name)} onValueChange={(value, option) => patchProduct({ hsnCodeId: option?.value ?? value, hsnCode: option?.label ?? value })} />
         <ProductPopupLookup label="Units" loading={unitsQuery.isLoading} options={unitOptions} value={form.unitId || form.unitName || ""} placeholder="Search units" onCreate={(name) => createOption("units", name)} onValueChange={(value, option) => patchProduct({ unitId: option?.value ?? value, unitName: option?.label ?? value })} />
-        <ProductPopupLookup label="GST tax rate" loading={taxesQuery.isLoading} options={taxOptions} value={form.taxId || (form.taxRate !== undefined ? String(form.taxRate) : "")} placeholder="Search GST tax rate" onCreate={(name) => createOption("taxes", name)} onValueChange={(value, option) => { const record = option?.record; patchProduct({ taxId: option?.value ?? value, taxName: option?.label ?? value, taxRate: Number(record?.ratePercent ?? record?.taxRate ?? value) || 0 }); }} />
+        <ProductPopupLookup numericOnly label="GST tax rate" loading={taxesQuery.isLoading} options={taxOptions} value={form.taxId || (form.taxRate !== undefined ? String(form.taxRate) : "")} placeholder="Search GST tax rate" onCreate={(name) => createOption("taxes", name)} onValueChange={(value, option) => { const record = option?.record; patchProduct({ taxId: option?.value ?? value, taxName: option?.label ?? value, taxRate: Number(record?.ratePercent ?? record?.taxRate ?? value) || 0 }); }} />
         <ContactQuickField label="Opening price" type="number" value={String(form.openingRate)} onChange={(openingRate) => patchProduct({ openingRate: Number(openingRate || 0) })} />
       </div>
       <DialogFooter className="border-t border-border/80 px-5 py-4"><Button disabled={loading} type="button" variant="outline" onClick={onCancel}><X className="size-4" />Cancel</Button><Button disabled={loading || !form.name.trim()} type="submit"><Save className="size-4" />Save product</Button></DialogFooter>
@@ -1595,8 +1602,9 @@ function QuotationProductQuickForm({ initialValue, loading, onCancel, onSave, ti
   );
 }
 
-function ProductPopupLookup({ label, loading, onCreate, onValueChange, options, placeholder, value }: { label: string; loading: boolean; onCreate: (name: string) => Promise<QuotationLookupRecord>; onValueChange: (value: string, option?: QuotationLookupOption | null) => void; options: QuotationLookupOption[]; placeholder: string; value: string }) {
-  return <label className="grid gap-2"><Label>{label}</Label><WorkspaceLookup createLabel={`Create ${label.toLowerCase()}`} createMode="inline" emptyLabel={`No ${label.toLowerCase()} found. Type a value to create it.`} loading={loading} options={options} placeholder={placeholder} value={value} onCreate={async (name) => quotationCommonOption(await onCreate(name))} onValueChange={onValueChange} /></label>;
+function ProductPopupLookup({ label, loading, numericOnly = false, onCreate, onValueChange, options, placeholder, value }: { label: string; loading: boolean; numericOnly?: boolean; onCreate: (name: string) => Promise<QuotationLookupRecord>; onValueChange: (value: string, option?: QuotationLookupOption | null) => void; options: QuotationLookupOption[]; placeholder: string; value: string }) {
+  const sanitize = numericOnly ? (input: string) => input.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1") : undefined;
+  return <label className="grid gap-2"><Label>{label}</Label><WorkspaceLookup createLabel={`Create ${label.toLowerCase()}`} createMode="inline" emptyLabel={`No ${label.toLowerCase()} found. Type a value to create it.`} loading={loading} options={options} placeholder={placeholder} value={value} {...(sanitize ? { sanitizeInput: sanitize } : {})} onCreate={async (name) => quotationCommonOption(await onCreate(sanitize ? sanitize(name) : name))} onValueChange={onValueChange} /></label>;
 }
 
 function canGenerateInvoiceFromQuotation(quotation: Quotation) {

@@ -3,6 +3,8 @@ import { ExportSalesPage } from "../modules/export-sales/export-sales.page";
 import { ExportSalesPrintRoutePage } from "../modules/export-sales/export-sales.print";
 import { PurchasePage } from "../modules/purchase/purchase.page";
 import { PurchasePrintRoutePage } from "../modules/purchase/purchase.print";
+import { PaymentPage } from "../modules/payment";
+import { ReceiptPage } from "../modules/receipt";
 import { QuotationPage } from "../modules/quotation";
 import { SalesPage } from "../modules/sales/sales.page";
 import { SalesPrintRoutePage } from "../modules/sales/sales.print";
@@ -46,6 +48,9 @@ const purchasePrintRoute = createRoute({
   path: "/billing/purchase/print"
 });
 
+const paymentRoute = createRoute({ component: PaymentPage, getParentRoute: () => rootRoute, path: "/billing/payment" });
+const receiptRoute = createRoute({ component: ReceiptPage, getParentRoute: () => rootRoute, path: "/billing/receipt" });
+
 const exportSalesRoute = createRoute({
   component: ExportSalesPage,
   getParentRoute: () => rootRoute,
@@ -77,6 +82,8 @@ const routeTree = rootRoute.addChildren([
   quotationRoute,
   purchaseRoute,
   purchasePrintRoute,
+  paymentRoute,
+  receiptRoute,
   exportSalesRoute,
   exportSalesPrintRoute,
   salesPrintRoute,

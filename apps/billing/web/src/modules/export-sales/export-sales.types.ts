@@ -1,4 +1,5 @@
 export type ExportSaleStatus = "draft" | "confirmed" | "cancelled";
+export type ExportSaleTaxType = "cgst-sgst" | "igst";
 
 export type ExportSaleLineItemInput = {
   colour: string;
@@ -15,8 +16,11 @@ export type ExportSaleLineItemInput = {
 };
 
 export type ExportSaleLineItem = ExportSaleLineItemInput & {
+  cgstAmount: number;
   id: string;
+  igstAmount: number;
   lineTotal: number;
+  sgstAmount: number;
   taxableAmount: number;
   taxAmount: number;
 };
@@ -25,78 +29,74 @@ export type ExportSale = {
   amount: number;
   billingAddress: string;
   createdAt: string;
-  currencyCode: string;
   customerEmail: string;
   customerName: string;
   customerPhone: string;
+  generatedSalesInvoiceNo?: string;
   id: string;
+  currencyCode: string;
   invoiceNumber: string;
-  issuedOn: string;
   items: ExportSaleLineItem[];
+  issuedOn: string;
   notes: string;
   roundOff: number;
+  salesLedger: string;
   shippingAddress: string;
   status: ExportSaleStatus;
   subtotal: number;
   taxAmount: number;
-  taxType: string;
+  taxType: ExportSaleTaxType;
+  terms: string;
   updatedAt: string;
   workOrderNo: string;
 };
 
 export type ExportSaleSavePayload = {
   billingAddress: string;
-  currencyCode: string;
+  currencyCode?: string;
   customerEmail: string;
   customerName: string;
   customerPhone: string;
-  invoiceNumber: string;
   issuedOn: string;
+  invoiceNumber: string;
   items: ExportSaleLineItemInput[];
   notes: string;
-  roundOff: number;
+  roundOff?: number;
+  salesLedger: string;
   shippingAddress: string;
   status: ExportSaleStatus;
-  taxType: string;
+  taxType: ExportSaleTaxType;
+  terms: string;
   workOrderNo: string;
 };
 
-export type ExportSalesView =
+export type ExportSaleView =
   | { mode: "list" }
-  | { mode: "show"; sale: ExportSale }
-  | { mode: "upsert"; sale: ExportSale | null; returnTo: "list" | "show" };
+  | { mode: "show"; exportSale: ExportSale }
+  | { mode: "upsert"; exportSale: ExportSale | null; returnTo: "list" | "show" };
+
+export type ExportSalesView = ExportSaleView;
 
 export function createEmptyExportSale(): ExportSaleSavePayload {
   return {
     billingAddress: "",
-    currencyCode: "INR",
     customerEmail: "",
     customerName: "",
     customerPhone: "",
-    invoiceNumber: "",
     issuedOn: new Date().toISOString().slice(0, 10),
-    items: [createEmptyExportSaleItem()],
+    items: [],
     notes: "",
     roundOff: 0,
+    invoiceNumber: "",
+    salesLedger: "",
     shippingAddress: "",
     status: "draft",
-    taxType: "IGST",
+    taxType: "cgst-sgst",
+    terms: "",
     workOrderNo: "",
   };
 }
 
 export function createEmptyExportSaleItem(): ExportSaleLineItemInput {
-  return {
-    colour: "",
-    dcNo: "",
-    description: "",
-    hsnCode: "",
-    poNo: "",
-    productName: "",
-    quantity: 1,
-    rate: 0,
-    size: "",
-    taxRate: 18,
-    unit: "NOS",
-  };
+  return { colour: "", dcNo: "", description: "", hsnCode: "", poNo: "", productName: "", quantity: 1, rate: 0, size: "", taxRate: 18, unit: "Nos" };
 }

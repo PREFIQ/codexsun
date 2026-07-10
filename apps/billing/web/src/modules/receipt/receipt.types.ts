@@ -1,0 +1,5 @@
+export type ReceiptStatus = "draft" | "posted" | "cancelled";
+export type ReceiptAllocation = { documentNo: string; documentDate: string; documentTotal: number; previousBalance: number; allocatedAmount: number };
+export type Receipt = { id: string; receiptNumber: string; receiptDate: string; partyName: string; partyId: string; partyType: string; receiptMode: string; bankAccount: string; referenceNo: string; referenceDate: string; amount: number; tdsAmount: number; discountAmount: number; roundOff: number; totalAmount: number; allocatedAmount: number; unallocatedAmount: number; status: ReceiptStatus; notes: string; allocations: ReceiptAllocation[]; createdAt: string; updatedAt: string };
+export type ReceiptInput = Partial<Receipt> & { receiptDate: string; partyName: string; amount: number; allocations?: ReceiptAllocation[] };
+export const emptyReceipt = (): ReceiptInput => ({ receiptDate: new Date().toISOString().slice(0, 10), partyName: "", amount: 0, receiptMode: "cash", status: "draft", tdsAmount: 0, discountAmount: 0, roundOff: 0, allocations: [] });

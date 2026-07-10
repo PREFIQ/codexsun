@@ -34,8 +34,10 @@ function normalizeBillingSettings(input: BillingSettings): BillingSettings {
     layout: { ...defaultBillingSettings.layout, ...(input.layout ?? {}) },
     numbering: {
       exportSales: { ...defaultBillingSettings.numbering.exportSales, ...(input.numbering?.exportSales ?? {}) },
+      payment: { ...defaultBillingSettings.numbering.payment, ...(input.numbering?.payment ?? {}) },
       purchase: { ...defaultBillingSettings.numbering.purchase, ...(input.numbering?.purchase ?? {}) },
       quotation: { ...defaultBillingSettings.numbering.quotation, ...(input.numbering?.quotation ?? {}) },
+      receipt: { ...defaultBillingSettings.numbering.receipt, ...(input.numbering?.receipt ?? {}) },
       sales: { ...defaultBillingSettings.numbering.sales, ...(input.numbering?.sales ?? {}) }
     },
     customise: {
