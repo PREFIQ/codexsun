@@ -76,7 +76,7 @@ export function createEmptyQuotation(): QuotationSavePayload {
     date: new Date().toISOString().slice(0, 10),
     items: [],
     notes: "",
-    quotationNumber: `QUO-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+    quotationNumber: "",
     roundOff: 0,
     salesLedger: "",
     shippingAddress: "",

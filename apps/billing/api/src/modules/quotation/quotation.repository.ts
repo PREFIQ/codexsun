@@ -50,6 +50,15 @@ export class QuotationRepository {
     return row ? toQuotation(row) : null;
   }
 
+  async findByNumber(databaseName: string, quotationNumber: string) {
+    const row = await (await database(databaseName))
+      .selectFrom("billing_quotations")
+      .selectAll()
+      .where("quotation_number", "=", quotationNumber)
+      .executeTakeFirst();
+    return row ? toQuotation(row) : null;
+  }
+
   async create(databaseName: string, input: QuotationSavePayload) {
     const record = createQuotationRecord(input);
     await (await database(databaseName)).insertInto("billing_quotations").values(toRow(record)).execute();
@@ -72,6 +81,19 @@ export class QuotationRepository {
     const updatedAt = new Date().toISOString();
     await db.updateTable("billing_quotations").set({ status, updated_at: updatedAt }).where("id", "=", id).execute();
     return { ...toQuotation(existing), status, updatedAt };
+  }
+
+  async setGeneratedSalesInvoice(databaseName: string, id: string, invoiceNumber: string) {
+    const db = await database(databaseName);
+    const existing = await db.selectFrom("billing_quotations").selectAll().where("id", "=", id).executeTakeFirst();
+    if (!existing) return null;
+    const updatedAt = new Date().toISOString();
+    await db.updateTable("billing_quotations").set({
+      generated_sales_invoice_no: invoiceNumber,
+      status: "confirmed",
+      updated_at: updatedAt,
+    }).where("id", "=", id).execute();
+    return { ...toQuotation(existing), generatedSalesInvoiceNo: invoiceNumber, status: "confirmed" as const, updatedAt };
   }
 }
 

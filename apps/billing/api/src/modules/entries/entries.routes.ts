@@ -7,7 +7,6 @@ import type { EntryKind } from "./entries.types.js";
 const service = new EntriesService();
 
 function entryCollectionPath(kind: EntryKind) {
-  if (kind === "quotation") return "quotations";
   if (kind === "sales") return "sales";
   if (kind === "purchase") return "purchases";
   return "export-sales";
@@ -28,7 +27,7 @@ export async function registerEntriesRoutes(app: FastifyInstance) {
     return ok(await service.updateProduct(resolveEntriesTenantId(request), id, request.body as Record<string, unknown>), { requestId: request.id });
   });
 
-  for (const kind of ["quotation", "sales", "purchase", "exportSales"] as const satisfies EntryKind[]) {
+  for (const kind of ["sales", "purchase", "exportSales"] as const satisfies EntryKind[]) {
     const path = entryCollectionPath(kind);
     app.get(`/billing/entries/${path}`, async (request) => ok(await service.listEntries(kind, resolveEntriesTenantId(request), request.query as Record<string, string>), { requestId: request.id }));
     app.get(`/billing/entries/${path}/:id`, async (request) => {
@@ -54,7 +53,4 @@ export async function registerEntriesRoutes(app: FastifyInstance) {
     });
   }
 
-  app.post("/billing/entries/quotations/convert-to-sales", async (request) =>
-    ok(await service.convertQuotationsToSales(resolveEntriesTenantId(request), request.body as Record<string, unknown>), { requestId: request.id })
-  );
 }

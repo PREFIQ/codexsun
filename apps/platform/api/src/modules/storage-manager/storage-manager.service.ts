@@ -1,5 +1,5 @@
 import { StorageManagerRepository } from "./storage-manager.repository.js";
-import type { StorageDownloadInput, StorageFolderPayload, StorageListInput, StorageUploadPayload } from "./storage-manager.types.js";
+import type { CompanyLogoUploadPayload, StorageDownloadInput, StorageFolderPayload, StorageListInput, StorageUploadPayload } from "./storage-manager.types.js";
 
 export class StorageManagerService {
   constructor(private readonly repository = new StorageManagerRepository()) {}
@@ -18,6 +18,14 @@ export class StorageManagerService {
 
   upload(input: StorageUploadPayload) {
     return this.repository.upload(input);
+  }
+
+  uploadCompanyLogo(tenantId: string, input: CompanyLogoUploadPayload) {
+    return this.repository.uploadCompanyLogo(tenantId, input);
+  }
+
+  readCompanyLogo(tenantId: string, variant: "logo" | "logo-dark") {
+    return this.repository.readCompanyLogo(tenantId, variant);
   }
 
   download(input: StorageDownloadInput) {

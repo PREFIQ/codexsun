@@ -17,7 +17,7 @@ import {
   tenantPublicStorageRoot,
   tenantStorageRoot
 } from "./storage-manager.paths.js";
-import type { StorageDownloadInput, StorageEntry, StorageFolderPayload, StorageListing, StorageListInput, StorageUploadPayload } from "./storage-manager.types.js";
+import type { CompanyLogoUploadPayload, StorageDownloadInput, StorageEntry, StorageFolderPayload, StorageListing, StorageListInput, StorageUploadPayload } from "./storage-manager.types.js";
 
 export class StorageManagerRepository {
   constructor(private readonly tenants = new TenantRepository()) {}
@@ -116,6 +116,53 @@ export class StorageManagerRepository {
       visibility: context.visibility
     });
     return this.list({ ...input, path: context.currentPath });
+  }
+
+  async uploadCompanyLogo(tenantId: string, input: CompanyLogoUploadPayload) {
+    const tenant = await this.tenants.findByIdOrCode(tenantId);
+    if (!tenant) throw new Error("Tenant was not found for storage.");
+
+    const tenantKey = tenant.slug || tenant.tenantCode;
+    const fileName = input.variant === "logo-dark" ? "logo-dark.svg" : "logo.svg";
+    const relativePath = `logo/${fileName}`;
+    const base = tenantStorageRoot(tenantKey);
+    const filePath = resolveInsideStorage(base, relativePath);
+    const buffer = Buffer.from(input.contentBase64, "base64");
+
+    if (!isSvg(buffer)) throw new Error("Company logos must be valid SVG files.");
+
+    await mkdir(resolveInsideStorage(base, "logo"), { recursive: true });
+    await writeFile(filePath, buffer);
+    await this.recordObject({
+      checksum: createHash("sha256").update(buffer).digest("hex"),
+      diskPath: filePath,
+      mimeType: "image/svg+xml",
+      objectType: "file",
+      relativePath,
+      scope: "tenant",
+      sizeBytes: buffer.byteLength,
+      tenantId: tenant.id,
+      visibility: "public"
+    });
+
+    return { path: `storage/${tenantKey}/${relativePath}`, variant: input.variant };
+  }
+
+  async readCompanyLogo(tenantId: string, variant: "logo" | "logo-dark") {
+    const tenant = await this.tenants.findByIdOrCode(tenantId);
+    if (!tenant) throw new Error("Tenant was not found for storage.");
+
+    const tenantKey = tenant.slug || tenant.tenantCode;
+    const fileName = variant === "logo-dark" ? "logo-dark.svg" : "logo.svg";
+    const filePath = resolveInsideStorage(tenantStorageRoot(tenantKey), `logo/${fileName}`);
+    const info = await stat(filePath);
+    if (!info.isFile()) throw new Error("Company logo was not found.");
+    return {
+      buffer: await readFile(filePath),
+      fileName,
+      mimeType: "image/svg+xml",
+      sizeBytes: info.size
+    };
   }
 
   async download(input: StorageDownloadInput) {
@@ -221,6 +268,11 @@ function sanitizeFileName(value: string) {
     throw new Error("A readable file name is required.");
   }
   return fileName.slice(0, 160);
+}
+
+function isSvg(buffer: Buffer) {
+  const source = buffer.toString("utf8", 0, Math.min(buffer.length, 2048)).trim();
+  return source.startsWith("<?xml") ? /<svg[\s>]/i.test(source) : /^<svg[\s>]/i.test(source);
 }
 
 function mimeTypeFor(filePath: string) {

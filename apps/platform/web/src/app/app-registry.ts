@@ -240,9 +240,10 @@ export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSele
       },
       {
         icon: PackageIcon,
-        isActive: activePage === "core.master.contact" || activePage === "core.master.product" || activePage === "core.master.work-order",
+        isActive: activePage === "core.organisation.company" || activePage === "core.master.contact" || activePage === "core.master.product" || activePage === "core.master.work-order",
         title: "Master",
         items: [
+          { title: "Company", isActive: activePage === "core.organisation.company", onSelect: () => onSelect("core.organisation.company") },
           { title: "Contact", isActive: activePage === "core.master.contact", onSelect: () => onSelect("core.master.contact") },
           { title: "Product", isActive: activePage === "core.master.product", onSelect: () => onSelect("core.master.product") },
           { title: "Work Order", isActive: activePage === "core.master.work-order", onSelect: () => onSelect("core.master.work-order") }

@@ -9,7 +9,6 @@ export const entriesMigration = {
 
 export async function migrateEntriesModule(database: Database) {
   await migrateSupportTables(database);
-  await migrateEntryTables(database, "quotation");
   await migrateEntryTables(database, "sales");
   await migrateEntryTables(database, "purchase");
   await migrateEntryTables(database, "exportSales");
@@ -75,7 +74,7 @@ async function migrateSupportTables(database: Database) {
   `).execute(database);
 }
 
-async function migrateEntryTables(database: Database, kind: "quotation" | "sales" | "purchase" | "exportSales") {
+async function migrateEntryTables(database: Database, kind: "sales" | "purchase" | "exportSales") {
   const headerTable = `${kind}_entries`;
   const itemTable = `${kind}_entry_items`;
   const commentTable = `${kind}_entry_comments`;

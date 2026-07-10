@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.11
+Current version: 1.0.13
 
-Release tag: v-1.0.11
+Release tag: v-1.0.13
 
-Changelog label: v 1.0.11
+Changelog label: v 1.0.13
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,44 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.13
+
+### [v 1.0.13] 2026-07-10 3:41 pm - Quotation Contact Quick Upsert
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- No database schema changes. The quotation lookup proxy creates and updates existing Core contact records.
+
+#### App Codebase Changes
+
+- Added a contact-only quick upsert dialog to the Quotation customer lookup with name, legal name, phone, email, and address lines.
+- A missing contact search now offers New contact; saving silently refreshes the lookup and selects the created contact.
+- Selected contacts show an arrow edit control in place of the lookup chevron; saving refreshes and retains the edited contact selection.
+- Added Billing API proxy routes for Quotation contact create/update so browser traffic remains within the Billing module boundary.
+- Split quick contact upsert into Details and Address tabs, added GSTIN and Address Type, and made State, District, City, and Pincode dependent lookup/create controls with India as the hidden default country.
+- Widened the contact dialog, changed the fast-entry fields to a single-column flow, removed Email from the form, and made Address Type a create-capable autocomplete.
+- Bumped workspace version to 1.0.13.
+
+## v-1.0.12
+
+### [v 1.0.12] 2026-07-10 3:27 pm - Quotation Module Consolidation
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Stopped the legacy Entries migration from creating new quotation entry tables. Existing legacy tables are retained for non-destructive upgrades.
+
+#### App Codebase Changes
+
+- Removed the duplicate Entries quotation routes, conversion endpoint, renderer, types, and its obsolete database test.
+- Made `billing/quotation` the single quotation workflow, including conversion to a Sales invoice and storing the generated invoice number on the quotation.
+- Added draft-only edit/confirm guardrails, cancellation rules, duplicate-number validation, and deterministic configured numbering for new quotations.
+- Published quotation domain events and enqueued workflow jobs for create, update, confirm, cancel, and conversion actions.
+- Added a Billing-owned Core lookup proxy for contacts, work orders, products, colours, and sizes; the Quotation browser UI no longer calls Core directly.
+- Removed unused quotation form/list duplicates and added Quotation service regression tests for numbering, lifecycle, conversion, events, and queue jobs.
+- Bumped workspace version to 1.0.12.
 
 ## v-1.0.11
 

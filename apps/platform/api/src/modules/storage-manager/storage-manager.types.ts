@@ -57,6 +57,11 @@ export type StorageUploadPayload = StorageListInput & {
   mimeType?: string;
 };
 
+export type CompanyLogoUploadPayload = {
+  contentBase64: string;
+  variant: "logo" | "logo-dark";
+};
+
 export type StorageFolderPayload = StorageListInput & {
   name: string;
 };

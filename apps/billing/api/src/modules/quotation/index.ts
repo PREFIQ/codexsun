@@ -1,5 +1,6 @@
 export * from "./quotation.events.js";
 export * from "./quotation.migration.js";
+export * from "./quotation.lookup.js";
 export { quotationModule } from "./quotation.module.js";
 export * from "./quotation.repository.js";
 export * from "./quotation.routes.js";

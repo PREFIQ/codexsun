@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
-import { Eye, Pencil, Plus, Printer, RefreshCw, Save, Trash2, X } from "lucide-react";
+import { ArrowUpRight, Eye, Pencil, Plus, Printer, RefreshCw, Save, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@codexsun/ui/components/dialog";
 import { Input } from "@codexsun/ui/components/input";
+import { Label } from "@codexsun/ui/components/label";
 import { Textarea } from "@codexsun/ui/components/textarea";
 import { WorkspaceAnimatedTabs, type WorkspaceAnimatedTab } from "@codexsun/ui/workspace/animated-tabs";
 import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
@@ -25,18 +27,29 @@ import { defaultBillingSettings, formatDocumentNumber, type BillingDocumentLayou
 import { createEmptyQuotation, type Quotation, type QuotationSavePayload, type QuotationTaxType, type QuotationView } from "./quotation.types";
 import {
   createQuotation,
+  createQuotationAddressType,
+  createQuotationContact,
+  createQuotationLocation,
+  convertQuotationToSale,
   formatDate,
   formatMoney,
   listQuotationColours,
   listQuotationContacts,
+  listQuotationAddressTypes,
+  listQuotationLocations,
   listQuotationProducts,
   listQuotationSizes,
   listQuotationWorkOrders,
   quotationToPayload,
   setQuotationStatus,
   totalQuotationQuantity,
+  updateQuotationContact,
   updateQuotation,
+  type QuotationContactSavePayload,
+  type QuotationLocationKind,
+  type QuotationLocationRecord,
   type QuotationLookupOption,
+  type QuotationLookupRecord,
 } from "./quotation.services";
 import { useQuotationList } from "./quotation.hooks";
 
@@ -101,6 +114,18 @@ export function QuotationWorkspace() {
     },
   });
 
+  const convertMutation = useMutation({
+    mutationFn: (id: string) => convertQuotationToSale(id),
+    onSuccess: async ({ quotation, sale }) => {
+      await queryClient.invalidateQueries({ queryKey: ["billing", "quotations"] });
+      toast.success("Quotation converted", { description: `${quotation.quotationNumber} created sales invoice ${sale.invoiceNumber}.` });
+      setView({ mode: "show", quotation });
+    },
+    onError: (error) => {
+      toast.error("Quotation conversion failed", { description: error instanceof Error ? error.message : "Please try again." });
+    },
+  });
+
   const entries = quotationsQuery.data ?? [];
   const filteredEntries = useMemo(() => {
     const term = searchValue.trim().toLowerCase();
@@ -131,6 +156,8 @@ export function QuotationWorkspace() {
         onEdit={() => setView({ mode: "upsert", quotation: freshQuotation, returnTo: "show" })}
         onNew={() => setView({ mode: "upsert", quotation: null, returnTo: "list" })}
         onPrint={() => window.print()}
+        onConvert={() => convertMutation.mutate(freshQuotation.id)}
+        converting={convertMutation.isPending}
       />
     );
   }
@@ -238,7 +265,7 @@ function QuotationList({ entries, loading, onEdit, onSetStatus, onView, page, ro
               <tr key={quotation.id} className="border-b border-border/70 transition-colors last:border-b-0 hover:bg-muted/20">
                 <td className="px-4 py-2.5">{(page - 1) * rowsPerPage + index + 1}</td>
                 <td className="px-4 py-2.5">
-                  <button className="font-semibold text-foreground underline-offset-4 hover:underline" onClick={() => onEdit(quotation)} type="button">{quotation.quotationNumber}</button>
+                  <button className="font-semibold text-foreground underline-offset-4 hover:underline" onClick={() => quotation.status === "draft" ? onEdit(quotation) : onView(quotation)} type="button">{quotation.quotationNumber}</button>
                 </td>
                 <td className="px-4 py-2.5">{formatDate(quotation.date)}</td>
                 <td className="px-4 py-2.5">{quotation.customerName}</td>
@@ -249,12 +276,11 @@ function QuotationList({ entries, loading, onEdit, onSetStatus, onView, page, ro
                 <td className="px-4 py-2.5"><StatusPill status={quotation.status} /></td>
                 <td className="px-4 py-2.5">
                   <WorkspaceRowActions
-                    actions={[
+                    actions={quotation.status === "draft" ? [
                       { id: "confirm", label: "Confirm", icon: <Eye className="size-4" />, onSelect: () => onSetStatus(quotation, "confirmed") },
-                    ]}
-                    deleteLabel="Cancel"
-                    onDelete={() => onSetStatus(quotation, "cancelled")}
-                    onEdit={() => onEdit(quotation)}
+                    ] : []}
+                    {...(quotation.status !== "cancelled" && !quotation.generatedSalesInvoiceNo ? { deleteLabel: "Cancel", onDelete: () => onSetStatus(quotation, "cancelled") } : {})}
+                    {...(quotation.status === "draft" ? { onEdit: () => onEdit(quotation) } : {})}
                     onView={() => onView(quotation)}
                     title={quotation.quotationNumber}
                   />
@@ -290,11 +316,16 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
   });
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [itemResetSignal, setItemResetSignal] = useState(0);
+  const [editingContact, setEditingContact] = useState<QuotationLookupOption["record"] | null>(null);
   const contactsQuery = useQuery({ queryFn: listQuotationContacts, queryKey: ["billing", "quotation", "lookups", "contacts"] });
   const workOrdersQuery = useQuery({ queryFn: listQuotationWorkOrders, queryKey: ["billing", "quotation", "lookups", "work-orders"] });
   const productsQuery = useQuery({ queryFn: listQuotationProducts, queryKey: ["billing", "quotation", "lookups", "products"] });
   const coloursQuery = useQuery({ queryFn: listQuotationColours, queryKey: ["billing", "quotation", "lookups", "colours"] });
   const sizesQuery = useQuery({ queryFn: listQuotationSizes, queryKey: ["billing", "quotation", "lookups", "sizes"] });
+  const contactSaveMutation = useMutation({
+    mutationFn: ({ id, payload }: { id?: string; payload: QuotationContactSavePayload }) => id ? updateQuotationContact(id, payload) : createQuotationContact(payload),
+  });
+  const selectedContact = (contactsQuery.data ?? []).find((option) => option.value === form.customerName || option.label === form.customerName);
 
   function patch(next: Partial<QuotationSavePayload>) {
     setForm((current) => ({ ...current, ...next }));
@@ -368,6 +399,11 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
           <div className="space-y-4">
             <Field label="Customer name" required>
               <WorkspaceLookup
+                createDescription="Add contact details and address without leaving this quotation."
+                createLabel="New contact"
+                createMode="popup"
+                createTitle="New contact"
+                emptyLabel="No contacts found. Create a new contact."
                 loading={contactsQuery.isLoading}
                 options={contactsQuery.data ?? []}
                 placeholder="Search or select contact"
@@ -375,6 +411,33 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
                 value={form.customerName}
                 onTextChange={(value) => patch({ customerName: value })}
                 onValueChange={(value, option) => patch({ customerName: option?.label ?? value })}
+                renderCreateForm={({ initialName, onCancel, onCreated }) => (
+                  <QuotationContactQuickForm
+                    initialValue={contactDraftFromRecord(undefined, initialName)}
+                    loading={contactSaveMutation.isPending}
+                    onCancel={onCancel}
+                    onSave={async (payload) => {
+                      const created = await contactSaveMutation.mutateAsync({ payload });
+                      await contactsQuery.refetch();
+                      const option = quotationContactOption(created);
+                      onCreated(option);
+                      patch({ customerName: option.label });
+                    }}
+                    title="New contact"
+                  />
+                )}
+                trailingAction={selectedContact?.record ? (
+                  <button
+                    aria-label="Edit selected contact"
+                    className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    title="Edit selected contact"
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={(event) => { event.stopPropagation(); setEditingContact(selectedContact.record); }}
+                  >
+                    <ArrowUpRight className="size-4" />
+                  </button>
+                ) : undefined}
               />
             </Field>
             <Field label="Work order no">
@@ -486,17 +549,289 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
           <Button disabled={loading} onClick={() => submit(true)} type="button" variant="outline"><Printer className="size-4" />Save & Print</Button>
           <Button onClick={onBack} type="button" variant="outline"><X className="size-4" />Cancel</Button>
         </WorkspaceFormActions>
+        <Dialog open={Boolean(editingContact)} onOpenChange={(open) => !open && setEditingContact(null)}>
+          <DialogContent className="rounded-md sm:max-w-4xl" onInteractOutside={(event) => event.preventDefault()}>
+            {editingContact ? (
+              <QuotationContactQuickForm
+                initialValue={contactDraftFromRecord(editingContact)}
+                loading={contactSaveMutation.isPending}
+                onCancel={() => setEditingContact(null)}
+                onSave={async (payload) => {
+                  const saved = await contactSaveMutation.mutateAsync({ id: editingContact.id, payload });
+                  await contactsQuery.refetch();
+                  patch({ customerName: quotationContactOption(saved).label });
+                  setEditingContact(null);
+                }}
+                title="Edit contact"
+              />
+            ) : null}
+          </DialogContent>
+        </Dialog>
       </WorkspaceFormSurface>
     </WorkspacePage>
   );
 }
 
-function QuotationShowPage({ onBack, onEdit, onNew, onPrint, quotation }: { onBack: () => void; onEdit: () => void; onNew: () => void; onPrint: () => void; quotation: Quotation }) {
+function QuotationContactQuickForm({ initialValue, loading, onCancel, onSave, title }: { initialValue: QuotationContactSavePayload; loading: boolean; onCancel: () => void; onSave: (payload: QuotationContactSavePayload) => Promise<void>; title: string }) {
+  const [form, setForm] = useState(initialValue);
+  const [activeTab, setActiveTab] = useState("details");
+  const [legalNameManual, setLegalNameManual] = useState(Boolean(initialValue.legalName && initialValue.legalName !== initialValue.name.toUpperCase()));
+  const addressTypesQuery = useQuery({ queryFn: listQuotationAddressTypes, queryKey: ["billing", "quotation", "lookups", "address-types"] });
+  const countriesQuery = useQuery({ queryFn: () => listQuotationLocations("countries"), queryKey: ["billing", "quotation", "lookups", "countries"] });
+  const statesQuery = useQuery({ queryFn: () => listQuotationLocations("states"), queryKey: ["billing", "quotation", "lookups", "states"] });
+  const districtsQuery = useQuery({ queryFn: () => listQuotationLocations("districts"), queryKey: ["billing", "quotation", "lookups", "districts"] });
+  const citiesQuery = useQuery({ queryFn: () => listQuotationLocations("cities"), queryKey: ["billing", "quotation", "lookups", "cities"] });
+  const pincodesQuery = useQuery({ queryFn: () => listQuotationLocations("pincodes"), queryKey: ["billing", "quotation", "lookups", "pincodes"] });
+
+  useEffect(() => {
+    const india = (countriesQuery.data ?? []).find((record) => record.name.toLowerCase() === "india" || record.code.toUpperCase() === "IN");
+    if (!india || form.countryId) return;
+    setForm((current) => ({ ...current, countryId: india.id, countryName: india.name }));
+  }, [countriesQuery.data, form.countryId]);
+
+  const locations = {
+    cities: citiesQuery.data ?? [],
+    districts: districtsQuery.data ?? [],
+    pincodes: pincodesQuery.data ?? [],
+    states: statesQuery.data ?? [],
+  };
+
+  async function createLocation(kind: QuotationLocationKind, name: string) {
+    const dependency = kind === "states" ? form.countryId : kind === "districts" ? form.stateId : kind === "cities" ? form.districtId : form.cityId;
+    if (!dependency) {
+      toast.error(`Select ${kind === "states" ? "India" : kind === "districts" ? "a state" : kind === "cities" ? "a district" : "a city"} first.`);
+      return undefined;
+    }
+    const created = await createQuotationLocation(kind, locationPayload(kind, name, form));
+    await ({ cities: citiesQuery, districts: districtsQuery, pincodes: pincodesQuery, states: statesQuery }[kind]).refetch();
+    return quotationLocationOption(created);
+  }
+
+  const tabs: WorkspaceAnimatedTab[] = [
+    {
+      content: (
+        <div className="grid gap-4">
+          <ContactQuickField label="Contact name" required value={form.name} onChange={(name) => setForm((current) => ({ ...current, name, ...(!legalNameManual ? { legalName: name.toUpperCase() } : {}) }))} />
+          <ContactQuickField label="Legal name" value={form.legalName} onChange={(legalName) => { setLegalNameManual(true); setForm((current) => ({ ...current, legalName: legalName.toUpperCase() })); }} />
+          <ContactQuickField label="GSTIN" value={form.gstin} onChange={(gstin) => setForm((current) => ({ ...current, gstin: gstin.toUpperCase() }))} />
+          <ContactQuickField label="Phone" value={form.primaryPhone} onChange={(primaryPhone) => setForm((current) => ({ ...current, primaryPhone }))} />
+        </div>
+      ),
+      label: "Details",
+      value: "details",
+    },
+    {
+      content: (
+        <div className="grid gap-4">
+          <label className="grid gap-2">
+            <Label>Address type</Label>
+            <WorkspaceLookup
+              createLabel="Save address type"
+              createMode="inline"
+              emptyLabel="No address types found. Type a value to create it."
+              loading={addressTypesQuery.isLoading}
+              options={(addressTypesQuery.data ?? []).filter((record) => record.isActive !== false).map(quotationContactOption)}
+              placeholder="Search or select address type"
+              value={form.addressTypeName}
+              onCreate={async (name) => {
+                const created = await createQuotationAddressType(name);
+                await addressTypesQuery.refetch();
+                return quotationContactOption(created);
+              }}
+              onValueChange={(value, option) => setForm((current) => ({ ...current, addressTypeName: option?.label ?? value }))}
+            />
+          </label>
+          <ContactQuickField label="Address line 1" value={form.addressLine1} onChange={(addressLine1) => setForm((current) => ({ ...current, addressLine1 }))} />
+          <ContactQuickField label="Address line 2" value={form.addressLine2} onChange={(addressLine2) => setForm((current) => ({ ...current, addressLine2 }))} />
+          <div className="grid gap-4">
+            <ContactLocationLookup label="State" kind="states" loading={statesQuery.isLoading} options={locations.states.filter((record) => !form.countryId || record.countryId === form.countryId)} value={form.stateId || form.stateName} onCreate={createLocation} onPick={(record) => setForm((current) => locationPatch("states", record, current))} />
+            <ContactLocationLookup label="District" kind="districts" loading={districtsQuery.isLoading} options={locations.districts.filter((record) => !form.stateId || record.stateId === form.stateId)} value={form.districtId || form.districtName} onCreate={createLocation} onPick={(record) => setForm((current) => locationPatch("districts", record, current))} />
+            <ContactLocationLookup label="City" kind="cities" loading={citiesQuery.isLoading} options={locations.cities.filter((record) => !form.districtId || record.districtId === form.districtId)} value={form.cityId || form.cityName} onCreate={createLocation} onPick={(record) => setForm((current) => locationPatch("cities", record, current))} />
+            <ContactLocationLookup label="Pincode" kind="pincodes" loading={pincodesQuery.isLoading} options={locations.pincodes.filter((record) => !form.cityId || record.cityId === form.cityId)} value={form.pincodeId || form.pincodeName} onCreate={createLocation} onPick={(record) => setForm((current) => locationPatch("pincodes", record, current))} />
+          </div>
+        </div>
+      ),
+      label: "Address",
+      value: "address",
+    },
+  ];
+
+  return (
+    <form
+      className="grid gap-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSave(form);
+      }}
+    >
+      <DialogHeader>
+        <DialogTitle>{title}</DialogTitle>
+      </DialogHeader>
+      <WorkspaceAnimatedTabs contentClassName="px-0" listClassName="rounded-none border-x-0 border-t-0 px-0 shadow-none" tabs={tabs} value={activeTab} onValueChange={setActiveTab} />
+      <DialogFooter>
+        <Button disabled={loading} type="button" variant="outline" onClick={onCancel}><X className="size-4" />Cancel</Button>
+        <Button disabled={loading || !form.name.trim()} type="submit"><Save className="size-4" />Save contact</Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+function ContactQuickField({ className, label, onChange, required, type = "text", value }: { className?: string; label: string; onChange: (value: string) => void; required?: boolean; type?: string; value: string }) {
+  return (
+    <label className={cn("grid gap-2", className)}>
+      <Label>{label}{required ? <span className="text-destructive"> *</span> : null}</Label>
+      <Input autoFocus={label === "Contact name"} className="h-11 rounded-md" required={required} type={type} value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function ContactLocationLookup({ kind, label, loading, onCreate, onPick, options, value }: { kind: QuotationLocationKind; label: string; loading: boolean; onCreate: (kind: QuotationLocationKind, name: string) => Promise<QuotationLookupOption | undefined>; onPick: (record: QuotationLocationRecord) => void; options: QuotationLocationRecord[]; value: string }) {
+  const lookupOptions = options.filter((record) => record.status !== "inactive").map(quotationLocationOption);
+  return (
+    <label className="grid gap-2">
+      <Label>{label}</Label>
+      <WorkspaceLookup
+        allowTextValue={false}
+        createLabel={`Create ${label.toLowerCase()}`}
+        createMode="inline"
+        emptyLabel={`No ${label.toLowerCase()} found. Type a value to create it.`}
+        loading={loading}
+        options={lookupOptions}
+        placeholder={`Search ${label.toLowerCase()}`}
+        value={value}
+        onCreate={(name) => onCreate(kind, name)}
+        onValueChange={(selected, option) => {
+          const record = ((option as QuotationLookupOption | undefined)?.record as QuotationLocationRecord | undefined) ?? options.find((item) => item.id === selected);
+          if (record) onPick(record);
+        }}
+      />
+    </label>
+  );
+}
+
+function quotationLocationOption(record: QuotationLocationRecord): QuotationLookupOption {
+  const label = record.pincode && record.areaName && record.areaName !== record.pincode
+    ? `${record.pincode} - ${record.areaName}`
+    : record.pincode || record.name || record.code;
+  return {
+    description: [record.cityName, record.districtName, record.stateName].filter(Boolean).join(", "),
+    label,
+    record,
+    value: record.id,
+  };
+}
+
+function locationPayload(kind: QuotationLocationKind, name: string, form: QuotationContactSavePayload) {
+  const trimmedName = name.trim();
+  const payload: Record<string, unknown> = {
+    code: locationCode(trimmedName),
+    name: trimmedName,
+    sortOrder: 1000,
+    status: "active",
+    countryId: form.countryId || null,
+    countryName: form.countryName || "India",
+  };
+  if (kind !== "states") {
+    payload.stateId = form.stateId || null;
+    payload.stateName = form.stateName || null;
+  }
+  if (kind === "cities" || kind === "pincodes") {
+    payload.districtId = form.districtId || null;
+    payload.districtName = form.districtName || null;
+  }
+  if (kind === "pincodes") {
+    payload.areaName = trimmedName;
+    payload.cityId = form.cityId || null;
+    payload.cityName = form.cityName || null;
+    payload.pincode = trimmedName;
+  }
+  return payload;
+}
+
+function locationPatch(kind: QuotationLocationKind, record: QuotationLocationRecord, form: QuotationContactSavePayload): QuotationContactSavePayload {
+  const label = record.pincode || record.name;
+  const next = { ...form };
+  if (kind === "states") {
+    next.stateId = record.id;
+    next.stateName = record.name;
+    next.districtId = "";
+    next.districtName = "";
+    next.cityId = "";
+    next.cityName = "";
+    next.pincodeId = "";
+    next.pincodeName = "";
+  } else if (kind === "districts") {
+    next.districtId = record.id;
+    next.districtName = record.name;
+    next.cityId = "";
+    next.cityName = "";
+    next.pincodeId = "";
+    next.pincodeName = "";
+  } else if (kind === "cities") {
+    next.cityId = record.id;
+    next.cityName = record.name;
+    next.pincodeId = "";
+    next.pincodeName = "";
+  } else {
+    next.pincodeId = record.id;
+    next.pincodeName = label;
+    next.cityId = record.cityId || next.cityId;
+    next.cityName = record.cityName || next.cityName;
+    next.districtId = record.districtId || next.districtId;
+    next.districtName = record.districtName || next.districtName;
+    next.stateId = record.stateId || next.stateId;
+    next.stateName = record.stateName || next.stateName;
+    next.countryId = record.countryId || next.countryId;
+    next.countryName = record.countryName || next.countryName || "India";
+  }
+  return next;
+}
+
+function locationCode(value: string) {
+  return value.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "LOCATION";
+}
+
+function contactDraftFromRecord(record?: QuotationLookupRecord, initialName = ""): QuotationContactSavePayload {
+  const address = record?.addresses?.[0] ?? {};
+  return {
+    addressTypeName: String(address.addressTypeName ?? "Billing"),
+    addressLine1: String(address.addressLine1 ?? ""),
+    addressLine2: String(address.addressLine2 ?? ""),
+    cityId: String(address.cityId ?? ""),
+    cityName: String(address.cityName ?? ""),
+    countryId: String(address.countryId ?? ""),
+    countryName: String(address.countryName ?? "India"),
+    districtId: String(address.districtId ?? ""),
+    districtName: String(address.districtName ?? ""),
+    gstin: String(record?.gstin ?? ""),
+    legalName: record?.legalName ?? initialName,
+    name: record?.name ?? initialName,
+    pincodeId: String(address.pincodeId ?? ""),
+    pincodeName: String(address.pincodeName ?? ""),
+    primaryEmail: record?.primaryEmail ?? "",
+    primaryPhone: record?.primaryPhone ?? "",
+    stateId: String(address.stateId ?? ""),
+    stateName: String(address.stateName ?? ""),
+  };
+}
+
+function quotationContactOption(record: QuotationLookupRecord): QuotationLookupOption {
+  const label = record.name || record.code || record.id;
+  return {
+    description: record.primaryPhone || record.primaryEmail || "",
+    label,
+    meta: record.code || "",
+    record,
+    value: label,
+  };
+}
+
+function QuotationShowPage({ converting, onBack, onConvert, onEdit, onNew, onPrint, quotation }: { converting: boolean; onBack: () => void; onConvert: () => void; onEdit: () => void; onNew: () => void; onPrint: () => void; quotation: Quotation }) {
   return (
     <WorkspacePage
       title={quotation.quotationNumber}
       description={`${quotation.customerName} • ${formatDate(quotation.date)}`}
-      actions={<><Button onClick={onNew} type="button"><Plus className="size-4" />New</Button><Button onClick={onEdit} type="button" variant="outline">Edit</Button><Button onClick={onPrint} type="button" variant="outline"><Printer className="size-4" />Print</Button><Button onClick={onBack} type="button" variant="outline">Back</Button></>}
+      actions={<><Button onClick={onNew} type="button"><Plus className="size-4" />New</Button>{quotation.status === "draft" ? <Button onClick={onEdit} type="button" variant="outline">Edit</Button> : null}{!quotation.generatedSalesInvoiceNo && quotation.status !== "cancelled" ? <Button disabled={converting} onClick={onConvert} type="button" variant="outline"><Send className="size-4" />Convert to sale</Button> : null}<Button onClick={onPrint} type="button" variant="outline"><Printer className="size-4" />Print</Button><Button onClick={onBack} type="button" variant="outline">Back</Button></>}
     >
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="rounded-md border border-border/70 bg-card/95 p-6 shadow-sm">
@@ -510,8 +845,9 @@ function QuotationShowPage({ onBack, onEdit, onNew, onPrint, quotation }: { onBa
           </div>
           <div className="mt-5 grid gap-4 text-sm md:grid-cols-3">
             <Detail label="Date" value={formatDate(quotation.date)} />
-            <Detail label="Work order" value={quotation.workOrderNo || "-"} />
-            <Detail label="Sales ledger" value={quotation.salesLedger || "-"} />
+          <Detail label="Work order" value={quotation.workOrderNo || "-"} />
+          <Detail label="Sales ledger" value={quotation.salesLedger || "-"} />
+          <Detail label="Sales invoice" value={quotation.generatedSalesInvoiceNo || "Not converted"} />
           </div>
         </div>
         <div className="space-y-4">

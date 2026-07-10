@@ -1,6 +1,6 @@
 import { AppError } from "@codexsun/framework/errors";
 import { EntriesRepository } from "./entries.repository.js";
-import type { CommentCreateInput, ConvertQuotationsInput, EntryContactRecord, EntryFilters, EntryKind, EntryProductRecord, EntryUpsertInput } from "./entries.types.js";
+import type { CommentCreateInput, EntryContactRecord, EntryFilters, EntryKind, EntryProductRecord, EntryUpsertInput } from "./entries.types.js";
 
 export class EntriesService {
   private readonly repository = new EntriesRepository();
@@ -55,13 +55,9 @@ export class EntriesService {
     return this.repository.addComment(kind, tenantId, id, input);
   }
 
-  convertQuotationsToSales(tenantId: string, input: ConvertQuotationsInput) {
-    return this.repository.convertQuotationsToSales(tenantId, input);
-  }
 }
 
 function labelFor(kind: EntryKind) {
-  if (kind === "quotation") return "Quotation";
   if (kind === "sales") return "Sales";
   if (kind === "purchase") return "Purchase";
   return "Export Sales";

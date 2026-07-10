@@ -1,11 +1,13 @@
 export type QuotationWorkerJob = {
   id: string;
   name: "quotation.confirmation-sync" | "quotation.accounts-preview";
+  payload: { action: string; id: string; salesInvoiceNo?: string };
 };
 
 export async function processQuotationJob(job: QuotationWorkerJob) {
   return {
-    job,
+    action: job.payload.action,
+    quotationId: job.payload.id,
     processed: true,
     processedAt: new Date().toISOString()
   };

@@ -4,7 +4,6 @@ import { AppError } from "@codexsun/framework/errors";
 import { getBillingDatabase } from "../../database/billing-database.js";
 import type {
   CommentCreateInput,
-  ConvertQuotationsInput,
   EntryActivityRecord,
   EntryCommentRecord,
   EntryContactRecord,
@@ -239,80 +238,6 @@ export class EntriesRepository {
     `.execute(await getBillingDatabase());
     await this.addActivity(kind, id, "commented", authorEmail, "Comment added", { body });
     return this.findEntry(kind, tenantId, id);
-  }
-
-  async convertQuotationsToSales(tenantId: string, input: ConvertQuotationsInput) {
-    const quotationIds = Array.from(new Set((input.quotationIds ?? []).map((value) => String(value).trim()).filter(Boolean)));
-    if (!quotationIds.length) throw AppError.validation("Select at least one quotation.");
-    const quotations = (await Promise.all(quotationIds.map((id) => this.findEntry("quotation", tenantId, id)))).filter(Boolean) as EntryRecord[];
-    if (quotations.length !== quotationIds.length) throw AppError.notFound("One or more quotations were not found.");
-    const first = quotations[0];
-    if (!first) throw AppError.validation("Select at least one quotation.");
-    const partyKey = `${first.customerId ?? ""}|${first.customerName.trim().toLowerCase()}`;
-    if (quotations.some((quotation) => `${quotation.customerId ?? ""}|${quotation.customerName.trim().toLowerCase()}` !== partyKey)) {
-      throw AppError.validation("Selected quotations must belong to the same customer.");
-    }
-    if (quotations.some((quotation) => quotation.generatedSalesEntryId || quotation.generatedSalesDocumentNo)) {
-      throw AppError.conflict("One or more quotations are already linked to a sales invoice.");
-    }
-
-    const mergedLines = mergeQuotationLines(quotations.flatMap((quotation) => quotation.lines));
-    const sales = await this.createEntry("sales", tenantId, {
-      billingAddress: first.billingAddress,
-      customerGstin: first.customerGstin,
-      customerId: first.customerId,
-      customerName: first.customerName,
-      customerStateCode: first.customerStateCode,
-      customerStateName: first.customerStateName,
-      documentDate: isoDate(),
-      dueDate: first.dueDate,
-      lines: mergedLines,
-      notes: first.notes,
-      paymentTermId: first.paymentTermId,
-      paymentTermName: first.paymentTermName,
-      placeOfSupply: first.placeOfSupply,
-      referenceNo: quotations.map((quotation) => quotation.documentNo).join(", "),
-      salesTypeId: first.salesTypeId,
-      salesTypeName: first.salesTypeName,
-      shippingAddress: first.shippingAddress,
-      source: {
-        sourceQuotationNos: quotations.map((quotation) => quotation.documentNo),
-        sourceQuotationUuids: quotations.map((quotation) => quotation.uuid),
-        sourceType: "quotation"
-      },
-      terms: first.terms,
-      transportAddress: first.transportAddress,
-      transportContactNo: first.transportContactNo,
-      transportContactPerson: first.transportContactPerson,
-      transportGst: first.transportGst,
-      transportId: first.transportId,
-      transportName: first.transportName,
-      vehicleNo: first.vehicleNo,
-      workOrderNo: first.workOrderNo
-    });
-    if (!sales) throw AppError.internal("Unable to create sales invoice from quotation.");
-
-    for (const quotation of quotations) {
-      await sql`
-        UPDATE quotation_entries
-        SET generated_sales_entry_id = ${sales.id},
-          generated_sales_document_no = ${sales.documentNo},
-          generated_sales_at = CURRENT_TIMESTAMP,
-          status = ${quotation.status === "draft" ? "posted" : quotation.status}
-        WHERE id = ${quotation.id} AND tenant_id = ${tenantId}
-      `.execute(await getBillingDatabase());
-      await this.addActivity("quotation", quotation.id, "converted", "system@codexsun.local", `Converted to sales invoice ${sales.documentNo}`, {
-        salesDocumentNo: sales.documentNo,
-        salesId: sales.id
-      });
-    }
-
-    await this.addActivity("sales", sales.id, "converted", "system@codexsun.local", `Created from ${quotations.length} quotation(s)`, {
-      quotationIds,
-      quotationNos: quotations.map((quotation) => quotation.documentNo)
-    });
-
-    return sales;
   }
 
   private async saveEntry(kind: EntryKind, tenantId: string, input: EntryUpsertInput, existingId: string | null) {
@@ -774,51 +699,6 @@ function parseStringArray(value: unknown) {
   }
 }
 
-function mergeQuotationLines(lines: EntryLineRecord[]): EntryLineInput[] {
-  const merged = new Map<string, EntryLineInput>();
-  for (const line of lines) {
-    const key = [
-      line.productId ?? "",
-      line.productName.trim().toLowerCase(),
-      line.rate,
-      line.taxRate,
-      line.unitId ?? line.unitName ?? "",
-      line.hsnCodeId ?? line.hsnCode ?? "",
-      line.colourId ?? line.colourName ?? "",
-      line.sizeId ?? line.sizeName ?? ""
-    ].join("|");
-    const existing = merged.get(key);
-    if (existing) {
-      existing.quantity = numberValue(existing.quantity, 0) + line.quantity;
-      existing.discountAmount = numberValue(existing.discountAmount, 0) + line.discountAmount;
-      existing.description = [existing.description, line.description].filter(Boolean).join(" | ");
-      continue;
-    }
-    merged.set(key, {
-      colourId: line.colourId,
-      colourName: line.colourName,
-      dcNo: line.dcNo,
-      description: line.description,
-      discountAmount: line.discountAmount,
-      hsnCode: line.hsnCode,
-      hsnCodeId: line.hsnCodeId,
-      productId: line.productId,
-      productName: line.productName,
-      poNo: line.poNo,
-      quantity: line.quantity,
-      rate: line.rate,
-      sizeId: line.sizeId,
-      sizeName: line.sizeName,
-      taxDescription: line.taxDescription,
-      taxId: line.taxId,
-      taxRate: line.taxRate,
-      unitId: line.unitId,
-      unitName: line.unitName
-    });
-  }
-  return Array.from(merged.values());
-}
-
 function tableName(kind: EntryKind) {
   return `${kind}_entries`;
 }
@@ -836,14 +716,13 @@ function activityTableName(kind: EntryKind) {
 }
 
 function labelFor(kind: EntryKind) {
-  if (kind === "quotation") return "Quotation";
   if (kind === "sales") return "Sales";
   if (kind === "purchase") return "Purchase";
   return "Export Sales";
 }
 
 function nextDocumentNo(kind: EntryKind, tenantId: string) {
-  const prefix = kind === "quotation" ? "QUO" : kind === "sales" ? "SAL" : kind === "purchase" ? "PUR" : "EXP";
+  const prefix = kind === "sales" ? "SAL" : kind === "purchase" ? "PUR" : "EXP";
   return `${prefix}-${tenantId.slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-6)}`;
 }
 

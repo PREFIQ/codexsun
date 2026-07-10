@@ -1,11 +1,6 @@
 import { billingApiGet, billingApiPost, billingApiPut } from "../../shared/api/billing-api";
-import { getTenantId, getToken } from "../../shared/api/tenant-context";
-import { requiredClientEnv } from "../../shared/env/client-env";
 import type { Quotation, QuotationSavePayload, QuotationStatus } from "./quotation.types";
-
-const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
-
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+import type { Sale } from "../sales/sales.types";
 
 export type QuotationLookupOption = {
   description?: string;
@@ -16,11 +11,14 @@ export type QuotationLookupOption = {
 };
 
 export type QuotationLookupRecord = {
+  addresses?: Array<Record<string, unknown>>;
   code?: string | null;
   description?: string | null;
+  gstin?: string | null;
   hsnCode?: string | null;
   id: string;
   isActive?: boolean | null;
+  legalName?: string | null;
   name?: string | null;
   openingRate?: number | null;
   price?: number | null;
@@ -31,6 +29,46 @@ export type QuotationLookupRecord = {
   typeName?: string | null;
   unitName?: string | null;
   workOrderNo?: string | null;
+};
+
+export type QuotationContactSavePayload = {
+  addressTypeName: string;
+  addressLine1: string;
+  addressLine2: string;
+  cityId: string;
+  cityName: string;
+  countryId: string;
+  countryName: string;
+  districtId: string;
+  districtName: string;
+  gstin: string;
+  legalName: string;
+  name: string;
+  pincodeId: string;
+  pincodeName: string;
+  primaryEmail: string;
+  primaryPhone: string;
+  stateId: string;
+  stateName: string;
+};
+
+export type QuotationLocationKind = "cities" | "districts" | "pincodes" | "states";
+
+export type QuotationLocationRecord = {
+  areaName?: string | null;
+  cityId?: string | null;
+  cityName?: string | null;
+  code: string;
+  countryId?: string | null;
+  countryName?: string | null;
+  districtId?: string | null;
+  districtName?: string | null;
+  id: string;
+  name: string;
+  pincode?: string | null;
+  stateId?: string | null;
+  stateName?: string | null;
+  status?: "active" | "inactive";
 };
 
 export async function listQuotations() {
@@ -53,8 +91,36 @@ export async function setQuotationStatus(id: string, status: Exclude<QuotationSt
   return billingApiPost<Quotation>(`/billing/quotations/${id}/${status === "confirmed" ? "confirm" : "cancel"}`);
 }
 
+export async function convertQuotationToSale(id: string) {
+  return billingApiPost<{ quotation: Quotation; sale: Sale }>(`/billing/quotations/${id}/convert-to-sale`);
+}
+
+export function createQuotationContact(payload: QuotationContactSavePayload) {
+  return billingApiPost<QuotationLookupRecord>("/billing/quotations/lookups/contacts", contactPayload(payload));
+}
+
+export function updateQuotationContact(id: string, payload: QuotationContactSavePayload) {
+  return billingApiPut<QuotationLookupRecord>(`/billing/quotations/lookups/contacts/${id}`, contactPayload(payload));
+}
+
+export function listQuotationLocations(kind: "cities" | "countries" | "districts" | "pincodes" | "states") {
+  return billingApiGet<QuotationLocationRecord[]>(`/billing/quotations/lookups/${kind}`);
+}
+
+export function createQuotationLocation(kind: QuotationLocationKind, payload: Record<string, unknown>) {
+  return billingApiPost<QuotationLocationRecord>(`/billing/quotations/lookups/locations/${kind}`, payload);
+}
+
+export function listQuotationAddressTypes() {
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/addressTypes");
+}
+
+export function createQuotationAddressType(name: string) {
+  return billingApiPost<QuotationLookupRecord>("/billing/quotations/lookups/address-types", { isActive: true, name: name.trim() });
+}
+
 export function listQuotationContacts() {
-  return coreRequest<QuotationLookupRecord[]>("/core/master/contacts").then((records) =>
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/contacts").then((records) =>
     records.filter(isActiveRecord).map((record) =>
       lookupOption(record, {
         description: record.primaryPhone || record.primaryEmail || "",
@@ -67,7 +133,7 @@ export function listQuotationContacts() {
 }
 
 export function listQuotationWorkOrders() {
-  return coreRequest<QuotationLookupRecord[]>("/core/master/work-orders").then((records) =>
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/workOrders").then((records) =>
     records.filter(isActiveRecord).map((record) => {
       const workOrderNo = record.code || record.workOrderNo || record.name || record.id;
       return lookupOption(record, {
@@ -81,7 +147,7 @@ export function listQuotationWorkOrders() {
 }
 
 export function listQuotationProducts() {
-  return coreRequest<QuotationLookupRecord[]>("/core/master/products").then((records) =>
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/products").then((records) =>
     records.filter(isActiveRecord).map((record) =>
       lookupOption(record, {
         description: [record.hsnCode, record.unitName].filter(Boolean).join(" | "),
@@ -94,11 +160,11 @@ export function listQuotationProducts() {
 }
 
 export function listQuotationColours() {
-  return listQuotationCommonOptions("/core/common/products/colours");
+  return listQuotationCommonOptions("colours");
 }
 
 export function listQuotationSizes() {
-  return listQuotationCommonOptions("/core/common/products/sizes");
+  return listQuotationCommonOptions("sizes");
 }
 
 export function quotationToPayload(quotation: Quotation): QuotationSavePayload {
@@ -155,23 +221,8 @@ export function totalQuotationQuantity(quotation: Quotation) {
   return quotation.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 }
 
-async function coreRequest<T>(path: string) {
-  const token = getToken("tenant");
-  const tenantId = getTenantId();
-  const response = await fetch(`${coreApiBaseUrl}${path}`, {
-    headers: {
-      Accept: "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(tenantId ? { "x-tenant-id": tenantId } : {}),
-    },
-  });
-  const envelope = (await response.json()) as Envelope<T>;
-  if (!response.ok || !envelope.success) throw new Error(envelope.success ? "Core API request failed." : envelope.error.message);
-  return envelope.data;
-}
-
-function listQuotationCommonOptions(path: string) {
-  return coreRequest<QuotationLookupRecord[]>(path).then((records) =>
+function listQuotationCommonOptions(kind: "colours" | "sizes") {
+  return billingApiGet<QuotationLookupRecord[]>(`/billing/quotations/lookups/${kind}`).then((records) =>
     records.filter(isActiveRecord).map((record) => {
       const label = record.name || record.code || record.id;
       return lookupOption(record, {
@@ -192,4 +243,33 @@ function lookupOption(record: QuotationLookupRecord, option: Omit<QuotationLooku
 
 function isActiveRecord(record: QuotationLookupRecord) {
   return record.isActive !== false;
+}
+
+function contactPayload(payload: QuotationContactSavePayload) {
+  return {
+    addresses: payload.addressLine1.trim() || payload.addressLine2.trim() || payload.stateId || payload.districtId || payload.cityId || payload.pincodeId
+      ? [{
+          addressLine1: payload.addressLine1.trim(),
+          addressLine2: payload.addressLine2.trim(),
+          addressTypeName: payload.addressTypeName.trim() || "Billing",
+          cityId: payload.cityId || null,
+          cityName: payload.cityName || null,
+          countryId: payload.countryId || null,
+          countryName: payload.countryName || "India",
+          districtId: payload.districtId || null,
+          districtName: payload.districtName || null,
+          isDefault: true,
+          pincodeId: payload.pincodeId || null,
+          pincodeName: payload.pincodeName || null,
+          stateId: payload.stateId || null,
+          stateName: payload.stateName || null,
+        }]
+      : [],
+    gstin: payload.gstin.trim().toUpperCase(),
+    isActive: true,
+    legalName: payload.legalName.trim(),
+    name: payload.name.trim(),
+    primaryEmail: payload.primaryEmail.trim(),
+    primaryPhone: payload.primaryPhone.trim(),
+  };
 }

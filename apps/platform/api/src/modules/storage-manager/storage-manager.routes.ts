@@ -3,7 +3,7 @@ import { fail, ok } from "@codexsun/framework/http";
 import { verifyAuthToken } from "../../auth/jwt.js";
 import { requireSuperAdmin } from "../../auth/super-admin.guard.js";
 import { StorageManagerService } from "./storage-manager.service.js";
-import type { StorageFolderPayload, StorageListInput, StorageUploadPayload } from "./storage-manager.types.js";
+import type { CompanyLogoUploadPayload, StorageFolderPayload, StorageListInput, StorageUploadPayload } from "./storage-manager.types.js";
 
 const service = new StorageManagerService();
 
@@ -17,6 +17,19 @@ export async function registerStorageManagerRoutes(app: FastifyInstance) {
   app.get("/tenant/storage/list", { preHandler: requireTenantUser }, async (request) => ok(await service.list(tenantStorageInput(request, request.query)), { requestId: request.id }));
   app.post("/tenant/storage/folders", { preHandler: requireTenantUser }, async (request) => ok(await service.createFolder(tenantStorageInput(request, request.body) as StorageFolderPayload), { requestId: request.id }));
   app.post("/tenant/storage/upload", { preHandler: requireTenantUser }, async (request) => ok(await service.upload(tenantStorageInput(request, request.body) as StorageUploadPayload), { requestId: request.id }));
+  app.post("/tenant/media/company-logo", { preHandler: requireTenantUser }, async (request) => {
+    const tenantId = String(request.headers["x-tenant-id"] || "");
+    return ok(await service.uploadCompanyLogo(tenantId, request.body as CompanyLogoUploadPayload), { requestId: request.id });
+  });
+  app.get("/tenant/media/company-logo/:variant", { preHandler: requireTenantUser }, async (request, reply) => {
+    const { variant } = request.params as { variant: string };
+    if (variant !== "logo" && variant !== "logo-dark") {
+      return reply.code(404).send(fail({ code: "COMPANY_LOGO_NOT_FOUND", message: "Company logo was not found." }, { requestId: request.id }));
+    }
+    const tenantId = String(request.headers["x-tenant-id"] || "");
+    const file = await service.readCompanyLogo(tenantId, variant);
+    return reply.header("cache-control", "no-store").header("content-type", file.mimeType).header("content-length", String(file.sizeBytes)).send(file.buffer);
+  });
   app.get("/tenant/storage/download", { preHandler: requireTenantUser }, async (request, reply) => sendDownload(reply, await service.download(tenantStorageInput(request, request.query) as ReturnType<typeof storageDownloadFromQuery>)));
 }
 

@@ -1,5 +1,4 @@
-export type EntryKind = "quotation" | "sales" | "purchase" | "exportSales";
-
+export type EntryKind = "sales" | "purchase" | "exportSales";
 export type EntryStatus = "draft" | "posted" | "cancelled";
 export type EntryPaymentStatus = "unpaid" | "partial" | "paid";
 export type SupplyMode = "cgst-sgst" | "igst";
@@ -242,8 +241,4 @@ export type EntryUpsertInput = {
 export type CommentCreateInput = {
   authorEmail?: string | null;
   body?: string | null;
-};
-
-export type ConvertQuotationsInput = {
-  quotationIds?: string[];
 };

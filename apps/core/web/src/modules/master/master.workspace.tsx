@@ -20,6 +20,7 @@ import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 import { cn } from "@codexsun/ui/lib/utils";
 import { commonMasterDefinitions } from "../common/registry";
 import { createLocationRecord } from "../location/location.services";
+import { CompanyLogosTab } from "../organisation/company/company-logos.tab";
 import { createCommonMaster } from "../common-master/common-master.services";
 import { locationDefinitions } from "../location/location.definitions";
 import type { LocationKind, LocationSavePayload } from "../location/location.types";
@@ -27,7 +28,7 @@ import { createMasterRecord, forceDeleteMasterRecord, listMasterLookup, setMaste
 import { useMasterRecords } from "./master.hooks";
 import type { MasterChild, MasterDefinition, MasterRecord, MasterSavePayload } from "./master.types";
 
-export type MasterTab = "details" | "tax" | "communication" | "addresses" | "finance" | "more" | "stock" | "settings";
+export type MasterTab = "details" | "tax" | "communication" | "addresses" | "finance" | "more" | "logos" | "stock" | "settings";
 const masterTabs: Array<{ id: MasterTab; label: string }> = [
   { id: "details", label: "Details" },
   { id: "tax", label: "Tax Details" },
@@ -35,11 +36,12 @@ const masterTabs: Array<{ id: MasterTab; label: string }> = [
   { id: "addresses", label: "Addresses" },
   { id: "finance", label: "Finance" },
   { id: "more", label: "More" },
+  { id: "logos", label: "Logos" },
   { id: "stock", label: "Stock" },
   { id: "settings", label: "Settings" }
 ];
 export const defaultTabsByMasterKind: Record<MasterDefinition["kind"], readonly MasterTab[]> = {
-  company: ["details", "tax", "communication", "addresses", "finance", "more", "settings"],
+  company: ["details", "tax", "communication", "addresses", "finance", "more", "logos", "settings"],
   contact: ["details", "tax", "communication", "addresses", "finance", "more", "settings"],
   product: ["details", "stock", "settings"],
   "work-order": ["details", "settings"]
@@ -322,6 +324,7 @@ function MasterUpsert({ createCode, definition, error, existingRecords, loading,
         {item.id === "addresses" ? <AddressesTab form={form} lookups={lookups} setForm={setForm} /> : null}
         {item.id === "finance" ? <FinanceTab definition={definition} form={form} lookups={lookups} setForm={setForm} /> : null}
         {item.id === "more" ? <MoreTab form={form} setForm={setForm} /> : null}
+        {item.id === "logos" && definition.kind === "company" ? <CompanyLogosTab form={form} setForm={setForm} /> : null}
         {item.id === "stock" ? <StockTab form={form} setForm={setForm} /> : null}
         {item.id === "settings" ? <SettingsTab form={form} setForm={setForm} /> : null}
       </>
