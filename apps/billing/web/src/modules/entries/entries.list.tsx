@@ -1,5 +1,5 @@
-import { BillingEntriesWorkspace } from "./entries.workspace";
+import { EntryDocumentWorkspace } from "./entries.workspace";
 
 export function EntriesList() {
-  return <BillingEntriesWorkspace kind="sales" />;
+  return <EntryDocumentWorkspace kind="sales" />;
 }

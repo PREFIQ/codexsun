@@ -52,7 +52,7 @@ export function WorkspacePagination({
             value={String(rowsPerPage)}
             onValueChange={(nextValue) => onRowsPerPageChange?.(Number.parseInt(nextValue, 10))}
           >
-            <SelectTrigger className="h-8 min-w-20 rounded-md border-border/80 bg-background text-sm shadow-none">
+            <SelectTrigger className="h-8 min-w-20 rounded-md border-border/80 bg-white text-sm shadow-none">
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="start" className="min-w-20 rounded-md">

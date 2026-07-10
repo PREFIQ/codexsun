@@ -113,8 +113,15 @@ export function WorkspaceLookup({
   const optionCount = filteredOptions.length + (canCreate ? 1 : 0)
 
   useEffect(() => {
+    if (value) return
+    setQuery("")
+    setSelectedDisplayValue("")
+    setSelectedFallbackOption(null)
+  }, [value])
+
+  useEffect(() => {
     if (!isOpen) {
-      const nextQuery = selectedOption?.label ?? selectedDisplayValue ?? value
+      const nextQuery = value ? (selectedOption?.label ?? selectedDisplayValue ?? value) : ""
       setQuery((current) => (current === nextQuery ? current : nextQuery))
     }
   }, [allowTextValue, isOpen, selectedDisplayValue, selectedOption, value])
@@ -221,7 +228,7 @@ export function WorkspaceLookup({
             aria-autocomplete="list"
             aria-expanded={isOpen}
             aria-invalid={invalid}
-            className={cn("h-11 w-full rounded-md bg-muted/35 pl-9 pr-9 shadow-sm hover:bg-muted/45 focus-visible:bg-background", invalid && "border-destructive focus-visible:ring-destructive/30")}
+            className={cn("h-11 w-full rounded-md bg-white pl-9 pr-9 shadow-sm hover:bg-white focus-visible:bg-white", invalid && "border-destructive focus-visible:ring-destructive/30")}
             disabled={disabled}
           placeholder={placeholder}
           required={required}

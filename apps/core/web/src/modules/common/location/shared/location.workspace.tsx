@@ -7,7 +7,7 @@ import { locationDefinitions } from "./location.definitions";
 import { useLocationRecords } from "./location.hooks";
 import type { LocationDefinition } from "./location.types";
 
-export function LocationWorkspace({ definition }: { definition: LocationDefinition }) {
+export function LocationMasterShell({ definition }: { definition: LocationDefinition }) {
   const records = useLocationRecords(definition);
 
   return (

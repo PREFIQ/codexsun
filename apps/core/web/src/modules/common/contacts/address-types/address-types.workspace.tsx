@@ -1,3 +1,3 @@
-import { CommonMasterWorkspace } from "../../../common-master";
+import { CommonMasterShell } from "../../../common-master";
 import { addressTypesDefinition } from "./address-types.definition";
-export function AddressTypesWorkspace() { return <CommonMasterWorkspace definition={addressTypesDefinition} />; }
+export function AddressTypesWorkspace() { return <CommonMasterShell definition={addressTypesDefinition} />; }

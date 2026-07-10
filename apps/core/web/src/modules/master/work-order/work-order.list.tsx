@@ -10,15 +10,17 @@ export function WorkOrderList({
   onEdit,
   onForceDelete,
   onToggle,
-  records
+  records,
+  visibleColumns
 }: {
   loading: boolean;
   onEdit: (record: WorkOrderRecord) => void;
   onForceDelete: (record: WorkOrderRecord) => void;
   onToggle: (record: WorkOrderRecord) => void;
   records: WorkOrderRecord[];
+  visibleColumns?: Record<string, boolean>;
 }) {
-  const headers = ["Work Order", "Code", "Type", "Status", "Action"];
+  const columns = workOrderColumns.filter((column) => visibleColumns?.[column.id] ?? true);
 
   return (
     <WorkspaceTablePanel>
@@ -26,9 +28,10 @@ export function WorkOrderList({
         <table className="w-full min-w-[760px] text-sm">
           <thead>
             <tr>
-              {headers.map((item) => (
-                <WorkspaceTableHeaderCell key={item} className={item === "Action" ? "text-right" : ""}>{item}</WorkspaceTableHeaderCell>
+              {columns.map((column) => (
+                <WorkspaceTableHeaderCell key={column.id}>{column.label}</WorkspaceTableHeaderCell>
               ))}
+              <WorkspaceTableHeaderCell className="text-right">Action</WorkspaceTableHeaderCell>
             </tr>
           </thead>
           <tbody>
@@ -36,10 +39,7 @@ export function WorkOrderList({
               const protectedRow = isProtectedWorkOrder(record);
               return (
                 <tr key={record.id} className="border-b last:border-0">
-                  <td className="px-4 py-3"><WorkOrderEditLink editable={!protectedRow} value={record.name} onEdit={() => onEdit(record)} /></td>
-                  <td className="px-4 py-3 uppercase text-muted-foreground"><WorkOrderEditLink editable={!protectedRow} value={record.code} onEdit={() => onEdit(record)} /></td>
-                  <td className="px-4 py-3">{record.typeName || "-"}</td>
-                  <td className="px-4 py-3"><WorkspaceStatusBadge label={record.isActive ? "active" : "inactive"} tone={record.isActive ? "success" : "warning"} /></td>
+                  {columns.map((column) => <WorkOrderCell columnId={column.id} key={column.id} protectedRow={protectedRow} record={record} onEdit={onEdit} />)}
                   <td className="px-4 py-3 text-right">
                     {protectedRow ? <WorkspaceProtectedIndicator /> : <WorkOrderRowActions record={record} onEdit={onEdit} onForceDelete={onForceDelete} onToggle={onToggle} />}
                   </td>
@@ -73,11 +73,18 @@ export function WorkOrderList({
           })}
         </div>
       ) : null}
-      {loading ? <WorkspaceTableSkeletonRows columns={headers.length} rows={4} /> : null}
+      {loading ? <WorkspaceTableSkeletonRows columns={columns.length + 1} rows={4} /> : null}
       {!loading && !records.length ? <WorkspaceTableEmptyState>No work orders found.</WorkspaceTableEmptyState> : null}
     </WorkspaceTablePanel>
   );
 }
+
+export const workOrderColumns = [
+  { id: "name", label: "Work Order" },
+  { id: "code", label: "Code" },
+  { id: "type", label: "Type" },
+  { id: "status", label: "Status" }
+];
 
 export function isProtectedWorkOrder(record: WorkOrderRecord) {
   return record.tenantId === "global" || record.name.trim() === "-";
@@ -94,6 +101,17 @@ function WorkOrderEditLink({ editable, onEdit, value }: { editable: boolean; onE
       {String(value || "-")}
     </button>
   );
+}
+
+function WorkOrderCell({ columnId, onEdit, protectedRow, record }: { columnId: string; onEdit: (record: WorkOrderRecord) => void; protectedRow: boolean; record: WorkOrderRecord }) {
+  if (columnId === "name") {
+    return <td className="px-4 py-3"><WorkOrderEditLink editable={!protectedRow} value={record.name} onEdit={() => onEdit(record)} /></td>;
+  }
+  if (columnId === "code") {
+    return <td className="px-4 py-3 uppercase text-muted-foreground"><WorkOrderEditLink editable={!protectedRow} value={record.code} onEdit={() => onEdit(record)} /></td>;
+  }
+  if (columnId === "type") return <td className="px-4 py-3">{record.typeName || "-"}</td>;
+  return <td className="px-4 py-3"><WorkspaceStatusBadge label={record.isActive ? "active" : "inactive"} tone={record.isActive ? "success" : "warning"} /></td>;
 }
 
 function WorkOrderRowActions({ onEdit, onForceDelete, onToggle, record }: { onEdit: (record: WorkOrderRecord) => void; onForceDelete: (record: WorkOrderRecord) => void; onToggle: (record: WorkOrderRecord) => void; record: WorkOrderRecord }) {

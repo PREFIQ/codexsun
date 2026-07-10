@@ -1,7 +1,7 @@
 import { cityDefinition } from "../shared/location.definitions";
-import { LocationWorkspace } from "../shared/location.workspace";
+import { LocationMasterShell } from "../shared/location.workspace";
 
 export function CityWorkspace() {
-  return <LocationWorkspace definition={cityDefinition} />;
+  return <LocationMasterShell definition={cityDefinition} />;
 }
 

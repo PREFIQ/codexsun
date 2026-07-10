@@ -1,6 +1,5 @@
-import { MasterWorkspaceShell } from "../../master/master.workspace";
-import { companyDefinition } from "./company.definition";
+import { CompanyWorkspace } from "./company.workspace";
 
 export function CompanyForm() {
-  return <MasterWorkspaceShell definition={companyDefinition} />;
+  return <CompanyWorkspace />;
 }

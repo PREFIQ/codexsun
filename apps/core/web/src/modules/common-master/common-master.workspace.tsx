@@ -22,7 +22,7 @@ import { cn } from "@codexsun/ui/lib/utils";
 import { createCommonMaster, forceDeleteCommonMaster, listCommonMaster, setCommonMasterActive, updateCommonMaster } from "./common-master.services";
 import type { CommonMasterDefinition, CommonMasterRecord, CommonMasterValue } from "./common-master.types";
 
-export function CommonMasterWorkspace({ definition }: { definition: CommonMasterDefinition }) {
+export function CommonMasterShell({ definition }: { definition: CommonMasterDefinition }) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");

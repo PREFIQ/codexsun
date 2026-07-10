@@ -1,3 +1,3 @@
-import { CommonMasterWorkspace } from "../../../common-master";
+import { CommonMasterShell } from "../../../common-master";
 import { stylesDefinition } from "./styles.definition";
-export function StylesWorkspace() { return <CommonMasterWorkspace definition={stylesDefinition} />; }
+export function StylesWorkspace() { return <CommonMasterShell definition={stylesDefinition} />; }

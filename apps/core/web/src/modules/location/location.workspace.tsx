@@ -36,7 +36,7 @@ import {
 } from "./location.services"
 import type { LocationDefinition, LocationKind, LocationRecord, LocationSavePayload } from "./location.types"
 
-export function LocationWorkspace({ kind }: { kind: LocationKind }) {
+export function LocationModuleShell({ kind }: { kind: LocationKind }) {
   const definition = locationDefinitions[kind]
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")

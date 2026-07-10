@@ -1,3 +1,3 @@
-import { CommonMasterWorkspace } from "../../../common-master";
+import { CommonMasterShell } from "../../../common-master";
 import { warehousesDefinition } from "./warehouses.definition";
-export function WarehousesWorkspace() { return <CommonMasterWorkspace definition={warehousesDefinition} />; }
+export function WarehousesWorkspace() { return <CommonMasterShell definition={warehousesDefinition} />; }

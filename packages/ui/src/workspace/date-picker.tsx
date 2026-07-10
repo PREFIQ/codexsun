@@ -52,8 +52,8 @@ export function WorkspaceDatePicker({
           type="button"
           variant="outline"
           className={cn(
-            "h-11 w-full justify-start rounded-md border-border/80 bg-background/95 px-3 text-left text-sm font-normal shadow-sm hover:translate-y-0 hover:bg-background hover:shadow-sm active:translate-y-0 active:scale-100",
-            !selectedDate && "text-muted-foreground",
+            "h-11 w-full justify-start rounded-md border-border/80 bg-white px-3 text-left text-sm font-normal shadow-sm hover:translate-y-0 hover:bg-white hover:shadow-sm active:translate-y-0 active:scale-100",
+            !selectedDate && "text-muted-foreground/60",
           )}
         >
           <CalendarDays className="size-4 text-muted-foreground" />

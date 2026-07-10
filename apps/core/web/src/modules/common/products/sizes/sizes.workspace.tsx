@@ -1,3 +1,3 @@
-import { CommonMasterWorkspace } from "../../../common-master";
+import { CommonMasterShell } from "../../../common-master";
 import { sizesDefinition } from "./sizes.definition";
-export function SizesWorkspace() { return <CommonMasterWorkspace definition={sizesDefinition} />; }
+export function SizesWorkspace() { return <CommonMasterShell definition={sizesDefinition} />; }

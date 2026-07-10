@@ -32,7 +32,7 @@ export function WorkspaceSelect({
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger
         aria-label={ariaLabel ?? placeholder}
-        className="h-11 w-full rounded-md border-border/80 bg-background/95 text-sm shadow-sm"
+        className="h-11 w-full rounded-md border-border/80 bg-white text-sm shadow-sm"
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>

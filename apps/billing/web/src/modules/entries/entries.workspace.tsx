@@ -147,7 +147,7 @@ type ProductDraft = {
   unitName: string;
 };
 
-export function BillingEntriesWorkspace({ kind }: { kind: EntryKind }) {
+export function EntryDocumentWorkspace({ kind }: { kind: EntryKind }) {
   const queryClient = useQueryClient();
   const billingSettingsQuery = useQuery({
     queryFn: getBillingSettings,

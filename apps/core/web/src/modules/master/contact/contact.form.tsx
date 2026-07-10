@@ -1,1 +1,5 @@
-export { MasterWorkspaceShell as ContactForm } from "../master.workspace";
+import { ContactWorkspace } from "./contact.workspace";
+
+export function ContactForm() {
+  return <ContactWorkspace />;
+}

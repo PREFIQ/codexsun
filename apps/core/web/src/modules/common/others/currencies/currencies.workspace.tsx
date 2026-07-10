@@ -1,3 +1,3 @@
-import { CommonMasterWorkspace } from "../../../common-master";
+import { CommonMasterShell } from "../../../common-master";
 import { currenciesDefinition } from "./currencies.definition";
-export function CurrenciesWorkspace() { return <CommonMasterWorkspace definition={currenciesDefinition} />; }
+export function CurrenciesWorkspace() { return <CommonMasterShell definition={currenciesDefinition} />; }

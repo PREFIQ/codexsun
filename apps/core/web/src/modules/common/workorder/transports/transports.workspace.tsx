@@ -1,3 +1,3 @@
-import { CommonMasterWorkspace } from "../../../common-master";
+import { CommonMasterShell } from "../../../common-master";
 import { transportsDefinition } from "./transports.definition";
-export function TransportsWorkspace() { return <CommonMasterWorkspace definition={transportsDefinition} />; }
+export function TransportsWorkspace() { return <CommonMasterShell definition={transportsDefinition} />; }

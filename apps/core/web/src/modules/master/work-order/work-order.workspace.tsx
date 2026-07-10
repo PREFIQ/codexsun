@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -10,16 +10,24 @@ import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 import { cn } from "@codexsun/ui/lib/utils";
 import { WorkOrderForm } from "./work-order.form";
 import { useWorkOrders } from "./work-order.hooks";
-import { WorkOrderList, isProtectedWorkOrder } from "./work-order.list";
+import { WorkOrderList, isProtectedWorkOrder, workOrderColumns } from "./work-order.list";
 import { createWorkOrder, forceDeleteWorkOrder, setWorkOrderActive, updateWorkOrder } from "./work-order.services";
 import { workOrderDefinition } from "./work-order.definition";
 import type { WorkOrderRecord, WorkOrderSavePayload } from "./work-order.types";
 
+const workOrderFilterOptions = [
+  { id: "all", label: "All work orders" },
+  { id: "active", label: "Active" },
+  { id: "inactive", label: "Inactive" }
+];
+
 export function WorkOrderWorkspace() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<WorkOrderRecord | null | undefined>(undefined);
   const query = useWorkOrders(search);
   const save = useMutation({
@@ -44,13 +52,24 @@ export function WorkOrderWorkspace() {
     onError: (error) => toast.error("Unable to update work order", { description: error instanceof Error ? error.message : "Please try again." })
   });
   const rows = query.data ?? [];
-  const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+  const columnOptions = useMemo(() => workOrderColumns.map((column) => ({
+    checked: visibleColumns[column.id] ?? true,
+    id: column.id,
+    label: column.label,
+    onCheckedChange: (checked: boolean) => setVisibleColumns((current) => ({ ...current, [column.id]: checked }))
+  })), [visibleColumns]);
+  const filteredRows = useMemo(() => rows.filter((record) => {
+    if (statusFilter === "active") return record.isActive;
+    if (statusFilter === "inactive") return !record.isActive;
+    return true;
+  }), [rows, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = rows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  const pageRows = filteredRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   useEffect(() => {
     setPage(1);
-  }, [search]);
+  }, [search, statusFilter]);
 
   if (editing !== undefined) {
     return (
@@ -75,13 +94,19 @@ export function WorkOrderWorkspace() {
       </div>}
     >
       <WorkspaceFilters
+        columnOptions={columnOptions}
+        filterOptions={workOrderFilterOptions}
+        filterValue={statusFilter}
         searchPlaceholder={workOrderDefinition.search}
         searchValue={search}
+        onFilterValueChange={setStatusFilter}
         onSearchValueChange={setSearch}
+        onShowAllColumns={() => setVisibleColumns(Object.fromEntries(workOrderColumns.map((column) => [column.id, true])))}
       />
       <WorkOrderList
         loading={query.isFetching && !query.data}
         records={pageRows}
+        visibleColumns={visibleColumns}
         onEdit={(record) => { if (!isProtectedWorkOrder(record)) setEditing(record); }}
         onForceDelete={(record) => { if (window.confirm(`Force delete ${record.name}? This cannot be undone.`)) rowAction.mutate({ record, type: "delete" }); }}
         onToggle={(record) => rowAction.mutate({ record, type: "toggle" })}
@@ -89,9 +114,9 @@ export function WorkOrderWorkspace() {
       <WorkspacePagination
         page={currentPage}
         rowsPerPage={rowsPerPage}
-        showingLabel={buildShowingLabel(currentPage, rowsPerPage, rows.length)}
+        showingLabel={buildShowingLabel(currentPage, rowsPerPage, filteredRows.length)}
         singularLabel={workOrderDefinition.singular}
-        totalCount={rows.length}
+        totalCount={filteredRows.length}
         totalPages={totalPages}
         onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
         onPageChange={setPage}

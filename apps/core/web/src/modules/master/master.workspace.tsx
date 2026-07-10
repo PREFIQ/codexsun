@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, CheckCircle2, Plus, RefreshCw, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
 import { WorkspaceProtectedIndicator } from "@codexsun/ui/workspace/protected-indicator";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
+import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
 import { WorkspaceTableEmptyState, WorkspaceTableHeaderCell, WorkspaceTablePanel, WorkspaceTableSkeletonRows } from "@codexsun/ui/workspace/table";
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
@@ -37,14 +38,30 @@ const masterTabs: Array<{ id: MasterTab; label: string }> = [
   { id: "stock", label: "Stock" },
   { id: "settings", label: "Settings" }
 ];
+export const defaultTabsByMasterKind: Record<MasterDefinition["kind"], readonly MasterTab[]> = {
+  company: ["details", "tax", "communication", "addresses", "finance", "more", "settings"],
+  contact: ["details", "tax", "communication", "addresses", "finance", "more", "settings"],
+  product: ["details", "stock", "settings"],
+  "work-order": ["details", "settings"]
+};
 const commonMasterPathByKey = Object.fromEntries(commonMasterDefinitions.map((definition) => [definition.key, definition.path]));
 const msmeCategoryOptions: WorkspaceLookupOption[] = ["Micro", "Small", "Medium"].map((label) => ({ label, value: label }));
+const masterFilterOptions = [
+  { id: "all", label: "All records" },
+  { id: "active", label: "Active" },
+  { id: "inactive", label: "Inactive" }
+];
+const emailTypeOptions = ["Primary", "Work", "Personal", "Billing", "Support", "Other"].map((value) => ({ label: value, value }));
+const phoneTypeOptions = ["Mobile", "Office", "Home", "WhatsApp", "Billing", "Support", "Other"].map((value) => ({ label: value, value }));
+const socialPlatformOptions = ["Website", "LinkedIn", "Facebook", "Instagram", "X", "YouTube", "WhatsApp", "Telegram", "Other"].map((value) => ({ label: value, value }));
 
-export function MasterWorkspaceShell({ createCode, definition, tabs }: { createCode?: (records: MasterRecord[]) => string; definition: MasterDefinition; tabs?: MasterTab[] }) {
+export function MasterRecordShell({ createCode, definition, tabs }: { createCode?: (records: MasterRecord[]) => string; definition: MasterDefinition; tabs?: MasterTab[] }) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<MasterRecord | null | undefined>(undefined);
   const query = useMasterRecords(definition, search);
   const save = useMutation({
@@ -69,13 +86,26 @@ export function MasterWorkspaceShell({ createCode, definition, tabs }: { createC
     onError: (error) => toast.error(`Unable to update ${definition.singular}`, { description: error instanceof Error ? error.message : "Please try again." })
   });
   const rows = query.data ?? [];
-  const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+  const columnOptions = useMemo(() => masterColumnDefinitions(definition).map((column) => ({
+    checked: visibleColumns[column.id] ?? true,
+    id: column.id,
+    label: column.label,
+    onCheckedChange: (checked: boolean) => setVisibleColumns((current) => ({ ...current, [column.id]: checked }))
+  })), [definition, visibleColumns]);
+  const filteredRows = useMemo(() => rows.filter((record) => {
+    if (statusFilter === "active") return record.isActive;
+    if (statusFilter === "inactive") return !record.isActive;
+    return true;
+  }), [rows, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = rows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  const pageRows = filteredRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   useEffect(() => {
     setSearch("");
+    setStatusFilter("all");
     setPage(1);
+    setVisibleColumns({});
     setEditing(undefined);
   }, [definition.kind]);
 
@@ -105,17 +135,22 @@ export function MasterWorkspaceShell({ createCode, definition, tabs }: { createC
       </div>}
     >
       <WorkspaceFilters
+        columnOptions={columnOptions}
+        filterOptions={masterFilterOptions}
+        filterValue={statusFilter}
         searchPlaceholder={definition.search}
         searchValue={search}
+        onFilterValueChange={(value) => { setStatusFilter(value); setPage(1); }}
         onSearchValueChange={(value) => { setSearch(value); setPage(1); }}
+        onShowAllColumns={() => setVisibleColumns(Object.fromEntries(masterColumnDefinitions(definition).map((column) => [column.id, true])))}
       />
-      <MasterList definition={definition} loading={query.isFetching && !query.data} records={pageRows} onEdit={(record) => { if (!isReservedMaster(record)) setEditing(record); }} onForceDelete={(record) => { if (window.confirm(`Force delete ${record.name}? This cannot be undone.`)) rowAction.mutate({ record, type: "delete" }); }} onToggle={(record) => rowAction.mutate({ record, type: "toggle" })} />
+      <MasterList definition={definition} loading={query.isFetching && !query.data} records={pageRows} visibleColumns={visibleColumns} onEdit={(record) => { if (!isReservedMaster(record)) setEditing(record); }} onForceDelete={(record) => { if (window.confirm(`Force delete ${record.name}? This cannot be undone.`)) rowAction.mutate({ record, type: "delete" }); }} onToggle={(record) => rowAction.mutate({ record, type: "toggle" })} />
       <WorkspacePagination
         page={currentPage}
         rowsPerPage={rowsPerPage}
-        showingLabel={buildShowingLabel(currentPage, rowsPerPage, rows.length)}
+        showingLabel={buildShowingLabel(currentPage, rowsPerPage, filteredRows.length)}
         singularLabel={definition.singular}
-        totalCount={rows.length}
+        totalCount={filteredRows.length}
         totalPages={totalPages}
         onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
         onPageChange={setPage}
@@ -126,25 +161,18 @@ export function MasterWorkspaceShell({ createCode, definition, tabs }: { createC
   );
 }
 
-export function MasterList({ definition, loading, onEdit, onForceDelete, onToggle, records }: { definition: MasterDefinition; loading: boolean; onEdit: (record: MasterRecord) => void; onForceDelete?: (record: MasterRecord) => void; onToggle?: (record: MasterRecord) => void; records: MasterRecord[] }) {
-  const headers = definition.kind === "product"
-    ? ["Product", "Code", "Type", "HSN", "Unit", "Status", "Action"]
-    : [definition.kind === "company" ? "Company" : "Contact", "Code", "Type", "Phone", "Email", "GSTIN", "Status", "Action"];
+export function MasterList({ definition, loading, onEdit, onForceDelete, onToggle, records, visibleColumns }: { definition: MasterDefinition; loading: boolean; onEdit: (record: MasterRecord) => void; onForceDelete?: (record: MasterRecord) => void; onToggle?: (record: MasterRecord) => void; records: MasterRecord[]; visibleColumns?: Record<string, boolean> }) {
+  const columns = masterColumnDefinitions(definition).filter((column) => visibleColumns?.[column.id] ?? true);
+  const skeletonColumns = columns.length + 1;
   return (
     <WorkspaceTablePanel>
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[760px] text-sm">
-          <thead><tr>{headers.map((item) => <WorkspaceTableHeaderCell key={item} className={item === "Action" ? "text-right" : ""}>{item}</WorkspaceTableHeaderCell>)}</tr></thead>
+          <thead><tr>{columns.map((column) => <WorkspaceTableHeaderCell key={column.id}>{column.label}</WorkspaceTableHeaderCell>)}<WorkspaceTableHeaderCell className="text-right">Action</WorkspaceTableHeaderCell></tr></thead>
           <tbody>
             {!loading ? records.map((record) => (
               <tr key={record.id} className="border-b last:border-0">
-                <td className="px-4 py-3"><MasterEditLink editable={!isReservedMaster(record)} value={record.name} onEdit={() => onEdit(record)} /></td>
-                <td className="px-4 py-3 uppercase text-muted-foreground"><MasterEditLink editable={!isReservedMaster(record)} value={record.code} onEdit={() => onEdit(record)} /></td>
-                <td className="px-4 py-3">{record.typeName}</td>
-                <td className="px-4 py-3">{definition.kind === "product" ? record.hsnCode : record.primaryPhone}</td>
-                <td className="px-4 py-3">{definition.kind === "product" ? record.unitName : record.primaryEmail}</td>
-                {definition.kind !== "product" ? <td className="px-4 py-3">{record.gstin}</td> : null}
-                <td className="px-4 py-3"><WorkspaceStatusBadge label={record.isActive ? "active" : "inactive"} tone={record.isActive ? "success" : "warning"} /></td>
+                {columns.map((column) => <MasterListCell columnId={column.id} key={column.id} record={record} onEdit={onEdit} />)}
                 <td className="px-4 py-3 text-right"><MasterRowActions record={record} onEdit={onEdit} {...(onForceDelete ? { onForceDelete } : {})} {...(onToggle ? { onToggle } : {})} /></td>
               </tr>
             )) : null}
@@ -156,10 +184,48 @@ export function MasterList({ definition, loading, onEdit, onForceDelete, onToggl
           {records.map((record) => <MasterMobileCard key={record.id} definition={definition} record={record} onEdit={() => onEdit(record)} {...(onForceDelete ? { onForceDelete: () => onForceDelete(record) } : {})} {...(onToggle ? { onToggle: () => onToggle(record) } : {})} />)}
         </div>
       ) : null}
-      {loading ? <WorkspaceTableSkeletonRows columns={headers.length} rows={4} /> : null}
+      {loading ? <WorkspaceTableSkeletonRows columns={skeletonColumns} rows={4} /> : null}
       {!loading && !records.length ? <WorkspaceTableEmptyState>No {definition.label.toLowerCase()} found.</WorkspaceTableEmptyState> : null}
     </WorkspaceTablePanel>
   );
+}
+
+function masterColumnDefinitions(definition: MasterDefinition) {
+  if (definition.kind === "product") {
+    return [
+      { id: "name", label: "Product" },
+      { id: "code", label: "Code" },
+      { id: "type", label: "Type" },
+      { id: "hsn", label: "HSN" },
+      { id: "unit", label: "Unit" },
+      { id: "status", label: "Status" }
+    ];
+  }
+  return [
+    { id: "name", label: definition.kind === "company" ? "Company" : "Contact" },
+    { id: "code", label: "Code" },
+    { id: "type", label: "Type" },
+    { id: "phone", label: "Phone" },
+    { id: "email", label: "Email" },
+    { id: "gstin", label: "GSTIN" },
+    { id: "status", label: "Status" }
+  ];
+}
+
+function MasterListCell({ columnId, onEdit, record }: { columnId: string; onEdit: (record: MasterRecord) => void; record: MasterRecord }) {
+  if (columnId === "name") {
+    return <td className="px-4 py-3"><MasterEditLink editable={!isReservedMaster(record)} value={record.name} onEdit={() => onEdit(record)} /></td>;
+  }
+  if (columnId === "code") {
+    return <td className="px-4 py-3 uppercase text-muted-foreground"><MasterEditLink editable={!isReservedMaster(record)} value={record.code} onEdit={() => onEdit(record)} /></td>;
+  }
+  if (columnId === "type") return <td className="px-4 py-3">{record.typeName || "-"}</td>;
+  if (columnId === "hsn") return <td className="px-4 py-3">{record.hsnCode || "-"}</td>;
+  if (columnId === "unit") return <td className="px-4 py-3">{record.unitName || "-"}</td>;
+  if (columnId === "phone") return <td className="px-4 py-3">{record.primaryPhone || "-"}</td>;
+  if (columnId === "email") return <td className="px-4 py-3">{record.primaryEmail || "-"}</td>;
+  if (columnId === "gstin") return <td className="px-4 py-3">{record.gstin || "-"}</td>;
+  return <td className="px-4 py-3"><WorkspaceStatusBadge label={record.isActive ? "active" : "inactive"} tone={record.isActive ? "success" : "warning"} /></td>;
 }
 
 function MasterMobileCard({ definition, onEdit, onForceDelete, onToggle, record }: { definition: MasterDefinition; onEdit: () => void; onForceDelete?: () => void; onToggle?: () => void; record: MasterRecord }) {
@@ -244,7 +310,7 @@ function MasterUpsert({ createCode, definition, error, existingRecords, loading,
     taxes: (name) => createLookupRecord("taxes", name, queryClient),
     units: (name) => createLookupRecord("units", name, queryClient)
   } : {};
-  const visibleTabs = tabs ?? masterTabs.map((item) => item.id);
+  const visibleTabs = tabs ?? defaultTabsForMaster(definition);
   const tabItems: WorkspaceAnimatedTab[] = masterTabs.filter((item) => visibleTabs.includes(item.id)).map((item) => ({
     label: item.label,
     value: item.id,
@@ -323,7 +389,11 @@ function TaxTab({ form, setForm }: TabProps) {
 }
 
 function CommunicationTab({ form, setForm }: TabProps) {
-  return <div className="space-y-5"><ChildPanel title="Contact Emails" onAdd={() => patch(setForm, { emails: [...children(form.emails), { ...emptyChild(), email: "", emailType: "Primary", isPrimary: false }] })}>{children(form.emails).map((item, index) => <ChildRow key={item.id} item={item} index={index} field="emails" label1="Email" label2="Email type" name1="email" name2="emailType" setForm={setForm} />)}</ChildPanel><ChildPanel title="Contact Phones" onAdd={() => patch(setForm, { phones: [...children(form.phones), { ...emptyChild(), phone: "", phoneType: "Mobile", isPrimary: false }] })}>{children(form.phones).map((item, index) => <ChildRow key={item.id} item={item} index={index} field="phones" label1="Phone" label2="Phone type" name1="phone" name2="phoneType" setForm={setForm} />)}</ChildPanel></div>;
+  return <div className="space-y-5"><ChildPanel title="Contact Emails" onAdd={() => patch(setForm, { emails: [...children(form.emails), { ...emptyChild(), email: "", emailType: "Primary", isPrimary: false }] })}>{children(form.emails).map((item, index) => <ContactMethodRow key={item.id} item={item} index={index} field="emails" valueLabel="Email" valueName="email" typeLabel="Email type" typeName="emailType" typeOptions={emailTypeOptions} setForm={setForm} />)}</ChildPanel><ChildPanel title="Contact Phones" onAdd={() => patch(setForm, { phones: [...children(form.phones), { ...emptyChild(), phone: "", phoneType: "Mobile", isPrimary: false }] })}>{children(form.phones).map((item, index) => <ContactMethodRow key={item.id} item={item} index={index} field="phones" valueLabel="Phone" valueName="phone" typeLabel="Phone type" typeName="phoneType" typeOptions={phoneTypeOptions} setForm={setForm} />)}</ChildPanel></div>;
+}
+
+export function defaultTabsForMaster(definition: MasterDefinition): readonly MasterTab[] {
+  return defaultTabsByMasterKind[definition.kind];
 }
 
 function AddressesTab({ form, lookups, setForm }: TabProps & { lookups: LookupState }) {
@@ -369,7 +439,7 @@ function FinanceTab({ definition, form, lookups, setForm }: TabProps & { definit
 }
 
 function MoreTab({ form, setForm }: TabProps) {
-  return <div className="space-y-5"><WorkspaceFormGrid columns={1}><Field label="Website"><Input value={String(form.website ?? "")} onChange={(event) => patch(setForm, { website: event.target.value })} /></Field><Field label="Description"><textarea className="min-h-28 rounded-md border bg-background px-3 py-2 text-sm shadow-sm" value={String(form.description ?? "")} onChange={(event) => patch(setForm, { description: event.target.value })} /></Field></WorkspaceFormGrid><ChildPanel title="Social Links" onAdd={() => patch(setForm, { socialLinks: [...children(form.socialLinks), { ...emptyChild(), platform: "Website", url: "", isActive: true }] })}>{children(form.socialLinks).map((item, index) => <div className="grid gap-4 rounded-md border p-4 md:grid-cols-[1fr_1fr_1fr_auto]" key={item.id}><Field label="Platform"><Input value={String(item.platform ?? "Website")} onChange={(event) => updateChild(setForm, "socialLinks", index, { platform: event.target.value })} /></Field><Field label="URL"><Input value={String(item.url ?? "")} onChange={(event) => updateChild(setForm, "socialLinks", index, { url: event.target.value })} /></Field><SwitchRow label="Active" checked={item.isActive !== false} onChange={(isActive) => updateChild(setForm, "socialLinks", index, { isActive })} /><DeleteButton onClick={() => removeChild(setForm, "socialLinks", index)} /></div>)}</ChildPanel></div>;
+  return <div className="space-y-5"><WorkspaceFormGrid columns={1}><Field label="Website"><Input value={String(form.website ?? "")} onChange={(event) => patch(setForm, { website: event.target.value })} /></Field><Field label="Description"><textarea className="min-h-28 rounded-md border bg-background px-3 py-2 text-sm shadow-sm" value={String(form.description ?? "")} onChange={(event) => patch(setForm, { description: event.target.value })} /></Field></WorkspaceFormGrid><ChildPanel title="Social Links" onAdd={() => patch(setForm, { socialLinks: [...children(form.socialLinks), { ...emptyChild(), platform: "Website", url: "", isActive: true }] })}>{children(form.socialLinks).map((item, index) => <div className="grid gap-4 rounded-md border p-4 md:grid-cols-[1fr_1fr_1fr_auto]" key={item.id}><Field label="Platform"><WorkspaceSelect options={socialPlatformOptions} value={String(item.platform ?? "Website")} onValueChange={(platform) => updateChild(setForm, "socialLinks", index, { platform })} /></Field><Field label="URL"><Input value={String(item.url ?? "")} onChange={(event) => updateChild(setForm, "socialLinks", index, { url: event.target.value })} /></Field><SwitchRow label="Active" checked={item.isActive !== false} onChange={(isActive) => updateChild(setForm, "socialLinks", index, { isActive })} /><DeleteButton onClick={() => removeChild(setForm, "socialLinks", index)} /></div>)}</ChildPanel></div>;
 }
 
 function SettingsTab({ form, setForm }: TabProps) {
@@ -385,8 +455,9 @@ function StockTab({ form, setForm }: TabProps) {
   </WorkspaceFormGrid>;
 }
 
-function ChildRow({ field, index, item, label1, label2, name1, name2, setForm }: { field: "emails" | "phones"; index: number; item: MasterChild; label1: string; label2: string; name1: string; name2: string; setForm: TabProps["setForm"] }) {
-  return <div className="grid min-h-[84px] gap-4 border-b border-border/70 py-4 last:border-b-0 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end"><Field label={label1}><Input value={String(item[name1] ?? "")} onChange={(event) => updateChild(setForm, field, index, { [name1]: event.target.value })} /></Field><Field label={label2}><Input value={String(item[name2] ?? "")} onChange={(event) => updateChild(setForm, field, index, { [name2]: event.target.value })} /></Field><SwitchRow label="Primary" checked={item.isPrimary === true} compact onChange={(isPrimary) => updateChild(setForm, field, index, { isPrimary })} /><DeleteButton onClick={() => removeChild(setForm, field, index)} /></div>;
+function ContactMethodRow({ field, index, item, setForm, typeLabel, typeName, typeOptions, valueLabel, valueName }: { field: "emails" | "phones"; index: number; item: MasterChild; setForm: TabProps["setForm"]; typeLabel: string; typeName: string; typeOptions: Array<{ label: string; value: string }>; valueLabel: string; valueName: string }) {
+  const selectedType = String(item[typeName] ?? typeOptions[0]?.value ?? "");
+  return <div className="grid min-h-[84px] gap-4 border-b border-border/70 py-4 last:border-b-0 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end"><Field label={valueLabel}><Input value={String(item[valueName] ?? "")} onChange={(event) => updateChild(setForm, field, index, { [valueName]: event.target.value })} /></Field><Field label={typeLabel}><WorkspaceSelect options={typeOptions} value={selectedType} onValueChange={(value) => updateChild(setForm, field, index, { [typeName]: value })} /></Field><SwitchRow label="Primary" checked={item.isPrimary === true} compact onChange={(isPrimary) => updateChild(setForm, field, index, { isPrimary })} /><DeleteButton onClick={() => removeChild(setForm, field, index)} /></div>;
 }
 
 type TabProps = { form: MasterSavePayload; setForm: React.Dispatch<React.SetStateAction<MasterSavePayload>> };

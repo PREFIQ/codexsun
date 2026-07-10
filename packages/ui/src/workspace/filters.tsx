@@ -51,7 +51,7 @@ export function WorkspaceFilters({
       <div className="relative max-w-xl flex-1">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          className="h-8 rounded-md border-border/80 bg-background/95 pl-9 text-sm shadow-none"
+          className="h-8 rounded-md border-border/80 bg-white pl-9 text-sm shadow-none"
           {...(searchPlaceholder ? { placeholder: searchPlaceholder } : {})}
           value={searchValue}
           onChange={(event: ChangeEvent<HTMLInputElement>) => onSearchValueChange(event.target.value)}
@@ -82,7 +82,7 @@ function FilterMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="h-8 rounded-md border-border/80 bg-background/95 px-3 text-sm shadow-none" type="button" variant="outline">
+        <Button className="h-8 rounded-md border-border/80 bg-white px-3 text-sm shadow-none" type="button" variant="outline">
           <Filter className="size-4" />
           Filters
         </Button>
@@ -131,7 +131,7 @@ function ColumnMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="h-8 rounded-md border-border/80 bg-background/95 px-3 text-sm shadow-none" type="button" variant="outline">
+        <Button className="h-8 rounded-md border-border/80 bg-white px-3 text-sm shadow-none" type="button" variant="outline">
           <Columns3 className="size-4" />
           Columns
         </Button>

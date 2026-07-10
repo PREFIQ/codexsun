@@ -1,5 +1,5 @@
-import { BillingEntriesWorkspace } from "./entries.workspace";
+import { EntryDocumentWorkspace } from "./entries.workspace";
 
 export function EntriesForm() {
-  return <BillingEntriesWorkspace kind="quotation" />;
+  return <EntryDocumentWorkspace kind="quotation" />;
 }

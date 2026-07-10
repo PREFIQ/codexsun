@@ -4,5 +4,4 @@ export * from "./district";
 export * from "./pincode";
 export * from "./state";
 export * from "./shared/location.definitions";
-export * from "./shared/location.workspace";
 

@@ -21,9 +21,36 @@ import { ApplicationLayout, Button, Card, Label, RadioGroup, RadioGroupItem, Sta
 import { AuthGate } from "../../shared/auth/AuthGate";
 import { appMenuItemsFor, appWorkspaceItems, defaultLandingApp, enabledAppIds, type PlatformAppId } from "../../app/app-registry";
 import { getTenantRuntime } from "../../modules/tenant/tenant.services";
-import { LocationWorkspace, type LocationKind } from "../../modules/location";
-import { CommonMasterWorkspace } from "../../modules/common-master";
 import { commonMasterDefinitions } from "../../modules/common/registry";
+import { AddressTypesWorkspace } from "@codexsun/core-web/modules/common/contacts/address-types";
+import { BankNamesWorkspace } from "@codexsun/core-web/modules/common/contacts/bank-names";
+import { ContactGroupsWorkspace } from "@codexsun/core-web/modules/common/contacts/contact-groups";
+import { ContactTypesWorkspace } from "@codexsun/core-web/modules/common/contacts/contact-types";
+import { CityWorkspace } from "@codexsun/core-web/modules/common/location/city";
+import { CountryWorkspace } from "@codexsun/core-web/modules/common/location/country";
+import { DistrictWorkspace } from "@codexsun/core-web/modules/common/location/district";
+import { PincodeWorkspace } from "@codexsun/core-web/modules/common/location/pincode";
+import { StateWorkspace } from "@codexsun/core-web/modules/common/location/state";
+import { CurrenciesWorkspace } from "@codexsun/core-web/modules/common/others/currencies";
+import { MonthsWorkspace } from "@codexsun/core-web/modules/common/others/months";
+import { PaymentTermsWorkspace } from "@codexsun/core-web/modules/common/others/payment-terms";
+import { PrioritiesWorkspace } from "@codexsun/core-web/modules/common/others/priorities";
+import { SalesTypesWorkspace } from "@codexsun/core-web/modules/common/others/sales-types";
+import { BrandsWorkspace } from "@codexsun/core-web/modules/common/products/brands";
+import { ColoursWorkspace } from "@codexsun/core-web/modules/common/products/colours";
+import { HsnCodesWorkspace } from "@codexsun/core-web/modules/common/products/hsn-codes";
+import { ProductCategoriesWorkspace } from "@codexsun/core-web/modules/common/products/product-categories";
+import { ProductGroupsWorkspace } from "@codexsun/core-web/modules/common/products/product-groups";
+import { ProductTypesWorkspace } from "@codexsun/core-web/modules/common/products/product-types";
+import { SizesWorkspace } from "@codexsun/core-web/modules/common/products/sizes";
+import { StylesWorkspace } from "@codexsun/core-web/modules/common/products/styles";
+import { TaxesWorkspace } from "@codexsun/core-web/modules/common/products/taxes";
+import { UnitsWorkspace } from "@codexsun/core-web/modules/common/products/units";
+import { DestinationsWorkspace } from "@codexsun/core-web/modules/common/workorder/destinations";
+import { StockRejectionTypesWorkspace } from "@codexsun/core-web/modules/common/workorder/stock-rejection-types";
+import { TransportsWorkspace } from "@codexsun/core-web/modules/common/workorder/transports";
+import { WarehousesWorkspace } from "@codexsun/core-web/modules/common/workorder/warehouses";
+import { WorkOrderTypesWorkspace } from "@codexsun/core-web/modules/common/workorder/work-order-types";
 import { ContactWorkspace, ProductWorkspace, WorkOrderWorkspace } from "../../modules/master";
 import { CompanyWorkspace } from "../../modules/organisation";
 import { QuotationWorkspace } from "../../modules/quotation/quotation.workspace";
@@ -174,8 +201,8 @@ export function AppDesk() {
           {isAccountsPage(safePage) && safePage !== "accounts.settings" && !isAccountsSettingsPage(safePage) ? <AccountsWorkspace page={accountsWorkspacePage(safePage)} /> : null}
           {isAccountsSettingsPage(safePage) ? <AccountsSettings page={safePage} /> : null}
           {safePage === "core.organisation.company" ? <CompanyWorkspace /> : null}
-          {isCoreLocationPage(safePage) ? <LocationWorkspace kind={locationKindFromPage(safePage)} /> : null}
-          {isCommonMasterPage(safePage) ? <CommonMasterWorkspace definition={definitionFromPage(safePage)} /> : null}
+          {renderOwnedLocationPage(safePage)}
+          {renderOwnedCommonMasterPage(safePage)}
           {safePage === "core.master.contact" ? <ContactWorkspace key={safePage} /> : null}
           {safePage === "core.master.product" ? <ProductWorkspace key={safePage} /> : null}
           {safePage === "core.master.work-order" ? <WorkOrderWorkspace key={safePage} /> : null}
@@ -717,35 +744,45 @@ function accountsSettingsDescription(page: Extract<AppPage, `accounts.${string}`
   return descriptions[page] ?? "Accounts configuration.";
 }
 
-function isCoreLocationPage(page: AppPage): page is Extract<AppPage, `core.common.location.${string}`> {
-  return page.startsWith("core.common.location.");
-}
-
-function locationKindFromPage(page: Extract<AppPage, `core.common.location.${string}`>): LocationKind {
-  const plural = page.split(".").at(-1);
-  if (plural === "countries") return "country";
-  if (plural === "states") return "state";
-  if (plural === "districts") return "district";
-  if (plural === "cities") return "city";
-  return "pincode";
-}
-
-function isCommonMasterPage(page: AppPage): page is Extract<AppPage, `core.common.${"contacts" | "others" | "products" | "workorder"}.${string}`> {
-  return commonMasterDefinitions.some((definition) => pageKeyForCommonMaster(definition.path) === page);
-}
-
-function isMasterPage(page: AppPage): page is Extract<AppPage, `core.master.${string}`> {
-  return page === "core.master.contact" || page === "core.master.product" || page === "core.master.work-order";
-}
-
-function definitionFromPage(page: Extract<AppPage, `core.common.${"contacts" | "others" | "products" | "workorder"}.${string}`>) {
-  const definition = commonMasterDefinitions.find((item) => pageKeyForCommonMaster(item.path) === page);
-  if (!definition) throw new Error(`Unknown common master page: ${page}`);
-  return definition;
-}
-
 function pageKeyForCommonMaster(path: string) {
   return path.replace(/^\/core\//, "core.").replaceAll("/", ".");
+}
+
+function renderOwnedLocationPage(page: AppPage) {
+  if (page === "core.common.location.countries") return <CountryWorkspace />;
+  if (page === "core.common.location.states") return <StateWorkspace />;
+  if (page === "core.common.location.districts") return <DistrictWorkspace />;
+  if (page === "core.common.location.cities") return <CityWorkspace />;
+  if (page === "core.common.location.pincodes") return <PincodeWorkspace />;
+  return null;
+}
+
+function renderOwnedCommonMasterPage(page: AppPage) {
+  if (page === "core.common.contacts.contact-groups") return <ContactGroupsWorkspace />;
+  if (page === "core.common.contacts.contact-types") return <ContactTypesWorkspace />;
+  if (page === "core.common.contacts.address-types") return <AddressTypesWorkspace />;
+  if (page === "core.common.contacts.bank-names") return <BankNamesWorkspace />;
+  if (page === "core.common.products.product-groups") return <ProductGroupsWorkspace />;
+  if (page === "core.common.products.product-categories") return <ProductCategoriesWorkspace />;
+  if (page === "core.common.products.product-types") return <ProductTypesWorkspace />;
+  if (page === "core.common.products.units") return <UnitsWorkspace />;
+  if (page === "core.common.products.hsn-codes") return <HsnCodesWorkspace />;
+  if (page === "core.common.products.taxes") return <TaxesWorkspace />;
+  if (page === "core.common.products.brands") return <BrandsWorkspace />;
+  if (page === "core.common.products.colours") return <ColoursWorkspace />;
+  if (page === "core.common.products.sizes") return <SizesWorkspace />;
+  if (page === "core.common.products.styles") return <StylesWorkspace />;
+  if (page === "core.common.workorder.work-order-types") return <WorkOrderTypesWorkspace />;
+  if (page === "core.common.workorder.transports") return <TransportsWorkspace />;
+  if (page === "core.common.workorder.warehouses") return <WarehousesWorkspace />;
+  if (page === "core.common.workorder.destinations") return <DestinationsWorkspace />;
+  if (page === "core.common.workorder.stock-rejection-types") return <StockRejectionTypesWorkspace />;
+  if (page === "core.common.others.currencies") return <CurrenciesWorkspace />;
+  if (page === "core.common.others.priorities") return <PrioritiesWorkspace />;
+  if (page === "core.common.others.payment-terms") return <PaymentTermsWorkspace />;
+  if (page === "core.common.others.sales-types") return <SalesTypesWorkspace />;
+  if (page === "core.common.others.months") return <MonthsWorkspace />;
+  return null;
 }
 
 function titleForPage(page: AppPage) {

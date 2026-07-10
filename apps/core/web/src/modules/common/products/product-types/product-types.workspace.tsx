@@ -1,3 +1,3 @@
-import { CommonMasterWorkspace } from "../../../common-master";
+import { CommonMasterShell } from "../../../common-master";
 import { productTypesDefinition } from "./product-types.definition";
-export function ProductTypesWorkspace() { return <CommonMasterWorkspace definition={productTypesDefinition} />; }
+export function ProductTypesWorkspace() { return <CommonMasterShell definition={productTypesDefinition} />; }

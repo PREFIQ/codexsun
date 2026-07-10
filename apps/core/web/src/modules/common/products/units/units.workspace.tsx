@@ -1,3 +1,3 @@
-import { CommonMasterWorkspace } from "../../../common-master";
+import { CommonMasterShell } from "../../../common-master";
 import { unitsDefinition } from "./units.definition";
-export function UnitsWorkspace() { return <CommonMasterWorkspace definition={unitsDefinition} />; }
+export function UnitsWorkspace() { return <CommonMasterShell definition={unitsDefinition} />; }

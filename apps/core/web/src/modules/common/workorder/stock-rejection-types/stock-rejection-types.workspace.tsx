@@ -1,3 +1,3 @@
-import { CommonMasterWorkspace } from "../../../common-master";
+import { CommonMasterShell } from "../../../common-master";
 import { stockRejectionTypesDefinition } from "./stock-rejection-types.definition";
-export function StockRejectionTypesWorkspace() { return <CommonMasterWorkspace definition={stockRejectionTypesDefinition} />; }
+export function StockRejectionTypesWorkspace() { return <CommonMasterShell definition={stockRejectionTypesDefinition} />; }

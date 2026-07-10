@@ -1,3 +1,3 @@
-import { CommonMasterWorkspace } from "../../../common-master";
+import { CommonMasterShell } from "../../../common-master";
 import { taxesDefinition } from "./taxes.definition";
-export function TaxesWorkspace() { return <CommonMasterWorkspace definition={taxesDefinition} />; }
+export function TaxesWorkspace() { return <CommonMasterShell definition={taxesDefinition} />; }

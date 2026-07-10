@@ -44,7 +44,7 @@ export function WorkspaceAutocomplete({
           type="button"
           variant="outline"
           className={cn(
-            "h-11 w-full justify-between rounded-md border-input bg-background px-3 text-left font-normal",
+            "h-11 w-full justify-between rounded-md border-input bg-white px-3 text-left font-normal",
             !selected && "text-muted-foreground",
             className,
           )}

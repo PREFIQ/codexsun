@@ -1,3 +1,3 @@
-import { CommonMasterWorkspace } from "../../../common-master";
+import { CommonMasterShell } from "../../../common-master";
 import { contactTypesDefinition } from "./contact-types.definition";
-export function ContactTypesWorkspace() { return <CommonMasterWorkspace definition={contactTypesDefinition} />; }
+export function ContactTypesWorkspace() { return <CommonMasterShell definition={contactTypesDefinition} />; }

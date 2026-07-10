@@ -1,7 +1,7 @@
 import { countryDefinition } from "../shared/location.definitions";
-import { LocationWorkspace } from "../shared/location.workspace";
+import { LocationMasterShell } from "../shared/location.workspace";
 
 export function CountryWorkspace() {
-  return <LocationWorkspace definition={countryDefinition} />;
+  return <LocationMasterShell definition={countryDefinition} />;
 }
 

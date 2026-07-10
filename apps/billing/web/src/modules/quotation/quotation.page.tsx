@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouterState } from "@tanstack/react-router";
 import { Eye, Pencil, Plus, Printer, RefreshCw, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import { WorkspaceDatePicker } from "@codexsun/ui/workspace/date-picker";
+import { WorkspaceLookup } from "@codexsun/ui/workspace/lookup";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceTableEmptyState, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
 import { WorkspaceFormActions, WorkspaceFormSurface, WorkspaceFormTabbedBody } from "@codexsun/ui/workspace/upsert";
@@ -22,7 +23,21 @@ import { BillingLayout } from "../../shared/layout/BillingLayout";
 import { useSalesSettings } from "../settings";
 import { defaultBillingSettings, formatDocumentNumber, type BillingDocumentLayoutSettings, type BillingDocumentNumberSettings } from "../settings/settings.types";
 import { createEmptyQuotation, type Quotation, type QuotationSavePayload, type QuotationTaxType, type QuotationView } from "./quotation.types";
-import { createQuotation, formatDate, formatMoney, quotationToPayload, setQuotationStatus, totalQuotationQuantity, updateQuotation } from "./quotation.services";
+import {
+  createQuotation,
+  formatDate,
+  formatMoney,
+  listQuotationColours,
+  listQuotationContacts,
+  listQuotationProducts,
+  listQuotationSizes,
+  listQuotationWorkOrders,
+  quotationToPayload,
+  setQuotationStatus,
+  totalQuotationQuantity,
+  updateQuotation,
+  type QuotationLookupOption,
+} from "./quotation.services";
 import { useQuotationList } from "./quotation.hooks";
 
 const statusFilters = [
@@ -274,6 +289,12 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
     unit: "Nos",
   });
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [itemResetSignal, setItemResetSignal] = useState(0);
+  const contactsQuery = useQuery({ queryFn: listQuotationContacts, queryKey: ["billing", "quotation", "lookups", "contacts"] });
+  const workOrdersQuery = useQuery({ queryFn: listQuotationWorkOrders, queryKey: ["billing", "quotation", "lookups", "work-orders"] });
+  const productsQuery = useQuery({ queryFn: listQuotationProducts, queryKey: ["billing", "quotation", "lookups", "products"] });
+  const coloursQuery = useQuery({ queryFn: listQuotationColours, queryKey: ["billing", "quotation", "lookups", "colours"] });
+  const sizesQuery = useQuery({ queryFn: listQuotationSizes, queryKey: ["billing", "quotation", "lookups", "sizes"] });
 
   function patch(next: Partial<QuotationSavePayload>) {
     setForm((current) => ({ ...current, ...next }));
@@ -298,6 +319,7 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
       unit: "Nos",
     });
     setEditingItemIndex(null);
+    setItemResetSignal((current) => current + 1);
   }
 
   function addOrUpdateItem() {
@@ -326,6 +348,17 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
     if (editingItemIndex === index) resetDraft();
   }
 
+  function applyProductSelection(value: string, option?: QuotationLookupOption | null) {
+    const record = option?.record;
+    patchDraft({
+      hsnCode: record?.hsnCode ?? itemDraft.hsnCode,
+      productName: option?.label ?? value,
+      rate: Number(record?.price ?? record?.openingRate ?? itemDraft.rate ?? 0),
+      taxRate: Number(record?.taxRate ?? itemDraft.taxRate ?? 18),
+      unit: record?.unitName ?? itemDraft.unit,
+    });
+  }
+
   const tabs: WorkspaceAnimatedTab[] = [
     {
       value: "details",
@@ -333,8 +366,27 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
       content: (
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-4">
-            <Field label="Customer name" required><Input required value={form.customerName} onChange={(event) => patch({ customerName: event.target.value })} /></Field>
-            <Field label="Work order no"><Input value={form.workOrderNo} onChange={(event) => patch({ workOrderNo: event.target.value })} /></Field>
+            <Field label="Customer name" required>
+              <WorkspaceLookup
+                loading={contactsQuery.isLoading}
+                options={contactsQuery.data ?? []}
+                placeholder="Search or select contact"
+                required
+                value={form.customerName}
+                onTextChange={(value) => patch({ customerName: value })}
+                onValueChange={(value, option) => patch({ customerName: option?.label ?? value })}
+              />
+            </Field>
+            <Field label="Work order no">
+              <WorkspaceLookup
+                loading={workOrdersQuery.isLoading}
+                options={workOrdersQuery.data ?? []}
+                placeholder="Search or select work order"
+                value={form.workOrderNo}
+                onTextChange={(value) => patch({ workOrderNo: value })}
+                onValueChange={(value, option) => patch({ workOrderNo: option?.value ?? value })}
+              />
+            </Field>
           </div>
           <div className="space-y-4">
             <Field label="Quotation number"><Input disabled={!quotation && numbering.automatic} value={form.quotationNumber} onChange={(event) => patch({ quotationNumber: event.target.value })} /></Field>
@@ -413,11 +465,19 @@ function QuotationUpsertPage({ errorMessage, loading, numbering, onBack, onSubmi
           draft={itemDraft}
           editing={editingItemIndex !== null}
           items={form.items}
+          colourOptions={coloursQuery.data ?? []}
+          coloursLoading={coloursQuery.isLoading}
+          productOptions={productsQuery.data ?? []}
+          productsLoading={productsQuery.isLoading}
+          resetSignal={itemResetSignal}
           settings={settings}
+          sizeOptions={sizesQuery.data ?? []}
+          sizesLoading={sizesQuery.isLoading}
           taxType={form.taxType}
           onAdd={addOrUpdateItem}
           onDraftChange={patchDraft}
           onEdit={editItem}
+          onProductSelect={applyProductSelection}
           onRemove={removeItem}
           onReset={resetDraft}
         />
@@ -470,28 +530,45 @@ function QuotationShowPage({ onBack, onEdit, onNew, onPrint, quotation }: { onBa
 }
 
 function QuotationItemsSection({
+  colourOptions,
+  coloursLoading,
   draft,
   editing,
   items,
+  productOptions,
+  productsLoading,
+  resetSignal,
   settings,
+  sizeOptions,
+  sizesLoading,
   taxType,
   onAdd,
   onDraftChange,
   onEdit,
+  onProductSelect,
   onRemove,
   onReset,
 }: {
+  colourOptions: QuotationLookupOption[];
+  coloursLoading: boolean;
   draft: QuotationSavePayload["items"][number];
   editing: boolean;
   items: QuotationSavePayload["items"];
+  productOptions: QuotationLookupOption[];
+  productsLoading: boolean;
+  resetSignal: number;
   settings: BillingDocumentLayoutSettings;
+  sizeOptions: QuotationLookupOption[];
+  sizesLoading: boolean;
   taxType: QuotationTaxType;
   onAdd: () => void;
   onDraftChange: (next: Partial<QuotationSavePayload["items"][number]>) => void;
   onEdit: (index: number) => void;
+  onProductSelect: (value: string, option?: QuotationLookupOption | null) => void;
   onRemove: (index: number) => void;
   onReset: () => void;
 }) {
+  const rowRef = useRef<HTMLDivElement | null>(null);
   const showPo = settings.usePo;
   const showDc = settings.useDc;
   const showColour = settings.useColour;
@@ -509,23 +586,61 @@ function QuotationItemsSection({
     "auto",
   ].join(" ");
 
+  useEffect(() => {
+    if (!resetSignal) return;
+    window.requestAnimationFrame(() => {
+      rowRef.current?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus();
+    });
+  }, [resetSignal]);
+
   return (
     <div className="px-6 pb-5">
-      <div className="border-t border-border/70 pt-5">
+      <div className="pt-5">
         <h3 className="text-[1.65rem] font-semibold tracking-normal text-foreground">Quotation Items</h3>
-        <div className="mt-4 overflow-x-auto">
+        <div className="-mx-1 mt-3 overflow-x-auto px-1 pb-1 pt-1.5">
           <div className="min-w-[980px]">
-            <div className="grid gap-2" style={{ gridTemplateColumns: templateColumns }}>
+            <div ref={rowRef} className="grid gap-1" style={{ gridTemplateColumns: templateColumns }}>
               {showPo ? <Field label="PO"><Input value={draft.poNo} onChange={(event) => onDraftChange({ poNo: event.target.value })} /></Field> : null}
               {showDc ? <Field label="DC"><Input value={draft.dcNo} onChange={(event) => onDraftChange({ dcNo: event.target.value })} /></Field> : null}
-              <Field label="Product name"><Input value={draft.productName} onChange={(event) => onDraftChange({ productName: event.target.value })} /></Field>
+              <Field label="Product name">
+                <WorkspaceLookup
+                  loading={productsLoading}
+                  options={productOptions}
+                  placeholder="Search or select product"
+                  value={draft.productName}
+                  onTextChange={(value) => onDraftChange({ productName: value })}
+                  onValueChange={(value, option) => onProductSelect(value, option as QuotationLookupOption | null | undefined)}
+                />
+              </Field>
               <Field label="Description"><Input value={draft.description} onChange={(event) => onDraftChange({ description: event.target.value })} /></Field>
-              {showColour ? <Field label="Colour"><Input placeholder="Search colour" value={draft.colour} onChange={(event) => onDraftChange({ colour: event.target.value })} /></Field> : null}
-              {showSize ? <Field label="Size"><Input placeholder="Search size" value={draft.size} onChange={(event) => onDraftChange({ size: event.target.value })} /></Field> : null}
+              {showColour ? (
+                <Field label="Colour">
+                  <WorkspaceLookup
+                    loading={coloursLoading}
+                    options={colourOptions}
+                    placeholder="Search colour"
+                    value={draft.colour}
+                    onTextChange={(value) => onDraftChange({ colour: value })}
+                    onValueChange={(value, option) => onDraftChange({ colour: option?.label ?? value })}
+                  />
+                </Field>
+              ) : null}
+              {showSize ? (
+                <Field label="Size">
+                  <WorkspaceLookup
+                    loading={sizesLoading}
+                    options={sizeOptions}
+                    placeholder="Search size"
+                    value={draft.size}
+                    onTextChange={(value) => onDraftChange({ size: value })}
+                    onValueChange={(value, option) => onDraftChange({ size: option?.label ?? value })}
+                  />
+                </Field>
+              ) : null}
               <Field label="Quantity"><Input min="1" type="number" value={String(draft.quantity)} onChange={(event) => onDraftChange({ quantity: Number(event.target.value || 0) })} /></Field>
               <Field label="Price"><Input min="0" step="0.01" type="number" value={String(draft.rate)} onChange={(event) => onDraftChange({ rate: Number(event.target.value || 0) })} /></Field>
               <div className="flex items-end gap-2 pb-0.5">
-                <Button className="h-11 rounded-md px-4" type="button" variant="outline" onClick={onAdd}>
+                <Button className="h-11 rounded-md bg-blue-600 px-4 text-white shadow-sm hover:bg-blue-700" type="button" onClick={onAdd}>
                   <Plus className="size-4" />
                   {editing ? "Update" : "Add"}
                 </Button>
@@ -536,7 +651,7 @@ function QuotationItemsSection({
         </div>
         <div className="mt-5 overflow-x-auto rounded-md border border-border/70">
           <table className="w-full min-w-[1120px] border-collapse text-sm">
-            <thead className="bg-muted/30">
+            <thead className="bg-muted/60">
               <tr>
                 {["#", ...(showPo ? ["PO"] : []), ...(showDc ? ["DC"] : []), "Particulars", "HSN Code", ...(showColour ? ["Colour"] : []), ...(showSize ? ["Size"] : []), "Qty", "Rate", "Unit", "Taxable", "GST %", "CGST", "SGST", "Total", "Action"].map((heading) => (
                   <th key={heading} className="border-b border-r border-border/70 px-3 py-2 text-left text-sm font-medium text-muted-foreground last:border-r-0">{heading}</th>
@@ -551,7 +666,7 @@ function QuotationItemsSection({
                     <td className="border-r border-border/70 px-3 py-2">{index + 1}</td>
                     {showPo ? <td className="border-r border-border/70 px-3 py-2">{item.poNo || "-"}</td> : null}
                     {showDc ? <td className="border-r border-border/70 px-3 py-2">{item.dcNo || "-"}</td> : null}
-                    <td className="border-r border-border/70 px-3 py-2">{item.productName}</td>
+                    <td className="border-r border-border/70 px-3 py-2">{[item.productName, item.description].filter(Boolean).join(" - ")}</td>
                     <td className="border-r border-border/70 px-3 py-2">{item.hsnCode || "-"}</td>
                     {showColour ? <td className="border-r border-border/70 px-3 py-2">{item.colour || "-"}</td> : null}
                     {showSize ? <td className="border-r border-border/70 px-3 py-2">{item.size || "-"}</td> : null}

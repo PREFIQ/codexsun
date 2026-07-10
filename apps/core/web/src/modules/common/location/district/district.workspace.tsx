@@ -1,7 +1,7 @@
 import { districtDefinition } from "../shared/location.definitions";
-import { LocationWorkspace } from "../shared/location.workspace";
+import { LocationMasterShell } from "../shared/location.workspace";
 
 export function DistrictWorkspace() {
-  return <LocationWorkspace definition={districtDefinition} />;
+  return <LocationMasterShell definition={districtDefinition} />;
 }
 
