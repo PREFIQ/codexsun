@@ -37,3 +37,4 @@ Not available for the country action menu or Active control because authenticati
 - Capture at the supplied desktop reference size and compare typography, spacing, colors, and copy.
 
 final result: blocked
+

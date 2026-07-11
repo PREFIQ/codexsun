@@ -330,12 +330,14 @@ function normalizeModule(input: Partial<ProjectManagerRegistryModule> & ProjectM
     active: input.active ?? true,
     createdAt: input.createdAt ?? timestamp,
     description: input.description ?? "",
+    documentation: input.documentation ?? baselineModuleDocumentation(input, timestamp),
     groupId: required(input.groupId, "groupId"),
     id: required(input.id, "id"),
     key: required(input.key, "key"),
     moduleType: input.moduleType ?? "module",
     name: required(input.name, "name"),
     parentModuleId: input.parentModuleId ?? "",
+    planningNotes: input.planningNotes ?? baselinePlanningNotes(input, timestamp),
     routePath: input.routePath ?? "",
     sortOrder: Number(input.sortOrder ?? 0),
     status: input.status ?? "active",
@@ -399,7 +401,32 @@ function seedModules() {
     { groupId: "group-tenant-apps", id: "module-platform-landing-desk", key: "tenant.apps.application.platform.landing-desk", name: "Landing Desk", parentModuleId: "module-application-platform", sortOrder: 10 },
     { groupId: "group-tenant-apps", id: "module-platform-profile", key: "tenant.apps.application.platform.profile", name: "Profile", parentModuleId: "module-application-platform", sortOrder: 20 },
     { groupId: "group-tenant-apps", id: "module-platform-setting", key: "tenant.apps.application.platform.setting", name: "Setting", parentModuleId: "module-application-platform", sortOrder: 30 },
-    { groupId: "group-tenant-apps", id: "module-organisation-company", key: "tenant.apps.application.organisation.company", name: "Company", parentModuleId: "module-application-organisation", sortOrder: 10 }
+    { groupId: "group-tenant-apps", id: "module-organisation-company", key: "tenant.apps.application.organisation.company", name: "Company", parentModuleId: "module-application-organisation", sortOrder: 10 },
+    { groupId: "group-tenant-apps", id: "module-billing-entries", key: "tenant.apps.billing.entries", moduleType: "area", name: "Entries", parentModuleId: "module-app-billing", sortOrder: 10 },
+    { groupId: "group-tenant-apps", id: "module-billing-master", key: "tenant.apps.billing.master", moduleType: "area", name: "Master", parentModuleId: "module-app-billing", sortOrder: 20 },
+    { groupId: "group-tenant-apps", id: "module-billing-common", key: "tenant.apps.billing.common", moduleType: "area", name: "Common", parentModuleId: "module-app-billing", sortOrder: 30 },
+    { groupId: "group-tenant-apps", id: "module-billing-settings", key: "tenant.apps.billing.settings", moduleType: "area", name: "Settings", parentModuleId: "module-app-billing", sortOrder: 40 },
+    { documentation: quotationDocumentation(), groupId: "group-tenant-apps", id: "module-entry-quotation", key: "tenant.apps.billing.entries.quotation", name: "Quotation", parentModuleId: "module-billing-entries", planningNotes: quotationPlanningNotes(), routePath: "/app/billing/quotation", sortOrder: 10 },
+    { groupId: "group-tenant-apps", id: "module-entry-sales", key: "tenant.apps.billing.entries.sales", name: "Sales", parentModuleId: "module-billing-entries", sortOrder: 20 },
+    { groupId: "group-tenant-apps", id: "module-entry-purchase", key: "tenant.apps.billing.entries.purchase", name: "Purchase", parentModuleId: "module-billing-entries", sortOrder: 30 },
+    { groupId: "group-tenant-apps", id: "module-entry-export-sales", key: "tenant.apps.billing.entries.export-sales", name: "Export Sales", parentModuleId: "module-billing-entries", sortOrder: 40 },
+    { groupId: "group-tenant-apps", id: "module-entry-payment", key: "tenant.apps.billing.entries.payment", name: "Payment", parentModuleId: "module-billing-entries", sortOrder: 50 },
+    { groupId: "group-tenant-apps", id: "module-entry-receipt", key: "tenant.apps.billing.entries.receipt", name: "Receipt", parentModuleId: "module-billing-entries", sortOrder: 60 },
+    { groupId: "group-tenant-apps", id: "module-master-contact", key: "tenant.apps.billing.master.contact", name: "Contact", parentModuleId: "module-billing-master", sortOrder: 10 },
+    { groupId: "group-tenant-apps", id: "module-master-product", key: "tenant.apps.billing.master.product", name: "Product", parentModuleId: "module-billing-master", sortOrder: 20 },
+    { groupId: "group-tenant-apps", id: "module-master-work-order", key: "tenant.apps.billing.master.work-order", name: "Work Order", parentModuleId: "module-billing-master", sortOrder: 30 },
+    { groupId: "group-tenant-apps", id: "module-common-location", key: "tenant.apps.billing.common.location", name: "Location", parentModuleId: "module-billing-common", sortOrder: 10 },
+    { groupId: "group-tenant-apps", id: "module-common-contacts", key: "tenant.apps.billing.common.contacts", name: "Contacts", parentModuleId: "module-billing-common", sortOrder: 20 },
+    { groupId: "group-tenant-apps", id: "module-common-product", key: "tenant.apps.billing.common.product", name: "Product", parentModuleId: "module-billing-common", sortOrder: 30 },
+    { groupId: "group-tenant-apps", id: "module-common-work-orders", key: "tenant.apps.billing.common.work-orders", name: "Work Orders", parentModuleId: "module-billing-common", sortOrder: 40 },
+    { groupId: "group-tenant-apps", id: "module-common-others", key: "tenant.apps.billing.common.others", name: "Others", parentModuleId: "module-billing-common", sortOrder: 50 },
+    { groupId: "group-tenant-apps", id: "module-settings-billing", key: "tenant.apps.billing.settings.billing", name: "Billing Settings", parentModuleId: "module-billing-settings", sortOrder: 10 },
+    { groupId: "group-tenant-apps", id: "module-settings-document", key: "tenant.apps.billing.settings.document", name: "Document Settings", parentModuleId: "module-billing-settings", sortOrder: 20 },
+    ...childModuleRows("module-common-location", "tenant.apps.billing.common.location", [["countries", "Countries"], ["states", "States"], ["districts", "Districts"], ["cities", "Cities"], ["pincodes", "Pincodes"]]),
+    ...childModuleRows("module-common-contacts", "tenant.apps.billing.common.contacts", [["contact-groups", "Contact Groups"], ["contact-types", "Contact Types"], ["address-types", "Address Types"], ["bank-names", "Bank Names"]]),
+    ...childModuleRows("module-common-product", "tenant.apps.billing.common.product", [["product-groups", "Product Groups"], ["product-categories", "Product Categories"], ["product-types", "Product Types"], ["units", "Units"], ["hsn-codes", "HSN Codes"], ["taxes", "Taxes"], ["brands", "Brands"], ["colours", "Colours"], ["sizes", "Sizes"], ["styles", "Styles"]]),
+    ...childModuleRows("module-common-work-orders", "tenant.apps.billing.common.work-orders", [["work-order-types", "Work Order Types"], ["transports", "Transports"], ["warehouses", "Warehouses"], ["destinations", "Destinations"], ["stock-rejection-types", "Stock Rejection Types"]]),
+    ...childModuleRows("module-common-others", "tenant.apps.billing.common.others", [["currencies", "Currencies"], ["priorities", "Priorities"], ["payment-terms", "Payment Terms"], ["sales-types", "Sales Types"], ["months", "Months"]])
   ];
   return modules.map(normalizeModule);
 }
@@ -413,6 +440,58 @@ function moduleRows(groupId: string, items: Array<[string, string]>, prefix: str
     routePath: `${prefix}${key}`,
     sortOrder: (index + 1) * 10
   }));
+}
+
+function childModuleRows(parentModuleId: string, keyPrefix: string, items: Array<[string, string]>) {
+  return items.map(([key, name], index) => ({
+    groupId: "group-tenant-apps",
+    id: `module-${key}`,
+    key: `${keyPrefix}.${key}`,
+    name,
+    parentModuleId,
+    sortOrder: (index + 1) * 10
+  }));
+}
+
+function quotationDocumentation() {
+  return documentationRows({
+    database: [
+      ["Table", "billing_quotations"], ["Primary key", "id: varchar(80)"], ["Quotation number", "quotation_number: varchar(80), unique, required"], ["Customer", "customer_name: varchar(180), required"], ["Work order", "work_order_no: varchar(120), nullable"], ["Sales ledger", "sales_ledger: varchar(180), nullable"], ["Tax type", "tax_type: varchar(24), required"], ["Addresses", "billing_address/shipping_address: text, nullable"], ["Amounts", "amount/subtotal/tax_amount/round_off: double precision"], ["Date", "date: varchar(16), required"], ["Items", "items_json: longtext"], ["Notes and terms", "notes/terms: text"], ["Status", "status: varchar(24), required"], ["Converted sale", "generated_sales_invoice_no: varchar(120), nullable"], ["Timestamps", "created_at/updated_at: varchar(40)"]
+    ],
+    routes: [["List", "GET /billing/quotations"], ["Show", "GET /billing/quotations/:id"], ["Create", "POST /billing/quotations"], ["Update", "PUT /billing/quotations/:id"], ["Confirm", "POST /billing/quotations/:id/confirm"], ["Cancel", "POST /billing/quotations/:id/cancel"], ["Revoke", "POST /billing/quotations/:id/revoke"], ["Delete draft", "DELETE /billing/quotations/:id"], ["Convert one", "POST /billing/quotations/:id/convert-to-sale"], ["Convert many", "POST /billing/quotations/convert-to-sale"], ["Lookups", "GET/POST/PUT /billing/quotations/lookups/*"]],
+    files: [["API module", "apps/billing/api/src/modules/quotation/"], ["Web module", "apps/billing/web/src/modules/quotation/"], ["Platform bridge", "apps/platform/web/src/modules/quotation/quotation.workspace.tsx"], ["Migration", "apps/billing/api/src/modules/quotation/quotation.migration.ts"], ["Routes", "apps/billing/api/src/modules/quotation/quotation.routes.ts"], ["Repository", "apps/billing/api/src/modules/quotation/quotation.repository.ts"], ["Service", "apps/billing/api/src/modules/quotation/quotation.service.ts"], ["UI page", "apps/billing/web/src/modules/quotation/quotation.page.tsx"], ["Show page", "apps/billing/web/src/modules/quotation/quotation.show.tsx"], ["Print", "apps/billing/web/src/modules/quotation/quotation.print.tsx"]],
+    actions: [["Create/update", "Save tenant-scoped quotation and line items"], ["Confirm", "Lock quotation as confirmed"], ["Cancel", "Cancel an active quotation"], ["Revoke", "Return submitted quotation to editable state"], ["Delete", "Delete draft quotation only"], ["Convert to sale", "Create one sales invoice from one or many quotations"], ["Print", "Original, duplicate, and office-copy print views"], ["Tools", "Assign, attachments, PDF, email, tags, WhatsApp"]],
+    events: [["Changed", "billing.quotation.changed"], ["Confirmed", "billing.quotation.confirmed"], ["Actions", "created, updated, confirmed, cancelled, converted"], ["Source module", "billing.quotation"], ["Worker jobs", "quotation.confirmation-sync, quotation.accounts-preview"], ["Sync rule", "Confirmed quotation with amount greater than zero"]]
+  });
+}
+
+function quotationPlanningNotes() {
+  const timestamp = "2026-07-11T00:00:00.000Z";
+  return [
+    { body: "Connect confirmed quotations to accounts preview and reliable background synchronization.", createdAt: timestamp, id: "quotation-plan-accounts", title: "Accounts integration", updatedAt: timestamp },
+    { body: "Move assignment, attachments, email, tags, and WhatsApp activity from local UI state to audited backend records.", createdAt: timestamp, id: "quotation-plan-tools", title: "Persist entry tools", updatedAt: timestamp },
+    { body: "Add stronger database types for dates, money, structured items, and tenant-aware indexes when the billing schema is hardened.", createdAt: timestamp, id: "quotation-plan-schema", title: "Schema hardening", updatedAt: timestamp }
+  ];
+}
+
+function documentationRows(input: Record<string, Array<[string, string]>>) {
+  const timestamp = "2026-07-11T00:00:00.000Z";
+  return Object.fromEntries(Object.entries(input).map(([section, rows]) => [section, rows.map(([key, value], index) => ({ createdAt: timestamp, id: `${section}-${index + 1}`, key, updatedAt: timestamp, value }))]));
+}
+
+function baselineModuleDocumentation(input: Partial<ProjectManagerRegistryModule> & ProjectManagerRegistrySavePayload, timestamp: string) {
+  const rows = (section: string, values: Array<[string, string]>) => values.map(([key, value], index) => ({ createdAt: timestamp, id: `${section}-${index + 1}`, key, updatedAt: timestamp, value }));
+  return {
+    actions: rows("actions", [["Registry actions", "Edit, deactivate, and restore"], ["Module actions", "Review the linked implementation"]]),
+    database: rows("database", [["Persistence", "Review the linked module migration and repository"], ["Registry storage", "apps/platform/api/project-manager-json/module-registry.json"]]),
+    events: rows("events", [["Registry event", "platform.project-manager.registry-changed"], ["Domain events", "Review the linked module events file"]]),
+    files: rows("files", [["Registry source", "apps/platform/api/project-manager-json/module-registry.json"], ["Module key", String(input.key ?? "")]]),
+    routes: rows("routes", [["Page route", String(input.routePath || "Not configured")], ["API routes", "Review the linked module routes file"]])
+  };
+}
+
+function baselinePlanningNotes(input: Partial<ProjectManagerRegistryModule> & ProjectManagerRegistrySavePayload, timestamp: string) {
+  return [{ body: "Keep database fields, routes, files, actions, and events synchronized with the real module implementation.", createdAt: timestamp, id: `planning-${input.id ?? input.key}`, title: `${input.name ?? "Module"} documentation`, updatedAt: timestamp }];
 }
 
 function assertKind(kind: string): asserts kind is ProjectManagerKind {

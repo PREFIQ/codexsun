@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ArrowLeftIcon, BoxesIcon, GitBranchIcon, Layers3Icon, PlusIcon, RefreshCwIcon, SaveIcon } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeftIcon, PlusIcon, RefreshCwIcon, SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
@@ -8,6 +8,7 @@ import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormGrid } from "@codexsun/ui/workspace/upsert";
 import { usePlatformRegistryMutations, usePlatformRegistryQuery } from "./platform-registry.hooks";
 import { AppList, ModuleGroupList, ModuleGroupModuleList, ModuleList, PlatformList } from "./platform-registry.list";
+import { PlatformRegistryModuleShow } from "./platform-registry.show";
 import type { ProjectManagerRegistryGroupNode, ProjectManagerRegistryModuleNode, ProjectManagerRegistryPlatformNode } from "../project-manager/project-manager.types";
 
 type EditMode = "group" | "module" | "platform";
@@ -33,11 +34,11 @@ export function PlatformRegistryWorkspace() {
   const moduleOptions = flattenModules(modules);
   const selectedModule = moduleOptions.find((module) => module.id === moduleId) ?? null;
   const childModules = selectedModule?.children ?? [];
-  const isApplicationGroups = selectedModule?.id === "module-app-application";
+  const isAppModuleGroups = selectedModule?.id === "module-app-application" || selectedModule?.id === "module-app-billing";
   const isAppsRoot = isFlattenedTenantApps && !selectedModule;
+  const isModuleShow = Boolean(selectedModule && childModules.length === 0 && !form);
   const level = selectedModule ? "submodule" : selectedGroup ? "module" : selectedPlatform ? "group" : "platform";
   const busy = registry.isFetching || mutations.savePlatform.isPending || mutations.saveGroup.isPending || mutations.saveModule.isPending || mutations.setActive.isPending;
-  const metrics = useMemo(() => registry.data?.summary, [registry.data]);
 
   function openPlatform(platform?: ProjectManagerRegistryPlatformNode) {
     setPlatformId(platform?.id ?? "");
@@ -90,34 +91,39 @@ export function PlatformRegistryWorkspace() {
       .catch((value) => setError(value instanceof Error ? value.message : "Save failed."));
   }
 
+  if (selectedModule && isModuleShow) {
+    const parent = moduleOptions.find((module) => module.id === selectedModule.parentModuleId);
+    return <PlatformRegistryModuleShow
+      busy={busy}
+      module={selectedModule}
+      parentName={parent?.name ?? selectedGroup?.name ?? ""}
+      onBack={goBack}
+      onRefresh={() => void registry.refetch()}
+      onToggle={() => mutations.setActive.mutate({ active: !selectedModule.active, id: selectedModule.id, kind: "modules" })}
+      onUpdate={(patch) => mutations.saveModule.mutateAsync({ ...selectedModule, ...patch })}
+    />;
+  }
+
   return (
     <WorkspacePage
-      title={level === "platform" ? "Platforms" : level === "group" ? "Module Groups" : isAppsRoot ? "Apps" : level === "module" ? "Modules" : isApplicationGroups ? "Module Groups" : "Modules"}
-      description={level === "platform" ? "Platform registry list for super-admins, admin, and tenant." : level === "group" ? `Module groups in ${selectedPlatform?.name}.` : isAppsRoot ? `Apps in ${selectedPlatform?.name}.` : level === "module" ? `Modules in ${selectedGroup?.name}.` : isApplicationGroups ? `Module groups in ${selectedModule?.name}.` : `Modules in ${selectedModule?.name}.`}
+      title={level === "platform" ? "Platforms" : level === "group" ? "Module Groups" : isAppsRoot ? "Apps" : level === "module" ? "Modules" : isAppModuleGroups ? "Module Groups" : "Modules"}
+      description={level === "platform" ? "Platform registry list for super-admins, admin, and tenant." : level === "group" ? `Module groups in ${selectedPlatform?.name}.` : isAppsRoot ? `Apps in ${selectedPlatform?.name}.` : level === "module" ? `Modules in ${selectedGroup?.name}.` : isAppModuleGroups ? `Module groups in ${selectedModule?.name}.` : `Modules in ${selectedModule?.name}.`}
       technicalName="page.platform-registry"
       actions={
         <div className="flex flex-wrap justify-end gap-2">
           {level !== "platform" ? <Button disabled={busy} variant="outline" onClick={goBack}><ArrowLeftIcon className="size-4" />Back</Button> : null}
           <Button disabled={busy} variant="outline" onClick={() => void registry.refetch()}><RefreshCwIcon className="size-4" />Refresh</Button>
-          <Button disabled={busy} onClick={() => level === "platform" ? editPlatform() : level === "group" ? editGroup() : editModule()}><PlusIcon className="size-4" />{level === "platform" ? "Platform" : level === "group" ? "Module Group" : isAppsRoot ? "App" : level === "module" ? "Module" : isApplicationGroups ? "Module Group" : "Module"}</Button>
+          <Button disabled={busy} onClick={() => level === "platform" ? editPlatform() : level === "group" ? editGroup() : editModule()}><PlusIcon className="size-4" />{level === "platform" ? "Platform" : level === "group" ? "Module Group" : isAppsRoot ? "App" : level === "module" ? "Module" : isAppModuleGroups ? "Module Group" : "Module"}</Button>
         </div>
       }
     >
-      {!isAppsRoot ? (
-        <div className="mb-4 grid gap-4 md:grid-cols-4">
-          <Metric icon={BoxesIcon} label="Platforms" value={String(metrics?.platforms ?? 0)} />
-          <Metric icon={Layers3Icon} label="Groups" value={String(metrics?.totalGroups ?? 0)} />
-          <Metric icon={GitBranchIcon} label="Modules" value={String(metrics?.totalModules ?? 0)} />
-          <Metric icon={BoxesIcon} label="Active modules" value={String(metrics?.activeModules ?? 0)} />
-        </div>
-      ) : null}
       {form ? <RegistryEditor busy={busy} error={error} form={form} mode={editMode} groups={groupOptions} modules={moduleOptions} onCancel={() => setForm(null)} onChange={setForm} onSave={save} platforms={platforms} /> : null}
       {level === "platform" ? <PlatformList items={platforms} onEdit={editPlatform} onSelect={openPlatform} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "platforms" })} /> : null}
       {level === "group" ? <ModuleGroupList items={groups} onEdit={editGroup} onSelect={(item) => { setGroupId(item.id); setModuleId(""); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "groups" })} /> : null}
       {level === "module" && isAppsRoot ? <AppList items={modules} onEdit={editModule} onSelect={(item) => { setModuleId(item.id); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} /> : null}
       {level === "module" && !isAppsRoot ? <ModuleList items={modules} onEdit={editModule} onSelect={(item) => { setModuleId(item.id); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} /> : null}
-      {level === "submodule" && isApplicationGroups ? <ModuleGroupModuleList items={childModules} onEdit={editModule} onSelect={(item) => { setModuleId(item.id); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} /> : null}
-      {level === "submodule" && !isApplicationGroups ? <ModuleList items={childModules} onEdit={editModule} onSelect={(item) => { setModuleId(item.id); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} /> : null}
+      {level === "submodule" && isAppModuleGroups ? <ModuleGroupModuleList items={childModules} onEdit={editModule} onSelect={(item) => { setModuleId(item.id); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} /> : null}
+      {level === "submodule" && !isAppModuleGroups ? <ModuleList items={childModules} onEdit={editModule} onSelect={(item) => { setModuleId(item.id); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} /> : null}
     </WorkspacePage>
   );
 }
@@ -145,10 +151,6 @@ function RegistryEditor({ busy, error, form, groups, mode, modules, onCancel, on
       </div>
     </div>
   );
-}
-
-function Metric({ icon: Icon, label, value }: { icon: typeof BoxesIcon; label: string; value: string }) {
-  return <div className="rounded-md border bg-card p-4 shadow-sm"><div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">{label}<Icon className="size-4" /></div><div className="mt-2 text-2xl font-semibold">{value}</div></div>;
 }
 
 function flattenGroups(groups: ProjectManagerRegistryGroupNode[]): ProjectManagerRegistryGroupNode[] {

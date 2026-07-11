@@ -46,7 +46,7 @@ import { usePlatformActivityQuery } from "../../modules/platform-activity";
 import { useQueueRuntimeQuery } from "../../modules/queue-management";
 import { AuthGate } from "../../shared/auth/AuthGate";
 
-type SaPage = "overview" | "tenants" | "domains" | "plans" | "plan-access" | "subscriptions" | "apps" | "entitlements" | "tenant-access" | "industries" | "master-database" | "tenant-database" | "queue-management" | "storage-manager" | "platform-registry" | "work-automation" | "access" | "activity" | "design-system";
+type SaPage = "overview" | "tenants" | "domains" | "plans" | "plan-access" | "subscriptions" | "apps" | "entitlements" | "tenant-access" | "industries" | "master-database" | "tenant-database" | "queue-management" | "storage-manager" | "platform-registry" | "work-automation" | "workflow" | "access" | "activity" | "design-system";
 
 export function SaDesk() {
   const [page, setPage] = useState<SaPage>(pageFromUrl());
@@ -61,10 +61,11 @@ export function SaDesk() {
     {
       title: "Project Manager",
       icon: ClipboardListIcon,
-      isActive: page === "platform-registry" || page === "work-automation",
+      isActive: page === "platform-registry" || page === "work-automation" || page === "workflow",
       items: [
         { title: "Platform Registry", isActive: page === "platform-registry", onSelect: () => selectPage("platform-registry") },
-        { title: "Work Automation", isActive: page === "work-automation", onSelect: () => selectPage("work-automation") }
+        { title: "Work Automation", isActive: page === "work-automation", onSelect: () => selectPage("work-automation") },
+        { title: "Workflow", isActive: page === "workflow", onSelect: () => selectPage("workflow") }
       ]
     },
     {
@@ -144,6 +145,7 @@ export function SaDesk() {
         {page === "storage-manager" ? <StorageManagerWorkspace /> : null}
         {page === "platform-registry" ? <PlatformRegistryWorkspace /> : null}
         {page === "work-automation" ? <WorkAutomationWorkspace /> : null}
+        {page === "workflow" ? <WorkAutomationWorkspace initialView="timeline" /> : null}
         {page === "access" ? <AccessControlWorkspace /> : null}
         {page === "activity" ? <PlatformActivityWorkspace /> : null}
         {page === "design-system" ? <DesignSystemGallery /> : null}
@@ -155,7 +157,7 @@ export function SaDesk() {
 function pageFromUrl(): SaPage {
   const page = window.location.pathname.split("/")[2];
   if (page === "project-manager") return "platform-registry";
-  return page === "tenants" || page === "domains" || page === "plans" || page === "plan-access" || page === "subscriptions" || page === "apps" || page === "entitlements" || page === "tenant-access" || page === "industries" || page === "master-database" || page === "tenant-database" || page === "queue-management" || page === "storage-manager" || page === "platform-registry" || page === "work-automation" || page === "access" || page === "activity" || page === "design-system" ? page : "overview";
+  return page === "tenants" || page === "domains" || page === "plans" || page === "plan-access" || page === "subscriptions" || page === "apps" || page === "entitlements" || page === "tenant-access" || page === "industries" || page === "master-database" || page === "tenant-database" || page === "queue-management" || page === "storage-manager" || page === "platform-registry" || page === "work-automation" || page === "workflow" || page === "access" || page === "activity" || page === "design-system" ? page : "overview";
 }
 
 function SaOverview({ onNavigate }: { onNavigate: (page: SaPage) => void }) {

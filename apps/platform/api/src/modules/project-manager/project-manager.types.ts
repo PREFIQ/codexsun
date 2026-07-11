@@ -67,17 +67,22 @@ export type ProjectManagerRegistryModule = {
   active: boolean;
   createdAt: string;
   description: string;
+  documentation: Record<string, ProjectManagerDocumentationRow[]>;
   groupId: string;
   id: string;
   key: string;
   moduleType: "area" | "module" | "page";
   name: string;
   parentModuleId: string;
+  planningNotes: ProjectManagerPlanningNote[];
   routePath: string;
   sortOrder: number;
   status: string;
   updatedAt: string;
 };
+
+export type ProjectManagerDocumentationRow = { createdAt: string; id: string; key: string; updatedAt: string; value: string };
+export type ProjectManagerPlanningNote = { body: string; createdAt: string; id: string; title: string; updatedAt: string };
 
 export type ProjectManagerRegistryModuleNode = ProjectManagerRegistryModule & {
   children: ProjectManagerRegistryModuleNode[];
@@ -107,12 +112,14 @@ export type ProjectManagerRegistryResult = {
 export type ProjectManagerRegistrySavePayload = {
   active?: boolean;
   description?: string;
+  documentation?: Record<string, ProjectManagerDocumentationRow[]>;
   groupId?: string;
   key: string;
   moduleType?: ProjectManagerRegistryModule["moduleType"];
   name: string;
   parentGroupId?: string;
   parentModuleId?: string;
+  planningNotes?: ProjectManagerPlanningNote[];
   platformId?: string;
   routePath?: string;
   sortOrder?: number;
