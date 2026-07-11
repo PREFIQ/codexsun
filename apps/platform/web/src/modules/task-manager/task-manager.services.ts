@@ -1,6 +1,8 @@
 import { apiDelete, apiGet, apiPost, apiPut } from "../../shared/api/platform-api";
-import type { Todo, TodoInput, TodoStatus } from "./task-manager.types";
+import type { Todo, TodoInput, TodoLookup, TodoLookupKind, TodoStatus } from "./task-manager.types";
 export const listTodos = () => apiGet<Todo[]>("/task-manager/todos", "tenant");
+export const listTodoLookups = () => apiGet<TodoLookup[]>("/task-manager/lookups", "tenant");
+export const createTodoLookup = (kind: TodoLookupKind, name: string) => apiPost<TodoLookup>("/task-manager/lookups", { kind, name }, "tenant");
 export const createTodo = (input: TodoInput) => apiPost<Todo>("/task-manager/todos", input, "tenant");
 export const reorderTodos = (orderedIds: string[]) => apiPost<Todo[]>("/task-manager/todos/reorder", { orderedIds }, "tenant");
 export const updateTodo = (id: string, input: Partial<TodoInput>) => apiPut<Todo>(`/task-manager/todos/${id}`, input, "tenant");

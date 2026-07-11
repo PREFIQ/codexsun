@@ -1,15 +1,13 @@
 import { useMemo, useState } from "react";
-import { ArrowLeftIcon, ArchiveRestoreIcon, BanIcon, BoxesIcon, GitBranchIcon, Layers3Icon, PlusIcon, RefreshCwIcon, SaveIcon } from "lucide-react";
+import { ArrowLeftIcon, BoxesIcon, GitBranchIcon, Layers3Icon, PlusIcon, RefreshCwIcon, SaveIcon } from "lucide-react";
 import { toast } from "sonner";
-import { StatusBadge } from "@codexsun/ui";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
-import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
-import { WorkspaceTableEmptyState, WorkspaceTableHeaderCell, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormGrid } from "@codexsun/ui/workspace/upsert";
 import { usePlatformRegistryMutations, usePlatformRegistryQuery } from "./platform-registry.hooks";
+import { AppList, ModuleGroupList, ModuleGroupModuleList, ModuleList, PlatformList } from "./platform-registry.list";
 import type { ProjectManagerRegistryGroupNode, ProjectManagerRegistryModuleNode, ProjectManagerRegistryPlatformNode } from "../project-manager/project-manager.types";
 
 type EditMode = "group" | "module" | "platform";
@@ -30,16 +28,21 @@ export function PlatformRegistryWorkspace() {
   const groups = selectedPlatform?.groups ?? [];
   const groupOptions = flattenGroups(groups);
   const selectedGroup = groupOptions.find((group) => group.id === groupId) ?? null;
+  const isFlattenedTenantApps = selectedPlatform?.id === "platform-tenant" && selectedGroup?.id === "group-tenant-apps";
   const modules = selectedGroup?.modules ?? [];
   const moduleOptions = flattenModules(modules);
   const selectedModule = moduleOptions.find((module) => module.id === moduleId) ?? null;
   const childModules = selectedModule?.children ?? [];
+  const isApplicationGroups = selectedModule?.id === "module-app-application";
+  const isAppsRoot = isFlattenedTenantApps && !selectedModule;
+  const level = selectedModule ? "submodule" : selectedGroup ? "module" : selectedPlatform ? "group" : "platform";
   const busy = registry.isFetching || mutations.savePlatform.isPending || mutations.saveGroup.isPending || mutations.saveModule.isPending || mutations.setActive.isPending;
   const metrics = useMemo(() => registry.data?.summary, [registry.data]);
 
   function openPlatform(platform?: ProjectManagerRegistryPlatformNode) {
     setPlatformId(platform?.id ?? "");
-    setGroupId("");
+    const tenantApps = platform?.id === "platform-tenant" ? platform.groups.find((group) => group.id === "group-tenant-apps") : undefined;
+    setGroupId(tenantApps?.id ?? "");
     setModuleId("");
     setForm(null);
   }
@@ -56,7 +59,15 @@ export function PlatformRegistryWorkspace() {
 
   function editModule(module?: ProjectManagerRegistryModuleNode) {
     setEditMode("module");
-    setForm(module ? formFromModule(module) : { description: "", groupId: selectedGroup?.id ?? "", key: "", moduleType: "module", name: "", parentModuleId: "", routePath: "", sortOrder: "0", status: "active" });
+    setForm(module ? formFromModule(module) : { description: "", groupId: selectedGroup?.id ?? "", key: "", moduleType: "module", name: "", parentModuleId: selectedModule?.id ?? "", routePath: "", sortOrder: "0", status: "active" });
+  }
+
+  function goBack() {
+    setForm(null);
+    if (selectedModule) return setModuleId(selectedModule.parentModuleId || "");
+    if (isFlattenedTenantApps) return openPlatform();
+    if (selectedGroup) return setGroupId("");
+    if (selectedPlatform) openPlatform();
   }
 
   function save() {
@@ -81,123 +92,33 @@ export function PlatformRegistryWorkspace() {
 
   return (
     <WorkspacePage
-      title="Platform Registry"
-      description={selectedPlatform ? `Viewing ${selectedPlatform.name} module groups and module registry.` : "Platform registry list for super-admins, admin, and tenant."}
+      title={level === "platform" ? "Platforms" : level === "group" ? "Module Groups" : isAppsRoot ? "Apps" : level === "module" ? "Modules" : isApplicationGroups ? "Module Groups" : "Modules"}
+      description={level === "platform" ? "Platform registry list for super-admins, admin, and tenant." : level === "group" ? `Module groups in ${selectedPlatform?.name}.` : isAppsRoot ? `Apps in ${selectedPlatform?.name}.` : level === "module" ? `Modules in ${selectedGroup?.name}.` : isApplicationGroups ? `Module groups in ${selectedModule?.name}.` : `Modules in ${selectedModule?.name}.`}
       technicalName="page.platform-registry"
       actions={
         <div className="flex flex-wrap justify-end gap-2">
-          {selectedPlatform ? <Button disabled={busy} variant="outline" onClick={() => openPlatform()}><ArrowLeftIcon className="size-4" />Platforms</Button> : null}
+          {level !== "platform" ? <Button disabled={busy} variant="outline" onClick={goBack}><ArrowLeftIcon className="size-4" />Back</Button> : null}
           <Button disabled={busy} variant="outline" onClick={() => void registry.refetch()}><RefreshCwIcon className="size-4" />Refresh</Button>
-          <Button disabled={busy} onClick={() => (selectedPlatform ? editGroup() : editPlatform())}><PlusIcon className="size-4" />{selectedPlatform ? "Group" : "Platform"}</Button>
-          {selectedPlatform && selectedGroup ? <Button disabled={busy} onClick={() => editModule()}><PlusIcon className="size-4" />Module</Button> : null}
+          <Button disabled={busy} onClick={() => level === "platform" ? editPlatform() : level === "group" ? editGroup() : editModule()}><PlusIcon className="size-4" />{level === "platform" ? "Platform" : level === "group" ? "Module Group" : isAppsRoot ? "App" : level === "module" ? "Module" : isApplicationGroups ? "Module Group" : "Module"}</Button>
         </div>
       }
     >
-      <div className="mb-4 grid gap-4 md:grid-cols-4">
-        <Metric icon={BoxesIcon} label="Platforms" value={String(metrics?.platforms ?? 0)} />
-        <Metric icon={Layers3Icon} label="Groups" value={String(metrics?.totalGroups ?? 0)} />
-        <Metric icon={GitBranchIcon} label="Modules" value={String(metrics?.totalModules ?? 0)} />
-        <Metric icon={BoxesIcon} label="Active modules" value={String(metrics?.activeModules ?? 0)} />
-      </div>
+      {!isAppsRoot ? (
+        <div className="mb-4 grid gap-4 md:grid-cols-4">
+          <Metric icon={BoxesIcon} label="Platforms" value={String(metrics?.platforms ?? 0)} />
+          <Metric icon={Layers3Icon} label="Groups" value={String(metrics?.totalGroups ?? 0)} />
+          <Metric icon={GitBranchIcon} label="Modules" value={String(metrics?.totalModules ?? 0)} />
+          <Metric icon={BoxesIcon} label="Active modules" value={String(metrics?.activeModules ?? 0)} />
+        </div>
+      ) : null}
       {form ? <RegistryEditor busy={busy} error={error} form={form} mode={editMode} groups={groupOptions} modules={moduleOptions} onCancel={() => setForm(null)} onChange={setForm} onSave={save} platforms={platforms} /> : null}
-      {selectedPlatform ? (
-        <>
-          <div className="mb-4 rounded-md border bg-card px-4 py-3 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-lg font-semibold">{selectedPlatform.name}</div>
-                <div className="font-mono text-xs text-muted-foreground">{selectedPlatform.key}</div>
-                {selectedPlatform.description ? <div className="mt-2 text-sm text-muted-foreground">{selectedPlatform.description}</div> : null}
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => editPlatform(selectedPlatform)}>Edit</Button>
-                <Button size="sm" variant="outline" onClick={() => mutations.setActive.mutate({ active: !selectedPlatform.active, id: selectedPlatform.id, kind: "platforms" })}>
-                  {selectedPlatform.active ? <BanIcon className="size-4" /> : <ArchiveRestoreIcon className="size-4" />}
-                  {selectedPlatform.active ? "Off" : "Restore"}
-                </Button>
-              </div>
-            </div>
-          </div>
-          <div className="grid gap-4 xl:grid-cols-3">
-            <RegistryColumn title="Module Groups" items={groups} selectedId={selectedGroup?.id ?? ""} onEdit={(item) => editGroup(item)} onSelect={(item) => { setGroupId(item.id); setModuleId(""); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "groups" })} />
-            <RegistryColumn title="Module Registry" items={modules} selectedId={selectedModule?.id ?? ""} onEdit={(item) => editModule(item)} onSelect={(item) => setModuleId(item.id)} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} emptyState={selectedGroup ? "No modules found." : "Select a module group first."} />
-            <RegistryColumn title="Sub Modules" items={childModules} selectedId={selectedModule?.id ?? ""} onEdit={(item) => editModule(item)} onSelect={(item) => setModuleId(item.id)} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} emptyState={selectedModule ? "No sub modules found." : "Select a module first."} />
-          </div>
-        </>
-      ) : (
-        <PlatformTable platforms={platforms} onEdit={editPlatform} onSelect={openPlatform} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "platforms" })} />
-      )}
+      {level === "platform" ? <PlatformList items={platforms} onEdit={editPlatform} onSelect={openPlatform} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "platforms" })} /> : null}
+      {level === "group" ? <ModuleGroupList items={groups} onEdit={editGroup} onSelect={(item) => { setGroupId(item.id); setModuleId(""); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "groups" })} /> : null}
+      {level === "module" && isAppsRoot ? <AppList items={modules} onEdit={editModule} onSelect={(item) => { setModuleId(item.id); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} /> : null}
+      {level === "module" && !isAppsRoot ? <ModuleList items={modules} onEdit={editModule} onSelect={(item) => { setModuleId(item.id); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} /> : null}
+      {level === "submodule" && isApplicationGroups ? <ModuleGroupModuleList items={childModules} onEdit={editModule} onSelect={(item) => { setModuleId(item.id); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} /> : null}
+      {level === "submodule" && !isApplicationGroups ? <ModuleList items={childModules} onEdit={editModule} onSelect={(item) => { setModuleId(item.id); setForm(null); }} onToggle={(item) => mutations.setActive.mutate({ active: !item.active, id: item.id, kind: "modules" })} /> : null}
     </WorkspacePage>
-  );
-}
-
-function PlatformTable({ onEdit, onSelect, onToggle, platforms }: { onEdit: (platform: ProjectManagerRegistryPlatformNode) => void; onSelect: (platform: ProjectManagerRegistryPlatformNode) => void; onToggle: (platform: ProjectManagerRegistryPlatformNode) => void; platforms: ProjectManagerRegistryPlatformNode[] }) {
-  return (
-    <WorkspaceTablePanel>
-      <table className="w-full min-w-[620px] border-collapse text-sm">
-        <thead className="bg-muted/50">
-          <tr>
-            <WorkspaceTableHeaderCell>Platform</WorkspaceTableHeaderCell>
-            <WorkspaceTableHeaderCell>Key</WorkspaceTableHeaderCell>
-            <WorkspaceTableHeaderCell>Status</WorkspaceTableHeaderCell>
-            <WorkspaceTableHeaderCell>Action</WorkspaceTableHeaderCell>
-          </tr>
-        </thead>
-        <tbody>
-          {platforms.map((platform) => (
-            <tr className="border-b border-border/70 last:border-b-0" key={platform.id}>
-              <td className="px-4 py-2.5">
-                <button className="font-medium hover:underline" onClick={() => onSelect(platform)} type="button">{platform.name}</button>
-                {platform.description ? <div className="mt-1 text-xs text-muted-foreground">{platform.description}</div> : null}
-              </td>
-              <td className="px-4 py-2.5 font-mono text-xs">{platform.key}</td>
-              <td className="px-4 py-2.5"><WorkspaceStatusBadge label={platform.active ? platform.status : "off"} tone={platform.active ? "success" : "danger"} /></td>
-              <td className="px-4 py-2.5">
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => onEdit(platform)}>Edit</Button>
-                  <Button size="sm" variant="outline" onClick={() => onToggle(platform)}>
-                    {platform.active ? <BanIcon className="size-4" /> : <ArchiveRestoreIcon className="size-4" />}
-                    {platform.active ? "Off" : "Restore"}
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {platforms.length === 0 ? <WorkspaceTableEmptyState>No platforms found.</WorkspaceTableEmptyState> : null}
-    </WorkspaceTablePanel>
-  );
-}
-
-function RegistryColumn<T extends { active: boolean; description: string; id: string; key: string; name: string; status: string }>({ emptyState, items, onEdit, onSelect, onToggle, selectedId, title }: { emptyState?: string; items: T[]; onEdit: (item: T) => void; onSelect: (item: T) => void; onToggle: (item: T) => void; selectedId: string; title: string }) {
-  return (
-    <section className="min-h-[28rem] rounded-md border bg-card shadow-sm">
-      <div className="border-b px-4 py-3">
-        <h2 className="text-sm font-semibold tracking-normal">{title}</h2>
-      </div>
-      <div className="divide-y">
-        {items.length ? items.map((item) => (
-          <button key={item.id} type="button" className={`block w-full px-4 py-3 text-left hover:bg-muted/40 ${selectedId === item.id ? "bg-muted/60" : ""}`} onClick={() => onSelect(item)}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{item.name}</div>
-                <div className="truncate font-mono text-xs text-muted-foreground">{item.key}</div>
-              </div>
-              <StatusBadge tone={item.active ? "green" : "neutral"}>{item.active ? item.status : "off"}</StatusBadge>
-            </div>
-            {item.description ? <div className="mt-2 line-clamp-2 text-xs text-muted-foreground">{item.description}</div> : null}
-            <div className="mt-3 flex gap-2">
-              <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); onEdit(item); }}>Edit</Button>
-              <Button size="sm" variant="outline" onClick={(event) => { event.stopPropagation(); onToggle(item); }}>
-                {item.active ? <BanIcon className="size-4" /> : <ArchiveRestoreIcon className="size-4" />}
-                {item.active ? "Off" : "Restore"}
-              </Button>
-            </div>
-          </button>
-        )) : <div className="px-4 py-8 text-sm text-muted-foreground">{emptyState ?? "No records found."}</div>}
-      </div>
-    </section>
   );
 }
 

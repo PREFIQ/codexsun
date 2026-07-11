@@ -361,33 +361,22 @@ function seedRecords(kind: ProjectManagerKind) {
 
 function seedPlatforms() {
   return [
-    normalizePlatform({ description: "Super-admin application registry and operations.", id: "platform-super-admin", key: "platform.super-admin", name: "Super Admins", sortOrder: 10 }),
-    normalizePlatform({ description: "Internal admin workspace modules and operational tools.", id: "platform-admin", key: "platform.admin", name: "Admin", sortOrder: 20 }),
-    normalizePlatform({ description: "Tenant application modules and tenant-owned feature map.", id: "platform-tenant", key: "platform.tenant", name: "Tenant", sortOrder: 30 })
+    normalizePlatform({ description: "Super-admin application registry and operations.", id: "platform-super-admin", key: "platform.super-admin", name: "SUPER ADMIN", sortOrder: 10 }),
+    normalizePlatform({ description: "Internal admin workspace modules and operational tools.", id: "platform-admin", key: "platform.admin", name: "ADMIN", sortOrder: 20 }),
+    normalizePlatform({ description: "Tenant application modules and tenant-owned feature map.", id: "platform-tenant", key: "platform.tenant", name: "TENANT", sortOrder: 30 })
   ];
 }
 
 function seedGroups() {
   const groups: Array<Partial<ProjectManagerRegistryGroup> & ProjectManagerRegistrySavePayload> = [
-    { id: "group-sa-tenant-setup", key: "sa.tenant-setup", name: "Tenant Setup", platformId: "platform-super-admin", sortOrder: 10 },
-    { id: "group-sa-catalog", key: "sa.catalog", name: "Catalog", platformId: "platform-super-admin", sortOrder: 20 },
-    { id: "group-sa-governance", key: "sa.governance", name: "Governance", platformId: "platform-super-admin", sortOrder: 30 },
-    { id: "group-sa-database", key: "sa.database", name: "Database", platformId: "platform-super-admin", sortOrder: 40 },
-    { id: "group-sa-project-manager", key: "sa.project-manager", name: "Project Manager", platformId: "platform-super-admin", sortOrder: 50 },
-    { id: "group-tenant-common", key: "tenant.common", name: "Common", platformId: "platform-tenant", sortOrder: 10 },
-    { id: "group-tenant-master", key: "tenant.master", name: "Master", platformId: "platform-tenant", sortOrder: 20 },
-    { id: "group-tenant-billing", key: "tenant.billing", name: "Billing Entries", platformId: "platform-tenant", sortOrder: 30 },
-    { id: "group-tenant-stock", key: "tenant.stock", name: "Stock", platformId: "platform-tenant", sortOrder: 40 },
-    { id: "group-tenant-accounts", key: "tenant.accounts", name: "Accounts", platformId: "platform-tenant", sortOrder: 50 },
-    { id: "group-tenant-settings", key: "tenant.settings", name: "Settings", platformId: "platform-tenant", sortOrder: 60 },
-    { id: "group-tenant-gst", key: "tenant.gst", name: "GST", platformId: "platform-tenant", sortOrder: 70 },
-    { id: "group-tenant-media", key: "tenant.media", name: "Media", platformId: "platform-tenant", sortOrder: 80 },
-    { id: "group-tenant-mail", key: "tenant.mail", name: "Mail", platformId: "platform-tenant", sortOrder: 90 },
-    { id: "group-tenant-task-manager", key: "tenant.task-manager", name: "Task Manager", platformId: "platform-tenant", sortOrder: 100 },
-    { id: "group-tenant-crm", key: "tenant.crm", name: "CRM", platformId: "platform-tenant", sortOrder: 110 },
-    { id: "group-tenant-integrations", key: "tenant.integrations", name: "Integrations", platformId: "platform-tenant", sortOrder: 120 },
-    { id: "group-tenant-ecommerce", key: "tenant.ecommerce", name: "Ecommerce", platformId: "platform-tenant", sortOrder: 130 },
-    { id: "group-tenant-sites", key: "tenant.sites", name: "Sites", platformId: "platform-tenant", sortOrder: 140 }
+    { id: "group-sa-project-manager", key: "sa.project-manager", name: "Project Manager", platformId: "platform-super-admin", sortOrder: 10 },
+    { id: "group-sa-tenant-setup", key: "sa.tenant-setup", name: "Tenant Setup", platformId: "platform-super-admin", sortOrder: 20 },
+    { id: "group-sa-commercial", key: "sa.commercial", name: "Commercial", platformId: "platform-super-admin", sortOrder: 30 },
+    { id: "group-sa-catalog", key: "sa.catalog", name: "Catalog", platformId: "platform-super-admin", sortOrder: 40 },
+    { id: "group-sa-governance", key: "sa.governance", name: "Governance", platformId: "platform-super-admin", sortOrder: 50 },
+    { id: "group-sa-database", key: "sa.database", name: "Database", platformId: "platform-super-admin", sortOrder: 60 },
+    { id: "group-sa-design-system", key: "sa.design-system", name: "Design System", platformId: "platform-super-admin", sortOrder: 70 },
+    { id: "group-tenant-apps", key: "tenant.apps", name: "Apps", platformId: "platform-tenant", sortOrder: 10 }
   ];
   return groups.map(normalizeGroup);
 }
@@ -395,34 +384,22 @@ function seedGroups() {
 function seedModules() {
   const modules: Array<Partial<ProjectManagerRegistryModule> & ProjectManagerRegistrySavePayload> = [
     ...moduleRows("group-sa-tenant-setup", [["tenants", "Tenants"], ["tenant-domains", "Domains"], ["tenant-access", "Tenant Access"]], "/sa/"),
+    ...moduleRows("group-sa-commercial", [["plans", "Plans"], ["plan-access", "Plan Access"], ["subscriptions", "Subscriptions"]], "/sa/"),
     ...moduleRows("group-sa-catalog", [["apps", "Apps"], ["industries", "Industries"]], "/sa/"),
     ...moduleRows("group-sa-governance", [["entitlements", "Entitlements"], ["access-control", "Access Control"], ["platform-activity", "Activity"]], "/sa/"),
     ...moduleRows("group-sa-database", [["master-database", "Master Database"], ["tenant-database", "Tenant Databases"], ["queue-management", "Queue Management"], ["storage-manager", "Storage Manager"]], "/sa/"),
     ...moduleRows("group-sa-project-manager", [["platform-registry", "Platform Registry"], ["work-automation", "Work Automation"]], "/sa/"),
-    { groupId: "group-tenant-common", id: "module-location", key: "tenant.common.location", moduleType: "area", name: "Location", sortOrder: 10 },
-    { groupId: "group-tenant-common", id: "module-countries", key: "tenant.common.location.countries", name: "Countries", parentModuleId: "module-location", routePath: "/tenant/common/countries", sortOrder: 11 },
-    { groupId: "group-tenant-common", id: "module-states", key: "tenant.common.location.states", name: "States", parentModuleId: "module-location", routePath: "/tenant/common/states", sortOrder: 12 },
-    { groupId: "group-tenant-common", id: "module-districts", key: "tenant.common.location.districts", name: "Districts", parentModuleId: "module-location", routePath: "/tenant/common/districts", sortOrder: 13 },
-    { groupId: "group-tenant-common", id: "module-cities", key: "tenant.common.location.cities", name: "Cities", parentModuleId: "module-location", routePath: "/tenant/common/cities", sortOrder: 14 },
-    { groupId: "group-tenant-common", id: "module-pincodes", key: "tenant.common.location.pincodes", name: "Pincodes", parentModuleId: "module-location", routePath: "/tenant/common/pincodes", sortOrder: 15 },
-    { groupId: "group-tenant-common", id: "module-destinations", key: "tenant.common.location.destinations", name: "Destinations", parentModuleId: "module-location", routePath: "/tenant/common/destinations", sortOrder: 16 },
-    { groupId: "group-tenant-master", id: "module-contacts", key: "tenant.master.contacts", moduleType: "area", name: "Contacts", routePath: "/tenant/master/contacts", sortOrder: 10 },
-    { groupId: "group-tenant-master", id: "module-contact-emails", key: "tenant.master.contacts.emails", name: "Contact Emails", parentModuleId: "module-contacts", sortOrder: 11 },
-    { groupId: "group-tenant-master", id: "module-contact-phones", key: "tenant.master.contacts.phones", name: "Contact Phones", parentModuleId: "module-contacts", sortOrder: 12 },
-    { groupId: "group-tenant-master", id: "module-contact-bank-accounts", key: "tenant.master.contacts.bank-accounts", name: "Contact Bank Accounts", parentModuleId: "module-contacts", sortOrder: 13 },
-    { groupId: "group-tenant-master", id: "module-contact-gst", key: "tenant.master.contacts.gst", name: "Contact GST Details", parentModuleId: "module-contacts", sortOrder: 14 },
-    { groupId: "group-tenant-master", id: "module-companies", key: "tenant.master.companies", moduleType: "area", name: "Companies", routePath: "/tenant/master/companies", sortOrder: 20 },
-    { groupId: "group-tenant-master", id: "module-products", key: "tenant.master.products", moduleType: "area", name: "Products", routePath: "/tenant/master/products", sortOrder: 30 },
-    { groupId: "group-tenant-billing", id: "module-sales", key: "tenant.billing.sales", name: "Sales", routePath: "/tenant/billing/sales", sortOrder: 10 },
-    { groupId: "group-tenant-billing", id: "module-purchases", key: "tenant.billing.purchases", name: "Purchases", routePath: "/tenant/billing/purchases", sortOrder: 20 },
-    { groupId: "group-tenant-stock", id: "module-stock-items", key: "tenant.stock.items", name: "Stock Items", routePath: "/tenant/stock/items", sortOrder: 10 },
-    { groupId: "group-tenant-accounts", id: "module-ledgers", key: "tenant.accounts.ledgers", name: "Ledgers", routePath: "/tenant/accounts/ledgers", sortOrder: 10 },
-    { groupId: "group-tenant-accounts", id: "module-vouchers", key: "tenant.accounts.vouchers", name: "Vouchers", routePath: "/tenant/accounts/vouchers", sortOrder: 20 },
-    { groupId: "group-tenant-accounts", id: "module-account-reports", key: "tenant.accounts.reports", name: "Reports", routePath: "/tenant/accounts/reports", sortOrder: 30 },
-    { groupId: "group-tenant-accounts", id: "module-account-settings", key: "tenant.accounts.settings", name: "Accounts Settings", routePath: "/tenant/accounts/settings", sortOrder: 40 },
-    { groupId: "group-tenant-integrations", id: "module-tally", key: "tenant.integrations.tally", name: "Tally", sortOrder: 10 },
-    { groupId: "group-tenant-integrations", id: "module-frappe", key: "tenant.integrations.frappe", name: "Frappe", sortOrder: 20 },
-    { groupId: "group-tenant-integrations", id: "module-tconnect", key: "tenant.integrations.tconnect", name: "TConnect", sortOrder: 30 }
+    ...moduleRows("group-sa-design-system", [["design-system", "Components"]], "/sa/"),
+    { groupId: "group-tenant-apps", id: "module-app-application", key: "tenant.apps.application", moduleType: "area", name: "Application", routePath: "/app/application/overview", sortOrder: 10 },
+    { groupId: "group-tenant-apps", id: "module-app-billing", key: "tenant.apps.billing", moduleType: "area", name: "Billing", routePath: "/app/billing/overview", sortOrder: 20 },
+    { groupId: "group-tenant-apps", id: "module-app-accounts", key: "tenant.apps.accounts", moduleType: "area", name: "Accounts", routePath: "/app/accounts/overview", sortOrder: 30 },
+    { groupId: "group-tenant-apps", id: "module-app-task-manager", key: "tenant.apps.task-manager", moduleType: "area", name: "Task Manager", routePath: "/app/task-manager/overview", sortOrder: 40 },
+    { groupId: "group-tenant-apps", id: "module-application-platform", key: "tenant.apps.application.platform", moduleType: "area", name: "Platform", parentModuleId: "module-app-application", sortOrder: 10 },
+    { groupId: "group-tenant-apps", id: "module-application-organisation", key: "tenant.apps.application.organisation", moduleType: "area", name: "Organisation", parentModuleId: "module-app-application", sortOrder: 20 },
+    { groupId: "group-tenant-apps", id: "module-platform-landing-desk", key: "tenant.apps.application.platform.landing-desk", name: "Landing Desk", parentModuleId: "module-application-platform", sortOrder: 10 },
+    { groupId: "group-tenant-apps", id: "module-platform-profile", key: "tenant.apps.application.platform.profile", name: "Profile", parentModuleId: "module-application-platform", sortOrder: 20 },
+    { groupId: "group-tenant-apps", id: "module-platform-setting", key: "tenant.apps.application.platform.setting", name: "Setting", parentModuleId: "module-application-platform", sortOrder: 30 },
+    { groupId: "group-tenant-apps", id: "module-organisation-company", key: "tenant.apps.application.organisation.company", name: "Company", parentModuleId: "module-application-organisation", sortOrder: 10 }
   ];
   return modules.map(normalizeModule);
 }
