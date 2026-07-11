@@ -9,6 +9,7 @@ import { QuotationPage } from "../modules/quotation";
 import { SalesPage } from "../modules/sales/sales.page";
 import { SalesPrintRoutePage } from "../modules/sales/sales.print";
 import { SalesSettingsPage } from "../modules/settings";
+import { BillingSettingsWorkspace, DocumentSettingsWorkspace } from "../modules/billing-settings";
 
 const rootRoute = createRootRoute();
 
@@ -75,6 +76,18 @@ const salesSettingsRoute = createRoute({
   path: "/billing/settings/sales"
 });
 
+const billingSettingsRoute = createRoute({
+  component: BillingSettingsWorkspace,
+  getParentRoute: () => rootRoute,
+  path: "/billing/settings"
+});
+
+const documentSettingsRoute = createRoute({
+  component: DocumentSettingsWorkspace,
+  getParentRoute: () => rootRoute,
+  path: "/billing/settings/documents"
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   billingRoute,
@@ -87,7 +100,9 @@ const routeTree = rootRoute.addChildren([
   exportSalesRoute,
   exportSalesPrintRoute,
   salesPrintRoute,
-  salesSettingsRoute
+  salesSettingsRoute,
+  billingSettingsRoute,
+  documentSettingsRoute
 ]);
 
 export const router = createRouter({ routeTree });

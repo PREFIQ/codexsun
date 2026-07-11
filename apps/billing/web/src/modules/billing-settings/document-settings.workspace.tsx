@@ -18,6 +18,8 @@ const documents: Array<{ key: BillingNumberDocumentKind; label: string }> = [
   { key: "quotation", label: "Quotation" },
   { key: "purchase", label: "Purchase" },
   { key: "exportSales", label: "Export Sales" },
+  { key: "receipt", label: "Receipt" },
+  { key: "payment", label: "Payment" },
 ];
 
 export function DocumentSettingsWorkspace() {
@@ -51,7 +53,7 @@ export function DocumentSettingsWorkspace() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal text-foreground/80">Document Settings</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground/70">Configure automatic document numbers for sales, quotation, purchase, and export sales.</p>
+          <p className="mt-0.5 text-sm text-muted-foreground/70">Configure automatic document numbers for sales, quotations, purchases, export sales, receipts, and payments.</p>
         </div>
         <Button className="h-9 rounded-md" disabled={query.isLoading || mutation.isPending} onClick={() => mutation.mutate(form)} type="button">
           <Save className="size-4" />

@@ -78,6 +78,23 @@ export class ExportSalesRepository {
     await db.updateTable("billing_export_sales").set({ status, updated_at: updatedAt }).where("id", "=", id).execute();
     return { ...toExportSale(existing), status, updatedAt };
   }
+
+  async revoke(databaseName: string, id: string) {
+    const db = await exportSalesDatabase(databaseName);
+    const existing = await db.selectFrom("billing_export_sales").selectAll().where("id", "=", id).executeTakeFirst();
+    if (!existing) return null;
+    const updatedAt = new Date().toISOString();
+    await db.updateTable("billing_export_sales").set({ status: "draft", updated_at: updatedAt }).where("id", "=", id).execute();
+    return { ...toExportSale(existing), status: "draft" as const, updatedAt };
+  }
+
+  async delete(databaseName: string, id: string) {
+    const db = await exportSalesDatabase(databaseName);
+    const existing = await db.selectFrom("billing_export_sales").selectAll().where("id", "=", id).executeTakeFirst();
+    if (!existing) return null;
+    await db.deleteFrom("billing_export_sales").where("id", "=", id).execute();
+    return toExportSale(existing);
+  }
 }
 
 function exportSalesDatabase(databaseName: string) {

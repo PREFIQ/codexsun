@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.16
+Current version: 1.0.18
 
-Release tag: v-1.0.16
+Release tag: v-1.0.18
 
-Changelog label: v 1.0.16
+Changelog label: v 1.0.18
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,33 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.18
+
+### [v 1.0.18] 2026-07-11 9:54 am - working on eway and einvoice
+
+#### Database Changes
+
+- Database update: Yes (auto-check).
+
+#### App Codebase Changes
+
+- Bumped workspace version to 1.0.18.
+
+## v-1.0.17
+
+### [v 1.0.17] 2026-07-11 12:33 am - Independent export sales clone
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Wired the Export Sales migration into tenant billing database bootstrap and added the Export Sales lookup routes.
+
+#### App Codebase Changes
+
+- Refactored Export Sales into an independent clone of the Quotation/Sales workspace with matching list, upsert, item entry, autocomplete, totals, show, activity tools, and print preview flows.
+- Added Export Sales revoke/delete workflow parity, validation handling, and deferred accounting posting behavior.
+- Bumped the workspace version to 1.0.17.
 
 ## v-1.0.16
 

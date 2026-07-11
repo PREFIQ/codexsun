@@ -88,6 +88,22 @@ export async function registerSalesRoutes(app: FastifyInstance) {
     if (!sale) return reply.code(404).send(notFound(request.id));
     return ok(sale, { requestId: request.id });
   });
+
+  app.post("/billing/sales/:id/einvoice/generate", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as { einvoice?: SaleSavePayload["einvoice"] } | undefined;
+    const sale = await salesService.generateEinvoice(tenantDatabaseName(request.headers["x-tenant-db"]), id, body?.einvoice);
+    if (!sale) return reply.code(404).send(notFound(request.id));
+    return ok(sale, { requestId: request.id });
+  });
+
+  app.post("/billing/sales/:id/eway/generate", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as { eway?: SaleSavePayload["eway"] } | undefined;
+    const sale = await salesService.generateEway(tenantDatabaseName(request.headers["x-tenant-db"]), id, body?.eway);
+    if (!sale) return reply.code(404).send(notFound(request.id));
+    return ok(sale, { requestId: request.id });
+  });
 }
 
 function lookupHeaders(request: { headers: Record<string, string | string[] | undefined> }) {

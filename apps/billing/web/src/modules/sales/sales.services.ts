@@ -1,5 +1,5 @@
 import { billingApiDelete, billingApiGet, billingApiPost, billingApiPut } from "../../shared/api/billing-api";
-import type { Sale, SaleSavePayload, SaleStatus } from "./sales.types";
+import { createEmptySaleEinvoice, createEmptySaleEway, type Sale, type SaleSavePayload, type SaleStatus } from "./sales.types";
 
 export type SaleLookupOption = {
   description?: string;
@@ -13,6 +13,7 @@ export type SaleLookupRecord = {
   addresses?: Array<Record<string, unknown>>;
   code?: string | null;
   description?: string | null;
+  gst?: string | null;
   gstin?: string | null;
   hsnCode?: string | null;
   id: string;
@@ -33,6 +34,7 @@ export type SaleLookupRecord = {
   taxId?: string | null;
   typeName?: string | null;
   unitName?: string | null;
+  vehicleNo?: string | null;
   workOrderNo?: string | null;
 };
 
@@ -92,6 +94,15 @@ export type SaleMasterSavePayload = {
   unitName: string;
 };
 
+export type SaleTransportSavePayload = {
+  address: string;
+  contactNo: string;
+  contactPerson: string;
+  gst: string;
+  name: string;
+  vehicleNo: string;
+};
+
 export async function listSales() {
   return billingApiGet<Sale[]>("/billing/sales").then((records) => records.map(fromApiSale));
 }
@@ -120,6 +131,14 @@ export async function revokeSale(id: string) {
   return billingApiPost<Sale>(`/billing/sales/${id}/revoke`).then(fromApiSale);
 }
 
+export async function generateSaleEinvoice(id: string, einvoice?: Sale["einvoice"]) {
+  return billingApiPost<Sale>(`/billing/sales/${id}/einvoice/generate`, { einvoice }).then(fromApiSale);
+}
+
+export async function generateSaleEway(id: string, eway?: Sale["eway"]) {
+  return billingApiPost<Sale>(`/billing/sales/${id}/eway/generate`, { eway }).then(fromApiSale);
+}
+
 export function createSaleContact(payload: SaleContactSavePayload) {
   return billingApiPost<SaleLookupRecord>("/billing/sales/lookups/contacts", contactPayload(payload));
 }
@@ -144,7 +163,7 @@ export function createSaleAddressType(name: string) {
   return billingApiPost<SaleLookupRecord>("/billing/sales/lookups/address-types", { isActive: true, name: name.trim() });
 }
 
-export function createSaleLookup(kind: "colours" | "products" | "sizes" | "workOrders" | "productCategories" | "hsnCodes" | "units" | "taxes", payload: Record<string, unknown>) {
+export function createSaleLookup(kind: "colours" | "products" | "sizes" | "workOrders" | "productCategories" | "hsnCodes" | "units" | "taxes" | "transports", payload: Record<string, unknown>) {
   return billingApiPost<SaleLookupRecord>(`/billing/sales/lookups/${kind}`, payload);
 }
 
@@ -214,12 +233,28 @@ export function listSaleSizes() {
   return listSaleCommonOptions("sizes");
 }
 
+export function listSaleTransports() {
+  return billingApiGet<SaleLookupRecord[]>("/billing/sales/lookups/transports").then((records) =>
+    records.filter(isActiveRecord).map((record) => lookupOption(record, {
+      description: record.gst || record.vehicleNo || "",
+      label: record.name || record.code || record.id,
+      meta: record.gst || "",
+      value: record.name || record.code || record.id,
+    })),
+  );
+}
+
+export function createSaleTransport(payload: SaleTransportSavePayload) {
+  return createSaleLookup("transports", { ...payload, isActive: true });
+}
+
 export function saleToPayload(sale: Sale): SaleSavePayload {
   return {
     billingAddress: sale.billingAddress,
     customerEmail: sale.customerEmail,
     customerName: sale.customerName,
     customerPhone: sale.customerPhone,
+    einvoice: sale.einvoice ?? createEmptySaleEinvoice(),
     issuedOn: sale.issuedOn,
     items: sale.items.map((item) => ({
       colour: item.colour,
@@ -243,6 +278,7 @@ export function saleToPayload(sale: Sale): SaleSavePayload {
     taxType: sale.taxType,
     terms: sale.terms,
     workOrderNo: sale.workOrderNo,
+    eway: sale.eway ?? createEmptySaleEway(),
   };
 }
 
@@ -301,6 +337,7 @@ function toApiPayload(payload: SaleSavePayload) {
     customerEmail: payload.customerEmail,
     customerName: payload.customerName,
     customerPhone: payload.customerPhone,
+    einvoice: payload.einvoice,
     invoiceNumber: payload.invoiceNumber || payload.saleNumber || "",
     issuedOn: payload.issuedOn,
     items: payload.items,
@@ -312,6 +349,7 @@ function toApiPayload(payload: SaleSavePayload) {
     taxType: payload.taxType,
     terms: payload.terms,
     workOrderNo: payload.workOrderNo,
+    eway: payload.eway,
   };
 }
 
@@ -322,12 +360,14 @@ function fromApiSale(record: Sale): Sale {
     currencyCode: record.currencyCode || "INR",
     customerEmail: record.customerEmail || "",
     customerPhone: record.customerPhone || "",
+    einvoice: record.einvoice ?? createEmptySaleEinvoice(),
     invoiceNumber,
     saleNumber: record.saleNumber || invoiceNumber,
     salesLedger: record.salesLedger || "",
     taxType: record.taxType || "cgst-sgst",
     terms: record.terms || "",
     workOrderNo: record.workOrderNo || "",
+    eway: record.eway ?? createEmptySaleEway(),
   };
 }
 

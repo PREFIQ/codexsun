@@ -144,6 +144,7 @@ export function QuotationWorkspace() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["billing", "quotations"] }),
         queryClient.invalidateQueries({ queryKey: ["billing", "settings"] }),
+        queryClient.invalidateQueries({ queryKey: ["billing", "document-settings"] }),
       ]);
       toast.success(view.mode === "upsert" && view.quotation ? "Quotation updated" : "Quotation created", {
         description: `${quotation.quotationNumber} is ready.`,

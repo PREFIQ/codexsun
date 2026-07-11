@@ -137,6 +137,14 @@ export function BillingSettingsWorkspace() {
           <ToggleRow checked={form.printing.printAccountNumber} label="Print account no" note="Shows the company bank account number in billing document bank details." onChange={(printAccountNumber) => patchPrinting({ printAccountNumber })} badge="Client" />
           <ToggleRow checked={form.printing.printQrAccountDetails} label="Print QR account details" note="Controls whether QR account details are printed on billing documents." onChange={(printQrAccountDetails) => patchPrinting({ printQrAccountDetails })} badge="Client" />
           <label className="block rounded-md border border-border/70 bg-background p-4">
+            <span className="text-sm font-semibold">Customer address layout</span>
+            <span className="mt-1 block text-sm text-muted-foreground">Choose whether documents print billing only, or both billing and shipping addresses.</span>
+            <select className="mt-3 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={form.printing.addressMode} onChange={(event) => patchPrinting({ addressMode: event.target.value as "billing_only" | "billing_and_shipping" })}>
+              <option value="billing_only">Billing only — document details on the right</option>
+              <option value="billing_and_shipping">Billing and shipping</option>
+            </select>
+          </label>
+          <label className="block rounded-md border border-border/70 bg-background p-4">
             <span className="text-sm font-semibold">Custom terms</span>
             <Textarea className="mt-3 min-h-24 resize-y rounded-md" value={form.printing.customTerms} onChange={(event) => patchPrinting({ customTerms: event.target.value })} />
           </label>

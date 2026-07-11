@@ -15,7 +15,7 @@ export const salesSettingsSchema = z.object({
     usePo: z.boolean(),
     useSize: z.boolean()
   }),
-  numbering: z.record(z.enum(["quotation", "sales", "purchase", "exportSales"]), z.object({
+  numbering: z.record(z.enum(["quotation", "sales", "purchase", "exportSales", "receipt", "payment"]), z.object({
     automatic: z.boolean(),
     nextNumber: z.number().int().positive(),
     padding: z.number().int().min(1).max(12),
@@ -31,6 +31,7 @@ export const salesSettingsSchema = z.object({
     printLanguage: z.literal("english"),
   }),
   printing: z.object({
+    addressMode: z.enum(["billing_only", "billing_and_shipping"]),
     customTerms: z.string(),
     letterhead: z.object({
       addressColor: z.string(),

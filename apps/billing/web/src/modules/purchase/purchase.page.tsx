@@ -142,6 +142,7 @@ export function PurchaseWorkspace() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["billing", "purchases"] }),
         queryClient.invalidateQueries({ queryKey: ["billing", "settings"] }),
+        queryClient.invalidateQueries({ queryKey: ["billing", "document-settings"] }),
       ]);
       toast.success(view.mode === "upsert" && view.purchase ? "Purchase updated" : "Purchase created", {
         description: `${purchase.invoiceNumber} is ready.`,

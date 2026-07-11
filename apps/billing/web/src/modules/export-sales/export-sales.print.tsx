@@ -80,7 +80,7 @@ function ExportSalePrintPage({
   exportSale: ExportSale;
 }) {
   const splitTax = exportSale.taxType === "cgst-sgst";
-  const blankRows = Math.max(0, 12 - items.length);
+  const blankRows = isLastPage ? Math.max(0, 12 - items.length) : 0;
 
   return (
     <article className={`bg-white px-3 py-3 text-[10px] text-black ${pageIndex > 0 ? "break-before-page" : ""}`}>
@@ -162,8 +162,8 @@ function ExportSalePrintPage({
 
         {isLastPage ? (
           <>
-            <section className="grid border-t border-slate-300 md:grid-cols-[1fr_12rem]">
-              <div className="border-b border-slate-300 px-2 py-2 text-[9px] leading-4 md:border-b-0 md:border-r md:border-slate-300">
+            <section className="grid grid-cols-[1fr_12rem] border-t border-slate-300">
+              <div className="border-r border-slate-300 px-2 py-2 text-[9px] leading-4">
                 <div className="font-medium">E&amp;OE</div>
                 <div className="mt-1">We hereby certify that our registration under the GST Act 2017 is in force on the date on which exportSale of goods specified in this invoice is made by us and the exportSale is effected in the regular course of business.</div>
                 <div className="mt-1 font-semibold">* Goods once sold will not be taken back unless agreed in writing.</div>
@@ -177,8 +177,8 @@ function ExportSalePrintPage({
                 <PrintTotal label="GRAND TOTAL" strong value={money(exportSale.amount)} />
               </div>
             </section>
-            <section className="grid min-h-[6rem] border-t border-slate-300 md:grid-cols-[1fr_18rem]">
-              <div className="flex items-end border-b border-slate-300 px-2 py-2 text-[9px] md:border-b-0 md:border-r md:border-slate-300"><div className="mt-4">Receiver Sign</div></div>
+            <section className="grid min-h-[5rem] grid-cols-[1fr_18rem] border-t border-slate-300">
+              <div className="flex items-end border-r border-slate-300 px-2 py-2 text-[9px]"><div className="mt-4">Receiver Sign</div></div>
               <div className="grid grid-rows-[1fr_auto] px-2 py-2 text-[9px]"><div className="font-semibold">For CODEXSUN</div><div className="font-semibold">Authorised Signatory</div></div>
             </section>
             <footer className="border-t border-slate-300 px-2 py-1 text-[9px]">Subject to Tiruppur Jurisdiction</footer>
@@ -205,7 +205,7 @@ function ExportSalePrintItemRow({ item, index }: { item: ExportSale["items"][num
 }
 
 function ExportSalePrintBlankRow() {
-  return <tr className="h-8">{exportSalePrintHeadings.map((heading, index) => <td key={heading} className={index === exportSalePrintHeadings.length - 1 ? "" : "border-r border-slate-200"} />)}</tr>;
+  return <tr className="h-6">{exportSalePrintHeadings.map((heading, index) => <td key={heading} className={index === exportSalePrintHeadings.length - 1 ? "" : "border-r border-slate-200"} />)}</tr>;
 }
 
 function ExportSalePrintTotalRow({ exportSale }: { exportSale: ExportSale }) {
@@ -221,10 +221,17 @@ function ExportSalePrintTotalRow({ exportSale }: { exportSale: ExportSale }) {
   </tr>;
 }
 
-function chunkItems(items: ExportSale["items"], size: number) {
+function chunkItems(items: ExportSale["items"], _size: number) {
+  const finalPageBudget = 12;
+  const continuationPageBudget = 24;
   const pages: Array<Array<{ item: ExportSale["items"][number]; index: number }>> = [];
-  for (let index = 0; index < items.length; index += size) pages.push(items.slice(index, index + size).map((item, offset) => ({ item, index: index + offset })));
-  return pages.length > 0 ? pages : [[]];
+  let index = 0;
+  while (items.length - index > finalPageBudget) {
+    pages.push(items.slice(index, index + continuationPageBudget).map((item, offset) => ({ item, index: index + offset })));
+    index += continuationPageBudget;
+  }
+  pages.push(items.slice(index).map((item, offset) => ({ item, index: index + offset })));
+  return pages;
 }
 
 function PrintPair({ children, label }: { children: string; label: string }) {

@@ -14,6 +14,16 @@ const envSchema = z.object({
   DB_PORT: z.coerce.number().int().positive(),
   DB_USER: z.string().min(1, "DB_USER is required"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
+  GSP_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
+  GSP_SANDBOX_BASE_URL: z.string().url().default("https://apisandbox.whitebooks.in"),
+  GSP_BASE_URL: z.string().url().default("https://api.whitebooks.in"),
+  GSP_EMAIL: z.string().default(""),
+  GSP_USERNAME: z.string().default(""),
+  GSP_PASSWORD: z.string().default(""),
+  GSP_CLIENT_ID: z.string().default(""),
+  GSP_CLIENT_SECRET: z.string().default(""),
+  GSP_GSTIN: z.string().default(""),
+  GSP_IP_ADDRESS: z.string().default("0.0.0.0"),
   NODE_ENV: z.enum(["development", "test", "staging", "production"]).default("development")
 });
 

@@ -13,6 +13,8 @@ export async function migrateSalesModule(database: Kysely<any>) {
       customer_name varchar(180) not null,
       customer_email varchar(180) null,
       customer_phone varchar(40) null,
+      eway_json longtext null,
+      einvoice_json longtext null,
       billing_address text null,
       shipping_address text null,
       sales_ledger varchar(180) null,
@@ -36,6 +38,8 @@ export async function migrateSalesModule(database: Kysely<any>) {
   const alterStatements = [
     "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS customer_email varchar(180) null",
     "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS customer_phone varchar(40) null",
+    "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS eway_json longtext null",
+    "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS einvoice_json longtext null",
     "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS billing_address text null",
     "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS shipping_address text null",
     "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS sales_ledger varchar(180) null",

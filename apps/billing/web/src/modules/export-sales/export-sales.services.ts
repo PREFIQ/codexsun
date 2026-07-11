@@ -323,7 +323,6 @@ function fromApiExportSale(record: ExportSale): ExportSale {
     customerEmail: record.customerEmail || "",
     customerPhone: record.customerPhone || "",
     invoiceNumber,
-    invoiceNumber,
     salesLedger: record.salesLedger || "",
     taxType: record.taxType || "cgst-sgst",
     terms: record.terms || "",

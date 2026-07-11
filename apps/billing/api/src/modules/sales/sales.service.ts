@@ -1,9 +1,10 @@
 import { env } from "../../env.js";
 import { AppError } from "@codexsun/framework/errors";
 import { SalesRepository } from "./sales.repository.js";
-import type { Sale, SaleLineItem, SaleLineItemInput, SaleSavePayload } from "./sales.types.js";
+import type { Sale, SaleEinvoiceDetails, SaleEwayDetails, SaleLineItem, SaleLineItemInput, SaleSavePayload } from "./sales.types.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
 import { formatBillingDocumentNumber, nextBillingDocumentNumber } from "../settings/settings.types.js";
+import { generateSaleEinvoice, generateSaleEway } from "./whitebooks.client.js";
 
 export class SalesService {
   constructor(
@@ -55,6 +56,22 @@ export class SalesService {
     if (sale) await postSaleToAccounts(databaseName, sale, "cancel");
     return sale;
   }
+
+  async generateEinvoice(databaseName: string, id: string, details?: SaleEinvoiceDetails) {
+    let sale = await this.repository.get(databaseName, id);
+    if (!sale) return null;
+    if (details) sale = await this.repository.updateCompliance(databaseName, id, { einvoice: details }) ?? sale;
+    const result = await generateSaleEinvoice(sale);
+    return this.repository.updateCompliance(databaseName, id, { einvoice: { ...sale.einvoice, ...result.einvoice, status: "generated" } });
+  }
+
+  async generateEway(databaseName: string, id: string, details?: SaleEwayDetails) {
+    let sale = await this.repository.get(databaseName, id);
+    if (!sale) return null;
+    if (details) sale = await this.repository.updateCompliance(databaseName, id, { eway: details }) ?? sale;
+    const result = await generateSaleEway(sale);
+    return this.repository.updateCompliance(databaseName, id, { eway: { ...sale.eway, ...result.eway, status: "generated" } });
+  }
 }
 
 export function normalizeSaleInput(input: SaleSavePayload): SaleSavePayload {
@@ -81,6 +98,7 @@ export function normalizeSaleInput(input: SaleSavePayload): SaleSavePayload {
     customerEmail: input.customerEmail.trim().toLowerCase(),
     customerName: input.customerName.trim(),
     customerPhone: input.customerPhone.trim(),
+    einvoice: normalizeEinvoice(input.einvoice),
     invoiceNumber: input.invoiceNumber.trim().toUpperCase(),
     issuedOn: input.issuedOn.trim(),
     items,
@@ -92,6 +110,30 @@ export function normalizeSaleInput(input: SaleSavePayload): SaleSavePayload {
     taxType: input.taxType ?? "cgst-sgst",
     terms: input.terms?.trim() ?? "",
     workOrderNo: input.workOrderNo?.trim() ?? "",
+    eway: normalizeEway(input.eway),
+  };
+}
+
+function normalizeEway(value?: SaleEwayDetails): SaleEwayDetails {
+  return {
+    billDate: value?.billDate?.trim() ?? "",
+    billNo: value?.billNo?.trim().toUpperCase() ?? "",
+    notes: value?.notes?.trim() ?? "",
+    part: value?.part === "Part A" ? "Part A" : "Part B",
+    status: value?.status === "generated" ? "generated" : "not-generated",
+    transport: value?.transport?.trim() ?? "",
+    transportGst: value?.transportGst?.trim().toUpperCase() ?? "",
+    vehicleNo: value?.vehicleNo?.trim().toUpperCase() ?? "",
+  };
+}
+
+function normalizeEinvoice(value?: SaleEinvoiceDetails): SaleEinvoiceDetails {
+  return {
+    ackDate: value?.ackDate?.trim() ?? "",
+    ackNo: value?.ackNo?.trim() ?? "",
+    irn: value?.irn?.trim().toUpperCase() ?? "",
+    signedQr: value?.signedQr?.trim() ?? "",
+    status: value?.status === "generated" ? "generated" : "not-generated",
   };
 }
 

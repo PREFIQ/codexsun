@@ -37,6 +37,7 @@ export type BillingSettings = {
     printLanguage: "english";
   };
   printing: {
+    addressMode: "billing_only" | "billing_and_shipping";
     customTerms: string;
     letterhead: {
       addressColor: string;
@@ -92,6 +93,7 @@ export const defaultBillingSettings: BillingSettings = {
     printLanguage: "english",
   },
   printing: {
+    addressMode: "billing_and_shipping",
     customTerms: "",
     letterhead: {
       addressColor: "#111827",

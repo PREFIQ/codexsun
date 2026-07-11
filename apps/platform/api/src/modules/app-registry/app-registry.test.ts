@@ -5,7 +5,9 @@ describe("app registry", () => {
   it("keeps application enabled and billing switchable", () => {
     expect(resolveEnabledApps([]).map((app) => [app.appId, app.enabled])).toEqual([
       ["application", true],
-      ["billing", false]
+      ["billing", false],
+      ["accounts", false],
+      ["task-manager", false]
     ]);
     expect(resolveLandingApp("billing", ["billing.sales"])).toBe("billing");
   });

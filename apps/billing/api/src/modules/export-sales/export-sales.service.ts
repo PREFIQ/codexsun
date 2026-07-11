@@ -60,6 +60,20 @@ export class ExportSalesService {
     if (sale) await postExportSaleToAccounts(databaseName, sale, "cancel");
     return sale;
   }
+
+  async revokeExportSale(databaseName: string, id: string) {
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.status !== "confirmed") throw AppError.conflict("Only confirmed export sales can be revoked.");
+    return this.repository.revoke(databaseName, id);
+  }
+
+  async deleteExportSale(databaseName: string, id: string) {
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.status !== "draft") throw AppError.conflict("Only draft export sales can be deleted.");
+    return this.repository.delete(databaseName, id);
+  }
 }
 
 export function normalizeExportSaleInput(input: ExportSaleSavePayload): ExportSaleSavePayload {
@@ -68,16 +82,16 @@ export function normalizeExportSaleInput(input: ExportSaleSavePayload): ExportSa
     .filter((item) => item.description.length > 0 && item.quantity > 0);
 
   if (!input.customerName.trim()) {
-    throw new Error("Customer name is required.");
+    throw AppError.validation("Customer name is required.");
   }
   if (!input.invoiceNumber.trim()) {
-    throw new Error("Invoice number is required.");
+    throw AppError.validation("Invoice number is required.");
   }
   if (!input.issuedOn.trim()) {
-    throw new Error("Invoice date is required.");
+    throw AppError.validation("Invoice date is required.");
   }
   if (items.length === 0) {
-    throw new Error("At least one export sales item is required.");
+    throw AppError.validation("Add at least one export sales item with a product or description.");
   }
 
   return {
@@ -104,7 +118,7 @@ function normalizeExportSaleLineItem(item: ExportSaleLineItemInput): ExportSaleL
   return {
     colour: item.colour?.trim() ?? "",
     dcNo: item.dcNo?.trim().toUpperCase() ?? "",
-    description: item.description.trim(),
+    description: item.description.trim() || item.productName.trim(),
     hsnCode: item.hsnCode.trim().toUpperCase(),
     poNo: item.poNo?.trim().toUpperCase() ?? "",
     productName: item.productName.trim(),
@@ -146,7 +160,8 @@ function roundMoney(value: number) {
 }
 
 async function postExportSaleToAccounts(databaseName: string, sale: ExportSale, operation: "create" | "update" | "cancel") {
-  const response = await fetch(`${env.ACCOUNTS_API_URL}/accounts/postings/billing`, {
+  try {
+    const response = await fetch(`${env.ACCOUNTS_API_URL}/accounts/postings/billing`, {
     body: JSON.stringify({
       documentDate: sale.issuedOn,
       operation,
@@ -168,8 +183,11 @@ async function postExportSaleToAccounts(databaseName: string, sale: ExportSale, 
     method: "POST"
   });
 
-  if (!response.ok) {
-    const message = await response.text().catch(() => "");
-    throw new Error(`Accounts posting failed for ${sale.invoiceNumber}: ${message || response.statusText}`);
+    if (!response.ok) {
+      const message = await response.text().catch(() => "");
+      console.warn(`[export-sales] Accounts posting deferred for ${sale.invoiceNumber}: ${message || response.statusText}`);
+    }
+  } catch (error) {
+    console.warn(`[export-sales] Accounts posting deferred for ${sale.invoiceNumber}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

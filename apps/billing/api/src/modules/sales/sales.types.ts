@@ -1,4 +1,24 @@
 export type SaleStatus = "draft" | "confirmed" | "cancelled";
+export type GstDocumentStatus = "not-generated" | "generated";
+
+export type SaleEwayDetails = {
+  billDate: string;
+  billNo: string;
+  notes: string;
+  part: "Part A" | "Part B";
+  status: GstDocumentStatus;
+  transport: string;
+  transportGst: string;
+  vehicleNo: string;
+};
+
+export type SaleEinvoiceDetails = {
+  ackDate: string;
+  ackNo: string;
+  irn: string;
+  signedQr: string;
+  status: GstDocumentStatus;
+};
 
 export type SaleLineItemInput = {
   colour?: string;
@@ -32,6 +52,8 @@ export type Sale = {
   customerEmail: string;
   customerName: string;
   customerPhone: string;
+  einvoice: SaleEinvoiceDetails;
+  eway: SaleEwayDetails;
   id: string;
   invoiceNumber: string;
   issuedOn: string;
@@ -55,6 +77,8 @@ export type SaleSavePayload = {
   customerEmail: string;
   customerName: string;
   customerPhone: string;
+  einvoice?: SaleEinvoiceDetails;
+  eway?: SaleEwayDetails;
   invoiceNumber: string;
   issuedOn: string;
   items: SaleLineItemInput[];

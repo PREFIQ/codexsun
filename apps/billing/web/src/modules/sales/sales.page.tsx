@@ -26,7 +26,7 @@ import { PageTitle } from "../../shared/document/PageTitle";
 import { BillingLayout } from "../../shared/layout/BillingLayout";
 import { useSalesSettings } from "../settings";
 import { defaultBillingSettings, formatDocumentNumber, type BillingDocumentLayoutSettings, type BillingDocumentNumberSettings } from "../settings/settings.types";
-import { createEmptySale, type Sale, type SaleSavePayload, type SaleTaxType, type SaleView } from "./sales.types";
+import { createEmptySale, createEmptySaleEinvoice, createEmptySaleEway, type Sale, type SaleEinvoiceDetails, type SaleEwayDetails, type SaleSavePayload, type SaleTaxType, type SaleView } from "./sales.types";
 import { SaleShowPage } from "./sales.show";
 import {
   buildSaleAddressChoices,
@@ -46,6 +46,8 @@ import {
   deleteSale,
   formatDate,
   formatMoney,
+  generateSaleEinvoice,
+  generateSaleEway,
   listSaleColours,
   listSaleContacts,
   listSaleAddressTypes,
@@ -55,6 +57,7 @@ import {
   listSaleProducts,
   listSaleSizes,
   listSaleTaxes,
+  listSaleTransports,
   listSaleUnits,
   listSaleWorkOrders,
   saleToPayload,
@@ -70,6 +73,8 @@ import {
   type SaleLookupOption,
   type SaleLookupRecord,
   type SaleMasterSavePayload,
+  createSaleTransport,
+  type SaleTransportSavePayload,
 } from "./sales.services";
 import { useSaleList } from "./sales.hooks";
 import { getToken } from "../../shared/api/tenant-context";
@@ -142,6 +147,7 @@ export function SaleWorkspace() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["billing", "sales"] }),
         queryClient.invalidateQueries({ queryKey: ["billing", "settings"] }),
+        queryClient.invalidateQueries({ queryKey: ["billing", "document-settings"] }),
       ]);
       toast.success(view.mode === "upsert" && view.sale ? "Sale updated" : "Sale created", {
         description: `${sale.saleNumber} is ready.`,
@@ -523,6 +529,7 @@ function SaleUpsertPage({ canAdminRevoke, errorMessage, loading, numbering, onBa
   const productsQuery = useQuery({ queryFn: listSaleProducts, queryKey: ["billing", "sale", "lookups", "products"] });
   const coloursQuery = useQuery({ queryFn: listSaleColours, queryKey: ["billing", "sale", "lookups", "colours"] });
   const sizesQuery = useQuery({ queryFn: listSaleSizes, queryKey: ["billing", "sale", "lookups", "sizes"] });
+  const transportsQuery = useQuery({ queryFn: listSaleTransports, queryKey: ["billing", "sale", "lookups", "transports"] });
   const contactSaveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: SaleContactSavePayload }) => id ? updateSaleContact(id, payload) : createSaleContact(payload),
   });
@@ -530,11 +537,16 @@ function SaleUpsertPage({ canAdminRevoke, errorMessage, loading, numbering, onBa
     mutationFn: ({ id, kind, payload }: { id?: string; kind: "products" | "workOrders"; payload: SaleMasterSavePayload }) =>
       id ? updateSaleLookup(kind, id, masterPayload(kind, payload)) : createSaleLookup(kind, masterPayload(kind, payload)),
   });
+  const transportSaveMutation = useMutation({ mutationFn: createSaleTransport });
+  const complianceMutation = useMutation({ mutationFn: ({ id, kind, details }: { id: string; kind: "einvoice" | "eway"; details: SaleEinvoiceDetails | SaleEwayDetails }) => kind === "einvoice" ? generateSaleEinvoice(id, details as SaleEinvoiceDetails) : generateSaleEway(id, details as SaleEwayDetails) });
   const selectedContact = (contactsQuery.data ?? []).find((option) => option.value === form.customerName || option.label === form.customerName);
   const selectedWorkOrder = (workOrdersQuery.data ?? []).find((option) => option.value === form.workOrderNo || option.label === form.workOrderNo);
   const contactAddressChoices = useMemo(() => buildSaleAddressChoices(selectedContact?.record), [selectedContact?.record]);
   const itemTotals = useMemo(() => computeSaleTotals(form.items, form.taxType), [form.items, form.taxType]);
   const suggestedRoundOff = useMemo(() => computeSuggestedRoundOff(itemTotals.amount), [itemTotals.amount]);
+  const eway = form.eway ?? createEmptySaleEway();
+  const einvoice = form.einvoice ?? createEmptySaleEinvoice();
+  const selectedTransport = (transportsQuery.data ?? []).find((option) => option.value === eway.transport || option.label === eway.transport);
 
   function patch(next: Partial<SaleSavePayload>) {
     setForm((current) => ({ ...current, ...next }));
@@ -586,6 +598,36 @@ function SaleUpsertPage({ canAdminRevoke, errorMessage, loading, numbering, onBa
     if (Number.isNaN(parsed)) return;
     setRoundOffManual(true);
     patch({ roundOff: parsed });
+  }
+
+  function patchEway(next: Partial<SaleEwayDetails>) {
+    patch({ eway: { ...eway, ...next } });
+  }
+
+  function patchEinvoice(next: Partial<SaleEinvoiceDetails>) {
+    patch({ einvoice: { ...einvoice, ...next } });
+  }
+
+  async function generateEway() {
+    if (!sale) { toast.error("Save the sale before generating the E-way bill."); return; }
+    try {
+      const updated = await complianceMutation.mutateAsync({ id: sale.id, kind: "eway", details: eway });
+      patch({ eway: updated.eway, einvoice: updated.einvoice });
+      toast.success("E-way bill generated");
+    } catch (error) {
+      toast.error("E-way generation failed", { description: error instanceof Error ? error.message : "Please check WhiteBooks settings." });
+    }
+  }
+
+  async function generateEinvoice() {
+    if (!sale) { toast.error("Save the sale before generating the E-invoice."); return; }
+    try {
+      const updated = await complianceMutation.mutateAsync({ id: sale.id, kind: "einvoice", details: einvoice });
+      patch({ einvoice: updated.einvoice });
+      toast.success("E-invoice generated");
+    } catch (error) {
+      toast.error("E-invoice generation failed", { description: error instanceof Error ? error.message : "Please check WhiteBooks settings." });
+    }
   }
 
   function resetDraft() {
@@ -835,6 +877,16 @@ function SaleUpsertPage({ canAdminRevoke, errorMessage, loading, numbering, onBa
         </div>
       ),
     },
+    ...(settings.useEway ? [{
+      value: "eway",
+      label: "E-way",
+      content: <SaleEwayTab value={eway} onChange={patchEway} onGenerate={generateEway} options={transportsQuery.data ?? []} loading={transportsQuery.isLoading} selected={selectedTransport} onTransportChange={(value, option) => patchEway({ transport: option?.label ?? value, transportGst: option?.record?.gst ?? "" })} onCreateTransport={async (payload) => { const created = await transportSaveMutation.mutateAsync(payload); await transportsQuery.refetch(); return { description: created.gst || created.vehicleNo || "", label: created.name || created.id, meta: created.gst || "", value: created.name || created.id, record: created }; }} />,
+    }] : []),
+    ...(settings.useEinvoice ? [{
+      value: "einvoice",
+      label: "E-invoice",
+      content: <SaleEinvoiceTab value={einvoice} onChange={patchEinvoice} onGenerate={generateEinvoice} />,
+    }] : []),
     {
       value: "terms",
       label: "Terms",
@@ -1506,6 +1558,76 @@ function SaleItemsSection({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SaleTransportQuickForm({ initialName, onCancel, onCreated, onSave }: { initialName: string; onCancel: () => void; onCreated: (option: SaleLookupOption) => void; onSave: (payload: SaleTransportSavePayload) => Promise<SaleLookupOption> }) {
+  const [form, setForm] = useState<SaleTransportSavePayload>({ address: "", contactNo: "", contactPerson: "", gst: "", name: initialName, vehicleNo: "" });
+  const update = (next: Partial<SaleTransportSavePayload>) => setForm((current) => ({ ...current, ...next }));
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Field label="Transporter name" required><Input value={form.name} onChange={(event) => update({ name: event.target.value })} /></Field>
+      <Field label="Transporter GST"><Input value={form.gst} onChange={(event) => update({ gst: event.target.value.toUpperCase() })} /></Field>
+      <Field label="Vehicle no"><Input value={form.vehicleNo} onChange={(event) => update({ vehicleNo: event.target.value.toUpperCase() })} /></Field>
+      <Field label="Contact no"><Input value={form.contactNo} onChange={(event) => update({ contactNo: event.target.value })} /></Field>
+      <Field label="Contact person"><Input value={form.contactPerson} onChange={(event) => update({ contactPerson: event.target.value })} /></Field>
+      <Field label="Address"><Input value={form.address} onChange={(event) => update({ address: event.target.value })} /></Field>
+      <div className="flex justify-end gap-2 md:col-span-2"><Button type="button" variant="outline" onClick={onCancel}>Cancel</Button><Button type="button" disabled={!form.name.trim()} onClick={async () => onCreated(await onSave(form))}><Save className="size-4" />Save transport</Button></div>
+    </div>
+  );
+}
+
+function SaleEwayTab({ loading, onChange, onCreateTransport, onGenerate, onTransportChange, options, selected, value }: { loading: boolean; onChange: (next: Partial<SaleEwayDetails>) => void; onCreateTransport: (payload: SaleTransportSavePayload) => Promise<{ description: string; label: string; meta: string; value: string }>; onGenerate: () => void; onTransportChange: (value: string, option?: SaleLookupOption | null) => void; options: SaleLookupOption[]; selected: SaleLookupOption | undefined; value: SaleEwayDetails }) {
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-3">
+        <div className="text-sm text-muted-foreground">E-way status <span className="ml-2 rounded-sm bg-orange-50 px-2 py-1 text-xs font-medium text-orange-700">{value.status === "generated" ? "Generated" : "Not generated"}</span></div>
+        <Button type="button" className="h-9 rounded-md" onClick={onGenerate}><Send className="size-4" />Generate</Button>
+      </div>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Field label="E-way bill no"><Input value={value.billNo} onChange={(event) => onChange({ billNo: event.target.value })} /></Field>
+        <Field label="E-way bill date"><WorkspaceDatePicker value={value.billDate} onValueChange={(billDate) => onChange({ billDate })} /></Field>
+        <Field label="Transport">
+          <WorkspaceLookup
+            createDescription="Add transporter details without leaving this sale."
+            createLabel="New transport"
+            createMode="popup"
+            createTitle="New transport"
+            emptyLabel="No transport found. Create a new transport."
+            loading={loading}
+            options={options}
+            placeholder="Search transport"
+            value={value.transport}
+            onTextChange={(next) => onChange({ transport: next })}
+            onValueChange={onTransportChange}
+            renderCreateForm={({ initialName, onCancel, onCreated }) => <SaleTransportQuickForm initialName={initialName} onCancel={onCancel} onCreated={onCreated} onSave={onCreateTransport} />}
+          />
+          {value.transportGst || selected?.record?.gst ? <div className="mt-1 text-xs text-muted-foreground">Transporter GST: <span className="font-medium text-foreground">{value.transportGst || selected?.record?.gst}</span></div> : null}
+        </Field>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="E-way part"><WorkspaceSelect value={value.part} options={[{ label: "Part A", value: "Part A" }, { label: "Part B", value: "Part B" }]} onValueChange={(part) => onChange({ part: part as SaleEwayDetails["part"] })} /></Field>
+          <Field label="Vehicle no"><Input value={value.vehicleNo} onChange={(event) => onChange({ vehicleNo: event.target.value.toUpperCase() })} /></Field>
+        </div>
+      </div>
+      <Field label="Transport / vehicle notes"><Textarea className="min-h-28" value={value.notes} onChange={(event) => onChange({ notes: event.target.value })} /></Field>
+    </div>
+  );
+}
+
+function SaleEinvoiceTab({ onChange, onGenerate, value }: { onChange: (next: Partial<SaleEinvoiceDetails>) => void; onGenerate: () => void; value: SaleEinvoiceDetails }) {
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-3">
+        <div className="text-sm text-muted-foreground">E-invoice status <span className="ml-2 rounded-sm bg-orange-50 px-2 py-1 text-xs font-medium text-orange-700">{value.status === "generated" ? "Generated" : "Not generated"}</span></div>
+        <Button type="button" className="h-9 rounded-md" onClick={onGenerate}><Send className="size-4" />Generate</Button>
+      </div>
+      <Field label="IRN"><Input value={value.irn} onChange={(event) => onChange({ irn: event.target.value.toUpperCase() })} /></Field>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Field label="Ack no"><Input value={value.ackNo} onChange={(event) => onChange({ ackNo: event.target.value })} /></Field>
+        <Field label="Ack date"><WorkspaceDatePicker value={value.ackDate} onValueChange={(ackDate) => onChange({ ackDate })} /></Field>
+      </div>
+      <Field label="Signed QR"><Textarea className="min-h-28" value={value.signedQr} onChange={(event) => onChange({ signedQr: event.target.value })} /></Field>
     </div>
   );
 }

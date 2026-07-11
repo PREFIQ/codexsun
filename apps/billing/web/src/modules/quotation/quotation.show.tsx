@@ -131,7 +131,7 @@ export function QuotationShowPage({
           </div>
         </div>
 
-        <section className="grid items-start gap-4 py-2 print:block print:py-0 xl:grid-cols-[minmax(0,1fr)_15rem]">
+        <section className="billing-print-area grid items-start gap-4 py-2 print:block print:py-0 xl:grid-cols-[minmax(0,1fr)_15rem]">
           <div className="min-w-0 overflow-x-auto">
             <div className="grid min-w-fit justify-center gap-6">
               {printCopies.map((copy) => (

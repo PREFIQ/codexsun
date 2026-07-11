@@ -112,13 +112,18 @@ export function BillingLayout({
       isActive: currentPath.startsWith("/billing/settings"),
       items: [
         {
-          isActive: currentPath === "/billing/settings/sales",
-          title: "Bill settings",
-          url: "/billing/settings/sales",
+          isActive: currentPath === "/billing/settings",
+          title: "Billing Settings",
+          url: "/billing/settings",
+        },
+        {
+          isActive: currentPath === "/billing/settings/documents" || currentPath === "/billing/settings/sales",
+          title: "Document Settings",
+          url: "/billing/settings/documents",
         },
       ],
       title: "Settings",
-      url: "/billing/settings/sales",
+      url: "/billing/settings",
     },
   ];
 
@@ -144,7 +149,8 @@ export function BillingLayout({
         { icon: ShipWheelIcon, title: "Export Sales", url: "/billing/export-sales" },
         { icon: WalletCardsIcon, title: "Payment", url: "/billing/payment" },
         { icon: WalletCardsIcon, title: "Receipt", url: "/billing/receipt" },
-        { icon: SettingsIcon, title: "Bill settings", url: "/billing/settings/sales" },
+        { icon: SettingsIcon, title: "Billing Settings", url: "/billing/settings" },
+        { icon: SettingsIcon, title: "Document Settings", url: "/billing/settings/documents" },
       ]}
       versionLabel="v 1.0.7"
       workspaceItems={billingWorkspaceItems}

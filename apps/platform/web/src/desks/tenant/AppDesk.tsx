@@ -7,6 +7,7 @@ import {
   IndianRupeeIcon,
   LandmarkIcon,
   LayoutDashboardIcon,
+  ListChecksIcon,
   ReceiptIndianRupeeIcon,
   ReceiptTextIcon,
   RocketIcon,
@@ -57,6 +58,9 @@ import { QuotationWorkspace } from "../../modules/quotation/quotation.workspace"
 import { SalesWorkspace } from "../../modules/sales/sales.workspace";
 import { PurchaseWorkspace } from "../../modules/purchase/purchase.workspace";
 import { ExportSalesWorkspace } from "../../modules/export-sales/export-sales.workspace";
+import { PaymentWorkspace } from "../../modules/payment/payment.workspace";
+import { ReceiptWorkspace } from "../../modules/receipt/receipt.workspace";
+import { TaskManagerWorkspace } from "../../modules/task-manager/task-manager.workspace";
 import { AccountsSettingsWorkspace, AccountsWorkspace, getAccountsSettings } from "../../modules/accounts";
 import { BillingSettingsWorkspace, DocumentSettingsWorkspace } from "../../modules/billing-settings";
 import { getToken, setTenantDbName, setTenantId } from "../../shared/api/platform-api";
@@ -71,8 +75,12 @@ type AppPage =
   | "billing.sales"
   | "billing.purchase"
   | "billing.export-sales"
+  | "billing.payment"
+  | "billing.receipt"
   | "billing.settings"
   | "billing.document-settings"
+  | "task-manager.overview"
+  | "task-manager.todos"
   | "accounts.overview"
   | "accounts.groups"
   | "accounts.ledgers"
@@ -132,7 +140,8 @@ export function AppDesk() {
   const activeApp = appFromPage(page, landingApp, switchableApps);
   const safePage =
     ((page.startsWith("billing") || (page.startsWith("core") && !page.startsWith("core.organisation"))) && !switchableApps.includes("billing")) ||
-    (page.startsWith("accounts") && !switchableApps.includes("accounts"))
+    (page.startsWith("accounts") && !switchableApps.includes("accounts")) ||
+    (page.startsWith("task-manager") && !switchableApps.includes("task-manager"))
       ? pageForApp(landingApp)
       : page;
   const activeCompanies = useMemo(() => (companiesQuery.data ?? []).filter((company) => company.isActive), [companiesQuery.data]);
@@ -179,19 +188,19 @@ export function AppDesk() {
     window.localStorage.setItem(LANDING_APP_STORAGE_KEY, nextLandingApp);
   }
 
-  const activeWorkspaceTitle = activeApp === "billing" ? "Billing" : activeApp === "accounts" ? "Accounts" : "Application";
+  const activeWorkspaceTitle = activeApp === "billing" ? "Billing" : activeApp === "accounts" ? "Accounts" : activeApp === "task-manager" ? "Task Manager" : "Application";
   const menuItems = appMenuItemsFor(activeApp, safePage, (nextPage) => selectPage(nextPage as AppPage));
   const workspaceItems = appWorkspaceItems(switchableApps, activeApp).map((item) => ({
     ...item,
-    onSelect: () => selectPage(item.title === "Application" ? "application.overview" : item.title === "Billing" ? "billing.overview" : "accounts.overview"),
-    url: item.title === "Application" ? "/app/application/overview" : item.title === "Billing" ? "/app/billing/overview" : "/app/accounts/overview"
+    onSelect: () => selectPage(item.title === "Application" ? "application.overview" : item.title === "Billing" ? "billing.overview" : item.title === "Accounts" ? "accounts.overview" : "task-manager.overview"),
+    url: item.title === "Application" ? "/app/application/overview" : item.title === "Billing" ? "/app/billing/overview" : item.title === "Accounts" ? "/app/accounts/overview" : "/app/task-manager/overview"
   }));
 
   return (
     <AuthGate desk="tenant">
       <ApplicationLayout
         brand={{
-          href: activeApp === "billing" ? "/app/billing/overview" : activeApp === "accounts" ? "/app/accounts/overview" : "/app/application/overview",
+          href: activeApp === "billing" ? "/app/billing/overview" : activeApp === "accounts" ? "/app/accounts/overview" : activeApp === "task-manager" ? "/app/task-manager/overview" : "/app/application/overview",
           options: activeCompanies.map((company) => ({ id: company.id, subtitle: `${company.code} · ${accountingYear}`, title: company.name })),
           onOptionSelect: (id) => {
             setSelectedCompanyId(id);
@@ -223,8 +232,11 @@ export function AppDesk() {
           {safePage === "billing.sales" ? <BillingSales /> : null}
           {safePage === "billing.purchase" ? <PurchaseWorkspace /> : null}
           {safePage === "billing.export-sales" ? <ExportSalesWorkspace /> : null}
+          {safePage === "billing.payment" ? <PaymentWorkspace /> : null}
+          {safePage === "billing.receipt" ? <ReceiptWorkspace /> : null}
           {safePage === "billing.settings" ? <BillingSettingsWorkspace /> : null}
           {safePage === "billing.document-settings" ? <DocumentSettingsWorkspace /> : null}
+          {safePage === "task-manager.overview" || safePage === "task-manager.todos" ? <TaskManagerWorkspace /> : null}
           {isAccountsPage(safePage) && safePage !== "accounts.settings" && !isAccountsSettingsPage(safePage) ? <AccountsWorkspace page={accountsWorkspacePage(safePage)} /> : null}
           {isAccountsSettingsPage(safePage) ? <AccountsSettings page={safePage} /> : null}
           {safePage === "core.organisation.company" ? <CompanyWorkspace /> : null}
@@ -274,8 +286,12 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "billing.sales" ||
     key === "billing.purchase" ||
     key === "billing.export-sales" ||
+    key === "billing.payment" ||
+    key === "billing.receipt" ||
     key === "billing.settings" ||
     key === "billing.document-settings" ||
+    key === "task-manager.overview" ||
+    key === "task-manager.todos" ||
     key === "accounts.overview" ||
     key === "accounts.groups" ||
     key === "accounts.ledgers" ||
@@ -332,10 +348,10 @@ function LandingDesk({
         : appId === "accounts"
           ? "Ledgers, vouchers, balances, reports, and Tally-ready accounting."
         : "Shared workspace, company setup, roles, and cross-app launch desk.",
-    icon: appId === "billing" ? CreditCardIcon : appId === "accounts" ? LandmarkIcon : LayoutDashboardIcon,
-    iconClass: appId === "billing" ? "bg-emerald-600 text-white" : appId === "accounts" ? "bg-blue-700 text-white" : "bg-slate-950 text-white",
+    icon: appId === "billing" ? CreditCardIcon : appId === "accounts" ? LandmarkIcon : appId === "task-manager" ? ListChecksIcon : LayoutDashboardIcon,
+    iconClass: appId === "billing" ? "bg-emerald-600 text-white" : appId === "accounts" ? "bg-blue-700 text-white" : appId === "task-manager" ? "bg-violet-600 text-white" : "bg-slate-950 text-white",
     id: appId,
-    label: appId === "billing" ? "Billing" : appId === "accounts" ? "Accounts" : "Application"
+    label: appId === "billing" ? "Billing" : appId === "accounts" ? "Accounts" : appId === "task-manager" ? "Task Manager" : "Application"
   })) satisfies Array<{
     description: string;
     icon: typeof LayoutDashboardIcon;
@@ -840,8 +856,12 @@ function titleForPage(page: AppPage) {
     "billing.sales": "Sales",
     "billing.purchase": "Purchase",
     "billing.export-sales": "Export Sales",
+    "billing.payment": "Payment",
+    "billing.receipt": "Receipt",
     "billing.settings": "Billing Settings",
     "billing.document-settings": "Document Settings",
+    "task-manager.overview": "Task Manager",
+    "task-manager.todos": "Todo",
     "accounts.overview": "Overview",
     "accounts.groups": "Account Groups",
     "accounts.ledgers": "Ledgers",
@@ -876,11 +896,13 @@ function appFromPage(page: AppPage, landingApp: PlatformAppId, enabledApps: Plat
   if (page.startsWith("core.organisation")) return "application";
   if (page.startsWith("billing") || page.startsWith("core")) return enabledApps.includes("billing") ? "billing" : landingApp;
   if (page.startsWith("accounts")) return enabledApps.includes("accounts") ? "accounts" : landingApp;
+  if (page.startsWith("task-manager")) return enabledApps.includes("task-manager") ? "task-manager" : landingApp;
   return "application";
 }
 
 function pageForApp(app: PlatformAppId): AppPage {
   if (app === "accounts") return "accounts.overview";
+  if (app === "task-manager") return "task-manager.overview";
   return app === "billing" ? "billing.overview" : "application.overview";
 }
 
@@ -891,7 +913,7 @@ function isAppRootPath() {
 function readPublishedLandingApp(): PlatformAppId | null {
   try {
     const stored = window.localStorage.getItem(LANDING_APP_STORAGE_KEY);
-    return stored === "application" || stored === "billing" || stored === "accounts" ? stored : null;
+    return stored === "application" || stored === "billing" || stored === "accounts" || stored === "task-manager" ? stored : null;
   } catch {
     return null;
   }

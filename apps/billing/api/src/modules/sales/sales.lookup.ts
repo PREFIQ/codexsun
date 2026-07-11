@@ -14,6 +14,7 @@ const lookupPaths = {
   hsnCodes: "/core/common/products/hsn-codes",
   units: "/core/common/products/units",
   taxes: "/core/common/products/taxes",
+  transports: "/core/common/workorder/transports",
   sizes: "/core/common/products/sizes",
   workOrders: "/core/master/work-orders",
 } as const;

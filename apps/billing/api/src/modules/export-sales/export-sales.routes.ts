@@ -97,6 +97,20 @@ export async function registerExportSalesRoutes(app: FastifyInstance) {
     if (!sale) return reply.code(404).send(notFound(request.id));
     return ok(sale, { requestId: request.id });
   });
+
+  app.post("/billing/export-sales/:id/revoke", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const sale = await exportSalesService.revokeExportSale(tenantDatabaseName(request.headers["x-tenant-db"]), id);
+    if (!sale) return reply.code(404).send(notFound(request.id));
+    return ok(sale, { requestId: request.id });
+  });
+
+  app.delete("/billing/export-sales/:id", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const sale = await exportSalesService.deleteExportSale(tenantDatabaseName(request.headers["x-tenant-db"]), id);
+    if (!sale) return reply.code(404).send(notFound(request.id));
+    return ok(sale, { requestId: request.id });
+  });
 }
 
 function tenantDatabaseName(value: string | string[] | undefined) {

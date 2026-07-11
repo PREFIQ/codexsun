@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Kysely } from "kysely";
 import { getBillingDatabase } from "../../database/billing-database.js";
-import type { Sale, SaleSavePayload, SaleStatus } from "./sales.types.js";
+import type { Sale, SaleEinvoiceDetails, SaleEwayDetails, SaleSavePayload, SaleStatus } from "./sales.types.js";
 
 type SalesTableRow = {
   amount: number;
@@ -11,6 +11,8 @@ type SalesTableRow = {
   customer_email: string | null;
   customer_name: string;
   customer_phone: string | null;
+  eway_json: string | null;
+  einvoice_json: string | null;
   id: string;
   invoice_number: string;
   issued_on: string;
@@ -80,6 +82,15 @@ export class SalesRepository {
     await db.updateTable("billing_sales").set({ status, updated_at: updatedAt }).where("id", "=", id).execute();
     return { ...toSale(existing), status, updatedAt };
   }
+
+  async updateCompliance(databaseName: string, id: string, patch: { einvoice?: SaleEinvoiceDetails; eway?: SaleEwayDetails }) {
+    const db = await salesDatabase(databaseName);
+    const values: Partial<SalesTableRow> = { updated_at: new Date().toISOString() };
+    if (patch.einvoice) values.einvoice_json = JSON.stringify(patch.einvoice);
+    if (patch.eway) values.eway_json = JSON.stringify(patch.eway);
+    await db.updateTable("billing_sales").set(values).where("id", "=", id).execute();
+    return this.get(databaseName, id);
+  }
 }
 
 function salesDatabase(databaseName: string) {
@@ -96,6 +107,8 @@ function toSale(row: SalesTableRow): Sale {
     customerEmail: row.customer_email ?? "",
     customerName: row.customer_name,
     customerPhone: row.customer_phone ?? "",
+    einvoice: parseDocument(row.einvoice_json, defaultEinvoice),
+    eway: parseDocument(row.eway_json, defaultEway),
     id: row.id,
     invoiceNumber: row.invoice_number,
     issuedOn: row.issued_on,
@@ -123,6 +136,8 @@ function toSaleRow(sale: Sale): SalesTableRow {
     customer_email: sale.customerEmail,
     customer_name: sale.customerName,
     customer_phone: sale.customerPhone,
+    einvoice_json: JSON.stringify(sale.einvoice),
+    eway_json: JSON.stringify(sale.eway),
     id: sale.id,
     invoice_number: sale.invoiceNumber,
     issued_on: sale.issuedOn,
@@ -152,6 +167,8 @@ function createSaleRecord(input: SaleSavePayload, current?: Partial<Pick<Sale, "
     customerEmail: input.customerEmail,
     customerName: input.customerName,
     customerPhone: input.customerPhone,
+    einvoice: input.einvoice ?? defaultEinvoice(),
+    eway: input.eway ?? defaultEway(),
     id: current?.id ?? `sale-${randomUUID().slice(0, 8)}`,
     invoiceNumber: input.invoiceNumber,
     issuedOn: input.issuedOn,
@@ -178,6 +195,23 @@ function parseItems(value: string | null) {
   } catch {
     return [];
   }
+}
+
+function parseDocument<T>(value: string | null, fallback: () => T) {
+  if (!value) return fallback();
+  try {
+    return { ...fallback(), ...(JSON.parse(value) as Partial<T>) };
+  } catch {
+    return fallback();
+  }
+}
+
+function defaultEway(): SaleEwayDetails {
+  return { billDate: "", billNo: "", notes: "", part: "Part B", status: "not-generated", transport: "", transportGst: "", vehicleNo: "" };
+}
+
+function defaultEinvoice(): SaleEinvoiceDetails {
+  return { ackDate: "", ackNo: "", irn: "", signedQr: "", status: "not-generated" };
 }
 
 function buildSaleTotals(input: SaleSavePayload) {

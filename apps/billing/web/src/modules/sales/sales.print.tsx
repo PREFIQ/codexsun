@@ -1,12 +1,14 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { WorkspacePrintSheet } from "@codexsun/ui/workspace/print";
 import { ArrowLeft, Printer, RefreshCw } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@codexsun/ui/components/card";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { PageTitle } from "../../shared/document/PageTitle";
+import { useBillingSettings } from "../settings";
 import { useSaleRecord } from "./sales.hooks";
-import { formatDate, formatMoney } from "./sales.services";
+import { formatDate, formatMoney, listSaleLocations, type SaleLocationRecord } from "./sales.services";
 import type { Sale } from "./sales.types";
 
 export type SalePrintCopy = "duplicate" | "office-copy" | "original";
@@ -40,6 +42,10 @@ export function SalePrintDocument({
   copy: SalePrintCopy;
   sale: Sale;
 }) {
+  const addressMode = useBillingSettings().data?.printing.addressMode ?? "billing_and_shipping";
+  const statesQuery = useQuery({ queryFn: () => listSaleLocations("states"), queryKey: ["billing", "sale", "print", "states"] });
+  const billingAddress = formatPrintAddress(sale.billingAddress, statesQuery.data ?? []);
+  const shippingAddress = formatPrintAddress(sale.shippingAddress || sale.billingAddress, statesQuery.data ?? []);
   const pages = chunkItems(sale.items, 12);
 
   return (
@@ -53,6 +59,9 @@ export function SalePrintDocument({
           isMultiPage={pages.length > 1}
           pageIndex={pageIndex}
           pageCount={pages.length}
+          addressMode={addressMode}
+          billingAddress={billingAddress}
+          shippingAddress={shippingAddress}
           sale={sale}
         />
       ))}
@@ -69,6 +78,9 @@ function SalePrintPage({
   isMultiPage,
   pageIndex,
   pageCount,
+  addressMode,
+  billingAddress,
+  shippingAddress,
   sale,
 }: {
   copy: SalePrintCopy;
@@ -77,10 +89,13 @@ function SalePrintPage({
   isMultiPage: boolean;
   pageIndex: number;
   pageCount: number;
+  addressMode: "billing_only" | "billing_and_shipping";
+  billingAddress: { address: string; state: string };
+  shippingAddress: { address: string; state: string };
   sale: Sale;
 }) {
   const splitTax = sale.taxType === "cgst-sgst";
-  const blankRows = Math.max(0, 12 - items.length);
+  const blankRows = isLastPage ? Math.max(0, 12 - items.length) : 0;
 
   return (
     <article className={`bg-white px-3 py-3 text-[10px] text-black ${pageIndex > 0 ? "break-before-page" : ""}`}>
@@ -117,28 +132,19 @@ function SalePrintPage({
           </div>
         </section>
 
-        <section className="space-y-1 border-b border-slate-300 px-2 py-2 text-[10px]">
-          <PrintPair label="Invoice No:">{sale.invoiceNumber || sale.saleNumber}</PrintPair>
-          <PrintPair label="Date:">{formatDate(sale.issuedOn)}</PrintPair>
-          <PrintPair label="Work Order:">{sale.workOrderNo || "-"}</PrintPair>
-        </section>
+        {addressMode === "billing_and_shipping" ? <section className="space-y-1 border-b border-slate-300 px-2 py-2 text-[10px]"><PrintPair label="Invoice No:">{sale.invoiceNumber || sale.saleNumber}</PrintPair><PrintPair label="Date:">{formatDate(sale.issuedOn)}</PrintPair><PrintPair label="Work Order:">{sale.workOrderNo || "-"}</PrintPair></section> : null}
 
         <section className="grid border-b border-slate-300 text-[10px] sm:grid-cols-2">
           <div className="min-h-[7.75rem] px-2 py-2">
             <div className="font-medium">Buyer (Bill to)</div>
             <div className="mt-1 font-semibold">M/s. {sale.customerName}</div>
-            <div className="mt-1 whitespace-pre-wrap">{sale.billingAddress || "Address not set"}</div>
+            <div className="mt-1 whitespace-pre-wrap">{billingAddress.address || "Address not set"}</div>
             <div className="mt-1 grid grid-cols-[7rem_1fr] gap-x-2">
-              <span>GSTIN/UIN</span><span>:</span><span>State Name</span><span>:</span>
+              <span>GSTIN/UIN</span><span>-</span><span>State Name</span><span>{billingAddress.state || "-"}</span>
             </div>
           </div>
-          <div className="min-h-[7.75rem] border-t border-slate-300 px-2 py-2 sm:border-l sm:border-t-0 sm:border-slate-300">
-            <div className="font-medium">Buyer (Ship to)</div>
-            <div className="mt-1 font-semibold">M/s. {sale.customerName}</div>
-            <div className="mt-1 whitespace-pre-wrap">{sale.shippingAddress || sale.billingAddress || "Address not set"}</div>
-            <div className="mt-1 grid grid-cols-[7rem_1fr] gap-x-2">
-              <span>GSTIN/UIN</span><span>:</span><span>State Name</span><span>:</span>
-            </div>
+          <div className="min-h-[7.75rem] border-l border-slate-300 px-2 py-2">
+            {addressMode === "billing_only" ? <DocumentDetails number={sale.saleNumber} date={formatDate(sale.issuedOn)} workOrder={sale.workOrderNo} /> : <><div className="font-medium">Buyer (Ship to)</div><div className="mt-1 font-semibold">M/s. {sale.customerName}</div><div className="mt-1 whitespace-pre-wrap">{shippingAddress.address || "Address not set"}</div><div className="mt-1 grid grid-cols-[7rem_1fr] gap-x-2"><span>GSTIN/UIN</span><span>-</span><span>State Name</span><span>{shippingAddress.state || "-"}</span></div></>}
           </div>
         </section>
 
@@ -162,8 +168,8 @@ function SalePrintPage({
 
         {isLastPage ? (
           <>
-            <section className="grid border-t border-slate-300 md:grid-cols-[1fr_12rem]">
-              <div className="border-b border-slate-300 px-2 py-2 text-[9px] leading-4 md:border-b-0 md:border-r md:border-slate-300">
+            <section className="grid grid-cols-[1fr_12rem] border-t border-slate-300">
+              <div className="border-r border-slate-300 px-2 py-2 text-[9px] leading-4">
                 <div className="font-medium">E&amp;OE</div>
                 <div className="mt-1">We hereby certify that our registration under the GST Act 2017 is in force on the date on which sale of goods specified in this invoice is made by us and the sale is effected in the regular course of business.</div>
                 <div className="mt-1 font-semibold">* Goods once sold will not be taken back unless agreed in writing.</div>
@@ -177,8 +183,8 @@ function SalePrintPage({
                 <PrintTotal label="GRAND TOTAL" strong value={money(sale.amount)} />
               </div>
             </section>
-            <section className="grid min-h-[6rem] border-t border-slate-300 md:grid-cols-[1fr_18rem]">
-              <div className="flex items-end border-b border-slate-300 px-2 py-2 text-[9px] md:border-b-0 md:border-r md:border-slate-300"><div className="mt-4">Receiver Sign</div></div>
+            <section className="grid min-h-[5rem] grid-cols-[1fr_18rem] border-t border-slate-300">
+              <div className="flex items-end border-r border-slate-300 px-2 py-2 text-[9px]"><div className="mt-4">Receiver Sign</div></div>
               <div className="grid grid-rows-[1fr_auto] px-2 py-2 text-[9px]"><div className="font-semibold">For CODEXSUN</div><div className="font-semibold">Authorised Signatory</div></div>
             </section>
             <footer className="border-t border-slate-300 px-2 py-1 text-[9px]">Subject to Tiruppur Jurisdiction</footer>
@@ -205,7 +211,7 @@ function SalePrintItemRow({ item, index }: { item: Sale["items"][number]; index:
 }
 
 function SalePrintBlankRow() {
-  return <tr className="h-8">{salePrintHeadings.map((heading, index) => <td key={heading} className={index === salePrintHeadings.length - 1 ? "" : "border-r border-slate-200"} />)}</tr>;
+  return <tr className="h-6">{salePrintHeadings.map((heading, index) => <td key={heading} className={index === salePrintHeadings.length - 1 ? "" : "border-r border-slate-200"} />)}</tr>;
 }
 
 function SalePrintTotalRow({ sale }: { sale: Sale }) {
@@ -221,10 +227,17 @@ function SalePrintTotalRow({ sale }: { sale: Sale }) {
   </tr>;
 }
 
-function chunkItems(items: Sale["items"], size: number) {
+function chunkItems(items: Sale["items"], _size: number) {
+  const finalPageBudget = 12;
+  const continuationPageBudget = 24;
   const pages: Array<Array<{ item: Sale["items"][number]; index: number }>> = [];
-  for (let index = 0; index < items.length; index += size) pages.push(items.slice(index, index + size).map((item, offset) => ({ item, index: index + offset })));
-  return pages.length > 0 ? pages : [[]];
+  let index = 0;
+  while (items.length - index > finalPageBudget) {
+    pages.push(items.slice(index, index + continuationPageBudget).map((item, offset) => ({ item, index: index + offset })));
+    index += continuationPageBudget;
+  }
+  pages.push(items.slice(index).map((item, offset) => ({ item, index: index + offset })));
+  return pages;
 }
 
 function PrintPair({ children, label }: { children: string; label: string }) {
@@ -234,6 +247,21 @@ function PrintPair({ children, label }: { children: string; label: string }) {
       <span className="font-semibold">{children}</span>
     </div>
   );
+}
+
+function DocumentDetails({ date, number, workOrder }: { date: string; number: string; workOrder: string }) {
+  return <><div className="font-medium">Document details</div><div className="mt-2 grid grid-cols-[5rem_1fr] gap-x-2"><span>Invoice No</span><span className="font-semibold">{number}</span><span>Date</span><span>{date}</span><span>Work Order</span><span>{workOrder || "-"}</span></div></>;
+}
+
+function formatPrintAddress(value: string, states: SaleLocationRecord[]) {
+  const lines = value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const stateAndPin = [...lines].reverse().find((line) => line.includes(" - ")) ?? "";
+  const [stateName = "", ...pinParts] = stateAndPin.split(" - ").map((part) => part.trim()).filter(Boolean);
+  const state = states.find((record) => record.name.trim().toLowerCase() === stateName.toLowerCase());
+  const addressLines = lines.filter((line) => line !== stateAndPin && line.toLowerCase() !== "india");
+  const address = [...addressLines, ...pinParts].filter(Boolean).join(" - ");
+  const stateLabel = stateName ? `${stateName}${state?.code ? ` (${state.code})` : ""}` : "";
+  return { address, state: stateLabel };
 }
 
 function PrintTotal({ label, strong, value }: { label: string; strong?: boolean; value: string }) {

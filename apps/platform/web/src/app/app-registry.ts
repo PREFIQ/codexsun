@@ -13,12 +13,13 @@ import {
   ClipboardListIcon,
   LayoutDashboardIcon,
   ReceiptTextIcon,
+  ListChecksIcon,
   type LucideIcon
 } from "lucide-react";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
 import { commonMasterDefinitions } from "../modules/common/registry";
 
-export type PlatformAppId = "application" | "billing" | "accounts";
+export type PlatformAppId = "application" | "billing" | "accounts" | "task-manager";
 
 export type PlatformAppDefinition = {
   accentClass: string;
@@ -29,7 +30,7 @@ export type PlatformAppDefinition = {
   icon: LucideIcon;
   label: string;
   moduleKey: string;
-  stack: "platform" | "billing" | "accounts";
+  stack: "platform" | "billing" | "accounts" | "platform-task-manager";
 };
 
 export const platformAppRegistry: PlatformAppDefinition[] = [
@@ -65,6 +66,17 @@ export const platformAppRegistry: PlatformAppDefinition[] = [
     label: "Accounts",
     moduleKey: "accounts.ledgers",
     stack: "accounts"
+  },
+  {
+    accentClass: "bg-violet-600",
+    alwaysEnabled: false,
+    defaultLanding: false,
+    description: "Tenant-owned Todo planning with a lightweight JSON workspace.",
+    icon: ListChecksIcon,
+    id: "task-manager",
+    label: "Task Manager",
+    moduleKey: "platform.task-manager",
+    stack: "platform-task-manager"
   }
 ];
 
@@ -86,6 +98,17 @@ export function defaultLandingApp(value: unknown, moduleKeys: string[]): Platfor
 }
 
 export function appMenuFor(appId: PlatformAppId, activePage: string, onSelect: (page: string) => void): SidemenuItem {
+  if (appId === "task-manager") {
+    return {
+      icon: ListChecksIcon,
+      isActive: activePage.startsWith("task-manager"),
+      title: "Task Manager",
+      items: [
+        { title: "Overview", isActive: activePage === "task-manager.overview", onSelect: () => onSelect("task-manager.overview") },
+        { title: "Todo", isActive: activePage === "task-manager.todos", onSelect: () => onSelect("task-manager.todos") }
+      ]
+    };
+  }
   if (appId === "billing") {
     return {
       icon: ReceiptTextIcon,
@@ -97,6 +120,8 @@ export function appMenuFor(appId: PlatformAppId, activePage: string, onSelect: (
         { title: "Sales", isActive: activePage === "billing.sales", onSelect: () => onSelect("billing.sales") },
         { title: "Purchase", isActive: activePage === "billing.purchase", onSelect: () => onSelect("billing.purchase") },
         { title: "Export Sales", isActive: activePage === "billing.export-sales", onSelect: () => onSelect("billing.export-sales") },
+        { title: "Payment", isActive: activePage === "billing.payment", onSelect: () => onSelect("billing.payment") },
+        { title: "Receipt", isActive: activePage === "billing.receipt", onSelect: () => onSelect("billing.receipt") },
         {
           icon: PackageIcon,
           title: "Master",
@@ -211,6 +236,12 @@ export function appMenuFor(appId: PlatformAppId, activePage: string, onSelect: (
 }
 
 export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSelect: (page: string) => void): SidemenuItem[] {
+  if (appId === "task-manager") {
+    return [
+      { icon: CircleGaugeIcon, isActive: activePage === "task-manager.overview", onSelect: () => onSelect("task-manager.overview"), title: "Overview" },
+      { icon: ListChecksIcon, isActive: activePage === "task-manager.todos", onSelect: () => onSelect("task-manager.todos"), title: "Todo" }
+    ];
+  }
   if (appId === "billing") {
     return [
       {
@@ -226,16 +257,16 @@ export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSele
           activePage === "billing.sales" ||
           activePage === "billing.purchase" ||
           activePage === "billing.export-sales" ||
-          activePage === "billing.settings" ||
-          activePage === "billing.document-settings",
+          activePage === "billing.payment" ||
+          activePage === "billing.receipt",
         title: "Billing",
         items: [
           { title: "Quotation", isActive: activePage === "billing.quotation", onSelect: () => onSelect("billing.quotation") },
           { title: "Sales", isActive: activePage === "billing.sales", onSelect: () => onSelect("billing.sales") },
           { title: "Purchase", isActive: activePage === "billing.purchase", onSelect: () => onSelect("billing.purchase") },
           { title: "Export Sales", isActive: activePage === "billing.export-sales", onSelect: () => onSelect("billing.export-sales") },
-          { title: "Billing Settings", isActive: activePage === "billing.settings", onSelect: () => onSelect("billing.settings") },
-          { title: "Document Settings", isActive: activePage === "billing.document-settings", onSelect: () => onSelect("billing.document-settings") }
+          { title: "Payment", isActive: activePage === "billing.payment", onSelect: () => onSelect("billing.payment") },
+          { title: "Receipt", isActive: activePage === "billing.receipt", onSelect: () => onSelect("billing.receipt") }
         ]
       },
       {
@@ -267,6 +298,15 @@ export function appMenuItemsFor(appId: PlatformAppId, activePage: string, onSele
             ]
           },
           ...commonMasterMenuGroups(activePage, onSelect)
+        ]
+      },
+      {
+        icon: Settings2Icon,
+        isActive: activePage === "billing.settings" || activePage === "billing.document-settings",
+        title: "Settings",
+        items: [
+          { title: "Billing Settings", isActive: activePage === "billing.settings", onSelect: () => onSelect("billing.settings") },
+          { title: "Document Settings", isActive: activePage === "billing.document-settings", onSelect: () => onSelect("billing.document-settings") }
         ]
       }
     ];
@@ -370,9 +410,7 @@ export function appWorkspaceItems(enabledApps: PlatformAppId[], activeApp: Platf
 export const applicationPageIcons = {
   application: Building2Icon,
   accounts: LandmarkIcon,
-  billing: CreditCardIcon,
-  core: Globe2Icon,
-  settings: Settings2Icon
+  billing: CreditCardIcon
 };
 
 function commonMasterMenuGroups(activePage: string, onSelect: (page: string) => void): SidemenuItem[] {

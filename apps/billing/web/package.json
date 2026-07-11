@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/billing-web",
-  "version": "1.0.16",
+  "version": "1.0.18",
   "private": true,
   "type": "module",
   "exports": {
@@ -8,8 +8,10 @@
     "./modules/billing-settings": "./src/modules/billing-settings/index.ts",
     "./modules/entries": "./src/modules/entries/index.ts",
     "./modules/export-sales": "./src/modules/export-sales/index.ts",
+    "./modules/payment": "./src/modules/payment/index.ts",
     "./modules/purchase": "./src/modules/purchase/index.ts",
     "./modules/quotation": "./src/modules/quotation/index.ts",
+    "./modules/receipt": "./src/modules/receipt/index.ts",
     "./modules/sales": "./src/modules/sales/index.ts"
   },
   "scripts": {
@@ -20,7 +22,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
-    "@codexsun/ui": "^1.0.16",
+    "@codexsun/ui": "^1.0.18",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",

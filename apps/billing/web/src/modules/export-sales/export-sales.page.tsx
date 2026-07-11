@@ -142,6 +142,7 @@ export function ExportSaleWorkspace() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["billing", "exportSales"] }),
         queryClient.invalidateQueries({ queryKey: ["billing", "settings"] }),
+        queryClient.invalidateQueries({ queryKey: ["billing", "document-settings"] }),
       ]);
       toast.success(view.mode === "upsert" && view.exportSale ? "ExportSale updated" : "ExportSale created", {
         description: `${exportSale.invoiceNumber} is ready.`,

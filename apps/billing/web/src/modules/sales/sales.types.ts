@@ -1,5 +1,25 @@
 export type SaleStatus = "draft" | "confirmed" | "cancelled";
 export type SaleTaxType = "cgst-sgst" | "igst";
+export type SaleGstDocumentStatus = "not-generated" | "generated";
+
+export type SaleEwayDetails = {
+  billDate: string;
+  billNo: string;
+  notes: string;
+  part: "Part A" | "Part B";
+  status: SaleGstDocumentStatus;
+  transport: string;
+  transportGst: string;
+  vehicleNo: string;
+};
+
+export type SaleEinvoiceDetails = {
+  ackDate: string;
+  ackNo: string;
+  irn: string;
+  signedQr: string;
+  status: SaleGstDocumentStatus;
+};
 
 export type SaleLineItemInput = {
   colour: string;
@@ -32,6 +52,8 @@ export type Sale = {
   customerEmail: string;
   customerName: string;
   customerPhone: string;
+  einvoice: SaleEinvoiceDetails;
+  eway: SaleEwayDetails;
   generatedSalesInvoiceNo?: string;
   id: string;
   currencyCode: string;
@@ -58,6 +80,8 @@ export type SaleSavePayload = {
   customerEmail: string;
   customerName: string;
   customerPhone: string;
+  einvoice?: SaleEinvoiceDetails;
+  eway?: SaleEwayDetails;
   issuedOn: string;
   invoiceNumber?: string;
   items: SaleLineItemInput[];
@@ -85,6 +109,8 @@ export function createEmptySale(): SaleSavePayload {
     customerEmail: "",
     customerName: "",
     customerPhone: "",
+    einvoice: createEmptySaleEinvoice(),
+    eway: createEmptySaleEway(),
     issuedOn: new Date().toISOString().slice(0, 10),
     items: [],
     notes: "",
@@ -97,6 +123,14 @@ export function createEmptySale(): SaleSavePayload {
     terms: "",
     workOrderNo: "",
   };
+}
+
+export function createEmptySaleEway(): SaleEwayDetails {
+  return { billDate: "", billNo: "", notes: "", part: "Part B", status: "not-generated", transport: "", transportGst: "", vehicleNo: "" };
+}
+
+export function createEmptySaleEinvoice(): SaleEinvoiceDetails {
+  return { ackDate: "", ackNo: "", irn: "", signedQr: "", status: "not-generated" };
 }
 
 export function createEmptySaleItem(): SaleLineItemInput {
