@@ -1,22 +1,15 @@
 import { useState } from "react";
 import {
   AppWindowIcon,
-  BoxesIcon,
   Building2Icon,
   CircleGaugeIcon,
   CreditCardIcon,
   DatabaseIcon,
-  HardDriveIcon,
-  KeyRoundIcon,
   ListChecksIcon,
   PaletteIcon,
   ClipboardListIcon,
-  ReceiptTextIcon,
-  ShieldCheckIcon,
-  TagsIcon,
-  WorkflowIcon
+  ShieldCheckIcon
 } from "lucide-react";
-import { StatusBadge } from "@codexsun/ui";
 import { SuperLayout } from "@codexsun/ui/layouts/super-layout";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
 import { DesignSystemGallery } from "../../modules/design-system";
@@ -37,34 +30,90 @@ import { QueueManagementWorkspace } from "../../modules/queue-management";
 import { StorageManagerWorkspace } from "../../modules/storage-manager";
 import { PlatformRegistryWorkspace } from "../../modules/platform-registry";
 import { WorkAutomationWorkspace } from "../../modules/work-automation";
-import { useTenantsQuery } from "../../modules/tenant";
-import { usePlansQuery } from "../../modules/plan";
-import { useSubscriptionsQuery } from "../../modules/subscription";
-import { usePlatformAppsQuery } from "../../modules/app-registry";
-import { useTenantAccessQuery } from "../../modules/tenant-access";
-import { usePlatformActivityQuery } from "../../modules/platform-activity";
-import { useQueueRuntimeQuery } from "../../modules/queue-management";
+import { TaskManagerWorkspace } from "../../modules/task-manager/task-manager.workspace";
+import {
+  AppOperationsStrip,
+  AppOrchestrationWorkspace,
+  useAppOperationsQuery,
+  type OrchestratedAppId
+} from "../../modules/app-orchestration";
 import { AuthGate } from "../../shared/auth/AuthGate";
 
-type SaPage = "overview" | "tenants" | "domains" | "plans" | "plan-access" | "subscriptions" | "apps" | "entitlements" | "tenant-access" | "industries" | "master-database" | "tenant-database" | "queue-management" | "storage-manager" | "platform-registry" | "work-automation" | "workflow" | "access" | "activity" | "design-system";
+type SaPage =
+  | "overview"
+  | "app-operations"
+  | "task-manager"
+  | "tenants"
+  | "domains"
+  | "plans"
+  | "plan-access"
+  | "subscriptions"
+  | "apps"
+  | "entitlements"
+  | "tenant-access"
+  | "industries"
+  | "master-database"
+  | "tenant-database"
+  | "queue-management"
+  | "storage-manager"
+  | "platform-registry"
+  | "work-automation"
+  | "workflow"
+  | "access"
+  | "activity"
+  | "design-system";
 
 export function SaDesk() {
   const [page, setPage] = useState<SaPage>(pageFromUrl());
+  const [selectedAppId, setSelectedAppId] = useState<OrchestratedAppId>(() => appIdFromUrl());
 
   function selectPage(nextPage: SaPage) {
     setPage(nextPage);
-    window.history.pushState({ page: nextPage }, "", nextPage === "overview" ? "/sa" : `/sa/${nextPage}`);
+    window.history.pushState(
+      { page: nextPage },
+      "",
+      nextPage === "overview" ? "/sa" : `/sa/${nextPage}`
+    );
+  }
+
+  function openAppOperations(appId: OrchestratedAppId) {
+    setSelectedAppId(appId);
+    setPage("app-operations");
+    window.history.pushState(
+      { page: "app-operations", appId },
+      "",
+      `/sa/app-operations?app=${appId}`
+    );
   }
 
   const menuItems: SidemenuItem[] = [
-    { title: "Overview", icon: CircleGaugeIcon, isActive: page === "overview", onSelect: () => selectPage("overview") },
+    {
+      title: "Overview",
+      icon: CircleGaugeIcon,
+      isActive: page === "overview",
+      onSelect: () => selectPage("overview")
+    },
+    {
+      title: "Task Manager",
+      icon: ListChecksIcon,
+      isActive: page === "task-manager",
+      onSelect: () => selectPage("task-manager")
+    },
     {
       title: "Project Manager",
       icon: ClipboardListIcon,
       isActive: page === "platform-registry" || page === "work-automation" || page === "workflow",
       items: [
-        { title: "Platform Registry", isActive: page === "platform-registry", onSelect: () => selectPage("platform-registry") },
-        { title: "Work Automation", isActive: page === "work-automation", onSelect: () => selectPage("work-automation") },
+        {
+          title: "Platform Registry",
+          isActive: page === "platform-registry",
+          onSelect: () => selectPage("platform-registry")
+        },
+        {
+          title: "Work Automation",
+          isActive: page === "work-automation",
+          onSelect: () => selectPage("work-automation")
+        },
         { title: "Workflow", isActive: page === "workflow", onSelect: () => selectPage("workflow") }
       ]
     },
@@ -75,7 +124,11 @@ export function SaDesk() {
       items: [
         { title: "Tenants", isActive: page === "tenants", onSelect: () => selectPage("tenants") },
         { title: "Domains", isActive: page === "domains", onSelect: () => selectPage("domains") },
-        { title: "Tenant Access", isActive: page === "tenant-access", onSelect: () => selectPage("tenant-access") }
+        {
+          title: "Tenant Access",
+          isActive: page === "tenant-access",
+          onSelect: () => selectPage("tenant-access")
+        }
       ]
     },
     {
@@ -84,8 +137,16 @@ export function SaDesk() {
       isActive: page === "plans" || page === "plan-access" || page === "subscriptions",
       items: [
         { title: "Plans", isActive: page === "plans", onSelect: () => selectPage("plans") },
-        { title: "Plan Access", isActive: page === "plan-access", onSelect: () => selectPage("plan-access") },
-        { title: "Subscriptions", isActive: page === "subscriptions", onSelect: () => selectPage("subscriptions") }
+        {
+          title: "Plan Access",
+          isActive: page === "plan-access",
+          onSelect: () => selectPage("plan-access")
+        },
+        {
+          title: "Subscriptions",
+          isActive: page === "subscriptions",
+          onSelect: () => selectPage("subscriptions")
+        }
       ]
     },
     {
@@ -94,7 +155,11 @@ export function SaDesk() {
       isActive: page === "apps" || page === "industries",
       items: [
         { title: "Apps", isActive: page === "apps", onSelect: () => selectPage("apps") },
-        { title: "Industries", isActive: page === "industries", onSelect: () => selectPage("industries") }
+        {
+          title: "Industries",
+          isActive: page === "industries",
+          onSelect: () => selectPage("industries")
+        }
       ]
     },
     {
@@ -102,34 +167,76 @@ export function SaDesk() {
       icon: ShieldCheckIcon,
       isActive: page === "entitlements" || page === "access" || page === "activity",
       items: [
-        { title: "Entitlements", isActive: page === "entitlements", onSelect: () => selectPage("entitlements") },
-        { title: "Access Control", isActive: page === "access", onSelect: () => selectPage("access") },
+        {
+          title: "Entitlements",
+          isActive: page === "entitlements",
+          onSelect: () => selectPage("entitlements")
+        },
+        {
+          title: "Access Control",
+          isActive: page === "access",
+          onSelect: () => selectPage("access")
+        },
         { title: "Activity", isActive: page === "activity", onSelect: () => selectPage("activity") }
       ]
     },
     {
       title: "Database",
       icon: DatabaseIcon,
-      isActive: page === "master-database" || page === "tenant-database" || page === "queue-management" || page === "storage-manager",
+      isActive:
+        page === "master-database" ||
+        page === "tenant-database" ||
+        page === "queue-management" ||
+        page === "storage-manager",
       items: [
-        { title: "Master Database", isActive: page === "master-database", onSelect: () => selectPage("master-database") },
-        { title: "Tenant Databases", isActive: page === "tenant-database", onSelect: () => selectPage("tenant-database") },
-        { title: "Queue Management", isActive: page === "queue-management", onSelect: () => selectPage("queue-management") },
-        { title: "Storage Manager", isActive: page === "storage-manager", onSelect: () => selectPage("storage-manager") }
+        {
+          title: "Master Database",
+          isActive: page === "master-database",
+          onSelect: () => selectPage("master-database")
+        },
+        {
+          title: "Tenant Databases",
+          isActive: page === "tenant-database",
+          onSelect: () => selectPage("tenant-database")
+        },
+        {
+          title: "Queue Management",
+          isActive: page === "queue-management",
+          onSelect: () => selectPage("queue-management")
+        },
+        {
+          title: "Storage Manager",
+          isActive: page === "storage-manager",
+          onSelect: () => selectPage("storage-manager")
+        }
       ]
     },
     {
       title: "Design System",
       icon: PaletteIcon,
       isActive: page === "design-system",
-      items: [{ title: "Components", isActive: page === "design-system", onSelect: () => selectPage("design-system") }]
+      items: [
+        {
+          title: "Components",
+          isActive: page === "design-system",
+          onSelect: () => selectPage("design-system")
+        }
+      ]
     }
   ];
 
   return (
     <AuthGate desk="sa">
-      <SuperLayout menuItems={menuItems} versionLabel={`v ${__APP_VERSION__}`}>
-        {page === "overview" ? <SaOverview onNavigate={selectPage} /> : null}
+      <SuperLayout
+        menuItems={menuItems}
+        versionLabel={`v ${__APP_VERSION__}`}
+        workspace={page === "task-manager" ? "task-manager" : "platform"}
+      >
+        {page === "overview" ? <SaOverview onOpenApp={openAppOperations} /> : null}
+        {page === "app-operations" ? (
+          <AppOrchestrationWorkspace appId={selectedAppId} onBack={() => selectPage("overview")} />
+        ) : null}
+        {page === "task-manager" ? <TaskManagerWorkspace /> : null}
         {page === "tenants" ? <TenantList onBack={() => selectPage("overview")} /> : null}
         {page === "domains" ? <TenantDomainList /> : null}
         {page === "plans" ? <PlanWorkspace /> : null}
@@ -157,78 +264,61 @@ export function SaDesk() {
 function pageFromUrl(): SaPage {
   const page = window.location.pathname.split("/")[2];
   if (page === "project-manager") return "platform-registry";
-  return page === "tenants" || page === "domains" || page === "plans" || page === "plan-access" || page === "subscriptions" || page === "apps" || page === "entitlements" || page === "tenant-access" || page === "industries" || page === "master-database" || page === "tenant-database" || page === "queue-management" || page === "storage-manager" || page === "platform-registry" || page === "work-automation" || page === "workflow" || page === "access" || page === "activity" || page === "design-system" ? page : "overview";
+  return page === "app-operations" ||
+    page === "task-manager" ||
+    page === "tenants" ||
+    page === "domains" ||
+    page === "plans" ||
+    page === "plan-access" ||
+    page === "subscriptions" ||
+    page === "apps" ||
+    page === "entitlements" ||
+    page === "tenant-access" ||
+    page === "industries" ||
+    page === "master-database" ||
+    page === "tenant-database" ||
+    page === "queue-management" ||
+    page === "storage-manager" ||
+    page === "platform-registry" ||
+    page === "work-automation" ||
+    page === "workflow" ||
+    page === "access" ||
+    page === "activity" ||
+    page === "design-system"
+    ? page
+    : "overview";
 }
 
-function SaOverview({ onNavigate }: { onNavigate: (page: SaPage) => void }) {
-  const tenants = useTenantsQuery();
-  const plans = usePlansQuery();
-  const subscriptions = useSubscriptionsQuery();
-  const apps = usePlatformAppsQuery();
-  const tenantAccess = useTenantAccessQuery();
-  const activity = usePlatformActivityQuery();
-  const queue = useQueueRuntimeQuery();
-  const activeTenantAccess = (tenantAccess.data ?? []).filter((item) => item.enabledModuleKeys.length > 0).length;
+function appIdFromUrl(): OrchestratedAppId {
+  const value = new URLSearchParams(window.location.search).get("app");
+  return value === "core" ||
+    value === "billing" ||
+    value === "accounts" ||
+    value === "data-bridge" ||
+    value === "kitchen-serve"
+    ? value
+    : "platform";
+}
 
+function SaOverview({ onOpenApp }: { onOpenApp: (appId: OrchestratedAppId) => void }) {
+  const apps = useAppOperationsQuery();
   return (
-    <main className="mx-auto w-[calc(100%-2rem)] max-w-[92rem] space-y-5 py-5 lg:w-[calc(100%-3rem)]">
-      <section className="rounded-md border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold uppercase text-muted-foreground">Super Admin</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-normal">Platform Dashboard</h1>
-            <p className="mt-3 max-w-3xl text-sm text-muted-foreground">
-              Tenant setup, plans, access, subscriptions, governance, and recent platform activity.
-            </p>
-          </div>
-          <StatusBadge tone="green">Ready</StatusBadge>
-        </div>
+    <main className="mx-auto w-[calc(100%-2rem)] max-w-[92rem] space-y-4 py-5 lg:w-[calc(100%-3rem)]">
+      <section className="rounded-md border bg-card px-5 py-4 shadow-sm">
+        <p className="text-sm font-semibold uppercase text-muted-foreground">
+          Repository Operations
+        </p>
+        <h1 className="mt-1 text-2xl font-semibold">Apps</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Live service state and maintenance access for every runnable app in this repository.
+        </p>
       </section>
-      <div className="grid gap-4 md:grid-cols-3">
-        <DeskCard title="Tenants" value={String(tenants.data?.length ?? 0)} icon={Building2Icon} onClick={() => onNavigate("tenants")} />
-        <DeskCard title="Active access" value={String(activeTenantAccess)} icon={ListChecksIcon} onClick={() => onNavigate("tenant-access")} />
-        <DeskCard title="Plans" value={String(plans.data?.length ?? 0)} icon={TagsIcon} onClick={() => onNavigate("plan-access")} />
-        <DeskCard title="Subscriptions" value={String(subscriptions.data?.length ?? 0)} icon={ReceiptTextIcon} onClick={() => onNavigate("subscriptions")} />
-        <DeskCard title="Apps" value={String(apps.data?.length ?? 0)} icon={AppWindowIcon} onClick={() => onNavigate("apps")} />
-        <DeskCard title="Activity" value={String(activity.data?.length ?? 0)} icon={KeyRoundIcon} onClick={() => onNavigate("activity")} />
-        <DeskCard title="Database" value="2" icon={DatabaseIcon} onClick={() => onNavigate("master-database")} />
-        <DeskCard title="Queue Jobs" value={String((queue.data?.pending ?? 0) + (queue.data?.running ?? 0))} icon={WorkflowIcon} onClick={() => onNavigate("queue-management")} />
-        <DeskCard title="Storage" value="files" icon={HardDriveIcon} onClick={() => onNavigate("storage-manager")} />
-        <DeskCard title="Platform Registry" value="tree" icon={BoxesIcon} onClick={() => onNavigate("platform-registry")} />
-        <DeskCard title="Work Automation" value="flow" icon={ClipboardListIcon} onClick={() => onNavigate("work-automation")} />
-      </div>
-      <section className="rounded-md border bg-card p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold tracking-normal">Recent Activity</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Latest platform changes from plan access, subscriptions, entitlements, and access control.</p>
-          </div>
-          <button type="button" className="rounded-md border px-3 py-2 text-sm hover:bg-muted/40" onClick={() => onNavigate("activity")}>Open activity</button>
-        </div>
-        <div className="mt-4 divide-y rounded-md border">
-          {(activity.data ?? []).slice(0, 5).map((item) => (
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm" key={item.uuid}>
-              <div>
-                <div className="font-medium">{item.action}</div>
-                <div className="text-muted-foreground">{item.recordLabel}</div>
-              </div>
-              <StatusBadge tone="blue">{item.moduleKey}</StatusBadge>
-            </div>
-          ))}
-          {(activity.data ?? []).length === 0 ? <div className="px-4 py-6 text-sm text-muted-foreground">No activity found.</div> : null}
-        </div>
-      </section>
+      {apps.error ? (
+        <section className="rounded-md border border-destructive/40 bg-card p-4 text-sm text-destructive">
+          {apps.error.message}
+        </section>
+      ) : null}
+      <AppOperationsStrip apps={apps.data ?? []} onSelect={onOpenApp} />
     </main>
   );
 }
-
-function DeskCard({ icon: Icon, onClick, title, value }: { icon: typeof CircleGaugeIcon; onClick: () => void; title: string; value: string }) {
-  return (
-    <button type="button" onClick={onClick} className="rounded-md border bg-card p-5 text-left shadow-sm hover:bg-muted/30">
-      <Icon className="size-5 text-muted-foreground" />
-      <div className="mt-5 text-2xl font-semibold">{value}</div>
-      <div className="mt-1 text-sm text-muted-foreground">{title}</div>
-    </button>
-  );
-}
-

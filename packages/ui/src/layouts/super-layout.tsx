@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import {
+  DatabaseZapIcon,
   KeyRoundIcon,
+  ListChecksIcon,
   LogOutIcon,
   ShieldCheckIcon,
-  UsersRoundIcon,
   WalletCardsIcon
 } from "lucide-react";
 
@@ -17,6 +18,7 @@ type SuperLayoutProps = {
   subtitle?: ReactNode;
   title?: ReactNode;
   versionLabel?: string;
+  workspace?: "platform" | "task-manager";
 };
 
 const superMenuItems: SidemenuItem[] = [
@@ -62,27 +64,30 @@ const superMenuItems: SidemenuItem[] = [
   }
 ];
 
-const superWorkspaceItems = [
+function superWorkspaceItems(activeWorkspace: "platform" | "task-manager") {
+  return [
   {
     title: "Platform",
     description: "Master database, tenants, domains, and controls.",
     icon: ShieldCheckIcon,
-    active: true,
+    active: activeWorkspace === "platform",
     url: "/sa"
   },
   {
-    title: "Application",
-    description: "Tenant application workspace.",
-    icon: UsersRoundIcon,
-    url: "/app"
+    title: "Task Manager",
+    description: "Super Admin Todo planning and operational follow-up.",
+    icon: ListChecksIcon,
+    active: activeWorkspace === "task-manager",
+    url: "/sa/task-manager"
   },
   {
-    title: "Staff",
-    description: "Internal support and activation operations.",
-    icon: WalletCardsIcon,
-    url: "/admin"
+    title: "Data Bridge",
+    description: "Schema comparison and controlled data migration.",
+    icon: DatabaseZapIcon,
+    url: "/data-bridge"
   }
-];
+  ];
+}
 
 export function SuperLayout({
   actions,
@@ -90,7 +95,8 @@ export function SuperLayout({
   menuItems = superMenuItems,
   subtitle,
   title,
-  versionLabel
+  versionLabel,
+  workspace = "platform"
 }: SuperLayoutProps) {
   return (
     <AppLayout
@@ -100,6 +106,7 @@ export function SuperLayout({
         title: "Super Admin Desk"
       }}
       headerTitle="Super Admin Desk"
+      showPageTitle={false}
       homeHref="/sa"
       logoutHref="/sa/login"
       menuItems={menuItems}
@@ -127,7 +134,7 @@ export function SuperLayout({
           url: "/sa/login"
         }
       ]}
-      workspaceItems={superWorkspaceItems}
+      workspaceItems={superWorkspaceItems(workspace)}
     >
       {actions ? <div className="px-4 pt-4 lg:px-6">{actions}</div> : null}
       <div className="flex-1">{children}</div>

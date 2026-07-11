@@ -5,6 +5,7 @@ import { AppDesk } from "../desks/tenant/AppDesk";
 import { HealthPage } from "../routes/public/HealthPage";
 import { HomePage } from "../routes/public/HomePage";
 import { LoginPage } from "../routes/public/LoginPage";
+import { DataBridgeDesk } from "../desks/data-bridge/DataBridgeDesk";
 
 const rootRoute = createRootRoute();
 
@@ -56,6 +57,12 @@ const appSplatRoute = createRoute({
   path: "/app/$"
 });
 
+const dataBridgeRoute = createRoute({
+  component: DataBridgeDesk,
+  getParentRoute: () => rootRoute,
+  path: "/data-bridge/$"
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   healthRoute,
@@ -64,7 +71,8 @@ const routeTree = rootRoute.addChildren([
   adminLoginRoute,
   saSplatRoute,
   adminRoute,
-  appSplatRoute
+  appSplatRoute,
+  dataBridgeRoute
 ]);
 
 export const router = createRouter({ routeTree });

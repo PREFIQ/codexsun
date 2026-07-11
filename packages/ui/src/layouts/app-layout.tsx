@@ -38,6 +38,7 @@ type AppLayoutProps = {
   userMenuItems?: SidebarUserMenuItem[];
   versionLabel?: string;
   workspaceItems?: TopMenuWorkspaceItem[];
+  showPageTitle?: boolean;
 };
 
 export const defaultWorkspaceItems: TopMenuWorkspaceItem[] = [
@@ -175,7 +176,8 @@ export function AppLayout({
   user = defaultSidebarUser,
   userMenuItems = defaultUserMenuItems,
   versionLabel = "v 1.0.1",
-  workspaceItems = defaultWorkspaceItems
+  workspaceItems = defaultWorkspaceItems,
+  showPageTitle = true
 }: AppLayoutProps) {
   return (
     <SidebarProvider
@@ -198,13 +200,16 @@ export function AppLayout({
           homeHref={homeHref}
           logoutHref={logoutHref}
           pageTitle={String(headerTitle)}
+          showPageTitle={showPageTitle}
           workspaceItems={workspaceItems}
         />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             {title || subtitle ? (
               <div className="border-b bg-background px-4 py-5 lg:px-6">
-                {title ? <h2 className="m-0 text-2xl font-semibold leading-tight">{title}</h2> : null}
+                {title ? (
+                  <h2 className="m-0 text-2xl font-semibold leading-tight">{title}</h2>
+                ) : null}
                 {subtitle ? <p className="mt-1 text-muted-foreground">{subtitle}</p> : null}
               </div>
             ) : null}

@@ -102,5 +102,18 @@
     "sortOrder": 70,
     "status": "active",
     "updatedAt": "2026-07-11T00:00:00.000Z"
+  },
+  {
+    "active": true,
+    "createdAt": "2026-07-11T12:33:36.253Z",
+    "description": "Super Admin Todo planning and operational follow-up.",
+    "id": "group-sa-task-manager",
+    "key": "sa.task-manager",
+    "name": "Task Manager",
+    "parentGroupId": "",
+    "platformId": "platform-super-admin",
+    "sortOrder": 5,
+    "status": "active",
+    "updatedAt": "2026-07-11T12:33:36.253Z"
   }
 ]

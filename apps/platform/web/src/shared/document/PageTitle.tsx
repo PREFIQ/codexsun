@@ -16,7 +16,7 @@ const pageTitles: Record<string, string> = {
 
 function resolvePageTitle(pathname: string) {
   if (pathname.startsWith("/sa/") && pathname !== "/sa/login") {
-    return "Super Admin Desk";
+    return pathname === "/sa/task-manager" ? "Task Manager" : "Super Admin Desk";
   }
   if (pathname.startsWith("/app/")) {
     return "Application Desk";

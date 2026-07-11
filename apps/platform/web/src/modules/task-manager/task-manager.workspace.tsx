@@ -121,7 +121,7 @@ export function TaskManagerWorkspace() {
   return (
     <WorkspacePage
       title="Task Manager"
-      description="Plan and complete tenant-owned Todos in a lightweight workspace."
+      description="Plan and complete Super Admin Todos in a lightweight workspace."
       actions={
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => void query.refetch()}>
@@ -303,7 +303,7 @@ function TodoForm({
   return (
     <WorkspaceUpsertDialog
       className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
-      description="Capture a tenant-owned task with its status and priority."
+      description="Capture a Super Admin task with its status and priority."
       open
       onClose={onCancel}
       title={`${value.id ? "Edit" : "New"} Todo`}

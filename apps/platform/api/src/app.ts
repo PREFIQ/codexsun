@@ -16,6 +16,7 @@ import { queueManagerModule } from "./modules/queue-manager/index.js";
 import { storageManagerModule } from "./modules/storage-manager/index.js";
 import { projectManagerModule } from "./modules/project-manager/index.js";
 import { taskManagerModule } from "./modules/task-manager/index.js";
+import { appOrchestrationModule } from "./modules/app-orchestration/index.js";
 import { startQueueManagerWorker } from "./modules/queue-manager/queue-manager.runtime.js";
 import { seedDefaultTenant } from "./modules/tenant/tenant.seed.js";
 import { env } from "./env.js";
@@ -63,7 +64,8 @@ export async function createApp() {
             queueManagerModule.key,
             storageManagerModule.key,
             projectManagerModule.key,
-            taskManagerModule.key
+            taskManagerModule.key,
+            appOrchestrationModule.key
           ],
           runtime: "platform-foundation"
         },
@@ -78,7 +80,23 @@ export async function createApp() {
   await registerAuthRoutes(app);
   console.info("[platform.routes] auth ready");
   await registerModules(
-    [appRegistryModule, tenantModule, tenantDomainModule, planModule, subscriptionModule, industryModule, entitlementModule, accessControlModule, platformActivityModule, databaseMaintenanceModule, queueManagerModule, storageManagerModule, projectManagerModule, taskManagerModule],
+    [
+      appRegistryModule,
+      tenantModule,
+      tenantDomainModule,
+      planModule,
+      subscriptionModule,
+      industryModule,
+      entitlementModule,
+      accessControlModule,
+      platformActivityModule,
+      databaseMaintenanceModule,
+      queueManagerModule,
+      storageManagerModule,
+      projectManagerModule,
+      taskManagerModule,
+      appOrchestrationModule
+    ],
     { app },
     {
       onRegister: (module) => console.info(`[module.register] ${module.key}`),

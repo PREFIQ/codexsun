@@ -371,6 +371,7 @@ function seedPlatforms() {
 
 function seedGroups() {
   const groups: Array<Partial<ProjectManagerRegistryGroup> & ProjectManagerRegistrySavePayload> = [
+    { id: "group-sa-task-manager", key: "sa.task-manager", name: "Task Manager", platformId: "platform-super-admin", sortOrder: 5 },
     { id: "group-sa-project-manager", key: "sa.project-manager", name: "Project Manager", platformId: "platform-super-admin", sortOrder: 10 },
     { id: "group-sa-tenant-setup", key: "sa.tenant-setup", name: "Tenant Setup", platformId: "platform-super-admin", sortOrder: 20 },
     { id: "group-sa-commercial", key: "sa.commercial", name: "Commercial", platformId: "platform-super-admin", sortOrder: 30 },
@@ -392,10 +393,10 @@ function seedModules() {
     ...moduleRows("group-sa-database", [["master-database", "Master Database"], ["tenant-database", "Tenant Databases"], ["queue-management", "Queue Management"], ["storage-manager", "Storage Manager"]], "/sa/"),
     ...moduleRows("group-sa-project-manager", [["platform-registry", "Platform Registry"], ["work-automation", "Work Automation"]], "/sa/"),
     ...moduleRows("group-sa-design-system", [["design-system", "Components"]], "/sa/"),
+    ...moduleRows("group-sa-task-manager", [["task-manager", "Todos"]], "/sa/"),
     { groupId: "group-tenant-apps", id: "module-app-application", key: "tenant.apps.application", moduleType: "area", name: "Application", routePath: "/app/application/overview", sortOrder: 10 },
     { groupId: "group-tenant-apps", id: "module-app-billing", key: "tenant.apps.billing", moduleType: "area", name: "Billing", routePath: "/app/billing/overview", sortOrder: 20 },
     { groupId: "group-tenant-apps", id: "module-app-accounts", key: "tenant.apps.accounts", moduleType: "area", name: "Accounts", routePath: "/app/accounts/overview", sortOrder: 30 },
-    { groupId: "group-tenant-apps", id: "module-app-task-manager", key: "tenant.apps.task-manager", moduleType: "area", name: "Task Manager", routePath: "/app/task-manager/overview", sortOrder: 40 },
     { groupId: "group-tenant-apps", id: "module-application-platform", key: "tenant.apps.application.platform", moduleType: "area", name: "Platform", parentModuleId: "module-app-application", sortOrder: 10 },
     { groupId: "group-tenant-apps", id: "module-application-organisation", key: "tenant.apps.application.organisation", moduleType: "area", name: "Organisation", parentModuleId: "module-app-application", sortOrder: 20 },
     { groupId: "group-tenant-apps", id: "module-platform-landing-desk", key: "tenant.apps.application.platform.landing-desk", name: "Landing Desk", parentModuleId: "module-application-platform", sortOrder: 10 },

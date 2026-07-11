@@ -35,9 +35,10 @@ describe("project manager json store", () => {
     const application = apps?.modules.find((module) => module.id === "module-app-application");
     const billing = apps?.modules.find((module) => module.id === "module-app-billing");
     const entries = billing?.children.find((module) => module.id === "module-billing-entries");
-    expect(apps?.modules.map((module) => module.id)).toEqual(["module-app-application", "module-app-billing", "module-app-accounts", "module-app-task-manager"]);
+    expect(apps?.modules.map((module) => module.id)).toEqual(["module-app-application", "module-app-billing", "module-app-accounts"]);
+    expect(result.platforms.find((platform) => platform.id === "platform-super-admin")?.groups.find((group) => group.id === "group-sa-task-manager")?.modules.map((module) => module.id)).toEqual(["module-task-manager"]);
     expect(application?.children.map((module) => module.id)).toEqual(["module-application-platform", "module-application-organisation"]);
     expect(entries?.children.map((module) => module.id)).toContain("module-entry-quotation");
-    expect(entries?.children.find((module) => module.id === "module-entry-quotation")?.documentation.routes.length).toBeGreaterThan(0);
+    expect(entries?.children.find((module) => module.id === "module-entry-quotation")?.documentation.routes?.length ?? 0).toBeGreaterThan(0);
   });
 });

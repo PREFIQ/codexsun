@@ -62,6 +62,8 @@ apps/platform/web
 apps/core
 apps/billing
 apps/accounts
+apps/data-bridge
+apps/kitchen-serve
 packages/framework
 packages/platform
 packages/ui

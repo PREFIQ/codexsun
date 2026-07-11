@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   BellIcon,
@@ -12,10 +12,10 @@ import {
   PaletteIcon,
   SparklesIcon,
   WrenchIcon
-} from "lucide-react"
-import { useEffect, useState } from "react"
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
-import { Button } from "../../../components/button"
+import { Button } from "../../../components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,9 +23,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from "../../../components/dropdown-menu"
-import { Separator } from "../../../components/separator"
-import { SidebarTrigger } from "../../../components/sidebar"
+} from "../../../components/dropdown-menu";
+import { Separator } from "../../../components/separator";
+import { SidebarTrigger } from "../../../components/sidebar";
 import {
   DESIGN_SYSTEM_DEFAULT_STORAGE_KEY,
   DESIGN_SYSTEM_NAME,
@@ -34,23 +34,24 @@ import {
   designSystemVariants,
   isDesignSystemVariantId,
   type DesignSystemVariantId
-} from "../../../design-system"
+} from "../../../design-system";
 
 export type TopMenuWorkspaceItem = {
-  active?: boolean
-  description: string
-  icon: LucideIcon
-  onSelect?: () => void
-  title: string
-  url?: string
-}
+  active?: boolean;
+  description: string;
+  icon: LucideIcon;
+  onSelect?: () => void;
+  title: string;
+  url?: string;
+};
 
 export type TopMenuProps = {
-  homeHref?: string
-  logoutHref?: string
-  pageTitle?: string
-  workspaceItems?: TopMenuWorkspaceItem[]
-}
+  homeHref?: string;
+  logoutHref?: string;
+  pageTitle?: string;
+  workspaceItems?: TopMenuWorkspaceItem[];
+  showPageTitle?: boolean;
+};
 
 const defaultWorkspaceItems: TopMenuWorkspaceItem[] = [
   {
@@ -79,21 +80,24 @@ const defaultWorkspaceItems: TopMenuWorkspaceItem[] = [
     description: "Tenant tools and app extensions.",
     icon: WrenchIcon
   }
-]
+];
 
 export function TopMenu({
   homeHref = "/workspace",
   logoutHref = "/login",
   pageTitle = "Workspace",
-  workspaceItems = defaultWorkspaceItems
+  workspaceItems = defaultWorkspaceItems,
+  showPageTitle = true
 }: TopMenuProps) {
-  const activeWorkspace = workspaceItems.find((item) => item.active) ?? workspaceItems[0]
-  const ActiveWorkspaceIcon = activeWorkspace?.icon ?? BriefcaseBusinessIcon
-  const [activeVariantId, setActiveVariantId] = useState<DesignSystemVariantId>(() => getStoredTheme())
+  const activeWorkspace = workspaceItems.find((item) => item.active) ?? workspaceItems[0];
+  const ActiveWorkspaceIcon = activeWorkspace?.icon ?? BriefcaseBusinessIcon;
+  const [activeVariantId, setActiveVariantId] = useState<DesignSystemVariantId>(() =>
+    getStoredTheme()
+  );
 
   useEffect(() => {
-    applyTheme(activeVariantId)
-  }, [activeVariantId])
+    applyTheme(activeVariantId);
+  }, [activeVariantId]);
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between rounded-t-lg border-b bg-background">
@@ -120,7 +124,14 @@ export function TopMenu({
                   key={item.title}
                   asChild={Boolean(item.url && !item.onSelect)}
                   className="gap-3 p-2"
-                  {...(item.onSelect ? { onSelect: (event) => { event.preventDefault(); item.onSelect?.(); } } : {})}
+                  {...(item.onSelect
+                    ? {
+                        onSelect: (event) => {
+                          event.preventDefault();
+                          item.onSelect?.();
+                        }
+                      }
+                    : {})}
                 >
                   {item.url && !item.onSelect ? (
                     <a href={item.url}>
@@ -129,7 +140,9 @@ export function TopMenu({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="truncate font-medium">{item.title}</div>
-                        <div className="truncate text-xs text-muted-foreground">{item.description}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {item.description}
+                        </div>
                       </div>
                       {item.active ? <CheckIcon className="size-4" /> : null}
                     </a>
@@ -140,7 +153,9 @@ export function TopMenu({
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="truncate font-medium">{item.title}</div>
-                        <div className="truncate text-xs text-muted-foreground">{item.description}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {item.description}
+                        </div>
                       </div>
                       {item.active ? <CheckIcon className="size-4" /> : null}
                     </button>
@@ -149,15 +164,24 @@ export function TopMenu({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Separator orientation="vertical" className="h-4" />
-          <span className="truncate font-medium">{pageTitle}</span>
+          {showPageTitle ? (
+            <>
+              <Separator orientation="vertical" className="h-4" />
+              <span className="truncate font-medium">{pageTitle}</span>
+            </>
+          ) : null}
         </div>
       </div>
       <div className="flex items-center gap-2 px-3">
         <Button aria-label="Desk tools" size="icon" variant="outline" className="size-8">
           <BriefcaseBusinessIcon />
         </Button>
-        <Button aria-label="Notifications" size="icon" variant="outline" className="relative size-8">
+        <Button
+          aria-label="Notifications"
+          size="icon"
+          variant="outline"
+          className="relative size-8"
+        >
           <BellIcon />
           <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
             3
@@ -187,7 +211,7 @@ export function TopMenu({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {designSystemVariants.map((variant) => {
-              const active = variant.id === activeVariantId
+              const active = variant.id === activeVariantId;
               return (
                 <DropdownMenuItem
                   key={variant.id}
@@ -209,30 +233,30 @@ export function TopMenu({
                   </div>
                   {active ? <CheckIcon className="size-4" /> : null}
                 </DropdownMenuItem>
-              )
+              );
             })}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </header>
-  )
+  );
 }
 
 function getStoredTheme(): DesignSystemVariantId {
   if (typeof window === "undefined") {
-    return defaultDesignSystemVariantId
+    return defaultDesignSystemVariantId;
   }
 
-  const stored = window.localStorage.getItem(DESIGN_SYSTEM_DEFAULT_STORAGE_KEY)
-  return stored && isDesignSystemVariantId(stored) ? stored : defaultDesignSystemVariantId
+  const stored = window.localStorage.getItem(DESIGN_SYSTEM_DEFAULT_STORAGE_KEY);
+  return stored && isDesignSystemVariantId(stored) ? stored : defaultDesignSystemVariantId;
 }
 
 function applyTheme(variantId: DesignSystemVariantId) {
   if (typeof window === "undefined") {
-    return
+    return;
   }
 
-  document.documentElement.setAttribute("data-design-system", DESIGN_SYSTEM_NAME)
-  document.documentElement.setAttribute(DESIGN_SYSTEM_VARIANT_MARKER, variantId)
-  window.localStorage.setItem(DESIGN_SYSTEM_DEFAULT_STORAGE_KEY, variantId)
+  document.documentElement.setAttribute("data-design-system", DESIGN_SYSTEM_NAME);
+  document.documentElement.setAttribute(DESIGN_SYSTEM_VARIANT_MARKER, variantId);
+  window.localStorage.setItem(DESIGN_SYSTEM_DEFAULT_STORAGE_KEY, variantId);
 }

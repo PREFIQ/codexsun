@@ -3,6 +3,14 @@ import { join } from "node:path";
 
 const moduleRoots = [
   {
+    app: "kitchen-serve-api",
+    path: join(process.cwd(), "apps", "kitchen-serve", "api", "src", "modules")
+  },
+  {
+    app: "data-bridge-api",
+    path: join(process.cwd(), "apps", "data-bridge", "api", "src", "modules")
+  },
+  {
     app: "accounts-api",
     path: join(process.cwd(), "apps", "accounts", "api", "src", "modules")
   },
@@ -35,6 +43,14 @@ const requiredBackendRoles = [
 
 const webModuleRoots = [
   {
+    app: "kitchen-serve-web",
+    path: join(process.cwd(), "apps", "kitchen-serve", "web", "src", "modules")
+  },
+  {
+    app: "data-bridge-web",
+    path: join(process.cwd(), "apps", "data-bridge", "web", "src", "modules")
+  },
+  {
     app: "accounts-web",
     path: join(process.cwd(), "apps", "accounts", "web", "src", "modules")
   },
@@ -52,7 +68,16 @@ const webModuleRoots = [
   }
 ];
 
-const requiredFrontendRoles = ["workspace", "list", "form", "services", "hooks", "types", "schema", "spec"];
+const requiredFrontendRoles = [
+  "workspace",
+  "list",
+  "form",
+  "services",
+  "hooks",
+  "types",
+  "schema",
+  "spec"
+];
 const backendBehaviorMarkers = {
   events: ["create"],
   migration: ["migrate"],
@@ -75,7 +100,9 @@ for (const root of moduleRoots) {
     continue;
   }
 
-  const modules = readdirSync(root.path, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+  const modules = readdirSync(root.path, { withFileTypes: true }).filter((entry) =>
+    entry.isDirectory()
+  );
   for (const moduleDir of modules) {
     const modulePath = join(root.path, moduleDir.name);
     for (const role of requiredBackendRoles) {
@@ -94,7 +121,9 @@ for (const root of moduleRoots) {
 
 for (const root of webModuleRoots) {
   if (!existsSync(root.path)) continue;
-  const modules = readdirSync(root.path, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+  const modules = readdirSync(root.path, { withFileTypes: true }).filter((entry) =>
+    entry.isDirectory()
+  );
   for (const moduleDir of modules) {
     const modulePath = join(root.path, moduleDir.name);
     if (!existsSync(join(modulePath, `${moduleDir.name}.services.ts`))) continue;
@@ -103,7 +132,9 @@ for (const root of webModuleRoots) {
       const extension = ["form", "list", "workspace"].includes(role) ? "tsx" : "ts";
       const filePath = join(modulePath, `${moduleDir.name}.${role}.${extension}`);
       if (!existsSync(filePath)) {
-        missing.push(`${root.app}/${moduleDir.name}: missing ${moduleDir.name}.${role}.${extension}`);
+        missing.push(
+          `${root.app}/${moduleDir.name}: missing ${moduleDir.name}.${role}.${extension}`
+        );
         continue;
       }
       validateRoleFile(filePath, `${root.app}/${moduleDir.name}`, role);

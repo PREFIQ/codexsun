@@ -9,22 +9,76 @@ const root = resolve(import.meta.dirname, "..");
 const stackName = process.argv[2] ?? "platform";
 
 const services = {
-  "accounts-api": { color: "\x1b[31m", command: ["accounts-api"], label: "accounts api", logLabel: "accounts-api" },
-  "accounts-web": { color: "\x1b[90m", command: ["accounts-web"], label: "accounts web", logLabel: "accounts-web" },
-  "billing-api": { color: "\x1b[33m", command: ["billing-api"], label: "billing api", logLabel: "billing-api" },
-  "billing-web": { color: "\x1b[37m", command: ["billing-web"], label: "billing web", logLabel: "billing-web" },
+  "accounts-api": {
+    color: "\x1b[31m",
+    command: ["accounts-api"],
+    label: "accounts api",
+    logLabel: "accounts-api"
+  },
+  "accounts-web": {
+    color: "\x1b[90m",
+    command: ["accounts-web"],
+    label: "accounts web",
+    logLabel: "accounts-web"
+  },
+  "billing-api": {
+    color: "\x1b[33m",
+    command: ["billing-api"],
+    label: "billing api",
+    logLabel: "billing-api"
+  },
+  "billing-web": {
+    color: "\x1b[37m",
+    command: ["billing-web"],
+    label: "billing web",
+    logLabel: "billing-web"
+  },
   "core-api": { color: "\x1b[35m", command: ["core-api"], label: "core api", logLabel: "core-api" },
   "core-web": { color: "\x1b[34m", command: ["core-web"], label: "core web", logLabel: "core-web" },
+  "data-bridge-api": {
+    color: "\x1b[95m",
+    command: ["data-bridge-api"],
+    label: "Data Bridge api",
+    logLabel: "data-bridge-api"
+  },
+  "data-bridge-web": {
+    color: "\x1b[96m",
+    command: ["data-bridge-web"],
+    label: "Data Bridge web",
+    logLabel: "data-bridge-web"
+  },
+  "kitchen-serve-api": {
+    color: "\x1b[91m",
+    command: ["kitchen-serve-api"],
+    label: "KitchenServe api",
+    logLabel: "kitchen-serve-api"
+  },
+  "kitchen-serve-web": {
+    color: "\x1b[92m",
+    command: ["kitchen-serve-web"],
+    label: "KitchenServe web",
+    logLabel: "kitchen-serve-web"
+  },
   "platform-api": { color: "\x1b[36m", command: ["platform-api"], label: "api", logLabel: "api" },
   "platform-web": { color: "\x1b[32m", command: ["platform-web"], label: "web", logLabel: "web" }
 };
 
 const stacks = {
   api: ["platform-api", "core-api", "billing-api", "accounts-api"],
-  all: ["platform-api", "core-api", "platform-web", "billing-api", "billing-web", "accounts-api", "accounts-web"],
+  all: [
+    "platform-api",
+    "core-api",
+    "platform-web",
+    "billing-api",
+    "billing-web",
+    "accounts-api",
+    "accounts-web"
+  ],
   accounts: ["platform-api", "core-api", "accounts-api", "accounts-web"],
   billing: ["platform-api", "core-api", "billing-api", "billing-web"],
   core: ["platform-api", "core-api", "platform-web", "core-web"],
+  "data-bridge": ["data-bridge-api", "data-bridge-web"],
+  "kitchen-serve": ["platform-api", "core-api", "kitchen-serve-api", "kitchen-serve-web"],
   platform: ["platform-api", "core-api", "billing-api", "accounts-api", "platform-web"],
   web: ["platform-web"]
 };
@@ -157,7 +211,7 @@ function loadDotEnv() {
       .split(/\r?\n/)
       .map((line) => line.match(/^\s*([^#=]+?)\s*=\s*(.*?)\s*$/))
       .filter(Boolean)
-      .map((match) => [match[1].trim(), parseEnvValue(match[2])]),
+      .map((match) => [match[1].trim(), parseEnvValue(match[2])])
   );
 }
 
@@ -168,7 +222,7 @@ function parseEnvValue(value) {
   }
 
   const quote = trimmed[0];
-  if ((quote === "\"" || quote === "'") && trimmed.endsWith(quote)) {
+  if ((quote === '"' || quote === "'") && trimmed.endsWith(quote)) {
     return trimmed.slice(1, -1);
   }
 

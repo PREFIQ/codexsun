@@ -46,6 +46,42 @@ const apps = {
     command: process.execPath,
     args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
   },
+  "data-bridge-api": {
+    displayName: "data-bridge-api",
+    cwd: "apps/data-bridge/api",
+    envKey: "DATA_BRIDGE_API_PORT",
+    hostKey: "DATA_BRIDGE_API_HOST",
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
+  },
+  "data-bridge-web": {
+    displayName: "data-bridge-web",
+    cwd: "apps/data-bridge/web",
+    envKey: "DATA_BRIDGE_WEB_PORT",
+    hostKey: "DATA_BRIDGE_WEB_HOST",
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
+  },
+  "kitchen-serve-api": {
+    displayName: "kitchen-serve-api",
+    cwd: "apps/kitchen-serve/api",
+    envKey: "KITCHEN_SERVE_API_PORT",
+    hostKey: "KITCHEN_SERVE_API_HOST",
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
+  },
+  "kitchen-serve-web": {
+    displayName: "kitchen-serve-web",
+    cwd: "apps/kitchen-serve/web",
+    envKey: "KITCHEN_SERVE_WEB_PORT",
+    hostKey: "KITCHEN_SERVE_WEB_HOST",
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
+  },
   "core-api": {
     displayName: "core-api",
     cwd: "apps/core/api",
@@ -95,22 +131,38 @@ const port = parseRequiredPort(process.env[config.envKey] || env[config.envKey],
 const host = process.env[config.hostKey] || env[config.hostKey] || config.fallbackHost;
 await freePort(port, host);
 
-if (app === "platform-api" || app === "core-api" || app === "billing-api" || app === "accounts-api") {
+if (
+  app === "platform-api" ||
+  app === "core-api" ||
+  app === "billing-api" ||
+  app === "accounts-api" ||
+  app === "data-bridge-api" ||
+  app === "kitchen-serve-api"
+) {
   ensurePlatformApiDependencies();
 }
 
-const child = spawn(config.command, [...config.args, ...(app.endsWith("-web") ? ["--port", String(port)] : [])], {
-  cwd: resolve(root, config.cwd),
-  env: {
-    ...process.env,
-    ...env,
-    ...(app === "platform-api"
-      ? { CODEXSUN_DB_FRESH_SESSION_FILE: join(tmpdir(), `codexsun-platform-fresh-${process.pid}.done`) }
-      : {}),
-    [config.envKey]: String(port)
-  },
-  stdio: "inherit"
-});
+const child = spawn(
+  config.command,
+  [...config.args, ...(app.endsWith("-web") ? ["--port", String(port)] : [])],
+  {
+    cwd: resolve(root, config.cwd),
+    env: {
+      ...process.env,
+      ...env,
+      ...(app === "platform-api"
+        ? {
+            CODEXSUN_DB_FRESH_SESSION_FILE: join(
+              tmpdir(),
+              `codexsun-platform-fresh-${process.pid}.done`
+            )
+          }
+        : {}),
+      [config.envKey]: String(port)
+    },
+    stdio: "inherit"
+  }
+);
 
 child.on("exit", (code) => process.exit(code ?? 0));
 
@@ -145,7 +197,7 @@ function parseEnvValue(value) {
 
   const quote = trimmed[0];
 
-  if ((quote === "\"" || quote === "'") && trimmed.endsWith(quote)) {
+  if ((quote === '"' || quote === "'") && trimmed.endsWith(quote)) {
     return trimmed.slice(1, -1);
   }
 
@@ -266,7 +318,9 @@ async function freePort(port, host) {
   console.log(`  ! ${host}:${port} is already in use by PID ${pids.join(", ")}`);
 
   if (process.env.CODEXSUN_DEV_PORT_POLICY === "abort") {
-    console.error("  x Port policy is abort. Stop the existing process or change CODEXSUN_DEV_PORT_POLICY.\n");
+    console.error(
+      "  x Port policy is abort. Stop the existing process or change CODEXSUN_DEV_PORT_POLICY.\n"
+    );
     process.exit(1);
   }
 
@@ -317,7 +371,10 @@ function getPidsOnPort(port) {
           out
             .split(/\r?\n/)
             .map((line) => line.trim().split(/\s+/))
-            .filter((parts) => parts.length >= 5 && parts[3] === "LISTENING" && portFromAddress(parts[1]) === port)
+            .filter(
+              (parts) =>
+                parts.length >= 5 && parts[3] === "LISTENING" && portFromAddress(parts[1]) === port
+            )
             .map((parts) => Number(parts[4]))
             .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid)
         )

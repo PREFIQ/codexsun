@@ -1,6 +1,6 @@
 {
   "name": "codexsun",
-  "version": "1.0.20",
+  "version": "1.0.22",
   "private": true,
   "packageManager": "npm@11.17.0",
   "description": "CODEXSUN",
@@ -24,6 +24,8 @@
     "verify:billing": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "verify:accounts": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "verify:core": "npm run check:module-boundaries && npm run typecheck && npm run build",
+    "verify:data-bridge": "npm run check:module-boundaries && npm run typecheck && npm run build",
+    "verify:kitchen-serve": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "check": "npm run check:module-boundaries && npm run typecheck && npm run lint",
     "check:module-boundaries": "node tools/check-module-boundaries.mjs",
     "db:migrate": "npm run db:migrate -w @codexsun/platform-api",

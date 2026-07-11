@@ -60,7 +60,6 @@ import { PurchaseWorkspace } from "../../modules/purchase/purchase.workspace";
 import { ExportSalesWorkspace } from "../../modules/export-sales/export-sales.workspace";
 import { PaymentWorkspace } from "../../modules/payment/payment.workspace";
 import { ReceiptWorkspace } from "../../modules/receipt/receipt.workspace";
-import { TaskManagerWorkspace } from "../../modules/task-manager/task-manager.workspace";
 import { AccountsSettingsWorkspace, AccountsWorkspace, getAccountsSettings } from "../../modules/accounts";
 import { BillingSettingsWorkspace, DocumentSettingsWorkspace } from "../../modules/billing-settings";
 import { getToken, setTenantDbName, setTenantId } from "../../shared/api/platform-api";
@@ -140,8 +139,7 @@ export function AppDesk() {
   const activeApp = appFromPage(page, landingApp, switchableApps);
   const safePage =
     ((page.startsWith("billing") || (page.startsWith("core") && !page.startsWith("core.organisation"))) && !switchableApps.includes("billing")) ||
-    (page.startsWith("accounts") && !switchableApps.includes("accounts")) ||
-    (page.startsWith("task-manager") && !switchableApps.includes("task-manager"))
+    (page.startsWith("accounts") && !switchableApps.includes("accounts"))
       ? pageForApp(landingApp)
       : page;
   const activeCompanies = useMemo(() => (companiesQuery.data ?? []).filter((company) => company.isActive), [companiesQuery.data]);
@@ -188,19 +186,19 @@ export function AppDesk() {
     window.localStorage.setItem(LANDING_APP_STORAGE_KEY, nextLandingApp);
   }
 
-  const activeWorkspaceTitle = activeApp === "billing" ? "Billing" : activeApp === "accounts" ? "Accounts" : activeApp === "task-manager" ? "Task Manager" : "Application";
+  const activeWorkspaceTitle = activeApp === "billing" ? "Billing" : activeApp === "accounts" ? "Accounts" : "Application";
   const menuItems = appMenuItemsFor(activeApp, safePage, (nextPage) => selectPage(nextPage as AppPage));
   const workspaceItems = appWorkspaceItems(switchableApps, activeApp).map((item) => ({
     ...item,
-    onSelect: () => selectPage(item.title === "Application" ? "application.overview" : item.title === "Billing" ? "billing.overview" : item.title === "Accounts" ? "accounts.overview" : "task-manager.overview"),
-    url: item.title === "Application" ? "/app/application/overview" : item.title === "Billing" ? "/app/billing/overview" : item.title === "Accounts" ? "/app/accounts/overview" : "/app/task-manager/overview"
+    onSelect: () => selectPage(item.title === "Application" ? "application.overview" : item.title === "Billing" ? "billing.overview" : "accounts.overview"),
+    url: item.title === "Application" ? "/app/application/overview" : item.title === "Billing" ? "/app/billing/overview" : "/app/accounts/overview"
   }));
 
   return (
     <AuthGate desk="tenant">
       <ApplicationLayout
         brand={{
-          href: activeApp === "billing" ? "/app/billing/overview" : activeApp === "accounts" ? "/app/accounts/overview" : activeApp === "task-manager" ? "/app/task-manager/overview" : "/app/application/overview",
+          href: activeApp === "billing" ? "/app/billing/overview" : activeApp === "accounts" ? "/app/accounts/overview" : "/app/application/overview",
           options: activeCompanies.map((company) => ({ id: company.id, subtitle: `${company.code} · ${accountingYear}`, title: company.name })),
           onOptionSelect: (id) => {
             setSelectedCompanyId(id);
@@ -237,7 +235,6 @@ export function AppDesk() {
           {safePage === "billing.receipt" ? <ReceiptWorkspace /> : null}
           {safePage === "billing.settings" ? <BillingSettingsWorkspace /> : null}
           {safePage === "billing.document-settings" ? <DocumentSettingsWorkspace /> : null}
-          {safePage === "task-manager.overview" || safePage === "task-manager.todos" ? <TaskManagerWorkspace /> : null}
           {isAccountsPage(safePage) && safePage !== "accounts.settings" && !isAccountsSettingsPage(safePage) ? <AccountsWorkspace page={accountsWorkspacePage(safePage)} /> : null}
           {isAccountsSettingsPage(safePage) ? <AccountsSettings page={safePage} /> : null}
           {safePage === "core.organisation.company" ? <CompanyWorkspace /> : null}
@@ -291,8 +288,6 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "billing.receipt" ||
     key === "billing.settings" ||
     key === "billing.document-settings" ||
-    key === "task-manager.overview" ||
-    key === "task-manager.todos" ||
     key === "accounts.overview" ||
     key === "accounts.groups" ||
     key === "accounts.ledgers" ||

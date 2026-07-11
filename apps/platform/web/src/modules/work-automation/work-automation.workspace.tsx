@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArchiveRestoreIcon, ArrowLeftIcon, BanIcon, ListTreeIcon, PencilIcon, PlusIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
@@ -10,6 +10,7 @@ import { WorkspaceMinimalEditor } from "@codexsun/ui/workspace/minimal-editor";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
+import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
 import { WorkspaceTableEmptyState, WorkspaceTableHeaderCell, WorkspaceTablePanel, WorkspaceTableSkeletonRows } from "@codexsun/ui/workspace/table";
 import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormFooter, WorkspaceFormGrid, WorkspaceUpsertDialog } from "@codexsun/ui/workspace/upsert";
@@ -17,7 +18,7 @@ import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 import { useProjectManagerMutations, useProjectManagerRecordsQuery } from "../project-manager/project-manager.hooks";
 import { formFromRecord, payloadFromForm } from "../project-manager/project-manager.schema";
 import type { ProjectManagerForm, ProjectManagerRecord } from "../project-manager/project-manager.types";
-import { WorkAutomationMetrics, WorkAutomationWorkflow, type WorkflowView } from "./work-automation.workflow";
+import { WorkAutomationMetrics, WorkAutomationWorkflow, type WorkflowRecords, type WorkflowView } from "./work-automation.workflow";
 
 const issueStatusOptions = ["open", "in-progress", "needs-review", "blocked", "completed"];
 const taskStatusOptions = ["open", "assigned", "in-progress", "blocked", "completed"];
@@ -42,6 +43,7 @@ export function WorkAutomationWorkspace({ initialView = "automation" }: { initia
   const activityMutations = useProjectManagerMutations("activity");
   const reviewMutations = useProjectManagerMutations("review");
   const [path, setPath] = useState<ProjectManagerRecord[]>([]);
+  const [forcedKind, setForcedKind] = useState<FlowKind | null>(null);
   const [editing, setEditing] = useState<ProjectManagerForm | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -49,15 +51,18 @@ export function WorkAutomationWorkspace({ initialView = "automation" }: { initia
   const [rowsPerPage, setRowsPerPage] = useState(100);
   const [saveError, setSaveError] = useState("");
   const [workflowView, setWorkflowView] = useState<WorkflowView>(initialView);
+  const [workflowKindFilter, setWorkflowKindFilter] = useState<"all" | FlowKind>("all");
+  const [selectedWorkflowRecord, setSelectedWorkflowRecord] = useState("");
+  const openedRecord = useRef("");
   const [createdOptions, setCreatedOptions] = useState<Record<LookupKind, WorkspaceLookupOption[]>>({ assignee: [], status: [], type: [] });
   const level = Math.min(path.length, flow.length - 1);
-  const kind: FlowKind = flow[level] ?? "review";
+  const kind: FlowKind = forcedKind ?? flow[level] ?? "review";
   const nextKind: FlowKind | null = flow[level + 1] ?? null;
   const parent = path.at(-1) ?? null;
   const queries = { activity: activityQuery, issue: query, review: reviewQuery, task: taskQuery };
   const mutationSets = { activity: activityMutations, issue: issueMutations, review: reviewMutations, task: taskMutations };
   const mutations = mutationSets[kind];
-  const records = parent ? (queries[kind].data ?? []).filter((record) => belongsTo(record, parent)) : query.data ?? [];
+  const records = parent ? (queries[kind].data ?? []).filter((record) => belongsTo(record, parent)) : forcedKind ? queries[kind].data ?? [] : query.data ?? [];
   const filtered = useMemo(() => records.filter((record) => {
     const term = search.trim().toLowerCase();
     return (statusFilter === "all" || record.status === statusFilter) && (!term || `${record.key} ${record.title} ${record.description} ${record.type} ${record.assignee} ${record.priority} ${record.status}`.toLowerCase().includes(term));
@@ -69,6 +74,28 @@ export function WorkAutomationWorkspace({ initialView = "automation" }: { initia
   const parentKind: FlowKind = parent && flow.includes(parent.kind as FlowKind) ? parent.kind as FlowKind : "issue";
   const parentNumber = parent ? recordNumber(queries[parentKind].data ?? [], parent) : 0;
   const busy = mutations.create.isPending || mutations.update.isPending;
+  const workflowRecords = useMemo(() => [...(query.data ?? []), ...(taskQuery.data ?? []), ...(activityQuery.data ?? []), ...(reviewQuery.data ?? [])], [activityQuery.data, query.data, reviewQuery.data, taskQuery.data]);
+  const workflowSearchOptions = useMemo(() => workflowRecords.filter((record) => workflowKindFilter === "all" || record.kind === workflowKindFilter).map((record) => ({ description: `${label(record.kind)} · ${record.key}`, label: record.title, value: `${record.kind}:${record.id}` })), [workflowKindFilter, workflowRecords]);
+  const workflowSearchResult = useMemo(() => workflowRecords.find((record) => `${record.kind}:${record.id}` === selectedWorkflowRecord) ?? null, [selectedWorkflowRecord, workflowRecords]);
+  const isolatedWorkflow = useMemo(() => workflowSearchResult ? isolateWorkflow(workflowSearchResult, workflowRecords) : null, [workflowRecords, workflowSearchResult]);
+
+  useEffect(() => {
+    if (workflowOnly) return;
+    const params = new URLSearchParams(window.location.search);
+    const recordId = params.get("record") ?? "";
+    const recordKind = params.get("kind") as FlowKind | null;
+    const targetKey = recordKind && recordId ? `${recordKind}:${recordId}` : "";
+    if (!targetKey || openedRecord.current === targetKey || !flow.includes(recordKind as FlowKind)) return;
+    const target = workflowRecords.find((record) => record.kind === recordKind && record.id === recordId);
+    if (!target) return;
+    const parents = buildParentPath(target, workflowRecords);
+    openedRecord.current = targetKey;
+    setPath(parents);
+    setForcedKind(target.kind as FlowKind);
+    setEditing(formFromRecord(target));
+    setSaveError("");
+    window.history.replaceState({ page: "work-automation" }, "", "/sa/work-automation");
+  }, [workflowOnly, workflowRecords]);
 
   function openNew() {
     setSaveError("");
@@ -113,17 +140,24 @@ export function WorkAutomationWorkspace({ initialView = "automation" }: { initia
 
   return (
     <WorkspacePage
-      title={workflowOnly ? "Workflow" : parent ? `${label(parent.kind)} #${parentNumber} - ${parent.title}` : "Issues"}
+      title={workflowOnly ? "Workflow" : parent ? `${label(parent.kind)} #${parentNumber} - ${parent.title}` : forcedKind ? pluralLabel(forcedKind) : "Issues"}
       description={workflowOnly ? "Metrics, schedule, and delivery-state views across all work automation records." : parent ? `Linked ${label(kind).toLowerCase()} records for this ${label(parent.kind).toLowerCase()}.` : "Select an issue to drill down through tasks, activities, and reviews."}
       technicalName={workflowOnly ? "page.workflow" : `page.work-automation.${plural(kind)}`}
-      actions={workflowOnly ? <Button variant="outline" onClick={() => { void query.refetch(); void taskQuery.refetch(); void activityQuery.refetch(); void reviewQuery.refetch(); }}><RefreshCwIcon className={query.isFetching || taskQuery.isFetching || activityQuery.isFetching || reviewQuery.isFetching ? "size-4 animate-spin" : "size-4"} />Refresh</Button> : <div className="flex items-center gap-2">{parent ? <Button variant="outline" onClick={() => { setPath((current) => current.slice(0, -1)); setEditing(null); setSearch(""); setStatusFilter("all"); setPage(1); }}><ArrowLeftIcon className="size-4" />Back to {path.length === 1 ? "issues" : plural(flow[level - 1] ?? "issue")}</Button> : null}<Button disabled={activeQuery.isFetching} variant="outline" onClick={() => void activeQuery.refetch()}><RefreshCwIcon className={activeQuery.isFetching ? "size-4 animate-spin" : "size-4"} />Refresh</Button><Button onClick={openNew}><PlusIcon className="size-4" />New {kind}</Button></div>}
+      actions={workflowOnly ? <Button variant="outline" onClick={() => { void query.refetch(); void taskQuery.refetch(); void activityQuery.refetch(); void reviewQuery.refetch(); }}><RefreshCwIcon className={query.isFetching || taskQuery.isFetching || activityQuery.isFetching || reviewQuery.isFetching ? "size-4 animate-spin" : "size-4"} />Refresh</Button> : <div className="flex items-center gap-2">{parent || forcedKind ? <Button variant="outline" onClick={() => { if (forcedKind) { setForcedKind(null); setPath([]); } else setPath((current) => current.slice(0, -1)); setEditing(null); setSearch(""); setStatusFilter("all"); setPage(1); }}><ArrowLeftIcon className="size-4" />Back to {forcedKind ? "issues" : path.length === 1 ? "issues" : plural(flow[level - 1] ?? "issue")}</Button> : null}<Button disabled={activeQuery.isFetching} variant="outline" onClick={() => void activeQuery.refetch()}><RefreshCwIcon className={activeQuery.isFetching ? "size-4 animate-spin" : "size-4"} />Refresh</Button><Button onClick={openNew}><PlusIcon className="size-4" />New {kind}</Button></div>}
     >
       {workflowOnly ? <>
-        <WorkAutomationMetrics records={{ activities: activityQuery.data ?? [], issues: query.data ?? [], reviews: reviewQuery.data ?? [], tasks: taskQuery.data ?? [] }} />
-        <div className="mb-4 flex flex-wrap gap-2 rounded-md border bg-card p-2 shadow-sm">
-          {(["timeline", "gantt", "kanban"] as WorkflowView[]).map((view) => <Button key={view} size="sm" type="button" variant={workflowView === view ? "default" : "ghost"} onClick={() => setWorkflowView(view)}>{label(view)}</Button>)}
+        <div className="mb-4 grid gap-3 rounded-md border bg-card p-4 shadow-sm md:grid-cols-[14rem_minmax(0,1fr)]">
+          <WorkspaceSelect value={workflowKindFilter} options={[{ label: "All work types", value: "all" }, ...flow.map((item) => ({ label: pluralLabel(item), value: item }))]} onValueChange={(value) => { setWorkflowKindFilter(value as "all" | FlowKind); setSelectedWorkflowRecord(""); }} />
+          <WorkspaceLookup allowTextValue={false} emptyLabel="No workflow items found." options={workflowSearchOptions} placeholder="Search any issue, task, activity, review, or ID" value={selectedWorkflowRecord} onValueChange={setSelectedWorkflowRecord} />
         </div>
-        <WorkAutomationWorkflow records={{ activities: activityQuery.data ?? [], issues: query.data ?? [], reviews: reviewQuery.data ?? [], tasks: taskQuery.data ?? [] }} view={workflowView === "automation" ? "timeline" : workflowView} />
+        {workflowSearchResult && isolatedWorkflow ? <>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-md border bg-card p-4 shadow-sm"><div><div className="mb-1 flex items-center gap-2"><WorkspaceStatusBadge label={label(workflowSearchResult.kind)} tone="info" /><span className="font-medium">{workflowSearchResult.title}</span></div><div className="font-mono text-xs text-muted-foreground">{workflowSearchResult.key}</div><div className="mt-1 text-sm text-muted-foreground">Isolated workflow report · {isolatedWorkflow.issues[0]?.title ?? workflowSearchResult.title}</div></div><Button type="button" onClick={() => openWorkflowRecord(selectedWorkflowRecord)}>Open in Work Automation</Button></div>
+          <WorkAutomationMetrics records={isolatedWorkflow} />
+          <div className="mb-4 flex flex-wrap gap-2 rounded-md border bg-card p-2 shadow-sm">
+            {(["timeline", "gantt", "kanban"] as WorkflowView[]).map((view) => <Button key={view} size="sm" type="button" variant={workflowView === view ? "default" : "ghost"} onClick={() => setWorkflowView(view)}>{label(view)}</Button>)}
+          </div>
+          <WorkAutomationWorkflow records={isolatedWorkflow} view={workflowView === "automation" ? "timeline" : workflowView} />
+        </> : <div className="rounded-md border border-dashed bg-card p-10 text-center"><div className="font-medium">Select a workflow record</div><p className="mt-2 text-sm text-muted-foreground">Search for an Issue, Task, Activity, or Review to load its isolated Timeline, Gantt, Kanban, and metrics.</p></div>}
       </> : <>
       <WorkspaceFilters
         className="mt-4"
@@ -141,7 +175,7 @@ export function WorkAutomationWorkspace({ initialView = "automation" }: { initia
             {activeQuery.isLoading ? <WorkspaceTableSkeletonRows columns={usesPriority(kind) ? 8 : 7} rows={6} /> : pageRecords.map((record, index) => (
               <tr className="border-b last:border-0" key={record.id}>
                 <td className="w-16 px-4 py-3 font-mono text-xs text-muted-foreground">{recordNumber(activeQuery.data ?? [], record) || index + 1 + (currentPage - 1) * rowsPerPage}</td>
-                <td className="px-4 py-3"><button className="text-left font-medium hover:underline" type="button" onClick={() => { setSaveError(""); if (!nextKind) setEditing(formFromRecord(record)); else { setPath((current) => [...current, record]); setSearch(""); setStatusFilter("all"); setPage(1); } }}>{record.title}</button><div className="font-mono text-xs text-muted-foreground">{record.key}</div>{nextKind ? <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground"><ListTreeIcon className="size-3.5" />{childCount(queries[nextKind].data ?? [], record)} {plural(nextKind)}</div> : record.description ? <div className="mt-1 max-w-[32rem] truncate text-xs text-muted-foreground">{plainText(record.description)}</div> : null}</td>
+                <td className="px-4 py-3"><button className="text-left font-medium hover:underline" type="button" onClick={() => { setSaveError(""); if (!nextKind) setEditing(formFromRecord(record)); else { setForcedKind(null); setPath((current) => [...current, record]); setSearch(""); setStatusFilter("all"); setPage(1); } }}>{record.title}</button><div className="font-mono text-xs text-muted-foreground">{record.key}</div>{nextKind ? <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground"><ListTreeIcon className="size-3.5" />{childCount(queries[nextKind].data ?? [], record)} {plural(nextKind)}</div> : record.description ? <div className="mt-1 max-w-[32rem] truncate text-xs text-muted-foreground">{plainText(record.description)}</div> : null}</td>
                 <td className="px-4 py-3">{label(record.type)}</td><td className="px-4 py-3">{record.assignee || "-"}</td>{usesPriority(kind) ? <td className="px-4 py-3">{label(record.priority)}</td> : null}<td className="px-4 py-3">{formatDate(record.dueDate)}</td>
                 <td className="px-4 py-3"><WorkspaceStatusBadge label={record.active ? label(record.status) : "Inactive"} tone={!record.active ? "neutral" : statusTone(record.status)} /></td>
                 <td className="px-4 py-3"><div className="flex justify-end"><WorkspaceRowActions title={record.title} actions={[{ id: "edit", label: "Edit", icon: <PencilIcon className="size-4" />, onSelect: () => { setSaveError(""); setEditing(formFromRecord(record)); } }, record.active ? { id: "deactivate", label: "Deactivate", icon: <BanIcon className="size-4" />, onSelect: () => mutations.deactivate.mutate(record.id) } : { id: "restore", label: "Restore", icon: <ArchiveRestoreIcon className="size-4" />, onSelect: () => mutations.restore.mutate(record.id) }, { id: "delete", label: "Delete", icon: <Trash2Icon className="size-4" />, tone: "destructive", onSelect: () => { if (window.confirm(`Delete ${record.title}?`)) mutations.delete.mutate(record.id); } }]} /></div></td>
@@ -215,6 +249,48 @@ function nextRecordKey(kind: FlowKind, parent: ProjectManagerRecord | null, reco
     number += 1;
   } while (used.has(key.toLowerCase()));
   return key;
+}
+function pluralLabel(kind: FlowKind) { const value = plural(kind); return value.charAt(0).toUpperCase() + value.slice(1); }
+function openWorkflowRecord(value: string) {
+  const separator = value.indexOf(":");
+  if (separator < 1) return;
+  const kind = value.slice(0, separator);
+  const record = value.slice(separator + 1);
+  window.location.assign(`/sa/work-automation?kind=${encodeURIComponent(kind)}&record=${encodeURIComponent(record)}`);
+}
+function buildParentPath(target: ProjectManagerRecord, records: ProjectManagerRecord[]) {
+  const parents: ProjectManagerRecord[] = [];
+  let current = target;
+  while (current.referenceType && current.referenceId) {
+    const parent = records.find((record) => record.kind === current.referenceType && (record.id === current.referenceId || record.key === current.referenceId));
+    if (!parent || parents.some((record) => record.id === parent.id)) break;
+    parents.unshift(parent);
+    current = parent;
+  }
+  return parents;
+}
+function isolateWorkflow(selected: ProjectManagerRecord, records: ProjectManagerRecord[]): WorkflowRecords {
+  const parentPath = buildParentPath(selected, records);
+  const root = parentPath.find((record) => record.kind === "issue") ?? (selected.kind === "issue" ? selected : selected);
+  const included = new Map<string, ProjectManagerRecord>([[root.id, root]]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const record of records) {
+      if (included.has(record.id)) continue;
+      if ([...included.values()].some((parent) => belongsTo(record, parent))) {
+        included.set(record.id, record);
+        changed = true;
+      }
+    }
+  }
+  const scoped = [...included.values()];
+  return {
+    activities: scoped.filter((record) => record.kind === "activity"),
+    issues: scoped.filter((record) => record.kind === "issue"),
+    reviews: scoped.filter((record) => record.kind === "review"),
+    tasks: scoped.filter((record) => record.kind === "task")
+  };
 }
 function toOption(value: string): WorkspaceLookupOption { return { label: label(value), value }; }
 function uniqueOptions(options: WorkspaceLookupOption[]) { return [...new Map(options.filter((option) => option.value).map((option) => [option.value.toLowerCase(), option])).values()]; }

@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.20
+Current version: 1.0.22
 
-Release tag: v-1.0.20
+Release tag: v-1.0.22
 
-Changelog label: v 1.0.20
+Changelog label: v 1.0.22
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,56 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.22
+
+### [v 1.0.22] 2026-07-11 7:05 pm - Super Admin App Operations Experience
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Reworked the Super Admin repository app strip into a fixed responsive five-column grid with automatic wrapping and no horizontal scrollbar.
+- Added distinct light pastel gradients, coordinated icon treatments, soft borders, and corner-white glow effects for each repository app card.
+- Applied the selected app's visual identity to the App Operations hero while keeping operational controls and status information clear.
+- Added low-intensity app-matched gradients to service metrics without changing service-list or supporting-panel surfaces.
+- Preserved responsive layouts, dark-mode variants, hover feedback, and status-badge contrast across the updated operations experience.
+- Verified the Platform web application with focused formatting, TypeScript checks, and repository diff validation.
+- Bumped workspace version to 1.0.22.
+
+## v-1.0.21
+
+### [v 1.0.21] 2026-07-11 5:42 pm - Data Bridge Foundation and Super Admin Desk
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Added the isolated `apps/data-bridge` API and web application bundles with dedicated ports, workspace packages, development stack, environment configuration, and build tooling.
+- Added the Data Bridge controlled migration workflow for discovery, mapping, review, approval, execution, and reconciliation across schema-upgrade and data-transfer tracks.
+- Defined the required Data Bridge areas: Overview, Migration Projects, Connections & Secrets, Discovery Snapshots, Schema Comparison, Mappings & Transforms, Review & Approvals, Execution Runs, and Reconciliation & Audit.
+- Added fail-closed execution guards requiring tenant context, approved project status, a successful dry run, an approval reference, and an immutable plan checksum.
+- Added Data Bridge to the Super Admin app switcher and exposed it through the authenticated `/data-bridge` desk with its own sidebar and workspace shell.
+- Removed the earlier embedded Data Bridge entry from the Super Admin Database menu.
+- Removed the redundant page-title breadcrumb segment from the Super Admin top bar.
+- Restricted the Super Admin and Data Bridge app switchers to Platform and Data Bridge so tenant Application and Staff desks cannot be entered from this context.
+- Added Data Bridge architecture, security, module-boundary, runtime, and verification documentation.
+- Verified the Data Bridge API, Data Bridge web, shared UI, and Platform web with focused typechecks, API safety tests, browser interaction checks, and design QA.
+- Added the isolated KitchenServe API and web app on ports `7110` and `7120`, supported by Platform, Core, Framework, and UI without Billing or Accounts dependencies.
+- Added the tenant-scoped waiter-order lifecycle from draft capture through kitchen submission, preparation, ready-to-serve, served, bill-waiting, and closed states.
+- Added real MariaDB persistence for KitchenServe orders, order items, and station-specific kitchen tickets with transactional order creation and validated tenant database selection.
+- Added KitchenServe desks for floor and tables, menu, waiter orders, kitchen display, ready-to-serve, bill waiting, order history, and settings.
+- Replaced the Super Admin overview dashboard cards with a compact live strip for every runnable repository app.
+- Added App Operations maintenance pages with service availability, port response time, managed uptime, terminal PID, and per-service health metrics.
+- Added guarded Open & start, Stop, Update, and Refresh controls; app starts and updates open in new visible terminals while stop is limited to process trees recorded by the orchestrator.
+- Added independent Start, Stop, and Restart controls for every API/Web service with service-specific PID and uptime ownership.
+- Enlarged repository app and metric cards with mild theme-token gradients, stronger icon treatment, and improved hover elevation.
+- Reworked the repository app strip into a fixed responsive grid with five cards per wide row, automatic wrapping, no horizontal scrollbar, and a distinct theme-token color treatment for each app.
+- Bumped workspace version to 1.0.21.
 
 ## v-1.0.20
 
