@@ -152,7 +152,7 @@ export function BillingLayout({
         { icon: SettingsIcon, title: "Billing Settings", url: "/billing/settings" },
         { icon: SettingsIcon, title: "Document Settings", url: "/billing/settings/documents" },
       ]}
-      versionLabel="v 1.0.7"
+      versionLabel={`v ${__APP_VERSION__}`}
       workspaceItems={billingWorkspaceItems}
     >
       {children}

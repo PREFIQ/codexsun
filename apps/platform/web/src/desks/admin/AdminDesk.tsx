@@ -19,6 +19,7 @@ export function AdminDesk() {
   return (
     <AuthGate desk="admin">
       <AdminLayout
+        versionLabel={`v ${__APP_VERSION__}`}
         actions={
           <div className="flex flex-wrap justify-end gap-2">
             <Button size="sm" variant={page === "dashboard" ? "default" : "ghost"} onClick={() => setPage("dashboard")}>Dashboard</Button>

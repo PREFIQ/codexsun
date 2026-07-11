@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.18
+Current version: 1.0.19
 
-Release tag: v-1.0.18
+Release tag: v-1.0.19
 
-Changelog label: v 1.0.18
+Changelog label: v 1.0.19
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -20,6 +20,19 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
 
+## v-1.0.19
+
+### [v 1.0.19] 11/07/2026 11:10 am - Task Manager Todo editor and workflow improvements
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Added a module-owned minimal Todo rich-text editor with essential formatting controls, clean list previews, and shared workspace styling.
+- Bumped workspace version to 1.0.19.
+
 ## v-1.0.18
 
 ### [v 1.0.18] 2026-07-11 9:54 am - working on eway and einvoice
@@ -31,6 +44,8 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 #### App Codebase Changes
 
 - Bumped workspace version to 1.0.18.
+- Added shadcn Typeset, Geist Variable, and Geist Mono typography assets to the shared UI stylesheet.
+- Applied the `typeset typeset-article` preset to the Workspace Editor rich-content preview, replacing its previous `prose` styling.
 
 ## v-1.0.17
 

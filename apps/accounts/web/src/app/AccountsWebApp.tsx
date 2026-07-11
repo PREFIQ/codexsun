@@ -41,6 +41,7 @@ export function AccountsWebApp() {
       ]}
       subtitle={null}
       title={null}
+      versionLabel={`v ${__APP_VERSION__}`}
       workspaceItems={[]}
     >
       <main className="mx-auto w-[calc(100%-2rem)] max-w-[92rem] space-y-5 py-4 lg:w-[calc(100%-3rem)] lg:py-5">

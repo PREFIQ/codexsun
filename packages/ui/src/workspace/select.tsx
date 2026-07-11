@@ -10,6 +10,7 @@ import {
 
 export type WorkspaceSelectOption = {
   label: string
+  swatchClassName?: string
   value: string
 }
 
@@ -39,7 +40,10 @@ export function WorkspaceSelect({
       <SelectContent className="z-[160] rounded-md border-border/80">
         {options.map((option) => (
           <SelectItem key={option.value} value={option.value} className="rounded-sm">
-            {option.label}
+            <span className="flex items-center gap-2">
+              {option.swatchClassName ? <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full ${option.swatchClassName}`} /> : null}
+              {option.label}
+            </span>
           </SelectItem>
         ))}
       </SelectContent>

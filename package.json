@@ -1,6 +1,6 @@
 {
   "name": "codexsun",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "private": true,
   "packageManager": "npm@11.17.0",
   "description": "CODEXSUN",
@@ -70,5 +70,9 @@
   },
   "allowScripts": {
     "esbuild": true
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource-variable/geist-mono": "^5.2.8"
   }
 }

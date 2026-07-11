@@ -534,7 +534,7 @@ export function WorkspaceEditor({
           <EditorContent editor={activeEditor} />
         ) : (
           <div
-            className="prose prose-sm min-h-[132px] max-w-none px-4 py-4 text-sm"
+            className="typeset typeset-article min-h-[132px] max-w-[37em] px-4 py-4"
             dangerouslySetInnerHTML={{ __html: activeEditor.getHTML() || "<p>No preview yet.</p>" }}
           />
         )}

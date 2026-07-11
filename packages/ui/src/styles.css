@@ -1,4 +1,16 @@
 @import "tailwindcss";
+@import "./typeset.css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+.typeset-article {
+  --typeset-font-body: var(--font-geist);
+  --typeset-font-heading: var(--font-geist);
+  --typeset-font-mono: var(--font-geist-mono);
+  --typeset-size: 15px;
+  --typeset-leading: 1.75;
+  --typeset-flow: 1.25em;
+}
 
 @source ".";
 @source "../../../apps/accounts/web/src";
@@ -75,6 +87,8 @@
 @layer base {
   :root {
     color-scheme: light;
+    --font-geist: "Geist Variable", sans-serif;
+    --font-geist-mono: "Geist Mono Variable", monospace;
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(1 0 0);

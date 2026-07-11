@@ -21,6 +21,7 @@ type ApplicationLayoutProps = {
   headerTitle?: ReactNode;
   subtitle?: ReactNode;
   title?: ReactNode;
+  versionLabel?: string;
   workspaceItems?: TopMenuWorkspaceItem[];
 };
 
@@ -82,6 +83,7 @@ export function ApplicationLayout({
   menuItems = applicationMenuItems,
   subtitle = "Tenant application workspace.",
   title = "Application Desk",
+  versionLabel,
   workspaceItems = applicationWorkspaceItems
 }: ApplicationLayoutProps) {
   return (
@@ -98,6 +100,7 @@ export function ApplicationLayout({
       menuItems={menuItems}
       subtitle={subtitle}
       title={title}
+      {...(versionLabel ? { versionLabel } : {})}
       user={{
         email: "user@codexsun.app",
         fallback: "U",

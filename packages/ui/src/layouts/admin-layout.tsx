@@ -19,6 +19,7 @@ type AdminLayoutProps = {
   children: ReactNode;
   subtitle?: ReactNode;
   title?: ReactNode;
+  versionLabel?: string;
 };
 
 const adminMenuItems: SidemenuItem[] = [
@@ -90,7 +91,8 @@ export function AdminLayout({
   actions,
   children,
   subtitle = "Internal staff workspace for support and operations.",
-  title = "Staff Admin Desk"
+  title = "Staff Admin Desk",
+  versionLabel
 }: AdminLayoutProps) {
   return (
     <AppLayout
@@ -105,6 +107,7 @@ export function AdminLayout({
       menuItems={adminMenuItems}
       subtitle={subtitle}
       title={title}
+      {...(versionLabel ? { versionLabel } : {})}
       user={{
         email: "Configured in environment",
         fallback: "A",
