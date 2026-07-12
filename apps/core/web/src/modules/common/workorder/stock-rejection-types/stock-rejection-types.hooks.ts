@@ -1,3 +1,8 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { stockRejectionTypesDefinition } from "./stock-rejection-types.definition";
-export function useStockRejectionTypesQuery() { return useCommonMasterQuery(stockRejectionTypesDefinition.key, stockRejectionTypesDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listStockRejectionTypes } from "./stock-rejection-types.services";
+export function useStockRejectionTypesQuery(key: string, path: string) {
+  return useQuery({
+    queryFn: () => listStockRejectionTypes(path),
+    queryKey: ["core", "common", key]
+  });
+}

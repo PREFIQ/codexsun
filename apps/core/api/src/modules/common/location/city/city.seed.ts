@@ -20,9 +20,8 @@ export async function seedCityModule() {
     const districtId = districtIds.get(city.districtName);
     if (!districtId)
       throw new Error(`District seed must exist before city seed is applied: ${city.districtName}`);
-    const uuid = `c${String(city.sortOrder).padStart(7, "0")}`;
-    await sql`INSERT INTO cities (uuid, district_id, name, sort_order, status)
-      VALUES (${uuid}, ${districtId}, ${city.name}, ${city.sortOrder}, ${city.status})
+    await sql`INSERT INTO cities (district_id, name, sort_order, status)
+      VALUES (${districtId}, ${city.name}, ${city.sortOrder}, ${city.status})
       ON DUPLICATE KEY UPDATE district_id=VALUES(district_id), name=VALUES(name), sort_order=VALUES(sort_order), status=VALUES(status)`.execute(
       getCoreDatabase()
     );

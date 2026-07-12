@@ -1,6 +1,5 @@
 export type TaxesRecord = {
-  id: string;
-  uuid: string;
+  id: number;
   ratePercent: number;
   description: string;
   isActive: boolean;

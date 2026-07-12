@@ -8,13 +8,21 @@ import {
   normalizeTenantDomain,
   TenantDomainRepository
 } from "../tenant-domain/tenant-domain.repository.js";
-import { tenantPrivateStorageRoot, tenantPublicStorageRoot, tenantStorageRoot } from "../storage-manager/storage-manager.paths.js";
+import {
+  tenantPrivateStorageRoot,
+  tenantPublicStorageRoot,
+  tenantStorageRoot
+} from "../storage-manager/storage-manager.paths.js";
 
 export class TenantRepository {
   constructor(private readonly domains = new TenantDomainRepository()) {}
 
   async list() {
-    const rows = await getPlatformDatabase().selectFrom("tenants").selectAll().orderBy("tenant_name", "asc").execute();
+    const rows = await getPlatformDatabase()
+      .selectFrom("tenants")
+      .selectAll()
+      .orderBy("tenant_name", "asc")
+      .execute();
     return this.withPrimaryDomains(rows.map(toTenant));
   }
 
@@ -44,13 +52,18 @@ export class TenantRepository {
     const resolvedTenantKey = input.slug || input.tenantCode;
     const tenantInput = {
       ...input,
-      primaryDomain: normalizeTenantDomain(input.primaryDomain || defaultTenantDomainForSlug(input.slug || input.tenantCode)),
+      primaryDomain: normalizeTenantDomain(
+        input.primaryDomain || defaultTenantDomainForSlug(input.slug || input.tenantCode)
+      ),
       storagePrivateRoot: input.storagePrivateRoot || tenantPrivateStorageRoot(resolvedTenantKey),
       storagePublicRoot: input.storagePublicRoot || tenantPublicStorageRoot(resolvedTenantKey),
       storageRoot: input.storageRoot || tenantStorageRoot(resolvedTenantKey),
       uuid: normalizeUuid(input.uuid) || createPublicUuid()
     };
-    const result = await getPlatformDatabase().insertInto("tenants").values(toTenantRow(tenantInput)).executeTakeFirst();
+    const result = await getPlatformDatabase()
+      .insertInto("tenants")
+      .values(toTenantRow(tenantInput))
+      .executeTakeFirst();
     const tenant: Tenant = {
       ...tenantInput,
       id: Number(result.insertId)
@@ -118,16 +131,25 @@ export class TenantRepository {
     return tenant;
   }
 
-  async updateAccess(tenant: Tenant, enabledModuleKeys: string[], defaultLandingApp: Tenant["defaultLandingApp"]) {
+  async updateAccess(
+    tenant: Tenant,
+    enabledModuleKeys: string[],
+    defaultLandingApp: Tenant["defaultLandingApp"]
+  ) {
     const manuallyEnabledKeys = parseStringArrayFromRecord(tenant.payloadSettings.apps, "enabled");
-    const manuallyDisabledKeys = parseStringArrayFromRecord(tenant.payloadSettings.apps, "disabled");
+    const manuallyDisabledKeys = parseStringArrayFromRecord(
+      tenant.payloadSettings.apps,
+      "disabled"
+    );
     const normalizedKeys = Array.from(
-      new Set([
-        "platform.application",
-        ...tenant.enabledModuleKeys,
-        ...manuallyEnabledKeys,
-        ...enabledModuleKeys
-      ].map((key) => (key === "platform.tenant" ? "platform.application" : key)))
+      new Set(
+        [
+          "platform.application",
+          ...tenant.enabledModuleKeys,
+          ...manuallyEnabledKeys,
+          ...enabledModuleKeys
+        ].map((key) => (key === "platform.tenant" ? "platform.application" : key))
+      )
     )
       .filter((key) => key === "platform.application" || !manuallyDisabledKeys.includes(key))
       .sort();
@@ -219,7 +241,9 @@ export class TenantRepository {
 function parseStringArrayFromRecord(value: unknown, key: string) {
   if (!isRecord(value)) return [];
   const entry = value[key];
-  return Array.isArray(entry) ? entry.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(entry)
+    ? entry.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 type TenantRow = {
@@ -298,7 +322,9 @@ function toTenant(row: TenantRow): Tenant {
     id: Number(row.id),
     mobile: row.mobile,
     payloadSettings: parseRecord(row.payload_settings),
-    primaryDomain: normalizeTenantDomain(row.primary_domain ?? defaultTenantDomainForSlug(row.slug)),
+    primaryDomain: normalizeTenantDomain(
+      row.primary_domain ?? defaultTenantDomainForSlug(row.slug)
+    ),
     slug: row.slug,
     status: row.status,
     storagePrivateRoot: row.storage_private_root || tenantPrivateStorageRoot(tenantKey),
@@ -313,7 +339,9 @@ function toTenant(row: TenantRow): Tenant {
 function parseStringArray(value: string) {
   try {
     const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string")
+      : [];
   } catch {
     return [];
   }
@@ -345,5 +373,11 @@ function createPublicUuid() {
 }
 
 function normalizeUuid(value: string | undefined) {
-  return value?.trim().toLowerCase().replace(/[^a-f0-9]/g, "").slice(0, 8) ?? "";
+  return (
+    value
+      ?.trim()
+      .toLowerCase()
+      .replace(/[^a-f0-9]/g, "")
+      .slice(0, 8) ?? ""
+  );
 }

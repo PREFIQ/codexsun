@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type { Kysely } from "kysely";
 import { getBillingDatabase } from "../../database/billing-database.js";
-import type { Sale, SaleEinvoiceDetails, SaleEwayDetails, SaleSavePayload, SaleStatus } from "./sales.types.js";
+import type {
+  Sale,
+  SaleEinvoiceDetails,
+  SaleEwayDetails,
+  SaleSavePayload,
+  SaleStatus
+} from "./sales.types.js";
 
 type SalesTableRow = {
   amount: number;
@@ -36,7 +42,9 @@ type SalesDatabase = {
 
 export class SalesRepository {
   async list(databaseName: string) {
-    const rows = await (await salesDatabase(databaseName))
+    const rows = await (
+      await salesDatabase(databaseName)
+    )
       .selectFrom("billing_sales")
       .selectAll()
       .orderBy("issued_on", "desc")
@@ -46,7 +54,9 @@ export class SalesRepository {
   }
 
   async get(databaseName: string, id: string) {
-    const row = await (await salesDatabase(databaseName))
+    const row = await (
+      await salesDatabase(databaseName)
+    )
       .selectFrom("billing_sales")
       .selectAll()
       .where("id", "=", id)
@@ -55,19 +65,34 @@ export class SalesRepository {
   }
 
   async findByInvoiceNumber(databaseName: string, invoiceNumber: string) {
-    const row = await (await salesDatabase(databaseName)).selectFrom("billing_sales").selectAll().where("invoice_number", "=", invoiceNumber).executeTakeFirst();
+    const row = await (
+      await salesDatabase(databaseName)
+    )
+      .selectFrom("billing_sales")
+      .selectAll()
+      .where("invoice_number", "=", invoiceNumber)
+      .executeTakeFirst();
     return row ? toSale(row) : null;
   }
 
   async create(databaseName: string, input: SaleSavePayload) {
     const sale = createSaleRecord(input);
-    await (await salesDatabase(databaseName)).insertInto("billing_sales").values(toSaleRow(sale)).execute();
+    await (
+      await salesDatabase(databaseName)
+    )
+      .insertInto("billing_sales")
+      .values(toSaleRow(sale))
+      .execute();
     return sale;
   }
 
   async update(databaseName: string, id: string, input: SaleSavePayload) {
     const db = await salesDatabase(databaseName);
-    const existing = await db.selectFrom("billing_sales").select("id").where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_sales")
+      .select("id")
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
     const sale = createSaleRecord(input, { id });
     await db.updateTable("billing_sales").set(toSaleRow(sale)).where("id", "=", id).execute();
@@ -76,14 +101,26 @@ export class SalesRepository {
 
   async setStatus(databaseName: string, id: string, status: Sale["status"]) {
     const db = await salesDatabase(databaseName);
-    const existing = await db.selectFrom("billing_sales").selectAll().where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_sales")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
     const updatedAt = new Date().toISOString();
-    await db.updateTable("billing_sales").set({ status, updated_at: updatedAt }).where("id", "=", id).execute();
+    await db
+      .updateTable("billing_sales")
+      .set({ status, updated_at: updatedAt })
+      .where("id", "=", id)
+      .execute();
     return { ...toSale(existing), status, updatedAt };
   }
 
-  async updateCompliance(databaseName: string, id: string, patch: { einvoice?: SaleEinvoiceDetails; eway?: SaleEwayDetails }) {
+  async updateCompliance(
+    databaseName: string,
+    id: string,
+    patch: { einvoice?: SaleEinvoiceDetails; eway?: SaleEwayDetails }
+  ) {
     const db = await salesDatabase(databaseName);
     const values: Partial<SalesTableRow> = { updated_at: new Date().toISOString() };
     if (patch.einvoice) values.einvoice_json = JSON.stringify(patch.einvoice);
@@ -123,7 +160,7 @@ function toSale(row: SalesTableRow): Sale {
     taxType: row.tax_type ?? "cgst-sgst",
     terms: row.terms ?? "",
     updatedAt: row.updated_at ?? row.created_at ?? "",
-    workOrderNo: row.work_order_no ?? "",
+    workOrderNo: row.work_order_no ?? ""
   };
 }
 
@@ -152,11 +189,14 @@ function toSaleRow(sale: Sale): SalesTableRow {
     tax_type: sale.taxType,
     terms: sale.terms,
     updated_at: sale.updatedAt,
-    work_order_no: sale.workOrderNo,
+    work_order_no: sale.workOrderNo
   };
 }
 
-function createSaleRecord(input: SaleSavePayload, current?: Partial<Pick<Sale, "createdAt" | "id">>) {
+function createSaleRecord(
+  input: SaleSavePayload,
+  current?: Partial<Pick<Sale, "createdAt" | "id">>
+) {
   const now = new Date().toISOString();
   const totals = buildSaleTotals(input);
   return {
@@ -183,7 +223,7 @@ function createSaleRecord(input: SaleSavePayload, current?: Partial<Pick<Sale, "
     taxType: input.taxType ?? "cgst-sgst",
     terms: input.terms ?? "",
     updatedAt: now,
-    workOrderNo: input.workOrderNo ?? "",
+    workOrderNo: input.workOrderNo ?? ""
   } satisfies Sale;
 }
 
@@ -207,7 +247,16 @@ function parseDocument<T>(value: string | null, fallback: () => T) {
 }
 
 function defaultEway(): SaleEwayDetails {
-  return { billDate: "", billNo: "", notes: "", part: "Part B", status: "not-generated", transport: "", transportGst: "", vehicleNo: "" };
+  return {
+    billDate: "",
+    billNo: "",
+    notes: "",
+    part: "Part B",
+    status: "not-generated",
+    transport: "",
+    transportGst: "",
+    vehicleNo: ""
+  };
 }
 
 function defaultEinvoice(): SaleEinvoiceDetails {
@@ -217,7 +266,7 @@ function defaultEinvoice(): SaleEinvoiceDetails {
 function buildSaleTotals(input: SaleSavePayload) {
   const items = input.items.map((item, index) => {
     const taxableAmount = roundMoney(item.quantity * item.rate);
-    const taxAmount = roundMoney(taxableAmount * item.taxRate / 100);
+    const taxAmount = roundMoney((taxableAmount * item.taxRate) / 100);
     const cgstAmount = input.taxType === "igst" ? 0 : roundMoney(taxAmount / 2);
     const sgstAmount = input.taxType === "igst" ? 0 : roundMoney(taxAmount / 2);
     const igstAmount = input.taxType === "igst" ? taxAmount : 0;
@@ -229,7 +278,7 @@ function buildSaleTotals(input: SaleSavePayload) {
       lineTotal: roundMoney(taxableAmount + taxAmount),
       sgstAmount,
       taxableAmount,
-      taxAmount,
+      taxAmount
     };
   });
 

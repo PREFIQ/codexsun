@@ -1,8 +1,7 @@
 export type CountryStatus = "active" | "inactive";
 
 export type Country = {
-  id: string;
-  uuid: string;
+  id: number;
   code: string;
   name: string;
   sortOrder: number;

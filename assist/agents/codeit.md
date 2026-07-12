@@ -115,4 +115,3 @@ CODEIT may use tools for:
 - Prefer explicit plans for accounting, billing, sync, and compliance changes.
 - Update `assist/` notes when architecture decisions change.
 - Keep user-facing behavior stable unless the task asks for change.
-

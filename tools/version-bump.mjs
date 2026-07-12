@@ -18,7 +18,13 @@ export function bumpNextVersion(rootDir, title = "version update", options = {})
     updatePackageVersion(file, currentVersion, nextVersion);
   }
 
-  updatePackageLock(resolve(rootDir, "package-lock.json"), rootDir, packageFiles, currentVersion, nextVersion);
+  updatePackageLock(
+    resolve(rootDir, "package-lock.json"),
+    rootDir,
+    packageFiles,
+    currentVersion,
+    nextVersion
+  );
   updateChangelog(rootDir, nextVersion, title, databaseUpdate);
 
   return {
@@ -110,7 +116,12 @@ function updatePackageVersion(file, currentVersion, nextVersion) {
 }
 
 function updateInternalDependencyRanges(pkg, currentVersion, nextVersion) {
-  for (const field of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+  for (const field of [
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "optionalDependencies"
+  ]) {
     const deps = pkg[field];
     if (!deps || typeof deps !== "object") {
       continue;
@@ -131,9 +142,7 @@ function updatePackageLock(file, rootDir, packageFiles, currentVersion, nextVers
 
   const lock = JSON.parse(readFileSync(file, "utf8"));
   const workspaceLockPaths = new Set(
-    packageFiles.map((packageFile) =>
-      relative(rootDir, dirname(packageFile)).replaceAll("\\", "/")
-    )
+    packageFiles.map((packageFile) => relative(rootDir, dirname(packageFile)).replaceAll("\\", "/"))
   );
 
   if (lock.version === currentVersion) {
@@ -207,13 +216,15 @@ function parseTitleArg(argv) {
     return argv[titleIndex + 1] ?? "version update";
   }
 
-  return argv
-    .filter((arg, index) => {
-      const previous = argv[index - 1];
-      return !arg.startsWith("--") && previous !== "--database-update" && previous !== "--title";
-    })
-    .join(" ")
-    .trim() || "version update";
+  return (
+    argv
+      .filter((arg, index) => {
+        const previous = argv[index - 1];
+        return !arg.startsWith("--") && previous !== "--database-update" && previous !== "--title";
+      })
+      .join(" ")
+      .trim() || "version update"
+  );
 }
 
 function parseDatabaseUpdateArg(argv) {
@@ -221,7 +232,11 @@ function parseDatabaseUpdateArg(argv) {
     return true;
   }
 
-  if (argv.some((arg) => arg === "--no-database-update" || arg === "--no-db-update" || arg === "--no-db")) {
+  if (
+    argv.some(
+      (arg) => arg === "--no-database-update" || arg === "--no-db-update" || arg === "--no-db"
+    )
+  ) {
     return false;
   }
 

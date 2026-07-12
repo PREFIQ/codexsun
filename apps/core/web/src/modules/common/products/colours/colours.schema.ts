@@ -1,2 +1,5 @@
-import { commonMasterSchema } from "../../../common-master/common-master.schema";
-export const coloursSchema = commonMasterSchema;
+import { z } from "zod";
+export const coloursSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.boolean(), z.null()])
+);

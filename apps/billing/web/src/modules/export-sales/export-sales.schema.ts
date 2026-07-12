@@ -11,7 +11,7 @@ export const exportSaleLineItemSchema = z.object({
   rate: z.number().nonnegative("Rate must be zero or more."),
   size: z.string(),
   taxRate: z.number().min(0, "Tax rate must be zero or more."),
-  unit: z.string().trim().min(1, "Unit is required."),
+  unit: z.string().trim().min(1, "Unit is required.")
 });
 
 export const exportSalesSchema = z.object({
@@ -28,5 +28,5 @@ export const exportSalesSchema = z.object({
   shippingAddress: z.string().trim().min(1, "Shipping address is required."),
   status: z.enum(["draft", "confirmed", "cancelled"]),
   taxType: z.string().trim().min(1, "Export sales tax type is required."),
-  workOrderNo: z.string(),
+  workOrderNo: z.string()
 });

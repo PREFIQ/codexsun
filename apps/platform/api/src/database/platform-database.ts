@@ -98,7 +98,9 @@ export async function closePlatformDatabase() {
 
 export async function createMasterDatabase() {
   const databaseName = platformDatabaseName();
-  console.info(`[database] ensuring master database "${databaseName}" on ${env.DB_HOST}:${env.DB_PORT}`);
+  console.info(
+    `[database] ensuring master database "${databaseName}" on ${env.DB_HOST}:${env.DB_PORT}`
+  );
   const connection = await createConnection({
     host: env.DB_HOST,
     password: env.DB_PASSWORD,
@@ -140,7 +142,11 @@ export async function migratePlatformDatabase() {
   await migrateQueueManagerModule(database);
   await migrateStorageManagerModule(database);
 
-  await database.insertInto("codexsun_migrations").ignore().values({ name: "001_platform_foundation" }).execute();
+  await database
+    .insertInto("codexsun_migrations")
+    .ignore()
+    .values({ name: "001_platform_foundation" })
+    .execute();
   console.info("[database] platform migration applied: 001_platform_foundation");
 }
 
@@ -217,7 +223,10 @@ function assertDestructiveDatabaseAction(action: string) {
   }
 }
 
-async function listTenantDatabaseNames(connection: Awaited<ReturnType<typeof createConnection>>, masterName: string) {
+async function listTenantDatabaseNames(
+  connection: Awaited<ReturnType<typeof createConnection>>,
+  masterName: string
+) {
   const [databases] = await connection.query(`SHOW DATABASES LIKE ?`, [masterName]);
   if (!Array.isArray(databases) || databases.length === 0) {
     return [];

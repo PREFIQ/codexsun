@@ -15,9 +15,8 @@ export async function seedDistrictModule() {
     throw new Error("Tamil Nadu state seed must exist before district seeds are applied.");
 
   for (const district of districtSeeds) {
-    const uuid = `d${String(district.sortOrder).padStart(7, "0")}`;
-    await sql`INSERT INTO districts (uuid, state_id, name, sort_order, status)
-      VALUES (${uuid}, ${stateId}, ${district.name}, ${district.sortOrder}, ${district.status})
+    await sql`INSERT INTO districts (state_id, name, sort_order, status)
+      VALUES (${stateId}, ${district.name}, ${district.sortOrder}, ${district.status})
       ON DUPLICATE KEY UPDATE state_id=VALUES(state_id), name=VALUES(name), sort_order=VALUES(sort_order), status=VALUES(status)`.execute(
       getCoreDatabase()
     );

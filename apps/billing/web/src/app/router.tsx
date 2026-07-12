@@ -49,8 +49,16 @@ const purchasePrintRoute = createRoute({
   path: "/billing/purchase/print"
 });
 
-const paymentRoute = createRoute({ component: PaymentPage, getParentRoute: () => rootRoute, path: "/billing/payment" });
-const receiptRoute = createRoute({ component: ReceiptPage, getParentRoute: () => rootRoute, path: "/billing/receipt" });
+const paymentRoute = createRoute({
+  component: PaymentPage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/payment"
+});
+const receiptRoute = createRoute({
+  component: ReceiptPage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/receipt"
+});
 
 const exportSalesRoute = createRoute({
   component: ExportSalesPage,

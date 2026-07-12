@@ -1,7 +1,5 @@
-import { pincodeDefinition } from "../shared/location.definitions";
-import { useCreateLocationRecord, useLocationRecords, useUpdateLocationRecord } from "../shared/location.hooks";
-
-export const usePincodes = () => useLocationRecords(pincodeDefinition);
-export const useCreatePincode = () => useCreateLocationRecord(pincodeDefinition);
-export const useUpdatePincode = () => useUpdateLocationRecord(pincodeDefinition);
-
+import { useQuery } from "@tanstack/react-query";
+import { listPincodeRecords } from "./pincode.services";
+export function usePincodeQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listPincodeRecords(path), queryKey: ["core", "location", key] });
+}

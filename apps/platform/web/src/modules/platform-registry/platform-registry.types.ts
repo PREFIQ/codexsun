@@ -1,4 +1,8 @@
-import type { ProjectManagerRegistryGroup, ProjectManagerRegistryModule, ProjectManagerRegistryPlatform } from "../project-manager/project-manager.types";
+import type {
+  ProjectManagerRegistryGroup,
+  ProjectManagerRegistryModule,
+  ProjectManagerRegistryPlatform
+} from "../project-manager/project-manager.types";
 
 export type PlatformRegistryKind = "group" | "module" | "platform";
 

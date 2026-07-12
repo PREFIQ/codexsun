@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.25
+Current version: 1.0.26
 
-Release tag: v-1.0.25
+Release tag: v-1.0.26
 
-Changelog label: v 1.0.25
+Changelog label: v 1.0.26
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,24 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.26
+
+### [v 1.0.26] 2026-07-13 1:31 am - Root npm Workspace and Repository Cleanup
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Standardized the monorepo on npm workspaces with one root `node_modules`, one root `package-lock.json`, and no pnpm or Yarn lockfiles, stores, or workspace-local dependency trees.
+- Standardized generated build output on the root `dist` tree and removed nested `node_modules`, `dist`, and `dist-types` artifacts and local output configuration.
+- Added mandatory Assist governance and agent rules requiring npm commands to run from the repository root and requiring `npm run dependencies:check` plus nested-artifact scanning after dependency, workspace, package, or build changes.
+- Removed generated Codex runtime logs, audit output, Turbo and IDE caches, automated test/spec/E2E sources, Playwright configuration, test-runner scripts and dependencies, and the Framework test-only export.
+- Updated the module-boundary checker so production module ownership validation no longer requires removed test/spec role files.
+- Verified the cleaned repository with npm dependency-tree validation, root dependency-layout validation, Prettier, ESLint, and TypeScript.
+- Bumped workspace version to 1.0.26.
 
 ## v-1.0.25
 
@@ -34,6 +52,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 - Removed redundant `tenant_id` columns and tenant-scoped indexes from all 24 non-location Core Common master migrations; the selected tenant database is now the sole data-isolation boundary.
 - Changed Common master uniqueness from `(tenant_id, primary field)` to database-local primary-field uniqueness and removed tenant prefixes from generated record IDs.
 - Existing development databases created from the earlier Common schema require the fresh migration workflow to physically rebuild the tables without legacy `tenant_id` columns.
+- Fixed invalid trailing commas after the final unique key in all 24 non-location Common table migrations and quoted the Month `from_date` and `to_date` identifiers for MariaDB compatibility.
 
 #### App Codebase Changes
 
@@ -47,6 +66,27 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 - Added separate Pincode individual and relation endpoints; relation reads return the complete City, District, State, and Country hierarchy.
 - Removed obsolete shared location helpers, shared seed data, and the stale legacy location database test that targeted the deleted global/tenant location contract.
 - Formatted the complete Core Common backend and verified it with Prettier, ESLint, TypeScript, and Core API tests.
+- Rebuilt all 29 Core Common frontend leaf modules as independently owned nine-file bundles: workspace, list, form, services, hooks, schema, types, spec, and index.
+- Standardized Contact, Product, Workorder, Other, and Location masters on the Contact Types interaction tone with searchable paginated lists, popup upsert forms, active-state controls, edit, suspend/restore, and force-delete row actions.
+- Wired every frontend leaf directly to its owning Core API route through the fail-closed `x-tenant-db` context and removed frontend `tenantId` and `x-tenant-id` handling.
+- Consolidated module definitions into each leaf's owned types file and removed the unused shared Location frontend runtime; Common leaf modules no longer borrow or wrap the legacy Common Master or Location implementations.
+- Verified the complete Core Common frontend with Prettier, ESLint, TypeScript, 30 passing module specs, a production build, and browser-level Country list and popup-upsert checks.
+- Verified the corrected Common migrations through a real configured-database Core API bootstrap through `app.ready` and `server.listen`.
+- Added a disposable MariaDB Common E2E regression covering create, restart persistence, read, update, suspend, restore, force delete, response request metadata, and the complete Pincode-to-City-to-District-to-State-to-Country relation read.
+- Standardized every Core-owned table primary key on `id INT NOT NULL AUTO_INCREMENT PRIMARY KEY`, including all Common, Location, Master, Organisation Company, and Master child tables.
+- Removed persisted and API-facing UUID columns from the complete Core schema and converted Core foreign-key and lookup ID columns to integers.
+- Updated Core API repositories, seeds, services, events, sync contracts, Core Web modules, and Platform tenant-desk consumers for numeric record IDs while retaining string conversion only at URL, form-control, and local-storage boundaries.
+- Extended disposable MariaDB E2E coverage to assert that every Core table has an integer auto-increment ID, no Core table contains a UUID column, Master child rows receive numeric IDs, relations remain valid, and tenant isolation still passes.
+- This is a destructive development-schema change: databases created with string IDs or UUID columns must use the documented fresh migration workflow; existing IDs are not automatically remapped.
+- Replaced every Core `is_active TINYINT(1)` persistence column with `status VARCHAR(24) NOT NULL DEFAULT 'active'`, including 24 non-location Common masters and Master social-link child tables.
+- Removed the duplicate Master/Company `is_active` column, standardized its existing status column from `VARCHAR(32)` to `VARCHAR(24)`, and changed its tenant-state index to use status.
+- Preserved the existing frontend `isActive` interaction contract by translating it to `active`/`inactive` status values in Core repositories; Master suspension continues to persist the explicit `suspend` status.
+- Extended MariaDB schema E2E assertions to reject any remaining Core `is_active` column and any status column that is not `VARCHAR(24)` with the `active` default.
+- Renamed the Month persistence and application contract from `from_date`/`to_date` and `fromDate`/`toDate` to `start_date`/`end_date` and `startDate`/`endDate`, including seeds, validation, repositories, frontend fields, and labels.
+- Removed the unused top-level Core Common sync policy and worker placeholder files after confirming they had no executable imports or exports.
+- Corrected the generic Master child-table migration so only Companies and Contacts own address, bank-account, email, phone, and social-link tables.
+- Removed obsolete `products_*` and `work_orders_*` contact-detail child tables, stopped child synchronization for Product and Work Order records, and normalized any supplied contact-detail payloads to empty collections.
+- Added MariaDB schema assertions requiring all ten Company/Contact child tables while rejecting every Product/Work Order contact-detail child table.
 - Bumped workspace version to 1.0.25.
 
 ## v-1.0.24

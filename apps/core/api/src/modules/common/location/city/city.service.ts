@@ -48,7 +48,7 @@ export class CityService {
     return city;
   }
 
-  private async requireDistrict(districtId: string) {
+  private async requireDistrict(districtId: string | number) {
     if (!(await this.repository.districtExists(districtId)))
       throw AppError.notFound("District was not found.");
   }
@@ -66,7 +66,7 @@ export class CityService {
 
 function normalize(input: CitySavePayload): CitySavePayload {
   return {
-    districtId: String(Number(input.districtId)),
+    districtId: Number(input.districtId),
     name: input.name.trim(),
     sortOrder: Number.isFinite(input.sortOrder) ? Number(input.sortOrder) : 1000,
     status: input.status === "inactive" ? "inactive" : "active"

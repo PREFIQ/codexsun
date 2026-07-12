@@ -1,2 +1,4 @@
 import { ReceiptWorkspace } from "./receipt.page";
-export function ReceiptList() { return <ReceiptWorkspace />; }
+export function ReceiptList() {
+  return <ReceiptWorkspace />;
+}

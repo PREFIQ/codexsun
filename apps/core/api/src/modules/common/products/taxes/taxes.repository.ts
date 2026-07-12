@@ -1,66 +1,63 @@
-import { randomUUID } from "node:crypto";
 import { sql } from "kysely";
 import { getCoreDatabase } from "../../../../database/core-database.js";
 import type { TaxesListFilters, TaxesRecord, TaxesSavePayload } from "./taxes.types.js";
 
 type TaxesRow = {
-  id: string;
-  uuid: string;
+  id: number;
   rate_percent: number;
   description: string;
-  is_active: number | boolean;
+  status: string;
   sort_order: number;
 };
 
 export class TaxesRepository {
   async list(filters: TaxesListFilters = {}) {
     const rows =
-      await sql<TaxesRow>`SELECT id, uuid, rate_percent, description, is_active, sort_order FROM taxes
+      await sql<TaxesRow>`SELECT id, rate_percent, description, status, sort_order FROM taxes
       WHERE (${filters.search ?? ""} = '' OR LOWER(description) LIKE ${like(filters.search)})
       ORDER BY sort_order, id`.execute(getCoreDatabase());
     return rows.rows.map(toTaxes);
   }
 
-  async find(id: string) {
+  async find(id: string | number) {
     const rows =
-      await sql<TaxesRow>`SELECT id, uuid, rate_percent, description, is_active, sort_order FROM taxes
-      WHERE id=${id} LIMIT 1`.execute(getCoreDatabase());
+      await sql<TaxesRow>`SELECT id, rate_percent, description, status, sort_order FROM taxes
+      WHERE id=${Number(id)} LIMIT 1`.execute(getCoreDatabase());
     return rows.rows[0] ? toTaxes(rows.rows[0]) : null;
   }
 
   async create(input: TaxesSavePayload) {
-    const id = `taxes-${randomUUID()}`;
-    const uuid = randomUUID().replaceAll("-", "").slice(0, 8);
-    await sql`INSERT INTO taxes (id, uuid, rate_percent, description, is_active, sort_order) VALUES
-      (${id}, ${uuid}, ${normalizeNumber(input.ratePercent)}, ${normalizeString(input.description)}, ${input.isActive === false ? 0 : 1}, ${numberValue(input.sortOrder, 1000)})`.execute(
-      getCoreDatabase()
-    );
-    return (await this.find(id))!;
+    const result =
+      await sql`INSERT INTO taxes (rate_percent, description, status, sort_order) VALUES
+      (${normalizeNumber(input.ratePercent)}, ${normalizeString(input.description)}, ${input.isActive === false ? "inactive" : "active"}, ${numberValue(input.sortOrder, 1000)})`.execute(
+        getCoreDatabase()
+      );
+    return (await this.find(String(result.insertId)))!;
   }
 
-  async update(id: string, input: TaxesSavePayload) {
+  async update(id: string | number, input: TaxesSavePayload) {
     const existing = await this.find(id);
     if (!existing || !canMutate(existing)) return null;
-    await sql`UPDATE taxes SET rate_percent=${normalizeNumber(input.ratePercent)}, description=${normalizeString(input.description)}, is_active=${input.isActive === false ? 0 : 1},
-      sort_order=${numberValue(input.sortOrder, 1000)}, updated_at=CURRENT_TIMESTAMP WHERE id=${id}`.execute(
-      getCoreDatabase()
-    );
-    return this.find(id);
-  }
-
-  async setActive(id: string, isActive: boolean) {
-    const existing = await this.find(id);
-    if (!existing || !canMutate(existing)) return null;
-    await sql`UPDATE taxes SET is_active=${isActive ? 1 : 0}, updated_at=CURRENT_TIMESTAMP WHERE id=${id}`.execute(
+    await sql`UPDATE taxes SET rate_percent=${normalizeNumber(input.ratePercent)}, description=${normalizeString(input.description)}, status=${input.isActive === false ? "inactive" : "active"},
+      sort_order=${numberValue(input.sortOrder, 1000)}, updated_at=CURRENT_TIMESTAMP WHERE id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return this.find(id);
   }
 
-  async forceDelete(id: string) {
+  async setActive(id: string | number, isActive: boolean) {
     const existing = await this.find(id);
     if (!existing || !canMutate(existing)) return null;
-    await sql`DELETE FROM taxes WHERE id=${id}`.execute(getCoreDatabase());
+    await sql`UPDATE taxes SET status=${isActive ? "active" : "inactive"}, updated_at=CURRENT_TIMESTAMP WHERE id=${Number(id)}`.execute(
+      getCoreDatabase()
+    );
+    return this.find(id);
+  }
+
+  async forceDelete(id: string | number) {
+    const existing = await this.find(id);
+    if (!existing || !canMutate(existing)) return null;
+    await sql`DELETE FROM taxes WHERE id=${Number(id)}`.execute(getCoreDatabase());
     return existing;
   }
 }
@@ -76,11 +73,10 @@ function canMutate(record: TaxesRecord) {
 
 function toTaxes(row: TaxesRow): TaxesRecord {
   return {
-    id: row.id,
-    uuid: row.uuid,
+    id: Number(row.id),
     ratePercent: Number(row.rate_percent),
     description: row.description,
-    isActive: Boolean(row.is_active),
+    isActive: row.status === "active",
     sortOrder: Number(row.sort_order)
   };
 }

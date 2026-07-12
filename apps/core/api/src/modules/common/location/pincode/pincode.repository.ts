@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { sql } from "kysely";
 import { getCoreDatabase } from "../../../../database/core-database.js";
 import type {
@@ -11,7 +10,6 @@ import type {
 
 type PincodeRow = {
   id: number;
-  uuid: string;
   city_id: number;
   name: string;
   sort_order: number;
@@ -30,8 +28,7 @@ type PincodeRelationRow = PincodeRow & {
 
 export class PincodeRepository {
   async list(filters: PincodeListFilters = {}) {
-    const rows =
-      await sql<PincodeRow>`SELECT id, uuid, city_id, name, sort_order, status FROM pincodes
+    const rows = await sql<PincodeRow>`SELECT id, city_id, name, sort_order, status FROM pincodes
       WHERE (${filters.cityId ?? ""} = '' OR city_id = ${Number(filters.cityId ?? 0)})
         AND (${filters.search ?? ""} = '' OR LOWER(name) LIKE ${like(filters.search)})
       ORDER BY sort_order, name`.execute(getCoreDatabase());
@@ -39,7 +36,7 @@ export class PincodeRepository {
   }
 
   async listWithRelations(filters: PincodeListFilters = {}) {
-    const rows = await sql<PincodeRelationRow>`SELECT pincodes.id, pincodes.uuid, pincodes.city_id,
+    const rows = await sql<PincodeRelationRow>`SELECT pincodes.id, pincodes.city_id,
         cities.name city_name, cities.district_id, districts.name district_name,
         districts.state_id, states.name state_name, states.country_id, countries.name country_name,
         pincodes.name, pincodes.sort_order, pincodes.status
@@ -56,16 +53,16 @@ export class PincodeRepository {
     return rows.rows.map(toPincodeWithRelations);
   }
 
-  async find(id: string) {
+  async find(id: string | number) {
     const rows =
-      await sql<PincodeRow>`SELECT id, uuid, city_id, name, sort_order, status FROM pincodes WHERE id=${Number(id)} LIMIT 1`.execute(
+      await sql<PincodeRow>`SELECT id, city_id, name, sort_order, status FROM pincodes WHERE id=${Number(id)} LIMIT 1`.execute(
         getCoreDatabase()
       );
     return rows.rows[0] ? toPincode(rows.rows[0]) : null;
   }
 
-  async findWithRelations(id: string) {
-    const rows = await sql<PincodeRelationRow>`SELECT pincodes.id, pincodes.uuid, pincodes.city_id,
+  async findWithRelations(id: string | number) {
+    const rows = await sql<PincodeRelationRow>`SELECT pincodes.id, pincodes.city_id,
         cities.name city_name, cities.district_id, districts.name district_name,
         districts.state_id, states.name state_name, states.country_id, countries.name country_name,
         pincodes.name, pincodes.sort_order, pincodes.status
@@ -78,7 +75,7 @@ export class PincodeRepository {
     return rows.rows[0] ? toPincodeWithRelations(rows.rows[0]) : null;
   }
 
-  async cityExists(cityId: string) {
+  async cityExists(cityId: string | number) {
     const rows = await sql<{
       id: number;
     }>`SELECT id FROM cities WHERE id=${Number(cityId)} LIMIT 1`.execute(getCoreDatabase());
@@ -86,28 +83,28 @@ export class PincodeRepository {
   }
 
   async create(input: PincodeSavePayload) {
-    const result = await sql`INSERT INTO pincodes (uuid, city_id, name, sort_order, status) VALUES
-      (${randomBytes(4).toString("hex")}, ${Number(input.cityId)}, ${input.name}, ${input.sortOrder}, ${input.status})`.execute(
+    const result = await sql`INSERT INTO pincodes (city_id, name, sort_order, status) VALUES
+      (${Number(input.cityId)}, ${input.name}, ${input.sortOrder}, ${input.status})`.execute(
       getCoreDatabase()
     );
     return (await this.find(String(result.insertId)))!;
   }
 
-  async update(id: string, input: PincodeSavePayload) {
+  async update(id: string | number, input: PincodeSavePayload) {
     await sql`UPDATE pincodes SET city_id=${Number(input.cityId)}, name=${input.name}, sort_order=${input.sortOrder}, status=${input.status} WHERE id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return this.find(id);
   }
 
-  async setStatus(id: string, status: PincodeStatus) {
+  async setStatus(id: string | number, status: PincodeStatus) {
     await sql`UPDATE pincodes SET status=${status} WHERE id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return this.find(id);
   }
 
-  async forceDelete(id: string) {
+  async forceDelete(id: string | number) {
     const existing = await this.find(id);
     if (!existing) return null;
     await sql`DELETE FROM pincodes WHERE id=${Number(id)}`.execute(getCoreDatabase());
@@ -117,9 +114,8 @@ export class PincodeRepository {
 
 function toPincode(row: PincodeRow): Pincode {
   return {
-    id: String(row.id),
-    uuid: row.uuid,
-    cityId: String(row.city_id),
+    id: Number(row.id),
+    cityId: Number(row.city_id),
     name: row.name,
     sortOrder: Number(row.sort_order),
     status: row.status
@@ -130,11 +126,11 @@ function toPincodeWithRelations(row: PincodeRelationRow): PincodeWithRelations {
   return {
     ...toPincode(row),
     cityName: row.city_name,
-    districtId: String(row.district_id),
+    districtId: Number(row.district_id),
     districtName: row.district_name,
-    stateId: String(row.state_id),
+    stateId: Number(row.state_id),
     stateName: row.state_name,
-    countryId: String(row.country_id),
+    countryId: Number(row.country_id),
     countryName: row.country_name
   };
 }

@@ -4,9 +4,7 @@ import type { BillingSettings } from "./billing-settings.types";
 
 const billingApiBaseUrl = requiredClientEnv("VITE_BILLING_API_URL");
 
-type ApiEnvelope<T> =
-  | { data: T; success: true }
-  | { error: { message: string }; success: false };
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
 export function getBillingSettings() {
   return request<BillingSettings>("/billing/settings", { method: "GET" });
@@ -15,7 +13,7 @@ export function getBillingSettings() {
 export function saveBillingSettings(settings: BillingSettings) {
   return request<BillingSettings>("/billing/settings", {
     body: JSON.stringify(settings),
-    method: "PUT",
+    method: "PUT"
   });
 }
 
@@ -26,7 +24,7 @@ export function getDocumentSettings() {
 export function saveDocumentSettings(settings: BillingSettings["numbering"]) {
   return request<BillingSettings["numbering"]>("/billing/document-settings", {
     body: JSON.stringify(settings),
-    method: "PUT",
+    method: "PUT"
   });
 }
 
@@ -38,12 +36,14 @@ async function request<T>(path: string, init: RequestInit) {
       Accept: "application/json",
       "Content-Type": "application/json",
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
-      ...(init.headers ?? {}),
-    },
+      ...(init.headers ?? {})
+    }
   });
   const envelope = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok || !envelope.success) {
-    throw new Error(envelope.success ? `Billing API request failed: ${response.status}` : envelope.error.message);
+    throw new Error(
+      envelope.success ? `Billing API request failed: ${response.status}` : envelope.error.message
+    );
   }
   return envelope.data;
 }

@@ -14,7 +14,10 @@ export class PlatformActivityRepository {
     return rows.map((row): PlatformActivity => ({
       action: row.action,
       actorEmail: row.actor_email,
-      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at).toISOString(),
+      createdAt:
+        row.created_at instanceof Date
+          ? row.created_at.toISOString()
+          : new Date(row.created_at).toISOString(),
       details: parseDetails(row.details_json),
       id: Number(row.id),
       moduleKey: row.module_key,

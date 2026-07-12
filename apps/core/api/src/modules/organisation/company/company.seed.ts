@@ -1,1 +1,3 @@
-export function seedCompanyModule() { return Promise.resolve(); }
+export function seedCompanyModule() {
+  return Promise.resolve();
+}

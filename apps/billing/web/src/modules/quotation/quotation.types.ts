@@ -83,7 +83,7 @@ export function createEmptyQuotation(): QuotationSavePayload {
     status: "draft",
     taxType: "cgst-sgst",
     terms: "",
-    workOrderNo: "",
+    workOrderNo: ""
   };
 }
 
@@ -99,7 +99,6 @@ export function createEmptyQuotationItem(): QuotationLineItemInput {
     rate: 0,
     size: "",
     taxRate: 18,
-    unit: "Nos",
+    unit: "Nos"
   };
 }
-

@@ -2,10 +2,22 @@ import { StatusBadge } from "@codexsun/ui";
 import { ServiceOrdersForm } from "./service-orders.form";
 import { useServiceOrderActions, useServiceOrders } from "./service-orders.hooks";
 import { ServiceOrdersList } from "./service-orders.list";
-import { FloorTablesPanel, MenuPanel, OrderQueuePanel, SettingsPanel } from "./service-orders.operations";
+import {
+  FloorTablesPanel,
+  MenuPanel,
+  OrderQueuePanel,
+  SettingsPanel
+} from "./service-orders.operations";
 import type { KitchenServePage } from "./service-orders.types";
 export function ServiceOrdersWorkspace({ page }: { page: KitchenServePage }) {
-  const usesOrders = ["overview", "waiter-orders", "kitchen", "ready", "bill-waiting", "history"].includes(page);
+  const usesOrders = [
+    "overview",
+    "waiter-orders",
+    "kitchen",
+    "ready",
+    "bill-waiting",
+    "history"
+  ].includes(page);
   const query = useServiceOrders(undefined, usesOrders);
   const actions = useServiceOrderActions();
   const busy = actions.create.isPending || actions.transition.isPending;
@@ -22,7 +34,10 @@ export function ServiceOrdersWorkspace({ page }: { page: KitchenServePage }) {
               Waiter order capture, kitchen execution, serving handoff, and controlled bill waiting.
             </p>
           </div>
-          <div className="flex items-center gap-2"><span className="size-2 animate-pulse rounded-full bg-emerald-500" /><StatusBadge tone="green">Live sync · 2 sec</StatusBadge></div>
+          <div className="flex items-center gap-2">
+            <span className="size-2 animate-pulse rounded-full bg-emerald-500" />
+            <StatusBadge tone="green">Live sync · 2 sec</StatusBadge>
+          </div>
         </div>
       </section>
       {usesOrders && query.error ? (
@@ -33,8 +48,24 @@ export function ServiceOrdersWorkspace({ page }: { page: KitchenServePage }) {
       {page === "tables" && <FloorTablesPanel />}
       {page === "menu" && <MenuPanel />}
       {page === "settings" && <SettingsPanel />}
-      {page === "waiter-orders" && <><ServiceOrdersForm busy={busy} onSave={(input) => actions.create.mutate(input)} /><ServiceOrdersList busy={busy} records={query.data ?? []} onTransition={(id, next) => actions.transition.mutate({ id, status: next })} /></>}
-      {["overview", "kitchen", "ready", "bill-waiting", "history"].includes(page) && <OrderQueuePanel page={page} busy={busy} records={query.data ?? []} onTransition={(id, next) => actions.transition.mutate({ id, status: next })} />}
+      {page === "waiter-orders" && (
+        <>
+          <ServiceOrdersForm busy={busy} onSave={(input) => actions.create.mutate(input)} />
+          <ServiceOrdersList
+            busy={busy}
+            records={query.data ?? []}
+            onTransition={(id, next) => actions.transition.mutate({ id, status: next })}
+          />
+        </>
+      )}
+      {["overview", "kitchen", "ready", "bill-waiting", "history"].includes(page) && (
+        <OrderQueuePanel
+          page={page}
+          busy={busy}
+          records={query.data ?? []}
+          onTransition={(id, next) => actions.transition.mutate({ id, status: next })}
+        />
+      )}
     </main>
   );
 }

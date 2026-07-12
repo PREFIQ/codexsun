@@ -7,5 +7,8 @@ export const tenantDatabaseActionSchema = z.object({
 });
 
 export function tenantMaintenanceNote(tenantId: number, action: string) {
-  return tenantDatabaseActionSchema.parse({ note: `${action} requested from Super Admin`, tenantId });
+  return tenantDatabaseActionSchema.parse({
+    note: `${action} requested from Super Admin`,
+    tenantId
+  });
 }

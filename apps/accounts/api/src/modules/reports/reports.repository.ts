@@ -1,6 +1,14 @@
 import { sql } from "kysely";
 import { getAccountsDatabase } from "../../database/accounts-database.js";
-import type { BalanceSheetRow, GstSummaryRow, LedgerStatementRow, OutstandingRow, ProfitAndLossRow, TrialBalanceRow, VoucherRegisterRow } from "./reports.types.js";
+import type {
+  BalanceSheetRow,
+  GstSummaryRow,
+  LedgerStatementRow,
+  OutstandingRow,
+  ProfitAndLossRow,
+  TrialBalanceRow,
+  VoucherRegisterRow
+} from "./reports.types.js";
 
 export class ReportsRepository {
   async trialBalance(databaseName: string): Promise<TrialBalanceRow[]> {
@@ -103,7 +111,13 @@ export class ReportsRepository {
     return result.rows.map((row) => {
       const debit = Number(row.debit ?? 0);
       const credit = Number(row.credit ?? 0);
-      return { credit, debit, ledgerCode: row.ledger_code, ledgerName: row.ledger_name, net: round(credit - debit) };
+      return {
+        credit,
+        debit,
+        ledgerCode: row.ledger_code,
+        ledgerName: row.ledger_name,
+        net: round(credit - debit)
+      };
     });
   }
 
@@ -117,7 +131,11 @@ export class ReportsRepository {
       GROUP BY g.name, g.nature
       ORDER BY g.nature, g.name
     `.execute(db);
-    return result.rows.map((row) => ({ amount: Number(row.amount ?? 0), groupName: row.group_name, nature: row.nature as "income" | "expense" }));
+    return result.rows.map((row) => ({
+      amount: Number(row.amount ?? 0),
+      groupName: row.group_name,
+      nature: row.nature as "income" | "expense"
+    }));
   }
 
   async balanceSheet(databaseName: string): Promise<BalanceSheetRow[]> {
@@ -130,15 +148,56 @@ export class ReportsRepository {
       GROUP BY g.name, g.nature
       ORDER BY g.nature, g.name
     `.execute(db);
-    return result.rows.map((row) => ({ amount: Number(row.amount ?? 0), groupName: row.group_name, nature: row.nature as "asset" | "capital" | "liability" }));
+    return result.rows.map((row) => ({
+      amount: Number(row.amount ?? 0),
+      groupName: row.group_name,
+      nature: row.nature as "asset" | "capital" | "liability"
+    }));
   }
 }
 
-type TrialRow = { closing_balance: number | string; credit: number | string; debit: number | string; group_name: string; ledger_code: string; ledger_id: string; ledger_name: string };
-type StatementRow = { amount: number | string; dc: "debit" | "credit"; ledger_code: string; ledger_name: string; narration: string | null; voucher_date: string | Date; voucher_no: string; voucher_type: string };
-type OutstandingSqlRow = { balance: number | string; classification: "customer" | "supplier"; ledger_code: string; ledger_id: string; ledger_name: string };
-type VoucherRegisterSqlRow = { source_document_no: string | null; status: string; tally_sync_status: string; total_credit: number | string; total_debit: number | string; voucher_date: string | Date; voucher_no: string; voucher_type: string };
-type GstSqlRow = { credit: number | string; debit: number | string; ledger_code: string; ledger_name: string };
+type TrialRow = {
+  closing_balance: number | string;
+  credit: number | string;
+  debit: number | string;
+  group_name: string;
+  ledger_code: string;
+  ledger_id: string;
+  ledger_name: string;
+};
+type StatementRow = {
+  amount: number | string;
+  dc: "debit" | "credit";
+  ledger_code: string;
+  ledger_name: string;
+  narration: string | null;
+  voucher_date: string | Date;
+  voucher_no: string;
+  voucher_type: string;
+};
+type OutstandingSqlRow = {
+  balance: number | string;
+  classification: "customer" | "supplier";
+  ledger_code: string;
+  ledger_id: string;
+  ledger_name: string;
+};
+type VoucherRegisterSqlRow = {
+  source_document_no: string | null;
+  status: string;
+  tally_sync_status: string;
+  total_credit: number | string;
+  total_debit: number | string;
+  voucher_date: string | Date;
+  voucher_no: string;
+  voucher_type: string;
+};
+type GstSqlRow = {
+  credit: number | string;
+  debit: number | string;
+  ledger_code: string;
+  ledger_name: string;
+};
 type NatureSqlRow = { amount: number | string; group_name: string; nature: string };
 
 function dateText(value: string | Date) {

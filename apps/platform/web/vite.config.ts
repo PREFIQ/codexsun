@@ -7,7 +7,9 @@ import { resolve } from "node:path";
 import { requireEnvNumber } from "@codexsun/framework/env";
 
 const configDir = fileURLToPath(new URL(".", import.meta.url));
-const rootPackage = JSON.parse(readFileSync(resolve(configDir, "../../../package.json"), "utf8")) as { version: string };
+const rootPackage = JSON.parse(
+  readFileSync(resolve(configDir, "../../../package.json"), "utf8")
+) as { version: string };
 
 export default defineConfig(() => ({
   build: {
@@ -19,11 +21,17 @@ export default defineConfig(() => ({
         manualChunks(id) {
           const normalizedId = id.replace(/\\/g, "/");
 
-          if (normalizedId.includes("node_modules/@dnd-kit") || normalizedId.includes("node_modules/@tanstack/react-table")) {
+          if (
+            normalizedId.includes("node_modules/@dnd-kit") ||
+            normalizedId.includes("node_modules/@tanstack/react-table")
+          ) {
             return "workspace-table";
           }
 
-          if (normalizedId.includes("node_modules/recharts") || normalizedId.includes("node_modules/d3-")) {
+          if (
+            normalizedId.includes("node_modules/recharts") ||
+            normalizedId.includes("node_modules/d3-")
+          ) {
             return "workspace-charts";
           }
 
@@ -31,11 +39,18 @@ export default defineConfig(() => ({
             return "icons";
           }
 
-          if (normalizedId.includes("node_modules/@tanstack/react-query") || normalizedId.includes("node_modules/@tanstack/react-router")) {
+          if (
+            normalizedId.includes("node_modules/@tanstack/react-query") ||
+            normalizedId.includes("node_modules/@tanstack/react-router")
+          ) {
             return "tanstack";
           }
 
-          if (normalizedId.includes("node_modules/framer-motion") || normalizedId.includes("node_modules/motion-dom") || normalizedId.includes("node_modules/motion-utils")) {
+          if (
+            normalizedId.includes("node_modules/framer-motion") ||
+            normalizedId.includes("node_modules/motion-dom") ||
+            normalizedId.includes("node_modules/motion-utils")
+          ) {
             return "motion";
           }
 
@@ -47,7 +62,10 @@ export default defineConfig(() => ({
             return "workspace-ui";
           }
 
-          if (normalizedId.includes("node_modules/react") || normalizedId.includes("node_modules/react-dom")) {
+          if (
+            normalizedId.includes("node_modules/react") ||
+            normalizedId.includes("node_modules/react-dom")
+          ) {
             return "react";
           }
 

@@ -10,7 +10,10 @@ export function queueJobCanRunInline(job: QueueJobRecord) {
   return job.status === "pending" || job.status === "failed";
 }
 
-export async function processQueueManagerJob(job: QueueJobRecord, run: (id: number) => Promise<unknown>) {
+export async function processQueueManagerJob(
+  job: QueueJobRecord,
+  run: (id: number) => Promise<unknown>
+) {
   if (!queueJobCanRunInline(job)) {
     return { processed: false, reason: "job-not-runnable", status: job.status };
   }

@@ -1,2 +1,2 @@
-export * from "./months.definition";
+export * from "./months.types";
 export * from "./months.workspace";

@@ -1,2 +1,5 @@
-import { commonMasterSchema } from "../../../common-master/common-master.schema";
-export const transportsSchema = commonMasterSchema;
+import { z } from "zod";
+export const transportsSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.boolean(), z.null()])
+);

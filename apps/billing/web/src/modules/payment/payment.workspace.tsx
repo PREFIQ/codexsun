@@ -1,2 +1,4 @@
 import { PaymentWorkspace } from "./payment.page";
-export function PaymentWorkspaceBoundary() { return <PaymentWorkspace />; }
+export function PaymentWorkspaceBoundary() {
+  return <PaymentWorkspace />;
+}

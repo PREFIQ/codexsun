@@ -96,4 +96,3 @@ Examples:
 - Production changes should follow release or hotfix process.
 - Customer communication should be clear and non-technical where possible.
 - Incidents should have root cause notes and prevention actions.
-

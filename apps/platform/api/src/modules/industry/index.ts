@@ -1,1 +1,2 @@
-export * from "./industry.module.js"; export * from "./industry.types.js";
+export * from "./industry.module.js";
+export * from "./industry.types.js";

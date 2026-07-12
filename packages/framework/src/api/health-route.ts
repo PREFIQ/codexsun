@@ -8,13 +8,10 @@ export function registerHealthRoute(app: FastifyInstance, checks: HealthCheck[])
     if (result.status === "down") {
       reply.code(503);
     }
-    return ok(
-      result,
-      {
-        requestId: request.id,
-        ...(request.correlationId ? { correlationId: request.correlationId } : {}),
-        ...(request.tenantId ? { tenantId: request.tenantId } : {})
-      }
-    );
+    return ok(result, {
+      requestId: request.id,
+      ...(request.correlationId ? { correlationId: request.correlationId } : {}),
+      ...(request.tenantId ? { tenantId: request.tenantId } : {})
+    });
   });
 }

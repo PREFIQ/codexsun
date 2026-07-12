@@ -99,7 +99,10 @@ async function appendChangelogEntry({ databaseUpdate, note, title }) {
   ].join("\n");
 
   if (changelog.includes(sectionHeader)) {
-    await writeFile(changelogPath, changelog.replace(sectionHeader, `${sectionHeader}\n\n${entry}`));
+    await writeFile(
+      changelogPath,
+      changelog.replace(sectionHeader, `${sectionHeader}\n\n${entry}`)
+    );
     console.log(`Appended changelog entry under ${sectionHeader}`);
     return;
   }

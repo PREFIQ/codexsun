@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { CircleGaugeIcon, FileSpreadsheetIcon, LandmarkIcon, ReceiptIndianRupeeIcon, Settings2Icon } from "lucide-react";
+import {
+  CircleGaugeIcon,
+  FileSpreadsheetIcon,
+  LandmarkIcon,
+  ReceiptIndianRupeeIcon,
+  Settings2Icon
+} from "lucide-react";
 import { ApplicationLayout } from "@codexsun/ui";
 import { AccountsWorkspace } from "../modules/accounts";
 
@@ -13,30 +19,55 @@ export function AccountsWebApp() {
       brand={{ href: "/", subtitle: "accounts workspace", title: "Accounts" }}
       headerTitle={titleForPage(page)}
       menuItems={[
-        { icon: CircleGaugeIcon, isActive: page === "overview", title: "Overview", onSelect: () => setPage("overview") },
+        {
+          icon: CircleGaugeIcon,
+          isActive: page === "overview",
+          title: "Overview",
+          onSelect: () => setPage("overview")
+        },
         {
           icon: LandmarkIcon,
           isActive: page === "ledgers",
           title: "Masters",
-          items: [{ title: "Ledgers", isActive: page === "ledgers", onSelect: () => setPage("ledgers") }]
+          items: [
+            { title: "Ledgers", isActive: page === "ledgers", onSelect: () => setPage("ledgers") }
+          ]
         },
         {
           icon: ReceiptIndianRupeeIcon,
           isActive: page === "vouchers",
           title: "Vouchers",
-          items: [{ title: "All Vouchers", isActive: page === "vouchers", onSelect: () => setPage("vouchers") }]
+          items: [
+            {
+              title: "All Vouchers",
+              isActive: page === "vouchers",
+              onSelect: () => setPage("vouchers")
+            }
+          ]
         },
         {
           icon: FileSpreadsheetIcon,
           isActive: page === "reports",
           title: "Reports",
-          items: [{ title: "Reports Overview", isActive: page === "reports", onSelect: () => setPage("reports") }]
+          items: [
+            {
+              title: "Reports Overview",
+              isActive: page === "reports",
+              onSelect: () => setPage("reports")
+            }
+          ]
         },
         {
           icon: Settings2Icon,
           isActive: page === "settings",
           title: "Settings",
-          items: [{ title: "Accounts Settings", isActive: page === "settings", onSelect: () => setPage("settings") }]
+          items: [
+            {
+              title: "Accounts Settings",
+              isActive: page === "settings",
+              onSelect: () => setPage("settings")
+            }
+          ]
         }
       ]}
       subtitle={null}

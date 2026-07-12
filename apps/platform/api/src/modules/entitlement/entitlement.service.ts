@@ -42,7 +42,14 @@ export class EntitlementService {
     validate(input);
     const entitlement = await this.repository.create(input);
     await this.refreshAccess(input);
-    await this.activity.recordActivity({ action: "entitlement.created", details: input, moduleKey: "platform.entitlement", recordId: entitlement?.id ?? null, recordLabel: input.moduleKey, recordUuid: entitlement?.uuid ?? null });
+    await this.activity.recordActivity({
+      action: "entitlement.created",
+      details: input,
+      moduleKey: "platform.entitlement",
+      recordId: entitlement?.id ?? null,
+      recordLabel: input.moduleKey,
+      recordUuid: entitlement?.uuid ?? null
+    });
     return entitlement;
   }
 
@@ -50,7 +57,14 @@ export class EntitlementService {
     validate(input);
     const entitlement = await this.repository.update(Number(id), input);
     await this.refreshAccess(input);
-    await this.activity.recordActivity({ action: "entitlement.updated", details: input, moduleKey: "platform.entitlement", recordId: entitlement?.id ?? Number(id), recordLabel: input.moduleKey, recordUuid: entitlement?.uuid ?? null });
+    await this.activity.recordActivity({
+      action: "entitlement.updated",
+      details: input,
+      moduleKey: "platform.entitlement",
+      recordId: entitlement?.id ?? Number(id),
+      recordLabel: input.moduleKey,
+      recordUuid: entitlement?.uuid ?? null
+    });
     return entitlement;
   }
 
@@ -80,5 +94,12 @@ function validate(input: EntitlementSavePayload) {
 }
 
 export function normalizePlanAccessKeys(moduleKeys: string[]) {
-  return Array.from(new Set(["platform.application", ...(moduleKeys ?? []).filter((key) => typeof key === "string" && key.trim()).map((key) => key.trim())])).sort();
+  return Array.from(
+    new Set([
+      "platform.application",
+      ...(moduleKeys ?? [])
+        .filter((key) => typeof key === "string" && key.trim())
+        .map((key) => key.trim())
+    ])
+  ).sort();
 }

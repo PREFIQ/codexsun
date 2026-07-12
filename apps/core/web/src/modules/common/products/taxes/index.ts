@@ -1,2 +1,2 @@
-export * from "./taxes.definition";
+export * from "./taxes.types";
 export * from "./taxes.workspace";

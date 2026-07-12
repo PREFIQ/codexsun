@@ -1,2 +1,2 @@
-export * from "./contact-types.definition";
+export * from "./contact-types.types";
 export * from "./contact-types.workspace";

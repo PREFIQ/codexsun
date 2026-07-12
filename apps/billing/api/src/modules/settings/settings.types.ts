@@ -70,24 +70,84 @@ export const defaultBillingDocumentLayoutSettings: BillingDocumentLayoutSettings
   useEinvoice: true,
   useEway: true,
   usePo: false,
-  useSize: true,
+  useSize: true
 };
 
 export const defaultBillingSettings: BillingSettings = {
   features: {
     exportSales: false,
     quotation: true,
-    tconnect: true,
+    tconnect: true
   },
   gstApiMode: "einvoice_eway",
   layout: { ...defaultBillingDocumentLayoutSettings },
   numbering: {
-    exportSales: { automatic: true, nextNumber: 1, padding: 4, prefix: "EXP", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
-    payment: { automatic: true, nextNumber: 1, padding: 4, prefix: "PAY", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
-    purchase: { automatic: true, nextNumber: 1, padding: 4, prefix: "PUR", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
-    quotation: { automatic: true, nextNumber: 1, padding: 4, prefix: "QUO", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
-    sales: { automatic: true, nextNumber: 1, padding: 4, prefix: "SAL", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
-    receipt: { automatic: true, nextNumber: 1, padding: 4, prefix: "REC", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
+    exportSales: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "EXP",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    },
+    payment: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "PAY",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    },
+    purchase: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "PUR",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    },
+    quotation: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "QUO",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    },
+    sales: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "SAL",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    },
+    receipt: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "REC",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    }
   },
   customise: {
     documentTitles: {
@@ -95,9 +155,9 @@ export const defaultBillingSettings: BillingSettings = {
       payment: "Payment Voucher",
       quotation: "Quotation",
       receipt: "Receipt Voucher",
-      sales: "Tax Invoice",
+      sales: "Tax Invoice"
     },
-    printLanguage: "english",
+    printLanguage: "english"
   },
   printing: {
     addressMode: "billing_and_shipping",
@@ -116,25 +176,33 @@ export const defaultBillingSettings: BillingSettings = {
       logoLeftMm: 4,
       logoTopMm: 9,
       logoWidthMm: 28,
-      taxSize: 11,
+      taxSize: 11
     },
     printAccountNumber: true,
     printQrAccountDetails: true,
-    printWithLogo: true,
-  },
+    printWithLogo: true
+  }
 };
 
 export const defaultBillingSalesSettings = defaultBillingSettings;
 
 export function formatBillingDocumentNumber(settings: BillingDocumentNumberSettings) {
-  const number = String(Math.max(1, settings.nextNumber)).padStart(Math.max(1, settings.padding), "0");
+  const number = String(Math.max(1, settings.nextNumber)).padStart(
+    Math.max(1, settings.padding),
+    "0"
+  );
   return `${settings.usePrefix ? settings.prefix : ""}${settings.useSeparator ? settings.separator : ""}${number}${settings.useSuffix ? settings.suffix : ""}`;
 }
 
-export function nextBillingDocumentNumber(settings: BillingDocumentNumberSettings, documentNumber: string) {
+export function nextBillingDocumentNumber(
+  settings: BillingDocumentNumberSettings,
+  documentNumber: string
+) {
   const prefix = `${settings.usePrefix ? settings.prefix : ""}${settings.useSeparator ? settings.separator : ""}`;
   const suffix = settings.useSuffix ? settings.suffix : "";
   const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = documentNumber.trim().match(new RegExp(`^${escape(prefix)}(\\d+)${escape(suffix)}$`, "i"));
+  const match = documentNumber
+    .trim()
+    .match(new RegExp(`^${escape(prefix)}(\\d+)${escape(suffix)}$`, "i"));
   return Math.max(settings.nextNumber, match ? Number(match[1]) + 1 : settings.nextNumber);
 }

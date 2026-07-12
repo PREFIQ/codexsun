@@ -1,67 +1,64 @@
-import { randomUUID } from "node:crypto";
 import { sql } from "kysely";
 import { getCoreDatabase } from "../../../../database/core-database.js";
 import type { MonthsListFilters, MonthsRecord, MonthsSavePayload } from "./months.types.js";
 
 type MonthsRow = {
-  id: string;
-  uuid: string;
+  id: number;
   name: string;
-  from_date: string;
-  to_date: string;
-  is_active: number | boolean;
+  start_date: string;
+  end_date: string;
+  status: string;
   sort_order: number;
 };
 
 export class MonthsRepository {
   async list(filters: MonthsListFilters = {}) {
     const rows =
-      await sql<MonthsRow>`SELECT id, uuid, name, from_date, to_date, is_active, sort_order FROM months
+      await sql<MonthsRow>`SELECT id, name, start_date, end_date, status, sort_order FROM months
       WHERE (${filters.search ?? ""} = '' OR LOWER(name) LIKE ${like(filters.search)})
       ORDER BY sort_order, id`.execute(getCoreDatabase());
     return rows.rows.map(toMonths);
   }
 
-  async find(id: string) {
+  async find(id: string | number) {
     const rows =
-      await sql<MonthsRow>`SELECT id, uuid, name, from_date, to_date, is_active, sort_order FROM months
-      WHERE id=${id} LIMIT 1`.execute(getCoreDatabase());
+      await sql<MonthsRow>`SELECT id, name, start_date, end_date, status, sort_order FROM months
+      WHERE id=${Number(id)} LIMIT 1`.execute(getCoreDatabase());
     return rows.rows[0] ? toMonths(rows.rows[0]) : null;
   }
 
   async create(input: MonthsSavePayload) {
-    const id = `months-${randomUUID()}`;
-    const uuid = randomUUID().replaceAll("-", "").slice(0, 8);
-    await sql`INSERT INTO months (id, uuid, name, from_date, to_date, is_active, sort_order) VALUES
-      (${id}, ${uuid}, ${normalizeString(input.name)}, ${normalizeString(input.fromDate)}, ${normalizeString(input.toDate)}, ${input.isActive === false ? 0 : 1}, ${numberValue(input.sortOrder, 1000)})`.execute(
-      getCoreDatabase()
-    );
-    return (await this.find(id))!;
+    const result =
+      await sql`INSERT INTO months (name, start_date, end_date, status, sort_order) VALUES
+      (${normalizeString(input.name)}, ${normalizeString(input.startDate)}, ${normalizeString(input.endDate)}, ${input.isActive === false ? "inactive" : "active"}, ${numberValue(input.sortOrder, 1000)})`.execute(
+        getCoreDatabase()
+      );
+    return (await this.find(String(result.insertId)))!;
   }
 
-  async update(id: string, input: MonthsSavePayload) {
+  async update(id: string | number, input: MonthsSavePayload) {
     const existing = await this.find(id);
     if (!existing || !canMutate(existing)) return null;
-    await sql`UPDATE months SET name=${normalizeString(input.name)}, from_date=${normalizeString(input.fromDate)}, to_date=${normalizeString(input.toDate)}, is_active=${input.isActive === false ? 0 : 1},
-      sort_order=${numberValue(input.sortOrder, 1000)}, updated_at=CURRENT_TIMESTAMP WHERE id=${id}`.execute(
-      getCoreDatabase()
-    );
-    return this.find(id);
-  }
-
-  async setActive(id: string, isActive: boolean) {
-    const existing = await this.find(id);
-    if (!existing || !canMutate(existing)) return null;
-    await sql`UPDATE months SET is_active=${isActive ? 1 : 0}, updated_at=CURRENT_TIMESTAMP WHERE id=${id}`.execute(
+    await sql`UPDATE months SET name=${normalizeString(input.name)}, start_date=${normalizeString(input.startDate)}, end_date=${normalizeString(input.endDate)}, status=${input.isActive === false ? "inactive" : "active"},
+      sort_order=${numberValue(input.sortOrder, 1000)}, updated_at=CURRENT_TIMESTAMP WHERE id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return this.find(id);
   }
 
-  async forceDelete(id: string) {
+  async setActive(id: string | number, isActive: boolean) {
     const existing = await this.find(id);
     if (!existing || !canMutate(existing)) return null;
-    await sql`DELETE FROM months WHERE id=${id}`.execute(getCoreDatabase());
+    await sql`UPDATE months SET status=${isActive ? "active" : "inactive"}, updated_at=CURRENT_TIMESTAMP WHERE id=${Number(id)}`.execute(
+      getCoreDatabase()
+    );
+    return this.find(id);
+  }
+
+  async forceDelete(id: string | number) {
+    const existing = await this.find(id);
+    if (!existing || !canMutate(existing)) return null;
+    await sql`DELETE FROM months WHERE id=${Number(id)}`.execute(getCoreDatabase());
     return existing;
   }
 }
@@ -69,8 +66,8 @@ export class MonthsRepository {
 function canMutate(record: MonthsRecord) {
   if (
     String(record.name ?? "").trim() === "-" ||
-    String(record.fromDate ?? "").trim() === "-" ||
-    String(record.toDate ?? "").trim() === "-"
+    String(record.startDate ?? "").trim() === "-" ||
+    String(record.endDate ?? "").trim() === "-"
   )
     return false;
   return true;
@@ -78,12 +75,11 @@ function canMutate(record: MonthsRecord) {
 
 function toMonths(row: MonthsRow): MonthsRecord {
   return {
-    id: row.id,
-    uuid: row.uuid,
+    id: Number(row.id),
     name: row.name,
-    fromDate: row.from_date,
-    toDate: row.to_date,
-    isActive: Boolean(row.is_active),
+    startDate: row.start_date,
+    endDate: row.end_date,
+    isActive: row.status === "active",
     sortOrder: Number(row.sort_order)
   };
 }

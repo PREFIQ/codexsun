@@ -1,8 +1,12 @@
-"use client"
+"use client";
 
-import { type LucideIcon } from "lucide-react"
+import { type LucideIcon } from "lucide-react";
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../../components/collapsible"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from "../../../../components/collapsible";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -12,25 +16,25 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem
-} from "../../../../components/sidebar"
+} from "../../../../components/sidebar";
 
 export type SidemenuSubItem = {
-  icon?: LucideIcon
-  isActive?: boolean
-  items?: SidemenuSubItem[]
-  onSelect?: () => void
-  title: string
-  url?: string
-}
+  icon?: LucideIcon;
+  isActive?: boolean;
+  items?: SidemenuSubItem[];
+  onSelect?: () => void;
+  title: string;
+  url?: string;
+};
 
 export type SidemenuItem = {
-  title: string
-  url?: string
-  icon: LucideIcon
-  isActive?: boolean
-  onSelect?: () => void
-  items?: SidemenuSubItem[]
-}
+  title: string;
+  url?: string;
+  icon: LucideIcon;
+  isActive?: boolean;
+  onSelect?: () => void;
+  items?: SidemenuSubItem[];
+};
 
 export function SidemenuSection({ items, title }: { items: SidemenuItem[]; title?: string }) {
   return (
@@ -38,8 +42,8 @@ export function SidemenuSection({ items, title }: { items: SidemenuItem[]; title
       {title ? <SidebarGroupLabel>{title}</SidebarGroupLabel> : null}
       <SidebarMenu>
         {items.map((item) => {
-          const subItems = item.items ?? []
-          const hasItems = subItems.length > 0
+          const subItems = item.items ?? [];
+          const hasItems = subItems.length > 0;
 
           return (
             <Collapsible
@@ -60,10 +64,10 @@ export function SidemenuSection({ items, title }: { items: SidemenuItem[]; title
                 ) : (
                   <SidebarMenuButton asChild isActive={item.isActive ?? false} tooltip={item.title}>
                     {item.onSelect ? (
-                    <button type="button" onClick={item.onSelect}>
-                      <item.icon />
-                      <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                    </button>
+                      <button type="button" onClick={item.onSelect}>
+                        <item.icon />
+                        <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                      </button>
                     ) : (
                       <a href={item.url ?? "#"}>
                         <item.icon />
@@ -75,36 +79,34 @@ export function SidemenuSection({ items, title }: { items: SidemenuItem[]; title
                 {hasItems ? (
                   <CollapsibleContent>
                     <SidebarMenuSub>
-                    {subItems.map((subItem) => (
-                      <SidemenuSubItemNode key={subItem.title} item={subItem} />
-                    ))}
-                  </SidebarMenuSub>
-                </CollapsibleContent>
-              ) : null}
-            </SidebarMenuItem>
-          </Collapsible>
-          )
+                      {subItems.map((subItem) => (
+                        <SidemenuSubItemNode key={subItem.title} item={subItem} />
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                ) : null}
+              </SidebarMenuItem>
+            </Collapsible>
+          );
         })}
       </SidebarMenu>
     </SidebarGroup>
-  )
+  );
 }
 
 function SidemenuSubItemNode({ item }: { item: SidemenuSubItem }) {
-  const children = item.items ?? []
-  const hasChildren = children.length > 0
-  const childActive = children.some((child) => child.isActive || child.items?.some((nested) => nested.isActive))
-  const active = item.isActive ?? childActive
-  const Icon = item.icon
+  const children = item.items ?? [];
+  const hasChildren = children.length > 0;
+  const childActive = children.some(
+    (child) => child.isActive || child.items?.some((nested) => nested.isActive)
+  );
+  const active = item.isActive ?? childActive;
+  const Icon = item.icon;
 
   if (hasChildren) {
     return (
       <SidebarMenuSubItem>
-        <Collapsible
-          asChild
-          defaultOpen={active}
-          className="group/sub-collapsible"
-        >
+        <Collapsible asChild defaultOpen={active} className="group/sub-collapsible">
           <div>
             <CollapsibleTrigger asChild>
               <SidebarMenuSubButton asChild isActive={active}>
@@ -125,17 +127,17 @@ function SidemenuSubItemNode({ item }: { item: SidemenuSubItem }) {
           </div>
         </Collapsible>
       </SidebarMenuSubItem>
-    )
+    );
   }
 
   return (
     <SidebarMenuSubItem>
       <SidebarMenuSubButton asChild isActive={active}>
         {item.onSelect ? (
-        <button type="button" onClick={item.onSelect}>
-          {Icon ? <Icon className="size-4 shrink-0" /> : null}
-          <span>{item.title}</span>
-        </button>
+          <button type="button" onClick={item.onSelect}>
+            {Icon ? <Icon className="size-4 shrink-0" /> : null}
+            <span>{item.title}</span>
+          </button>
         ) : (
           <a href={item.url ?? "#"}>
             {Icon ? <Icon className="size-4 shrink-0" /> : null}
@@ -144,7 +146,7 @@ function SidemenuSubItemNode({ item }: { item: SidemenuSubItem }) {
         )}
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>
-  )
+  );
 }
 
 function SidemenuChevron({ className = "" }: { className?: string }) {
@@ -153,5 +155,5 @@ function SidemenuChevron({ className = "" }: { className?: string }) {
       aria-hidden="true"
       className={`ml-auto size-2 shrink-0 rotate-[-45deg] border-b border-r border-muted-foreground transition-transform duration-200 ${className}`}
     />
-  )
+  );
 }

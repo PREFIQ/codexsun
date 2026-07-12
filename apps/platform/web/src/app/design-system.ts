@@ -11,6 +11,8 @@ export function applyDesignSystemPreference() {
   document.documentElement.setAttribute("data-design-system", DESIGN_SYSTEM_NAME);
   document.documentElement.setAttribute(
     DESIGN_SYSTEM_VARIANT_MARKER,
-    storedDesignVariant && isDesignSystemVariantId(storedDesignVariant) ? storedDesignVariant : "default"
+    storedDesignVariant && isDesignSystemVariantId(storedDesignVariant)
+      ? storedDesignVariant
+      : "default"
   );
 }

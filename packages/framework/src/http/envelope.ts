@@ -21,10 +21,14 @@ export type ErrorEnvelope<TDetails = unknown> = {
   success: false;
 };
 
-export type ApiEnvelope<TData, TDetails = unknown> = SuccessEnvelope<TData> | ErrorEnvelope<TDetails>;
+export type ApiEnvelope<TData, TDetails = unknown> =
+  SuccessEnvelope<TData> | ErrorEnvelope<TDetails>;
 
-
-export function createMeta(requestId: string, tenantId?: string, correlationId?: string): ResponseMeta {
+export function createMeta(
+  requestId: string,
+  tenantId?: string,
+  correlationId?: string
+): ResponseMeta {
   const meta: ResponseMeta = {
     requestId,
     timestamp: new Date().toISOString()

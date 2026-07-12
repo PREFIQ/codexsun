@@ -1,6 +1,5 @@
 export type TransportsRecord = {
-  id: string;
-  uuid: string;
+  id: number;
   name: string;
   gst: string | null;
   vehicleNo: string | null;

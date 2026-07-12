@@ -16,7 +16,11 @@ export async function migrateEntitlementModule(db: Kysely<PlatformDatabase>) {
     .addColumn("ends_on", "date")
     .addColumn("source", "varchar(24)", (column) => column.notNull())
     .addColumn("status", "varchar(24)", (column) => column.notNull())
-    .addColumn("created_at", "datetime", (column) => column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-    .addColumn("updated_at", "datetime", (column) => column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("created_at", "datetime", (column) =>
+      column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
+    )
+    .addColumn("updated_at", "datetime", (column) =>
+      column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
+    )
     .execute();
 }

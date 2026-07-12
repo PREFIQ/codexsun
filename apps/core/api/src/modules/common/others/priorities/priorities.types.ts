@@ -1,6 +1,5 @@
 export type PrioritiesRecord = {
-  id: string;
-  uuid: string;
+  id: number;
   name: string;
   colour: string;
   tag: string;

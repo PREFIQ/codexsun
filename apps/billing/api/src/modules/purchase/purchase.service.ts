@@ -1,9 +1,17 @@
 import { env } from "../../env.js";
 import { AppError } from "@codexsun/framework/errors";
 import { PurchaseRepository } from "./purchase.repository.js";
-import type { Purchase, PurchaseLineItem, PurchaseLineItemInput, PurchaseSavePayload } from "./purchase.types.js";
+import type {
+  Purchase,
+  PurchaseLineItem,
+  PurchaseLineItemInput,
+  PurchaseSavePayload
+} from "./purchase.types.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
-import { formatBillingDocumentNumber, nextBillingDocumentNumber } from "../settings/settings.types.js";
+import {
+  formatBillingDocumentNumber,
+  nextBillingDocumentNumber
+} from "../settings/settings.types.js";
 
 export class PurchaseService {
   constructor(
@@ -24,11 +32,20 @@ export class PurchaseService {
     const numbering = billingSettings.numbering.purchase;
     const generatedNumber = formatBillingDocumentNumber(numbering);
     const enteredNumber = input.invoiceNumber.trim();
-    const generated = numbering.automatic && (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
+    const generated =
+      numbering.automatic &&
+      (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
     const normalizedInput = enteredNumber ? input : { ...input, invoiceNumber: generatedNumber };
-    const duplicate = await this.repository.findByInvoiceNumber(databaseName, normalizedInput.invoiceNumber.trim().toUpperCase());
-    if (duplicate) throw AppError.conflict("Purchase invoice number already exists. Enter a unique number.");
-    const sale = await this.repository.create(databaseName, normalizePurchaseInput(normalizedInput));
+    const duplicate = await this.repository.findByInvoiceNumber(
+      databaseName,
+      normalizedInput.invoiceNumber.trim().toUpperCase()
+    );
+    if (duplicate)
+      throw AppError.conflict("Purchase invoice number already exists. Enter a unique number.");
+    const sale = await this.repository.create(
+      databaseName,
+      normalizePurchaseInput(normalizedInput)
+    );
     const nextNumber = nextBillingDocumentNumber(numbering, normalizedInput.invoiceNumber);
     if (numbering.automatic && (generated || nextNumber > numbering.nextNumber)) {
       await this.settings.saveBillingSettings(databaseName, {
@@ -44,8 +61,12 @@ export class PurchaseService {
   }
 
   async updatePurchase(databaseName: string, id: string, input: PurchaseSavePayload) {
-    const duplicate = await this.repository.findByInvoiceNumber(databaseName, input.invoiceNumber.trim().toUpperCase());
-    if (duplicate && duplicate.id !== id) throw AppError.conflict("Purchase invoice number already exists. Enter a unique number.");
+    const duplicate = await this.repository.findByInvoiceNumber(
+      databaseName,
+      input.invoiceNumber.trim().toUpperCase()
+    );
+    if (duplicate && duplicate.id !== id)
+      throw AppError.conflict("Purchase invoice number already exists. Enter a unique number.");
     const sale = await this.repository.update(databaseName, id, normalizePurchaseInput(input));
     if (sale) await postPurchaseToAccounts(databaseName, sale, "update");
     return sale;
@@ -104,7 +125,7 @@ export function normalizePurchaseInput(input: PurchaseSavePayload): PurchaseSave
     supplierBillDate: input.supplierBillDate?.trim() ?? "",
     supplierBillNo: input.supplierBillNo?.trim().toUpperCase() ?? "",
     taxType: input.taxType?.trim() || "CGST + SGST",
-    workOrderNo: input.workOrderNo?.trim() ?? "",
+    workOrderNo: input.workOrderNo?.trim() ?? ""
   };
 }
 
@@ -123,20 +144,22 @@ function normalizePurchaseLineItem(item: PurchaseLineItemInput): PurchaseLineIte
     rate: roundMoney(Number(item.rate) || 0),
     size: item.size?.trim() ?? "",
     taxRate: roundMoney(Number(item.taxRate) || 0),
-    unit: item.unit.trim().toUpperCase() || "NOS",
+    unit: item.unit.trim().toUpperCase() || "NOS"
   };
 }
 
-export function buildPurchaseTotals(input: PurchaseSavePayload): Pick<Purchase, "amount" | "items" | "subtotal" | "taxAmount"> {
+export function buildPurchaseTotals(
+  input: PurchaseSavePayload
+): Pick<Purchase, "amount" | "items" | "subtotal" | "taxAmount"> {
   const items: PurchaseLineItem[] = input.items.map((item, index) => {
     const taxableAmount = roundMoney(item.quantity * item.rate);
-    const taxAmount = roundMoney(taxableAmount * item.taxRate / 100);
+    const taxAmount = roundMoney((taxableAmount * item.taxRate) / 100);
     return {
       ...item,
       id: `item-${index + 1}`,
       lineTotal: roundMoney(taxableAmount + taxAmount),
       taxableAmount,
-      taxAmount,
+      taxAmount
     };
   });
 
@@ -148,7 +171,7 @@ export function buildPurchaseTotals(input: PurchaseSavePayload): Pick<Purchase, 
     amount,
     items,
     subtotal,
-    taxAmount,
+    taxAmount
   };
 }
 
@@ -156,7 +179,11 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-async function postPurchaseToAccounts(databaseName: string, sale: Purchase, operation: "create" | "update" | "cancel") {
+async function postPurchaseToAccounts(
+  databaseName: string,
+  sale: Purchase,
+  operation: "create" | "update" | "cancel"
+) {
   try {
     const response = await fetch(`${env.ACCOUNTS_API_URL}/accounts/postings/billing`, {
       body: JSON.stringify({
@@ -182,9 +209,13 @@ async function postPurchaseToAccounts(databaseName: string, sale: Purchase, oper
 
     if (!response.ok) {
       const message = await response.text().catch(() => "");
-      console.warn(`[purchase] Accounts posting deferred for ${sale.invoiceNumber}: ${message || response.statusText}`);
+      console.warn(
+        `[purchase] Accounts posting deferred for ${sale.invoiceNumber}: ${message || response.statusText}`
+      );
     }
   } catch (error) {
-    console.warn(`[purchase] Accounts posting deferred for ${sale.invoiceNumber}: ${error instanceof Error ? error.message : String(error)}`);
+    console.warn(
+      `[purchase] Accounts posting deferred for ${sale.invoiceNumber}: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }

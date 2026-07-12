@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 
-export const DESIGN_SYSTEM_COMPONENT_DEFAULTS_STORAGE_KEY = "codexsun.design-system.component-defaults";
+export const DESIGN_SYSTEM_COMPONENT_DEFAULTS_STORAGE_KEY =
+  "codexsun.design-system.component-defaults";
 export const DESIGN_SYSTEM_COMPONENT_DEFAULTS_EVENT = "codexsun:design-system-component-defaults";
 
 export type DesignSystemComponentDefaults = Record<string, string>;
@@ -39,8 +40,13 @@ export function setDesignSystemComponentDefault(componentId: string, variantId: 
     ...getDesignSystemComponentDefaults(),
     [componentId]: variantId
   };
-  window.localStorage.setItem(DESIGN_SYSTEM_COMPONENT_DEFAULTS_STORAGE_KEY, JSON.stringify(nextDefaults));
-  window.dispatchEvent(new CustomEvent(DESIGN_SYSTEM_COMPONENT_DEFAULTS_EVENT, { detail: nextDefaults }));
+  window.localStorage.setItem(
+    DESIGN_SYSTEM_COMPONENT_DEFAULTS_STORAGE_KEY,
+    JSON.stringify(nextDefaults)
+  );
+  window.dispatchEvent(
+    new CustomEvent(DESIGN_SYSTEM_COMPONENT_DEFAULTS_EVENT, { detail: nextDefaults })
+  );
 }
 
 export function useDesignSystemComponentDefault(componentId: string, fallback: string) {

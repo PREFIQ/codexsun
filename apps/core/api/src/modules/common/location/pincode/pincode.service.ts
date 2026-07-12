@@ -52,7 +52,7 @@ export class PincodeService {
     return pincode;
   }
 
-  private async requireCity(cityId: string) {
+  private async requireCity(cityId: string | number) {
     if (!(await this.repository.cityExists(cityId))) throw AppError.notFound("City was not found.");
   }
 
@@ -68,7 +68,7 @@ export class PincodeService {
 
 function normalize(input: PincodeSavePayload): PincodeSavePayload {
   return {
-    cityId: String(Number(input.cityId)),
+    cityId: Number(input.cityId),
     name: input.name.trim(),
     sortOrder: Number.isFinite(input.sortOrder) ? Number(input.sortOrder) : 1000,
     status: input.status === "inactive" ? "inactive" : "active"

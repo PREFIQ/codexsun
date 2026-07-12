@@ -1,6 +1,5 @@
 export type HsnCodesRecord = {
-  id: string;
-  uuid: string;
+  id: number;
   code: string;
   description: string;
   isActive: boolean;

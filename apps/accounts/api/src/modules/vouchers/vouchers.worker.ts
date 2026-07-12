@@ -6,13 +6,22 @@ export const voucherJobNames = {
   retryTallySync: "accounts.vouchers.retry-tally-sync"
 } as const;
 
-export async function processVoucherJob(databaseName: string, job: { name: string; payload?: unknown }) {
+export async function processVoucherJob(
+  databaseName: string,
+  job: { name: string; payload?: unknown }
+) {
   if (job.name === voucherJobNames.postBillingDocument) {
-    const voucher = await new VouchersService().postSource(databaseName, job.payload as AccountsPostingRequest);
+    const voucher = await new VouchersService().postSource(
+      databaseName,
+      job.payload as AccountsPostingRequest
+    );
     return { posted: Boolean(voucher), voucher };
   }
   if (job.name === voucherJobNames.retryTallySync) {
-    return { queued: true, reason: "Tally adapter will consume pending vouchers in the integration phase." };
+    return {
+      queued: true,
+      reason: "Tally adapter will consume pending vouchers in the integration phase."
+    };
   }
   throw new Error(`Unsupported voucher job: ${job.name}`);
 }

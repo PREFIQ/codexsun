@@ -36,7 +36,8 @@ export function OverviewWorkspace() {
 
   const statusStyles = {
     checking: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    online: "border-emerald-500 bg-white text-emerald-700 shadow-sm dark:bg-white dark:text-emerald-700",
+    online:
+      "border-emerald-500 bg-white text-emerald-700 shadow-sm dark:bg-white dark:text-emerald-700",
     offline: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400"
   }[apiStatus];
   const dotStyles = {

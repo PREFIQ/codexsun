@@ -10,7 +10,9 @@ export function PlatformActivityWorkspace() {
       title="Activity"
       description="Review recent platform access, subscription, tenant, and setup changes."
       technicalName="page.platform-activity"
-      actions={<PlatformActivityForm loading={query.isLoading} onRefresh={() => void query.refetch()} />}
+      actions={
+        <PlatformActivityForm loading={query.isLoading} onRefresh={() => void query.refetch()} />
+      }
     >
       <PlatformActivityList records={query.data ?? []} />
     </WorkspacePage>

@@ -6,7 +6,14 @@ import { quoteIdentifier } from "../../database/database-utils.js";
 import type { Tenant } from "../tenant/index.js";
 import { TenantRepository } from "../tenant/index.js";
 import { tenantRuntimeMigrations } from "../tenant/tenant.migration.js";
-import type { DatabaseMaintenanceRun, DatabaseMigrationRow, DatabaseOperation, DatabaseRunStatus, DatabaseScope, DatabaseTableInfo } from "./database-maintenance.types.js";
+import type {
+  DatabaseMaintenanceRun,
+  DatabaseMigrationRow,
+  DatabaseOperation,
+  DatabaseRunStatus,
+  DatabaseScope,
+  DatabaseTableInfo
+} from "./database-maintenance.types.js";
 import { getPlatformDatabase } from "../../database/platform-database.js";
 
 export class DatabaseMaintenanceRepository {
@@ -14,14 +21,23 @@ export class DatabaseMaintenanceRepository {
 
   async masterStatus() {
     const databaseName = platformDatabaseName();
-    const probe = await this.probeDatabase({ databaseName, host: env.DB_HOST, port: env.DB_PORT, user: env.DB_USER });
+    const probe = await this.probeDatabase({
+      databaseName,
+      host: env.DB_HOST,
+      port: env.DB_PORT,
+      user: env.DB_USER
+    });
     return {
-      backupStatus: process.env.CODEXSUN_BACKUP_VERIFY_ID ? "verified" as const : "operator-required" as const,
+      backupStatus: process.env.CODEXSUN_BACKUP_VERIFY_ID
+        ? ("verified" as const)
+        : ("operator-required" as const),
       databaseName,
       host: env.DB_HOST,
       migrations: await this.masterMigrations(databaseName),
       port: env.DB_PORT,
-      restoreStatus: process.env.CODEXSUN_RESTORE_TEST_DB_NAME ? "sandbox-configured" as const : "not-configured" as const,
+      restoreStatus: process.env.CODEXSUN_RESTORE_TEST_DB_NAME
+        ? ("sandbox-configured" as const)
+        : ("not-configured" as const),
       runs: await this.runs("master", "master"),
       ...probe
     };
@@ -33,7 +49,12 @@ export class DatabaseMaintenanceRepository {
   }
 
   async tenantStatus(tenant: Tenant) {
-    const probe = await this.probeDatabase({ databaseName: tenant.dbName, host: tenant.dbHost || env.DB_HOST, port: tenant.dbPort || env.DB_PORT, user: tenant.dbUser || env.DB_USER });
+    const probe = await this.probeDatabase({
+      databaseName: tenant.dbName,
+      host: tenant.dbHost || env.DB_HOST,
+      port: tenant.dbPort || env.DB_PORT,
+      user: tenant.dbUser || env.DB_USER
+    });
     return {
       databaseName: tenant.dbName,
       host: tenant.dbHost || env.DB_HOST,
@@ -63,7 +84,14 @@ export class DatabaseMaintenanceRepository {
     return this.tenants.findByIdOrCode(String(id));
   }
 
-  async recordRun(input: { databaseName: string; details?: Record<string, unknown>; operation: DatabaseOperation; scope: DatabaseScope; status: DatabaseRunStatus; targetKey: string }) {
+  async recordRun(input: {
+    databaseName: string;
+    details?: Record<string, unknown>;
+    operation: DatabaseOperation;
+    scope: DatabaseScope;
+    status: DatabaseRunStatus;
+    targetKey: string;
+  }) {
     const result = await getPlatformDatabase()
       .insertInto("database_maintenance_runs")
       .values({
@@ -77,7 +105,11 @@ export class DatabaseMaintenanceRepository {
         uuid: randomBytes(4).toString("hex")
       })
       .executeTakeFirst();
-    return (await this.runs(input.scope, input.targetKey)).find((run) => run.id === Number(result.insertId)) ?? null;
+    return (
+      (await this.runs(input.scope, input.targetKey)).find(
+        (run) => run.id === Number(result.insertId)
+      ) ?? null
+    );
   }
 
   async findRun(id: number) {
@@ -130,14 +162,35 @@ export class DatabaseMaintenanceRepository {
     return rows.map(toRun);
   }
 
-  private async probeDatabase(input: { databaseName: string; host: string; port: number; user: string }) {
+  private async probeDatabase(input: {
+    databaseName: string;
+    host: string;
+    port: number;
+    user: string;
+  }) {
     try {
-      const connection = await createConnection({ database: input.databaseName, host: input.host, password: env.DB_PASSWORD, port: input.port, timezone: "Z", user: input.user });
+      const connection = await createConnection({
+        database: input.databaseName,
+        host: input.host,
+        password: env.DB_PASSWORD,
+        port: input.port,
+        timezone: "Z",
+        user: input.user
+      });
       try {
         const [versionRows] = await connection.query("SELECT VERSION() as version");
         const [tableRows] = await connection.query("SHOW TABLES");
-        const version = Array.isArray(versionRows) && versionRows[0] && typeof (versionRows[0] as { version?: unknown }).version === "string" ? String((versionRows[0] as { version: string }).version) : "unknown";
-        return { status: "online" as const, tableCount: Array.isArray(tableRows) ? tableRows.length : 0, version };
+        const version =
+          Array.isArray(versionRows) &&
+          versionRows[0] &&
+          typeof (versionRows[0] as { version?: unknown }).version === "string"
+            ? String((versionRows[0] as { version: string }).version)
+            : "unknown";
+        return {
+          status: "online" as const,
+          tableCount: Array.isArray(tableRows) ? tableRows.length : 0,
+          version
+        };
       } finally {
         await connection.end();
       }
@@ -148,10 +201,24 @@ export class DatabaseMaintenanceRepository {
 
   private async masterMigrations(databaseName: string) {
     try {
-      const connection = await createConnection({ database: databaseName, host: env.DB_HOST, password: env.DB_PASSWORD, port: env.DB_PORT, timezone: "Z", user: env.DB_USER });
+      const connection = await createConnection({
+        database: databaseName,
+        host: env.DB_HOST,
+        password: env.DB_PASSWORD,
+        port: env.DB_PORT,
+        timezone: "Z",
+        user: env.DB_USER
+      });
       try {
-        const [rows] = await connection.query("SELECT name, applied_at FROM codexsun_migrations ORDER BY applied_at, id");
-        return Array.isArray(rows) ? rows.map((row) => ({ appliedAt: new Date((row as { applied_at: Date | string }).applied_at).toISOString(), name: String((row as { name: string }).name) })) : [];
+        const [rows] = await connection.query(
+          "SELECT name, applied_at FROM codexsun_migrations ORDER BY applied_at, id"
+        );
+        return Array.isArray(rows)
+          ? rows.map((row) => ({
+              appliedAt: new Date((row as { applied_at: Date | string }).applied_at).toISOString(),
+              name: String((row as { name: string }).name)
+            }))
+          : [];
       } finally {
         await connection.end();
       }
@@ -162,10 +229,24 @@ export class DatabaseMaintenanceRepository {
 
   private async tenantMigrations(tenant: Tenant) {
     try {
-      const connection = await createConnection({ database: tenant.dbName, host: tenant.dbHost || env.DB_HOST, password: env.DB_PASSWORD, port: tenant.dbPort || env.DB_PORT, timezone: "Z", user: tenant.dbUser || env.DB_USER });
+      const connection = await createConnection({
+        database: tenant.dbName,
+        host: tenant.dbHost || env.DB_HOST,
+        password: env.DB_PASSWORD,
+        port: tenant.dbPort || env.DB_PORT,
+        timezone: "Z",
+        user: tenant.dbUser || env.DB_USER
+      });
       try {
-        const [rows] = await connection.query("SELECT name, applied_at FROM schema_migrations ORDER BY applied_at, id");
-        return Array.isArray(rows) ? rows.map((row) => ({ appliedAt: new Date((row as { applied_at: Date | string }).applied_at).toISOString(), name: String((row as { name: string }).name) })) : [];
+        const [rows] = await connection.query(
+          "SELECT name, applied_at FROM schema_migrations ORDER BY applied_at, id"
+        );
+        return Array.isArray(rows)
+          ? rows.map((row) => ({
+              appliedAt: new Date((row as { applied_at: Date | string }).applied_at).toISOString(),
+              name: String((row as { name: string }).name)
+            }))
+          : [];
       } finally {
         await connection.end();
       }
@@ -176,28 +257,42 @@ export class DatabaseMaintenanceRepository {
 
   private async tenantTables(tenant: Tenant): Promise<DatabaseTableInfo[]> {
     try {
-      const connection = await createConnection({ database: tenant.dbName, host: tenant.dbHost || env.DB_HOST, password: env.DB_PASSWORD, port: tenant.dbPort || env.DB_PORT, timezone: "Z", user: tenant.dbUser || env.DB_USER });
+      const connection = await createConnection({
+        database: tenant.dbName,
+        host: tenant.dbHost || env.DB_HOST,
+        password: env.DB_PASSWORD,
+        port: tenant.dbPort || env.DB_PORT,
+        timezone: "Z",
+        user: tenant.dbUser || env.DB_USER
+      });
       try {
         const [rows] = await connection.query("SHOW TABLE STATUS");
         if (!Array.isArray(rows)) return [];
-        return Promise.all(rows.map(async (row) => {
-          const table = row as Record<string, unknown>;
-          const name = String(table.Name ?? "");
-          const [countRows] = await connection.query(`SELECT COUNT(*) as recordCount FROM ${quoteIdentifier(name)}`);
-          const count = Array.isArray(countRows) && countRows[0] ? Number((countRows[0] as { recordCount?: unknown }).recordCount ?? 0) : 0;
-          return {
-            autoIncrement: table.Auto_increment == null ? null : Number(table.Auto_increment),
-            collation: table.Collation == null ? null : String(table.Collation),
-            comment: String(table.Comment ?? ""),
-            createdAt: toIsoDate(table.Create_time),
-            dataBytes: Number(table.Data_length ?? 0),
-            engine: table.Engine == null ? null : String(table.Engine),
-            indexBytes: Number(table.Index_length ?? 0),
-            name,
-            recordCount: count,
-            updatedAt: toIsoDate(table.Update_time)
-          };
-        }));
+        return Promise.all(
+          rows.map(async (row) => {
+            const table = row as Record<string, unknown>;
+            const name = String(table.Name ?? "");
+            const [countRows] = await connection.query(
+              `SELECT COUNT(*) as recordCount FROM ${quoteIdentifier(name)}`
+            );
+            const count =
+              Array.isArray(countRows) && countRows[0]
+                ? Number((countRows[0] as { recordCount?: unknown }).recordCount ?? 0)
+                : 0;
+            return {
+              autoIncrement: table.Auto_increment == null ? null : Number(table.Auto_increment),
+              collation: table.Collation == null ? null : String(table.Collation),
+              comment: String(table.Comment ?? ""),
+              createdAt: toIsoDate(table.Create_time),
+              dataBytes: Number(table.Data_length ?? 0),
+              engine: table.Engine == null ? null : String(table.Engine),
+              indexBytes: Number(table.Index_length ?? 0),
+              name,
+              recordCount: count,
+              updatedAt: toIsoDate(table.Update_time)
+            };
+          })
+        );
       } finally {
         await connection.end();
       }
@@ -208,14 +303,19 @@ export class DatabaseMaintenanceRepository {
 
   private tenantMigrationPlan(applied: DatabaseMigrationRow[]) {
     const appliedNames = new Set(applied.map((migration) => migration.name));
-    const available = tenantRuntimeMigrations.map((migration) => ({ description: migration.description, name: migration.name }));
+    const available = tenantRuntimeMigrations.map((migration) => ({
+      description: migration.description,
+      name: migration.name
+    }));
     const pending = available.filter((migration) => !appliedNames.has(migration.name));
     return {
       applied,
       available,
       dryRunScript: pending.flatMap((migration) => {
         const definition = tenantRuntimeMigrations.find((item) => item.name === migration.name);
-        return definition ? [`-- ${definition.name}: ${definition.description}`, ...definition.statements] : [`-- ${migration.name}`];
+        return definition
+          ? [`-- ${definition.name}: ${definition.description}`, ...definition.statements]
+          : [`-- ${migration.name}`];
       }),
       latestApplied: applied.at(-1) ?? null,
       latestPending: pending[0] ?? null,

@@ -30,14 +30,24 @@ export function StorageManagerForm({
             { label: "App", value: "app" },
             { label: "Tenant", value: "tenant" }
           ]}
-          onValueChange={(scope) => onStateChange({ ...state, path: "", scope: scope as StorageBrowserState["scope"], tenantId: tenants[0] ? String(tenants[0].id) : state.tenantId })}
+          onValueChange={(scope) =>
+            onStateChange({
+              ...state,
+              path: "",
+              scope: scope as StorageBrowserState["scope"],
+              tenantId: tenants[0] ? String(tenants[0].id) : state.tenantId
+            })
+          }
         />
       </div>
       {state.scope === "tenant" ? (
         <div className="w-52">
           <WorkspaceSelect
             value={state.tenantId || (tenants[0] ? String(tenants[0].id) : "")}
-            options={tenants.map((tenant) => ({ label: tenant.tenantName, value: String(tenant.id) }))}
+            options={tenants.map((tenant) => ({
+              label: tenant.tenantName,
+              value: String(tenant.id)
+            }))}
             onValueChange={(tenantId) => onStateChange({ ...state, path: "", tenantId })}
           />
         </div>
@@ -49,23 +59,36 @@ export function StorageManagerForm({
             { label: "Public", value: "public" },
             { label: "Private", value: "private" }
           ]}
-          onValueChange={(visibility) => onStateChange({ ...state, path: "", visibility: visibility as StorageBrowserState["visibility"] })}
+          onValueChange={(visibility) =>
+            onStateChange({
+              ...state,
+              path: "",
+              visibility: visibility as StorageBrowserState["visibility"]
+            })
+          }
         />
       </div>
       <Button disabled={busy} variant="outline" onClick={onCreateFolder}>
-        <FolderPlusIcon className="size-4" />Folder
+        <FolderPlusIcon className="size-4" />
+        Folder
       </Button>
       <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-muted/40">
         <UploadIcon className="size-4" />
         Upload
-        <input className="hidden" disabled={busy} type="file" onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) onUpload(file);
-        }} />
+        <input
+          className="hidden"
+          disabled={busy}
+          type="file"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) onUpload(file);
+          }}
+        />
       </label>
       <Button disabled={busy} variant="outline" onClick={onRefresh}>
-        <RefreshCwIcon className="size-4" />Refresh
+        <RefreshCwIcon className="size-4" />
+        Refresh
       </Button>
     </div>
   );

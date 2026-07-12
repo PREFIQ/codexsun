@@ -1,7 +1,8 @@
-import { districtDefinition } from "../shared/location.definitions";
-import { useCreateLocationRecord, useLocationRecords, useUpdateLocationRecord } from "../shared/location.hooks";
-
-export const useDistricts = () => useLocationRecords(districtDefinition);
-export const useCreateDistrict = () => useCreateLocationRecord(districtDefinition);
-export const useUpdateDistrict = () => useUpdateLocationRecord(districtDefinition);
-
+import { useQuery } from "@tanstack/react-query";
+import { listDistrictRecords } from "./district.services";
+export function useDistrictQuery(key: string, path: string) {
+  return useQuery({
+    queryFn: () => listDistrictRecords(path),
+    queryKey: ["core", "location", key]
+  });
+}

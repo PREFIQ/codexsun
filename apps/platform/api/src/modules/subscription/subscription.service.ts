@@ -18,7 +18,14 @@ export class SubscriptionService {
     validate(input);
     const subscription = await this.repository.create(input);
     await this.access.refreshTenantAccess(input.tenantId);
-    await this.activity.recordActivity({ action: "subscription.created", details: input, moduleKey: "platform.subscription", recordId: subscription?.id ?? null, recordLabel: subscription?.tenantName ?? String(input.tenantId), recordUuid: subscription?.uuid ?? null });
+    await this.activity.recordActivity({
+      action: "subscription.created",
+      details: input,
+      moduleKey: "platform.subscription",
+      recordId: subscription?.id ?? null,
+      recordLabel: subscription?.tenantName ?? String(input.tenantId),
+      recordUuid: subscription?.uuid ?? null
+    });
     return subscription;
   }
 
@@ -30,9 +37,19 @@ export class SubscriptionService {
     if (existing && existing.tenantId !== input.tenantId) {
       await this.access.refreshTenantAccess(existing.tenantId);
     }
-    await this.activity.recordActivity({ action: "subscription.updated", details: input, moduleKey: "platform.subscription", recordId: subscription?.id ?? Number(id), recordLabel: subscription?.tenantName ?? String(input.tenantId), recordUuid: subscription?.uuid ?? null });
+    await this.activity.recordActivity({
+      action: "subscription.updated",
+      details: input,
+      moduleKey: "platform.subscription",
+      recordId: subscription?.id ?? Number(id),
+      recordLabel: subscription?.tenantName ?? String(input.tenantId),
+      recordUuid: subscription?.uuid ?? null
+    });
     return subscription;
   }
 }
 
-function validate(input: SubscriptionSavePayload) { if (!input.tenantId || !input.planId || !input.startsOn) throw new Error("Tenant, plan, and start date are required."); }
+function validate(input: SubscriptionSavePayload) {
+  if (!input.tenantId || !input.planId || !input.startsOn)
+    throw new Error("Tenant, plan, and start date are required.");
+}

@@ -33,9 +33,17 @@ apps/{app}/api/src/modules/{module}/
 apps/{app}/web/src/modules/{module}/
 apps/{app}/web/src/shared/
 ```
+
 Use `web/src/shared` only for cross-module app-web code; keep module-specific business forms, lists,
 settings, print views, services, hooks, schemas, types, tests, and page orchestration inside the owning app web module.
 Keep reusable design controls in `packages/ui`.
+
+Strict workspace dependency and output layout:
+
+- Use npm only and run dependency commands from the repository root.
+- Keep exactly one root `node_modules` and one root `package-lock.json`; never install dependencies inside a workspace.
+- Keep generated builds only in the root `dist`; nested `node_modules`, `dist`, and `dist-types` folders are prohibited.
+- Run `npm run dependencies:check` after dependency, package, workspace, or build-configuration changes.
 
 ## Product Vision
 

@@ -7,7 +7,10 @@ import { Input } from "@codexsun/ui/components/input";
 import { Label } from "@codexsun/ui/components/label";
 import { DialogFooter, DialogHeader, DialogTitle } from "@codexsun/ui/components/dialog";
 import { WorkspaceLookup } from "@codexsun/ui/workspace/lookup";
-import { WorkspaceAnimatedTabs, type WorkspaceAnimatedTab } from "@codexsun/ui/workspace/animated-tabs";
+import {
+  WorkspaceAnimatedTabs,
+  type WorkspaceAnimatedTab
+} from "@codexsun/ui/workspace/animated-tabs";
 import {
   createPurchaseAddressType,
   createPurchaseLocation,
@@ -17,7 +20,7 @@ import {
   type PurchaseLocationKind,
   type PurchaseLocationRecord,
   type PurchaseLookupOption,
-  type PurchaseLookupRecord,
+  type PurchaseLookupRecord
 } from "./purchase.services";
 
 export type PurchaseAddressDraft = Omit<
@@ -32,7 +35,10 @@ export type PurchaseAddressChoice = {
   value: string;
 };
 
-export function purchaseAddressDraftFromText(value: string, addressTypeName: string): PurchaseAddressDraft {
+export function purchaseAddressDraftFromText(
+  value: string,
+  addressTypeName: string
+): PurchaseAddressDraft {
   const lines = value
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -51,7 +57,7 @@ export function purchaseAddressDraftFromText(value: string, addressTypeName: str
     pincodeId: "",
     pincodeName: "",
     stateId: "",
-    stateName: "",
+    stateName: ""
   };
 }
 
@@ -61,7 +67,7 @@ export function formatPurchaseAddress(draft: PurchaseAddressDraft) {
     draft.addressLine2.trim(),
     [draft.cityName.trim(), draft.districtName.trim()].filter(Boolean).join(", "),
     [draft.stateName.trim(), draft.pincodeName.trim()].filter(Boolean).join(" - "),
-    draft.countryName.trim(),
+    draft.countryName.trim()
   ]
     .map((line) => line.trim())
     .filter(Boolean)
@@ -70,23 +76,30 @@ export function formatPurchaseAddress(draft: PurchaseAddressDraft) {
 
 export function buildPurchaseAddressChoices(record?: PurchaseLookupRecord | null) {
   return (record?.addresses ?? []).map((address, index) => {
-    const draft = purchaseAddressDraftFromRecord(address, index === 0 ? "Billing" : `Address ${index + 1}`);
+    const draft = purchaseAddressDraftFromRecord(
+      address,
+      index === 0 ? "Billing" : `Address ${index + 1}`
+    );
     return {
       description: formatPurchaseAddress(draft),
       draft,
       label: draft.addressTypeName || `Address ${index + 1}`,
-      value: `${draft.addressTypeName || "address"}-${index}`,
+      value: `${draft.addressTypeName || "address"}-${index}`
     } satisfies PurchaseAddressChoice;
   });
 }
 
 export function findPreferredPurchaseAddress(
   choices: PurchaseAddressChoice[],
-  preferred: "Billing" | "Shipping",
+  preferred: "Billing" | "Shipping"
 ) {
-  const exact = choices.find((choice) => choice.draft.addressTypeName.toLowerCase() === preferred.toLowerCase());
+  const exact = choices.find(
+    (choice) => choice.draft.addressTypeName.toLowerCase() === preferred.toLowerCase()
+  );
   if (exact) return exact;
-  const match = choices.find((choice) => choice.draft.addressTypeName.toLowerCase().includes(preferred.toLowerCase()));
+  const match = choices.find((choice) =>
+    choice.draft.addressTypeName.toLowerCase().includes(preferred.toLowerCase())
+  );
   return match ?? choices[0];
 }
 
@@ -97,7 +110,7 @@ export function PurchaseAddressField({
   label,
   onEdit,
   onSelect,
-  selectedValue,
+  selectedValue
 }: {
   choices: PurchaseAddressChoice[];
   description: string;
@@ -110,7 +123,7 @@ export function PurchaseAddressField({
   const options = choices.map((choice) => ({
     description: choice.description || "No address lines saved.",
     label: choice.label,
-    value: choice.value,
+    value: choice.value
   }));
 
   return (
@@ -120,7 +133,9 @@ export function PurchaseAddressField({
           <Label>{label}</Label>
           <WorkspaceLookup
             allowTextValue={false}
-            emptyLabel={disabled ? "Select customer first." : "No saved addresses found on this contact."}
+            emptyLabel={
+              disabled ? "Select customer first." : "No saved addresses found on this contact."
+            }
             options={options}
             placeholder={disabled ? "Search customer first" : `Search ${label.toLowerCase()}`}
             value={selectedValue}
@@ -131,7 +146,14 @@ export function PurchaseAddressField({
             }}
           />
         </label>
-        <Button aria-label={`Edit ${label.toLowerCase()} address`} className="size-11 rounded-md p-0" title={`Edit ${label.toLowerCase()} address`} type="button" variant="outline" onClick={onEdit}>
+        <Button
+          aria-label={`Edit ${label.toLowerCase()} address`}
+          className="size-11 rounded-md p-0"
+          title={`Edit ${label.toLowerCase()} address`}
+          type="button"
+          variant="outline"
+          onClick={onEdit}
+        >
           <Pencil className="size-4" />
         </Button>
       </div>
@@ -147,7 +169,7 @@ export function PurchaseAddressDialog({
   loading,
   onCancel,
   onSave,
-  title,
+  title
 }: {
   draft: PurchaseAddressDraft;
   loading?: boolean;
@@ -157,19 +179,39 @@ export function PurchaseAddressDialog({
 }) {
   const [form, setForm] = useState(draft);
   const [activeTab, setActiveTab] = useState("address");
-  const addressTypesQuery = useQuery({ queryFn: listPurchaseAddressTypes, queryKey: ["billing", "purchase", "lookups", "address-types"] });
-  const countriesQuery = useQuery({ queryFn: () => listPurchaseLocations("countries"), queryKey: ["billing", "purchase", "lookups", "countries"] });
-  const statesQuery = useQuery({ queryFn: () => listPurchaseLocations("states"), queryKey: ["billing", "purchase", "lookups", "states"] });
-  const districtsQuery = useQuery({ queryFn: () => listPurchaseLocations("districts"), queryKey: ["billing", "purchase", "lookups", "districts"] });
-  const citiesQuery = useQuery({ queryFn: () => listPurchaseLocations("cities"), queryKey: ["billing", "purchase", "lookups", "cities"] });
-  const pincodesQuery = useQuery({ queryFn: () => listPurchaseLocations("pincodes"), queryKey: ["billing", "purchase", "lookups", "pincodes"] });
+  const addressTypesQuery = useQuery({
+    queryFn: listPurchaseAddressTypes,
+    queryKey: ["billing", "purchase", "lookups", "address-types"]
+  });
+  const countriesQuery = useQuery({
+    queryFn: () => listPurchaseLocations("countries"),
+    queryKey: ["billing", "purchase", "lookups", "countries"]
+  });
+  const statesQuery = useQuery({
+    queryFn: () => listPurchaseLocations("states"),
+    queryKey: ["billing", "purchase", "lookups", "states"]
+  });
+  const districtsQuery = useQuery({
+    queryFn: () => listPurchaseLocations("districts"),
+    queryKey: ["billing", "purchase", "lookups", "districts"]
+  });
+  const citiesQuery = useQuery({
+    queryFn: () => listPurchaseLocations("cities"),
+    queryKey: ["billing", "purchase", "lookups", "cities"]
+  });
+  const pincodesQuery = useQuery({
+    queryFn: () => listPurchaseLocations("pincodes"),
+    queryKey: ["billing", "purchase", "lookups", "pincodes"]
+  });
 
   useEffect(() => {
     setForm(draft);
   }, [draft]);
 
   useEffect(() => {
-    const india = (countriesQuery.data ?? []).find((record) => record.name.toLowerCase() === "india" || record.code.toUpperCase() === "IN");
+    const india = (countriesQuery.data ?? []).find(
+      (record) => record.name.toLowerCase() === "india" || record.code.toUpperCase() === "IN"
+    );
     if (!india || form.countryId) return;
     setForm((current) => ({ ...current, countryId: india.id, countryName: india.name }));
   }, [countriesQuery.data, form.countryId]);
@@ -179,17 +221,34 @@ export function PurchaseAddressDialog({
       cities: citiesQuery.data ?? [],
       districts: districtsQuery.data ?? [],
       pincodes: pincodesQuery.data ?? [],
-      states: statesQuery.data ?? [],
+      states: statesQuery.data ?? []
     }),
-    [citiesQuery.data, districtsQuery.data, pincodesQuery.data, statesQuery.data],
+    [citiesQuery.data, districtsQuery.data, pincodesQuery.data, statesQuery.data]
   );
 
   async function createLocation(kind: PurchaseLocationKind, name: string) {
-    const dependency = kind === "states" ? form.countryId : kind === "districts" ? form.stateId : kind === "cities" ? form.districtId : form.cityId;
+    const dependency =
+      kind === "states"
+        ? form.countryId
+        : kind === "districts"
+          ? form.stateId
+          : kind === "cities"
+            ? form.districtId
+            : form.cityId;
     if (!dependency) return undefined;
-    const created = await createPurchaseLocation(kind, purchaseAddressLocationPayload(kind, name, form));
-    await ({ cities: citiesQuery, districts: districtsQuery, pincodes: pincodesQuery, states: statesQuery }[kind]).refetch();
-    toast.success(`${kind === "pincodes" ? "Pincode" : kind.slice(0, -1)} saved`, { description: name });
+    const created = await createPurchaseLocation(
+      kind,
+      purchaseAddressLocationPayload(kind, name, form)
+    );
+    await {
+      cities: citiesQuery,
+      districts: districtsQuery,
+      pincodes: pincodesQuery,
+      states: statesQuery
+    }[kind].refetch();
+    toast.success(`${kind === "pincodes" ? "Pincode" : kind.slice(0, -1)} saved`, {
+      description: name
+    });
     return purchaseLocationOption(created);
   }
 
@@ -204,7 +263,9 @@ export function PurchaseAddressDialog({
               createMode="inline"
               emptyLabel="No address types found. Type a value to create it."
               loading={addressTypesQuery.isLoading}
-              options={(addressTypesQuery.data ?? []).filter((record) => record.isActive !== false).map(purchaseLookupOption)}
+              options={(addressTypesQuery.data ?? [])
+                .filter((record) => record.isActive !== false)
+                .map(purchaseLookupOption)}
               placeholder="Search address type"
               value={form.addressTypeName}
               onCreate={async (name) => {
@@ -213,54 +274,80 @@ export function PurchaseAddressDialog({
                 toast.success("Address type saved", { description: name });
                 return purchaseLookupOption(created);
               }}
-              onValueChange={(value, option) => setForm((current) => ({ ...current, addressTypeName: option?.label ?? value }))}
+              onValueChange={(value, option) =>
+                setForm((current) => ({ ...current, addressTypeName: option?.label ?? value }))
+              }
             />
           </label>
-          <AddressEditorField label="Address line 1" value={form.addressLine1} onChange={(addressLine1) => setForm((current) => ({ ...current, addressLine1 }))} />
-          <AddressEditorField label="Address line 2" value={form.addressLine2} onChange={(addressLine2) => setForm((current) => ({ ...current, addressLine2 }))} />
+          <AddressEditorField
+            label="Address line 1"
+            value={form.addressLine1}
+            onChange={(addressLine1) => setForm((current) => ({ ...current, addressLine1 }))}
+          />
+          <AddressEditorField
+            label="Address line 2"
+            value={form.addressLine2}
+            onChange={(addressLine2) => setForm((current) => ({ ...current, addressLine2 }))}
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <AddressLocationLookup
               kind="states"
               label="State"
               loading={statesQuery.isLoading}
-              options={locations.states.filter((record) => !form.countryId || record.countryId === form.countryId)}
+              options={locations.states.filter(
+                (record) => !form.countryId || record.countryId === form.countryId
+              )}
               value={form.stateId || form.stateName}
               onCreate={createLocation}
-              onPick={(record) => setForm((current) => purchaseAddressLocationPatch("states", record, current))}
+              onPick={(record) =>
+                setForm((current) => purchaseAddressLocationPatch("states", record, current))
+              }
             />
             <AddressLocationLookup
               kind="districts"
               label="District"
               loading={districtsQuery.isLoading}
-              options={locations.districts.filter((record) => !form.stateId || record.stateId === form.stateId)}
+              options={locations.districts.filter(
+                (record) => !form.stateId || record.stateId === form.stateId
+              )}
               value={form.districtId || form.districtName}
               onCreate={createLocation}
-              onPick={(record) => setForm((current) => purchaseAddressLocationPatch("districts", record, current))}
+              onPick={(record) =>
+                setForm((current) => purchaseAddressLocationPatch("districts", record, current))
+              }
             />
             <AddressLocationLookup
               kind="cities"
               label="City"
               loading={citiesQuery.isLoading}
-              options={locations.cities.filter((record) => !form.districtId || record.districtId === form.districtId)}
+              options={locations.cities.filter(
+                (record) => !form.districtId || record.districtId === form.districtId
+              )}
               value={form.cityId || form.cityName}
               onCreate={createLocation}
-              onPick={(record) => setForm((current) => purchaseAddressLocationPatch("cities", record, current))}
+              onPick={(record) =>
+                setForm((current) => purchaseAddressLocationPatch("cities", record, current))
+              }
             />
             <AddressLocationLookup
               kind="pincodes"
               label="Pincode"
               loading={pincodesQuery.isLoading}
-              options={locations.pincodes.filter((record) => !form.cityId || record.cityId === form.cityId)}
+              options={locations.pincodes.filter(
+                (record) => !form.cityId || record.cityId === form.cityId
+              )}
               value={form.pincodeId || form.pincodeName}
               onCreate={createLocation}
-              onPick={(record) => setForm((current) => purchaseAddressLocationPatch("pincodes", record, current))}
+              onPick={(record) =>
+                setForm((current) => purchaseAddressLocationPatch("pincodes", record, current))
+              }
             />
           </div>
         </div>
       ),
       label: "Address",
-      value: "address",
-    },
+      value: "address"
+    }
   ];
 
   return (
@@ -274,16 +361,31 @@ export function PurchaseAddressDialog({
       <DialogHeader className="border-b border-border/80 px-5 py-4 pr-12">
         <DialogTitle>{title}</DialogTitle>
       </DialogHeader>
-      <WorkspaceAnimatedTabs contentClassName="h-[26rem] overflow-y-auto px-5 pb-5" listClassName="rounded-none border-x-0 border-t-0 px-5 shadow-none" tabs={tabs} value={activeTab} onValueChange={setActiveTab} />
+      <WorkspaceAnimatedTabs
+        contentClassName="h-[26rem] overflow-y-auto px-5 pb-5"
+        listClassName="rounded-none border-x-0 border-t-0 px-5 shadow-none"
+        tabs={tabs}
+        value={activeTab}
+        onValueChange={setActiveTab}
+      />
       <DialogFooter className="border-t border-border/80 px-5 py-4">
-        <Button disabled={loading} type="button" variant="outline" onClick={onCancel}><X className="size-4" />Cancel</Button>
-        <Button disabled={loading} type="submit"><Save className="size-4" />Save contact</Button>
+        <Button disabled={loading} type="button" variant="outline" onClick={onCancel}>
+          <X className="size-4" />
+          Cancel
+        </Button>
+        <Button disabled={loading} type="submit">
+          <Save className="size-4" />
+          Save contact
+        </Button>
       </DialogFooter>
     </form>
   );
 }
 
-function purchaseAddressDraftFromRecord(address: Record<string, unknown>, fallbackType: string): PurchaseAddressDraft {
+function purchaseAddressDraftFromRecord(
+  address: Record<string, unknown>,
+  fallbackType: string
+): PurchaseAddressDraft {
   return {
     addressLine1: String(address.addressLine1 ?? ""),
     addressLine2: String(address.addressLine2 ?? ""),
@@ -297,7 +399,7 @@ function purchaseAddressDraftFromRecord(address: Record<string, unknown>, fallba
     pincodeId: String(address.pincodeId ?? ""),
     pincodeName: String(address.pincodeName ?? ""),
     stateId: String(address.stateId ?? ""),
-    stateName: String(address.stateName ?? ""),
+    stateName: String(address.stateName ?? "")
   };
 }
 
@@ -306,11 +408,23 @@ function purchaseLookupOption(record: PurchaseLookupRecord): PurchaseLookupOptio
   return { label, record, value: label };
 }
 
-function AddressEditorField({ label, onChange, value }: { label: string; onChange: (value: string) => void; value: string }) {
+function AddressEditorField({
+  label,
+  onChange,
+  value
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
   return (
     <label className="grid gap-2">
       <Label>{label}</Label>
-      <Input className="h-11 rounded-md" value={value} onChange={(event) => onChange(event.target.value)} />
+      <Input
+        className="h-11 rounded-md"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
     </label>
   );
 }
@@ -322,7 +436,7 @@ function AddressLocationLookup({
   onCreate,
   onPick,
   options,
-  value,
+  value
 }: {
   kind: PurchaseLocationKind;
   label: string;
@@ -341,12 +455,16 @@ function AddressLocationLookup({
         createMode="inline"
         emptyLabel={`No ${label.toLowerCase()} found. Type a value to create it.`}
         loading={loading}
-        options={options.filter((record) => record.status !== "inactive").map(purchaseLocationOption)}
+        options={options
+          .filter((record) => record.status !== "inactive")
+          .map(purchaseLocationOption)}
         placeholder={`Search ${label.toLowerCase()}`}
         value={value}
         onCreate={(name) => onCreate(kind, name)}
         onValueChange={(selected, option) => {
-          const record = ((option as PurchaseLookupOption | undefined)?.record as PurchaseLocationRecord | undefined) ?? options.find((item) => item.id === selected);
+          const record =
+            ((option as PurchaseLookupOption | undefined)?.record as
+              PurchaseLocationRecord | undefined) ?? options.find((item) => item.id === selected);
           if (record) onPick(record);
         }}
       />
@@ -359,11 +477,15 @@ function purchaseLocationOption(record: PurchaseLocationRecord): PurchaseLookupO
   return {
     label,
     record,
-    value: record.id,
+    value: record.id
   };
 }
 
-function purchaseAddressLocationPayload(kind: PurchaseLocationKind, name: string, form: PurchaseAddressDraft) {
+function purchaseAddressLocationPayload(
+  kind: PurchaseLocationKind,
+  name: string,
+  form: PurchaseAddressDraft
+) {
   const trimmedName = name.trim();
   const payload: Record<string, unknown> = {
     code: purchaseAddressLocationCode(trimmedName),
@@ -371,7 +493,7 @@ function purchaseAddressLocationPayload(kind: PurchaseLocationKind, name: string
     countryName: form.countryName || "India",
     name: trimmedName,
     sortOrder: 1000,
-    status: "active",
+    status: "active"
   };
   if (kind !== "states") {
     payload.stateId = form.stateId || null;
@@ -390,7 +512,11 @@ function purchaseAddressLocationPayload(kind: PurchaseLocationKind, name: string
   return payload;
 }
 
-function purchaseAddressLocationPatch(kind: PurchaseLocationKind, record: PurchaseLocationRecord, form: PurchaseAddressDraft): PurchaseAddressDraft {
+function purchaseAddressLocationPatch(
+  kind: PurchaseLocationKind,
+  record: PurchaseLocationRecord,
+  form: PurchaseAddressDraft
+): PurchaseAddressDraft {
   const label = record.pincode || record.name;
   const next = { ...form };
   if (kind === "states") {
@@ -430,5 +556,11 @@ function purchaseAddressLocationPatch(kind: PurchaseLocationKind, record: Purcha
 }
 
 function purchaseAddressLocationCode(value: string) {
-  return value.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24) || "LOCATION";
+  return (
+    value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 24) || "LOCATION"
+  );
 }

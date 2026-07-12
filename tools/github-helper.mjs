@@ -103,7 +103,12 @@ function quotePowerShellString(value) {
 }
 
 function renderReviewBox({ fileCount, subject, version }) {
-  const rows = ["GitHub Commit Review", `Version: ${version}`, `Subject: ${subject}`, `Files: ${fileCount}`];
+  const rows = [
+    "GitHub Commit Review",
+    `Version: ${version}`,
+    `Subject: ${subject}`,
+    `Files: ${fileCount}`
+  ];
   const width = Math.max(...rows.map((row) => row.length)) + 4;
   const border = `+${"-".repeat(width)}+`;
   const lines = rows.map((row) => `| ${row.padEnd(width - 2)} |`);
@@ -192,7 +197,12 @@ async function main() {
 }
 
 function checkAndPull() {
-  const upstream = runGitQuiet(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"]);
+  const upstream = runGitQuiet([
+    "rev-parse",
+    "--abbrev-ref",
+    "--symbolic-full-name",
+    "@{upstream}"
+  ]);
   if (!upstream) {
     console.log("\n  No upstream branch found. Skipping pull.\n");
     return;

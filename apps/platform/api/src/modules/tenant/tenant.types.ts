@@ -24,7 +24,10 @@ export type Tenant = {
   uuid: string;
 };
 
-export type TenantSavePayload = Omit<Tenant, "id" | "primaryDomain" | "storagePrivateRoot" | "storagePublicRoot" | "storageRoot" | "uuid"> & {
+export type TenantSavePayload = Omit<
+  Tenant,
+  "id" | "primaryDomain" | "storagePrivateRoot" | "storagePublicRoot" | "storageRoot" | "uuid"
+> & {
   primaryDomain?: string;
   storagePrivateRoot?: string;
   storagePublicRoot?: string;

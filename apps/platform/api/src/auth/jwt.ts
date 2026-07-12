@@ -19,7 +19,9 @@ export type AuthTokenPayload = {
   userType: AuthUserType;
 };
 
-export function signAuthToken(input: Omit<AuthTokenPayload, "aud" | "exp" | "iat" | "iss" | "jti" | "sessionIssuedAt">) {
+export function signAuthToken(
+  input: Omit<AuthTokenPayload, "aud" | "exp" | "iat" | "iss" | "jti" | "sessionIssuedAt">
+) {
   const now = Math.floor(Date.now() / 1000);
   const payload: AuthTokenPayload = {
     ...input,
@@ -48,7 +50,11 @@ export function verifyAuthToken(token: string): AuthTokenPayload | null {
   try {
     const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as AuthTokenPayload;
     const now = Math.floor(Date.now() / 1000);
-    if (payload.iss !== "codexsun-platform-api" || payload.aud !== "codexsun-platform" || payload.exp <= now) {
+    if (
+      payload.iss !== "codexsun-platform-api" ||
+      payload.aud !== "codexsun-platform" ||
+      payload.exp <= now
+    ) {
       return null;
     }
     return payload;

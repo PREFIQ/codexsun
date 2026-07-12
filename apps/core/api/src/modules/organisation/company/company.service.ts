@@ -1,11 +1,20 @@
-import { MasterService } from "../../master/master.service.js";
-import { companyDefinition } from "./company.definition.js";
 import { CompanyRepository } from "./company.repository.js";
-import type { MasterSaveInput } from "../../master/foundation/master.types.js";
-export class CompanyService extends MasterService {
-  private readonly companyRepository = new CompanyRepository();
-  constructor() { super(companyDefinition); }
-  create(tenantId: string, input: MasterSaveInput) { return this.companyRepository.create(tenantId, input); }
-  update(tenantId: string, id: string, input: MasterSaveInput) { return this.companyRepository.update(tenantId, id, input); }
-  listIndustries() { return this.companyRepository.listIndustries(); }
+import type { CompanySaveInput } from "./company.types.js";
+export class CompanyService {
+  constructor(private readonly repository = new CompanyRepository()) {}
+  list(search = "") {
+    return this.repository.list(search);
+  }
+  find(id: string) {
+    return this.repository.find(id);
+  }
+  create(input: CompanySaveInput) {
+    return this.repository.create(input);
+  }
+  update(id: string, input: CompanySaveInput) {
+    return this.repository.update(id, input);
+  }
+  listIndustries() {
+    return this.repository.listIndustries();
+  }
 }

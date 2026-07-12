@@ -1,5 +1,9 @@
 import { ProjectManagerJsonStore } from "./project-manager.store.js";
-import type { ProjectManagerKind, ProjectManagerRegistrySavePayload, ProjectManagerSavePayload } from "./project-manager.types.js";
+import type {
+  ProjectManagerKind,
+  ProjectManagerRegistrySavePayload,
+  ProjectManagerSavePayload
+} from "./project-manager.types.js";
 
 export class ProjectManagerService {
   constructor(private readonly store = new ProjectManagerJsonStore()) {}

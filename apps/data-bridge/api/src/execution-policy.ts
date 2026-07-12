@@ -34,6 +34,7 @@ export function validateConflictDecision(input: Partial<DataBridgeConflictDecisi
   if (!input.actor?.trim()) return "Decision actor is required.";
   if (!input.reason?.trim()) return "Decision reason is required.";
   if (!input.decidedAt?.trim()) return "Decision timestamp is required.";
-  if (!input.sourceRecordRef?.trim() || !input.targetRecordRef?.trim()) return "Source and Target record references are required.";
+  if (!input.sourceRecordRef?.trim() || !input.targetRecordRef?.trim())
+    return "Source and Target record references are required.";
   return null;
 }

@@ -7,7 +7,9 @@ import tailwindcss from "@tailwindcss/vite";
 import { requireEnvNumber } from "@codexsun/framework/env";
 
 const configDir = fileURLToPath(new URL(".", import.meta.url));
-const rootPackage = JSON.parse(readFileSync(resolve(configDir, "../../../package.json"), "utf8")) as { version: string };
+const rootPackage = JSON.parse(
+  readFileSync(resolve(configDir, "../../../package.json"), "utf8")
+) as { version: string };
 
 export default defineConfig(() => ({
   define: { __APP_VERSION__: JSON.stringify(rootPackage.version) },

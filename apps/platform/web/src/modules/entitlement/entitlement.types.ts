@@ -15,4 +15,7 @@ export type Entitlement = {
   uuid: string;
 };
 
-export type EntitlementSavePayload = Omit<Entitlement, "appLabel" | "id" | "planName" | "tenantName" | "uuid">;
+export type EntitlementSavePayload = Omit<
+  Entitlement,
+  "appLabel" | "id" | "planName" | "tenantName" | "uuid"
+>;

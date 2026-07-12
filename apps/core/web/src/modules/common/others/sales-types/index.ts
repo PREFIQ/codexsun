@@ -1,2 +1,2 @@
-export * from "./sales-types.definition";
+export * from "./sales-types.types";
 export * from "./sales-types.workspace";

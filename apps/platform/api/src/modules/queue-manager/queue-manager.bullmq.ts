@@ -23,7 +23,10 @@ export async function publishBullMqJob(job: QueueJobRecord) {
   await queue.add(job.jobName, { queueJobId: job.id, ...job.payload }, options);
 }
 
-export function startBullMqWorker(queueName: string, run: (queueJobId: number) => Promise<unknown>) {
+export function startBullMqWorker(
+  queueName: string,
+  run: (queueJobId: number) => Promise<unknown>
+) {
   if (!bullMqAvailable() || workers.has(queueName)) return null;
   const worker = new Worker(
     queueName,

@@ -62,4 +62,3 @@ Load tests should cover:
 - Queue processing.
 - Large report generation.
 - Offline sync after long disconnection.
-

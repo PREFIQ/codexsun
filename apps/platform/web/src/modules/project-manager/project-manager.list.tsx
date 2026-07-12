@@ -20,7 +20,8 @@ export function ProjectManagerList({
   onEdit: (record: ProjectManagerRecord) => void;
   onRestore: (record: ProjectManagerRecord) => void;
 }) {
-  if (!records.length) return <WorkspaceTableEmptyState>No project records found.</WorkspaceTableEmptyState>;
+  if (!records.length)
+    return <WorkspaceTableEmptyState>No project records found.</WorkspaceTableEmptyState>;
   return (
     <div className="overflow-x-auto rounded-md border bg-card shadow-sm">
       <table className="w-full min-w-[980px] border-collapse text-sm">
@@ -40,28 +41,59 @@ export function ProjectManagerList({
               <td className="px-4 py-3">
                 <div className="font-medium">{record.title}</div>
                 <div className="font-mono text-xs text-muted-foreground">{record.key}</div>
-                {record.description ? <div className="mt-1 max-w-xl text-xs text-muted-foreground">{record.description}</div> : null}
+                {record.description ? (
+                  <div className="mt-1 max-w-xl text-xs text-muted-foreground">
+                    {record.description}
+                  </div>
+                ) : null}
               </td>
               <td className="px-4 py-3">
-                <StatusBadge tone={record.active ? statusTone(record.status) : "neutral"}>{record.active ? record.status : "inactive"}</StatusBadge>
+                <StatusBadge tone={record.active ? statusTone(record.status) : "neutral"}>
+                  {record.active ? record.status : "inactive"}
+                </StatusBadge>
                 <div className="mt-2 text-xs text-muted-foreground">{record.priority}</div>
               </td>
-              <td className="px-4 py-3 text-muted-foreground">{record.assignee || record.moduleKey || "-"}</td>
-              <td className="px-4 py-3">
-                <div className="font-mono text-xs text-muted-foreground">{record.referenceId || "-"}</div>
-                <div className="text-xs text-muted-foreground">{record.referenceType || record.type}</div>
+              <td className="px-4 py-3 text-muted-foreground">
+                {record.assignee || record.moduleKey || "-"}
               </td>
-              <td className="px-4 py-3 text-muted-foreground">{formatDistanceToNow(new Date(record.updatedAt), { addSuffix: true })}</td>
+              <td className="px-4 py-3">
+                <div className="font-mono text-xs text-muted-foreground">
+                  {record.referenceId || "-"}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {record.referenceType || record.type}
+                </div>
+              </td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {formatDistanceToNow(new Date(record.updatedAt), { addSuffix: true })}
+              </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-2">
-                  {onDrill ? <Button size="sm" variant="outline" onClick={() => onDrill(record)}><GitBranchIcon className="size-4" />Drill</Button> : null}
-                  <Button size="sm" variant="outline" onClick={() => onEdit(record)}><PencilIcon className="size-4" />Edit</Button>
+                  {onDrill ? (
+                    <Button size="sm" variant="outline" onClick={() => onDrill(record)}>
+                      <GitBranchIcon className="size-4" />
+                      Drill
+                    </Button>
+                  ) : null}
+                  <Button size="sm" variant="outline" onClick={() => onEdit(record)}>
+                    <PencilIcon className="size-4" />
+                    Edit
+                  </Button>
                   {record.active ? (
-                    <Button size="sm" variant="outline" onClick={() => onDeactivate(record)}><BanIcon className="size-4" />Off</Button>
+                    <Button size="sm" variant="outline" onClick={() => onDeactivate(record)}>
+                      <BanIcon className="size-4" />
+                      Off
+                    </Button>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => onRestore(record)}><ArchiveRestoreIcon className="size-4" />Restore</Button>
+                    <Button size="sm" variant="outline" onClick={() => onRestore(record)}>
+                      <ArchiveRestoreIcon className="size-4" />
+                      Restore
+                    </Button>
                   )}
-                  <Button size="sm" variant="outline" onClick={() => onDelete(record)}><Trash2Icon className="size-4" />Delete</Button>
+                  <Button size="sm" variant="outline" onClick={() => onDelete(record)}>
+                    <Trash2Icon className="size-4" />
+                    Delete
+                  </Button>
                 </div>
               </td>
             </tr>

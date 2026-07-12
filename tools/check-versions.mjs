@@ -37,7 +37,9 @@ function checkVersions(rootDir) {
 
     const rootLock = lock.packages?.[""];
     if (rootLock?.version && String(rootLock.version) !== rootVersion) {
-      failures.push(`package-lock root package version is ${rootLock.version}; expected ${rootVersion}.`);
+      failures.push(
+        `package-lock root package version is ${rootLock.version}; expected ${rootVersion}.`
+      );
     }
   }
 

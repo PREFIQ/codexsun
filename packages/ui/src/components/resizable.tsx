@@ -1,35 +1,32 @@
-"use client"
+"use client";
 
-import { GripVertical } from "lucide-react"
+import { GripVertical } from "lucide-react";
 import {
   Group as ResizablePrimitiveGroup,
   Panel as ResizablePrimitivePanel,
-  Separator as ResizablePrimitiveSeparator,
-} from "react-resizable-panels"
+  Separator as ResizablePrimitiveSeparator
+} from "react-resizable-panels";
 
-import { cn } from "../lib/utils"
+import { cn } from "../lib/utils";
 
 const ResizablePanelGroup = ({
   className,
   ...props
 }: React.ComponentProps<typeof ResizablePrimitiveGroup>) => (
   <ResizablePrimitiveGroup
-    className={cn(
-      "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
-      className
-    )}
+    className={cn("flex h-full w-full data-[panel-group-direction=vertical]:flex-col", className)}
     {...props}
   />
-)
+);
 
-const ResizablePanel = ResizablePrimitivePanel
+const ResizablePanel = ResizablePrimitivePanel;
 
 const ResizableHandle = ({
   withHandle,
   className,
   ...props
 }: React.ComponentProps<typeof ResizablePrimitiveSeparator> & {
-  withHandle?: boolean
+  withHandle?: boolean;
 }) => (
   <ResizablePrimitiveSeparator
     className={cn(
@@ -44,6 +41,6 @@ const ResizableHandle = ({
       </div>
     )}
   </ResizablePrimitiveSeparator>
-)
+);
 
-export { ResizablePanelGroup, ResizablePanel, ResizableHandle }
+export { ResizablePanelGroup, ResizablePanel, ResizableHandle };

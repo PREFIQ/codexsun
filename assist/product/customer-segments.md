@@ -96,4 +96,3 @@ Use progressive disclosure:
 - Module activation based on subscription.
 - Industry templates for faster setup.
 - Enterprise controls available when enabled.
-

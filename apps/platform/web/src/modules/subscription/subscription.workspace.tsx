@@ -26,7 +26,11 @@ export function SubscriptionWorkspace() {
 
   async function createPlan(name: string) {
     const trimmed = name.trim();
-    const code = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "plan";
+    const code =
+      trimmed
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "plan";
     const plan = await planMutations.create.mutateAsync({
       annualPrice: 0,
       code,
@@ -40,7 +44,10 @@ export function SubscriptionWorkspace() {
     return { label: plan.name, value: String(plan.id) };
   }
 
-  const save = (value: Omit<Subscription, "id" | "uuid">, action: (payload: SubscriptionSavePayload) => void) => {
+  const save = (
+    value: Omit<Subscription, "id" | "uuid">,
+    action: (payload: SubscriptionSavePayload) => void
+  ) => {
     const payload = {
       billingCycle: value.billingCycle,
       endsOn: value.endsOn || null,
@@ -62,8 +69,12 @@ export function SubscriptionWorkspace() {
       initialValue={empty as Omit<Subscription, "id" | "uuid">}
       loading={query.isLoading || tenants.isLoading || plans.isLoading}
       records={query.data ?? []}
-      saving={mutations.create.isPending || mutations.update.isPending || planMutations.create.isPending}
-      saveError={(mutations.create.error ?? mutations.update.error ?? planMutations.create.error)?.message}
+      saving={
+        mutations.create.isPending || mutations.update.isPending || planMutations.create.isPending
+      }
+      saveError={
+        (mutations.create.error ?? mutations.update.error ?? planMutations.create.error)?.message
+      }
       singular="Subscription"
       technicalName="page.subscription.list"
       title="Subscriptions"

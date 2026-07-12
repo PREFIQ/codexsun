@@ -1,99 +1,940 @@
 import { useMemo, useState } from "react";
 import { Button, Input, StatusBadge } from "@codexsun/ui";
-import { ArmchairIcon, Clock3Icon, ImageIcon, PencilIcon, PlusIcon, SearchIcon, Settings2Icon, UploadCloudIcon, UsersIcon, XIcon } from "lucide-react";
+import {
+  ArmchairIcon,
+  Clock3Icon,
+  ImageIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  Settings2Icon,
+  UploadCloudIcon,
+  UsersIcon,
+  XIcon
+} from "lucide-react";
 import type { KitchenServePage, ServiceOrder, ServiceOrderStatus } from "./service-orders.types";
 
-type TableRow = { id: number; label: string; area: string; seats: number; status: "Available" | "Occupied" | "Reserved" | "Cleaning" };
-type MenuRow = { id: number; name: string; category: string; price: number; station: string; available: boolean; emoji: string; image?: string; description?: string };
+type TableRow = {
+  id: number;
+  label: string;
+  area: string;
+  seats: number;
+  status: "Available" | "Occupied" | "Reserved" | "Cleaning";
+};
+type MenuRow = {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  station: string;
+  available: boolean;
+  emoji: string;
+  image?: string;
+  description?: string;
+};
 const initialTables: TableRow[] = [
-  { id: 1, label: "T01", area: "Main Hall", seats: 4, status: "Available" }, { id: 2, label: "T02", area: "Main Hall", seats: 4, status: "Occupied" },
-  { id: 3, label: "T03", area: "Main Hall", seats: 2, status: "Reserved" }, { id: 4, label: "T04", area: "Main Hall", seats: 6, status: "Cleaning" },
-  { id: 5, label: "P01", area: "Patio", seats: 4, status: "Available" }, { id: 6, label: "P02", area: "Patio", seats: 2, status: "Occupied" },
-  { id: 7, label: "F01", area: "Family Room", seats: 8, status: "Available" }, { id: 8, label: "B01", area: "Balcony", seats: 2, status: "Reserved" }
+  { id: 1, label: "T01", area: "Main Hall", seats: 4, status: "Available" },
+  { id: 2, label: "T02", area: "Main Hall", seats: 4, status: "Occupied" },
+  { id: 3, label: "T03", area: "Main Hall", seats: 2, status: "Reserved" },
+  { id: 4, label: "T04", area: "Main Hall", seats: 6, status: "Cleaning" },
+  { id: 5, label: "P01", area: "Patio", seats: 4, status: "Available" },
+  { id: 6, label: "P02", area: "Patio", seats: 2, status: "Occupied" },
+  { id: 7, label: "F01", area: "Family Room", seats: 8, status: "Available" },
+  { id: 8, label: "B01", area: "Balcony", seats: 2, status: "Reserved" }
 ];
 const initialMenu: MenuRow[] = [
-  { id: 1, name: "Masala Dosa", category: "Breakfast", price: 140, station: "South Indian", available: true, emoji: "🥞" }, { id: 2, name: "Idli Sambar", category: "Breakfast", price: 110, station: "South Indian", available: true, emoji: "🍚" },
-  { id: 3, name: "Paneer Tikka", category: "Starters", price: 280, station: "Tandoor", available: true, emoji: "🍢" }, { id: 4, name: "Chilli Chicken", category: "Starters", price: 320, station: "Wok", available: true, emoji: "🍗" },
-  { id: 5, name: "Butter Chicken", category: "Main Course", price: 390, station: "Main Kitchen", available: true, emoji: "🍛" }, { id: 6, name: "Paneer Butter Masala", category: "Main Course", price: 330, station: "Main Kitchen", available: true, emoji: "🥘" },
-  { id: 7, name: "Vegetable Biryani", category: "Main Course", price: 260, station: "Main Kitchen", available: true, emoji: "🍲" }, { id: 8, name: "Garlic Naan", category: "Breads", price: 75, station: "Tandoor", available: true, emoji: "🫓" },
-  { id: 9, name: "Fresh Lime Soda", category: "Beverages", price: 90, station: "Beverage", available: true, emoji: "🥤" }, { id: 10, name: "Filter Coffee", category: "Beverages", price: 80, station: "Beverage", available: true, emoji: "☕" },
-  { id: 11, name: "Gulab Jamun", category: "Desserts", price: 120, station: "Dessert", available: true, emoji: "🍮" }, { id: 12, name: "Pistachio Kulfi", category: "Desserts", price: 150, station: "Dessert", available: false, emoji: "🍨" }
+  {
+    id: 1,
+    name: "Masala Dosa",
+    category: "Breakfast",
+    price: 140,
+    station: "South Indian",
+    available: true,
+    emoji: "🥞"
+  },
+  {
+    id: 2,
+    name: "Idli Sambar",
+    category: "Breakfast",
+    price: 110,
+    station: "South Indian",
+    available: true,
+    emoji: "🍚"
+  },
+  {
+    id: 3,
+    name: "Paneer Tikka",
+    category: "Starters",
+    price: 280,
+    station: "Tandoor",
+    available: true,
+    emoji: "🍢"
+  },
+  {
+    id: 4,
+    name: "Chilli Chicken",
+    category: "Starters",
+    price: 320,
+    station: "Wok",
+    available: true,
+    emoji: "🍗"
+  },
+  {
+    id: 5,
+    name: "Butter Chicken",
+    category: "Main Course",
+    price: 390,
+    station: "Main Kitchen",
+    available: true,
+    emoji: "🍛"
+  },
+  {
+    id: 6,
+    name: "Paneer Butter Masala",
+    category: "Main Course",
+    price: 330,
+    station: "Main Kitchen",
+    available: true,
+    emoji: "🥘"
+  },
+  {
+    id: 7,
+    name: "Vegetable Biryani",
+    category: "Main Course",
+    price: 260,
+    station: "Main Kitchen",
+    available: true,
+    emoji: "🍲"
+  },
+  {
+    id: 8,
+    name: "Garlic Naan",
+    category: "Breads",
+    price: 75,
+    station: "Tandoor",
+    available: true,
+    emoji: "🫓"
+  },
+  {
+    id: 9,
+    name: "Fresh Lime Soda",
+    category: "Beverages",
+    price: 90,
+    station: "Beverage",
+    available: true,
+    emoji: "🥤"
+  },
+  {
+    id: 10,
+    name: "Filter Coffee",
+    category: "Beverages",
+    price: 80,
+    station: "Beverage",
+    available: true,
+    emoji: "☕"
+  },
+  {
+    id: 11,
+    name: "Gulab Jamun",
+    category: "Desserts",
+    price: 120,
+    station: "Dessert",
+    available: true,
+    emoji: "🍮"
+  },
+  {
+    id: 12,
+    name: "Pistachio Kulfi",
+    category: "Desserts",
+    price: 150,
+    station: "Dessert",
+    available: false,
+    emoji: "🍨"
+  }
 ];
 
 export function FloorTablesPanel() {
-  const [rows, setRows] = useState(initialTables); const [area, setArea] = useState("All"); const [showForm, setShowForm] = useState(false);
-  const [label, setLabel] = useState(""); const [newArea, setNewArea] = useState("Main Hall"); const [seats, setSeats] = useState("4");
+  const [rows, setRows] = useState(initialTables);
+  const [area, setArea] = useState("All");
+  const [showForm, setShowForm] = useState(false);
+  const [label, setLabel] = useState("");
+  const [newArea, setNewArea] = useState("Main Hall");
+  const [seats, setSeats] = useState("4");
   const filtered = area === "All" ? rows : rows.filter((row) => row.area === area);
-  const add = () => { if (!label.trim()) return; setRows((all) => [...all, { id: Date.now(), label: label.trim(), area: newArea, seats: Number(seats), status: "Available" }]); setLabel(""); setShowForm(false); };
-  return <div className="space-y-4"><Stats items={[["Total tables", rows.length, ArmchairIcon], ["Available", rows.filter(r => r.status === "Available").length, Clock3Icon], ["Guests seated", rows.filter(r => r.status === "Occupied").reduce((n, r) => n + r.seats, 0), UsersIcon]]} />
-    <Panel title="Floor & table list" action={<Button onClick={() => setShowForm(!showForm)}><PlusIcon className="mr-2 size-4" />Add table</Button>}>
-      {showForm && <FormBar><Input placeholder="Table label" value={label} onChange={e => setLabel(e.target.value)} /><Select value={newArea} onChange={setNewArea} options={["Main Hall", "Patio", "Family Room", "Balcony"]} /><Input type="number" min="1" placeholder="Seats" value={seats} onChange={e => setSeats(e.target.value)} /><Button onClick={add}>Save table</Button></FormBar>}
-      <div className="flex gap-2 border-b p-4">{["All", "Main Hall", "Patio", "Family Room", "Balcony"].map(item => <Filter key={item} active={area === item} onClick={() => setArea(item)}>{item}</Filter>)}</div>
-      <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">{filtered.map(row => <div key={row.id} className="rounded-xl border p-4"><div className="flex justify-between"><span className="grid size-11 place-items-center rounded-lg bg-orange-50 font-bold text-orange-700">{row.label}</span><StatusBadge tone={row.status === "Available" ? "green" : row.status === "Occupied" ? "red" : "amber"}>{row.status}</StatusBadge></div><p className="mt-4 font-medium">{row.area}</p><p className="text-sm text-muted-foreground">{row.seats} seats</p><select className="mt-3 w-full rounded-md border bg-background p-2 text-sm" value={row.status} onChange={e => setRows(all => all.map(item => item.id === row.id ? {...item, status: e.target.value as TableRow["status"]} : item))}>{["Available", "Occupied", "Reserved", "Cleaning"].map(s => <option key={s}>{s}</option>)}</select></div>)}</div>
-    </Panel></div>;
+  const add = () => {
+    if (!label.trim()) return;
+    setRows((all) => [
+      ...all,
+      {
+        id: Date.now(),
+        label: label.trim(),
+        area: newArea,
+        seats: Number(seats),
+        status: "Available"
+      }
+    ]);
+    setLabel("");
+    setShowForm(false);
+  };
+  return (
+    <div className="space-y-4">
+      <Stats
+        items={[
+          ["Total tables", rows.length, ArmchairIcon],
+          ["Available", rows.filter((r) => r.status === "Available").length, Clock3Icon],
+          [
+            "Guests seated",
+            rows.filter((r) => r.status === "Occupied").reduce((n, r) => n + r.seats, 0),
+            UsersIcon
+          ]
+        ]}
+      />
+      <Panel
+        title="Floor & table list"
+        action={
+          <Button onClick={() => setShowForm(!showForm)}>
+            <PlusIcon className="mr-2 size-4" />
+            Add table
+          </Button>
+        }
+      >
+        {showForm && (
+          <FormBar>
+            <Input
+              placeholder="Table label"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+            />
+            <Select
+              value={newArea}
+              onChange={setNewArea}
+              options={["Main Hall", "Patio", "Family Room", "Balcony"]}
+            />
+            <Input
+              type="number"
+              min="1"
+              placeholder="Seats"
+              value={seats}
+              onChange={(e) => setSeats(e.target.value)}
+            />
+            <Button onClick={add}>Save table</Button>
+          </FormBar>
+        )}
+        <div className="flex gap-2 border-b p-4">
+          {["All", "Main Hall", "Patio", "Family Room", "Balcony"].map((item) => (
+            <Filter key={item} active={area === item} onClick={() => setArea(item)}>
+              {item}
+            </Filter>
+          ))}
+        </div>
+        <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          {filtered.map((row) => (
+            <div key={row.id} className="rounded-xl border p-4">
+              <div className="flex justify-between">
+                <span className="grid size-11 place-items-center rounded-lg bg-orange-50 font-bold text-orange-700">
+                  {row.label}
+                </span>
+                <StatusBadge
+                  tone={
+                    row.status === "Available"
+                      ? "green"
+                      : row.status === "Occupied"
+                        ? "red"
+                        : "amber"
+                  }
+                >
+                  {row.status}
+                </StatusBadge>
+              </div>
+              <p className="mt-4 font-medium">{row.area}</p>
+              <p className="text-sm text-muted-foreground">{row.seats} seats</p>
+              <select
+                className="mt-3 w-full rounded-md border bg-background p-2 text-sm"
+                value={row.status}
+                onChange={(e) =>
+                  setRows((all) =>
+                    all.map((item) =>
+                      item.id === row.id
+                        ? { ...item, status: e.target.value as TableRow["status"] }
+                        : item
+                    )
+                  )
+                }
+              >
+                {["Available", "Occupied", "Reserved", "Cleaning"].map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  );
 }
 
 export function MenuPanel() {
-  const [rows, setRows] = useState(initialMenu); const [search, setSearch] = useState(""); const [category, setCategory] = useState("All"); const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState(""); const [price, setPrice] = useState(""); const [newCategory, setNewCategory] = useState("Main Course"); const [station, setStation] = useState("Main Kitchen");
-  const [description, setDescription] = useState(""); const [foodType, setFoodType] = useState("Vegetarian"); const [prepTime, setPrepTime] = useState("15"); const [tax, setTax] = useState("5"); const [image, setImage] = useState<string>(); const [dragging, setDragging] = useState(false);
-  const visible = useMemo(() => rows.filter(r => (category === "All" || r.category === category) && r.name.toLowerCase().includes(search.toLowerCase())), [rows, category, search]);
-  const loadImage = (file?: File) => { if (!file || !file.type.startsWith("image/")) return; if (file.size > 5 * 1024 * 1024) return; const reader = new FileReader(); reader.onload = () => setImage(String(reader.result)); reader.readAsDataURL(file); };
-  const close = () => { setShowForm(false); setName(""); setPrice(""); setDescription(""); setImage(undefined); };
-  const add = () => { if (!name.trim() || !Number(price)) return; setRows(all => [...all, { id: Date.now(), name: name.trim(), price: Number(price), category: newCategory, station, available: true, emoji: foodType === "Vegetarian" ? "🥗" : "🍗", ...(image ? { image } : {}), ...(description ? { description } : {}) }]); close(); };
-  return <Panel title="Menu catalog" action={<Button onClick={() => setShowForm(true)}><PlusIcon className="mr-2 size-4" />Add product</Button>}>
-    {showForm && <div className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4" role="dialog" aria-modal="true" aria-label="Add menu product" onMouseDown={e => { if (e.target === e.currentTarget) close(); }}>
-      <div className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-card shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-start justify-between border-b bg-card px-6 py-5"><div><h2 className="text-xl font-semibold">Add menu item</h2><p className="mt-1 text-sm text-muted-foreground">Create a complete product for waiter and kitchen desks.</p></div><button className="rounded-full p-2 hover:bg-muted" onClick={close} aria-label="Close"><XIcon className="size-5" /></button></div>
-        <div className="grid gap-6 p-6 md:grid-cols-[240px_1fr]">
-          <div><p className="mb-2 text-sm font-medium">Food image</p><label onDragOver={e => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={e => { e.preventDefault(); setDragging(false); loadImage(e.dataTransfer.files[0]); }} className={`relative grid aspect-square cursor-pointer place-items-center overflow-hidden rounded-xl border-2 border-dashed text-center transition ${dragging ? "border-orange-500 bg-orange-50" : "border-muted-foreground/25 hover:border-orange-400"}`}>
-            {image ? <><img src={image} alt="Product preview" className="size-full object-cover" /><button type="button" className="absolute right-2 top-2 rounded-full bg-black/70 p-1.5 text-white" onClick={e => { e.preventDefault(); setImage(undefined); }}><XIcon className="size-4" /></button></> : <div className="p-5"><span className="mx-auto grid size-12 place-items-center rounded-full bg-orange-50 text-orange-700"><UploadCloudIcon className="size-6" /></span><p className="mt-3 text-sm font-semibold">Drop food image here</p><p className="mt-1 text-xs text-muted-foreground">or click to browse</p><p className="mt-3 text-[11px] text-muted-foreground">PNG, JPG or WebP · max 5 MB</p></div>}<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={e => loadImage(e.target.files?.[0])} /></label>
-            {!image && <div className="mt-3 flex items-center gap-2 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground"><ImageIcon className="size-4 shrink-0" />Square images look best in the waiter catalog.</div>}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2"><Field label="Item name *"><Input autoFocus placeholder="e.g. Chicken Biryani" value={name} onChange={e => setName(e.target.value)} /></Field><Field label="Category *"><Select value={newCategory} onChange={setNewCategory} options={["Breakfast", "Starters", "Main Course", "Breads", "Beverages", "Desserts"]} /></Field>
-            <Field label="Selling price *"><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">₹</span><Input className="pl-7" min="0" type="number" placeholder="0.00" value={price} onChange={e => setPrice(e.target.value)} /></div></Field><Field label="Food type"><Select value={foodType} onChange={setFoodType} options={["Vegetarian", "Non-vegetarian", "Egg", "Vegan"]} /></Field>
-            <Field label="Kitchen station *"><Select value={station} onChange={setStation} options={["Main Kitchen", "South Indian", "Tandoor", "Wok", "Beverage", "Dessert"]} /></Field><Field label="Preparation time"><div className="relative"><Input min="1" type="number" value={prepTime} onChange={e => setPrepTime(e.target.value)} /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">minutes</span></div></Field>
-            <Field label="Tax rate"><Select value={tax} onChange={setTax} options={["0", "5", "12", "18"]} /></Field><Field label="Availability"><Select value="Available" onChange={() => {}} options={["Available", "Unavailable"]} /></Field>
-            <label className="grid gap-1.5 text-sm font-medium sm:col-span-2">Description<textarea className="min-h-24 resize-none rounded-md border bg-background p-3 text-sm" maxLength={300} placeholder="Ingredients, portion, spice level, or serving notes…" value={description} onChange={e => setDescription(e.target.value)} /><span className="text-right text-[11px] font-normal text-muted-foreground">{description.length}/300</span></label>
+  const [rows, setRows] = useState(initialMenu);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All");
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [newCategory, setNewCategory] = useState("Main Course");
+  const [station, setStation] = useState("Main Kitchen");
+  const [description, setDescription] = useState("");
+  const [foodType, setFoodType] = useState("Vegetarian");
+  const [prepTime, setPrepTime] = useState("15");
+  const [tax, setTax] = useState("5");
+  const [image, setImage] = useState<string>();
+  const [dragging, setDragging] = useState(false);
+  const visible = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (category === "All" || r.category === category) &&
+          r.name.toLowerCase().includes(search.toLowerCase())
+      ),
+    [rows, category, search]
+  );
+  const loadImage = (file?: File) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    if (file.size > 5 * 1024 * 1024) return;
+    const reader = new FileReader();
+    reader.onload = () => setImage(String(reader.result));
+    reader.readAsDataURL(file);
+  };
+  const close = () => {
+    setShowForm(false);
+    setName("");
+    setPrice("");
+    setDescription("");
+    setImage(undefined);
+  };
+  const add = () => {
+    if (!name.trim() || !Number(price)) return;
+    setRows((all) => [
+      ...all,
+      {
+        id: Date.now(),
+        name: name.trim(),
+        price: Number(price),
+        category: newCategory,
+        station,
+        available: true,
+        emoji: foodType === "Vegetarian" ? "🥗" : "🍗",
+        ...(image ? { image } : {}),
+        ...(description ? { description } : {})
+      }
+    ]);
+    close();
+  };
+  return (
+    <Panel
+      title="Menu catalog"
+      action={
+        <Button onClick={() => setShowForm(true)}>
+          <PlusIcon className="mr-2 size-4" />
+          Add product
+        </Button>
+      }
+    >
+      {showForm && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/55 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add menu product"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) close();
+          }}
+        >
+          <div className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-card shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-start justify-between border-b bg-card px-6 py-5">
+              <div>
+                <h2 className="text-xl font-semibold">Add menu item</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Create a complete product for waiter and kitchen desks.
+                </p>
+              </div>
+              <button
+                className="rounded-full p-2 hover:bg-muted"
+                onClick={close}
+                aria-label="Close"
+              >
+                <XIcon className="size-5" />
+              </button>
+            </div>
+            <div className="grid gap-6 p-6 md:grid-cols-[240px_1fr]">
+              <div>
+                <p className="mb-2 text-sm font-medium">Food image</p>
+                <label
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    loadImage(e.dataTransfer.files[0]);
+                  }}
+                  className={`relative grid aspect-square cursor-pointer place-items-center overflow-hidden rounded-xl border-2 border-dashed text-center transition ${dragging ? "border-orange-500 bg-orange-50" : "border-muted-foreground/25 hover:border-orange-400"}`}
+                >
+                  {image ? (
+                    <>
+                      <img src={image} alt="Product preview" className="size-full object-cover" />
+                      <button
+                        type="button"
+                        className="absolute right-2 top-2 rounded-full bg-black/70 p-1.5 text-white"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setImage(undefined);
+                        }}
+                      >
+                        <XIcon className="size-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="p-5">
+                      <span className="mx-auto grid size-12 place-items-center rounded-full bg-orange-50 text-orange-700">
+                        <UploadCloudIcon className="size-6" />
+                      </span>
+                      <p className="mt-3 text-sm font-semibold">Drop food image here</p>
+                      <p className="mt-1 text-xs text-muted-foreground">or click to browse</p>
+                      <p className="mt-3 text-[11px] text-muted-foreground">
+                        PNG, JPG or WebP · max 5 MB
+                      </p>
+                    </div>
+                  )}
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => loadImage(e.target.files?.[0])}
+                  />
+                </label>
+                {!image && (
+                  <div className="mt-3 flex items-center gap-2 rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+                    <ImageIcon className="size-4 shrink-0" />
+                    Square images look best in the waiter catalog.
+                  </div>
+                )}
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Item name *">
+                  <Input
+                    autoFocus
+                    placeholder="e.g. Chicken Biryani"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </Field>
+                <Field label="Category *">
+                  <Select
+                    value={newCategory}
+                    onChange={setNewCategory}
+                    options={[
+                      "Breakfast",
+                      "Starters",
+                      "Main Course",
+                      "Breads",
+                      "Beverages",
+                      "Desserts"
+                    ]}
+                  />
+                </Field>
+                <Field label="Selling price *">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      ₹
+                    </span>
+                    <Input
+                      className="pl-7"
+                      min="0"
+                      type="number"
+                      placeholder="0.00"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                    />
+                  </div>
+                </Field>
+                <Field label="Food type">
+                  <Select
+                    value={foodType}
+                    onChange={setFoodType}
+                    options={["Vegetarian", "Non-vegetarian", "Egg", "Vegan"]}
+                  />
+                </Field>
+                <Field label="Kitchen station *">
+                  <Select
+                    value={station}
+                    onChange={setStation}
+                    options={[
+                      "Main Kitchen",
+                      "South Indian",
+                      "Tandoor",
+                      "Wok",
+                      "Beverage",
+                      "Dessert"
+                    ]}
+                  />
+                </Field>
+                <Field label="Preparation time">
+                  <div className="relative">
+                    <Input
+                      min="1"
+                      type="number"
+                      value={prepTime}
+                      onChange={(e) => setPrepTime(e.target.value)}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      minutes
+                    </span>
+                  </div>
+                </Field>
+                <Field label="Tax rate">
+                  <Select value={tax} onChange={setTax} options={["0", "5", "12", "18"]} />
+                </Field>
+                <Field label="Availability">
+                  <Select
+                    value="Available"
+                    onChange={() => {}}
+                    options={["Available", "Unavailable"]}
+                  />
+                </Field>
+                <label className="grid gap-1.5 text-sm font-medium sm:col-span-2">
+                  Description
+                  <textarea
+                    className="min-h-24 resize-none rounded-md border bg-background p-3 text-sm"
+                    maxLength={300}
+                    placeholder="Ingredients, portion, spice level, or serving notes…"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                  <span className="text-right text-[11px] font-normal text-muted-foreground">
+                    {description.length}/300
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div className="sticky bottom-0 flex justify-end gap-3 border-t bg-card px-6 py-4">
+              <Button variant="outline" onClick={close}>
+                Cancel
+              </Button>
+              <Button disabled={!name.trim() || !Number(price)} onClick={add}>
+                Add to menu
+              </Button>
+            </div>
           </div>
         </div>
-        <div className="sticky bottom-0 flex justify-end gap-3 border-t bg-card px-6 py-4"><Button variant="outline" onClick={close}>Cancel</Button><Button disabled={!name.trim() || !Number(price)} onClick={add}>Add to menu</Button></div>
+      )}
+      <div className="flex flex-wrap gap-3 border-b p-4">
+        <div className="relative min-w-64 flex-1">
+          <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Search menu…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select
+          value={category}
+          onChange={setCategory}
+          options={[
+            "All",
+            "Breakfast",
+            "Starters",
+            "Main Course",
+            "Breads",
+            "Beverages",
+            "Desserts"
+          ]}
+        />
       </div>
-    </div>}
-    <div className="flex flex-wrap gap-3 border-b p-4"><div className="relative min-w-64 flex-1"><SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Search menu…" value={search} onChange={e => setSearch(e.target.value)} /></div><Select value={category} onChange={setCategory} options={["All", "Breakfast", "Starters", "Main Course", "Breads", "Beverages", "Desserts"]} /></div>
-    <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-muted/40 text-left text-muted-foreground"><tr><Th>Item</Th><Th>Category</Th><Th>Kitchen station</Th><Th>Price</Th><Th>Availability</Th><Th>Action</Th></tr></thead><tbody className="divide-y">{visible.map(row => <tr key={row.id}><Td><div className="flex items-center gap-3">{row.image ? <img src={row.image} alt="" className="size-12 rounded-lg object-cover" /> : <span className="grid size-12 place-items-center rounded-lg bg-orange-50 text-2xl">{row.emoji}</span>}<div><strong>{row.name}</strong>{row.description && <p className="mt-0.5 max-w-72 truncate text-xs text-muted-foreground">{row.description}</p>}</div></div></Td><Td>{row.category}</Td><Td>{row.station}</Td><Td>₹{row.price}</Td><Td><button onClick={() => setRows(all => all.map(item => item.id === row.id ? {...item, available: !item.available} : item))}><StatusBadge tone={row.available ? "green" : "red"}>{row.available ? "Available" : "Unavailable"}</StatusBadge></button></Td><Td><Button size="sm" variant="outline"><PencilIcon className="size-3.5" /></Button></Td></tr>)}</tbody></table></div>
-  </Panel>;
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 text-left text-muted-foreground">
+            <tr>
+              <Th>Item</Th>
+              <Th>Category</Th>
+              <Th>Kitchen station</Th>
+              <Th>Price</Th>
+              <Th>Availability</Th>
+              <Th>Action</Th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {visible.map((row) => (
+              <tr key={row.id}>
+                <Td>
+                  <div className="flex items-center gap-3">
+                    {row.image ? (
+                      <img src={row.image} alt="" className="size-12 rounded-lg object-cover" />
+                    ) : (
+                      <span className="grid size-12 place-items-center rounded-lg bg-orange-50 text-2xl">
+                        {row.emoji}
+                      </span>
+                    )}
+                    <div>
+                      <strong>{row.name}</strong>
+                      {row.description && (
+                        <p className="mt-0.5 max-w-72 truncate text-xs text-muted-foreground">
+                          {row.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </Td>
+                <Td>{row.category}</Td>
+                <Td>{row.station}</Td>
+                <Td>₹{row.price}</Td>
+                <Td>
+                  <button
+                    onClick={() =>
+                      setRows((all) =>
+                        all.map((item) =>
+                          item.id === row.id ? { ...item, available: !item.available } : item
+                        )
+                      )
+                    }
+                  >
+                    <StatusBadge tone={row.available ? "green" : "red"}>
+                      {row.available ? "Available" : "Unavailable"}
+                    </StatusBadge>
+                  </button>
+                </Td>
+                <Td>
+                  <Button size="sm" variant="outline">
+                    <PencilIcon className="size-3.5" />
+                  </Button>
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
+  );
 }
 
 export function SettingsPanel() {
-  const [saved, setSaved] = useState(false); const [restaurant, setRestaurant] = useState("KitchenServe Restaurant"); const [gst, setGst] = useState("5");
-  return <div className="grid gap-5 lg:grid-cols-2"><Panel title="Restaurant profile"><div className="grid gap-4 p-5"><Field label="Restaurant name"><Input value={restaurant} onChange={e => setRestaurant(e.target.value)} /></Field><Field label="GSTIN"><Input placeholder="29ABCDE1234F1Z5" /></Field><Field label="Address"><textarea className="min-h-24 rounded-md border bg-background p-3 text-sm" placeholder="Business address" /></Field><Field label="Phone"><Input placeholder="+91 98765 43210" /></Field></div></Panel>
-    <Panel title="Order & billing"><div className="grid gap-4 p-5"><Field label="Default tax percentage"><Input type="number" value={gst} onChange={e => setGst(e.target.value)} /></Field><Field label="Currency"><Select value="INR — Indian Rupee" onChange={() => {}} options={["INR — Indian Rupee"]} /></Field><Field label="Order prefix"><Input defaultValue="KS" /></Field><Field label="Auto-refresh kitchen display"><Select value="Every 15 seconds" onChange={() => {}} options={["Every 15 seconds", "Every 30 seconds", "Every minute"]} /></Field></div></Panel>
-    <Panel title="Kitchen stations"><div className="flex flex-wrap gap-2 p-5">{["Main Kitchen", "South Indian", "Tandoor", "Wok", "Beverage", "Dessert"].map(s => <span key={s} className="rounded-full border bg-muted/40 px-3 py-1.5 text-sm">{s}</span>)}<Button size="sm" variant="outline"><PlusIcon className="mr-1 size-3" />Add station</Button></div></Panel>
-    <div className="flex items-end justify-end"><Button onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 1800); }}><Settings2Icon className="mr-2 size-4" />{saved ? "Settings saved" : "Save settings"}</Button></div></div>;
+  const [saved, setSaved] = useState(false);
+  const [restaurant, setRestaurant] = useState("KitchenServe Restaurant");
+  const [gst, setGst] = useState("5");
+  return (
+    <div className="grid gap-5 lg:grid-cols-2">
+      <Panel title="Restaurant profile">
+        <div className="grid gap-4 p-5">
+          <Field label="Restaurant name">
+            <Input value={restaurant} onChange={(e) => setRestaurant(e.target.value)} />
+          </Field>
+          <Field label="GSTIN">
+            <Input placeholder="29ABCDE1234F1Z5" />
+          </Field>
+          <Field label="Address">
+            <textarea
+              className="min-h-24 rounded-md border bg-background p-3 text-sm"
+              placeholder="Business address"
+            />
+          </Field>
+          <Field label="Phone">
+            <Input placeholder="+91 98765 43210" />
+          </Field>
+        </div>
+      </Panel>
+      <Panel title="Order & billing">
+        <div className="grid gap-4 p-5">
+          <Field label="Default tax percentage">
+            <Input type="number" value={gst} onChange={(e) => setGst(e.target.value)} />
+          </Field>
+          <Field label="Currency">
+            <Select
+              value="INR — Indian Rupee"
+              onChange={() => {}}
+              options={["INR — Indian Rupee"]}
+            />
+          </Field>
+          <Field label="Order prefix">
+            <Input defaultValue="KS" />
+          </Field>
+          <Field label="Auto-refresh kitchen display">
+            <Select
+              value="Every 15 seconds"
+              onChange={() => {}}
+              options={["Every 15 seconds", "Every 30 seconds", "Every minute"]}
+            />
+          </Field>
+        </div>
+      </Panel>
+      <Panel title="Kitchen stations">
+        <div className="flex flex-wrap gap-2 p-5">
+          {["Main Kitchen", "South Indian", "Tandoor", "Wok", "Beverage", "Dessert"].map((s) => (
+            <span key={s} className="rounded-full border bg-muted/40 px-3 py-1.5 text-sm">
+              {s}
+            </span>
+          ))}
+          <Button size="sm" variant="outline">
+            <PlusIcon className="mr-1 size-3" />
+            Add station
+          </Button>
+        </div>
+      </Panel>
+      <div className="flex items-end justify-end">
+        <Button
+          onClick={() => {
+            setSaved(true);
+            setTimeout(() => setSaved(false), 1800);
+          }}
+        >
+          <Settings2Icon className="mr-2 size-4" />
+          {saved ? "Settings saved" : "Save settings"}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
-export function OrderQueuePanel({ page, records, busy, onTransition }: { page: KitchenServePage; records: ServiceOrder[]; busy: boolean; onTransition: (id: string, status: ServiceOrderStatus) => void }) {
+export function OrderQueuePanel({
+  page,
+  records,
+  busy,
+  onTransition
+}: {
+  page: KitchenServePage;
+  records: ServiceOrder[];
+  busy: boolean;
+  onTransition: (id: string, status: ServiceOrderStatus) => void;
+}) {
   const [search, setSearch] = useState("");
   const pageStatuses: Partial<Record<KitchenServePage, ServiceOrderStatus[]>> = {
     overview: ["submitted", "accepted", "preparing", "ready", "served", "bill-waiting"],
-    kitchen: ["submitted", "accepted", "preparing"], ready: ["ready"],
-    "bill-waiting": ["served", "bill-waiting"], history: ["closed", "cancelled"]
+    kitchen: ["submitted", "accepted", "preparing"],
+    ready: ["ready"],
+    "bill-waiting": ["served", "bill-waiting"],
+    history: ["closed", "cancelled"]
   };
   const allowed = pageStatuses[page];
-  const visible = records.filter(o => (!allowed || allowed.includes(o.status)) && `${o.tableLabel} ${o.waiterName} ${o.guestName ?? ""}`.toLowerCase().includes(search.toLowerCase()));
-  const labels: Record<string, string> = { kitchen: "Kitchen ticket list", ready: "Ready-to-serve list", "bill-waiting": "Bill waiting list", history: "Complete order history", overview: "All active orders" };
-  const next: Partial<Record<ServiceOrderStatus, [string, ServiceOrderStatus]>> = { submitted: ["Accept", "accepted"], accepted: ["Start preparing", "preparing"], preparing: ["Mark ready", "ready"], ready: ["Mark served", "served"], served: ["Send to bill", "bill-waiting"], "bill-waiting": ["Close bill", "closed"] };
-  return <Panel title={labels[page] ?? "Order list"} action={<div className="relative"><SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="w-64 pl-9" placeholder="Search orders…" value={search} onChange={e => setSearch(e.target.value)} /></div>}>
-    <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-muted/40 text-left text-muted-foreground"><tr><Th>Order</Th><Th>Table / guest</Th><Th>Items</Th><Th>Waiter</Th><Th>Total</Th><Th>Status</Th><Th>Action</Th></tr></thead><tbody className="divide-y">{visible.map(order => { const action = next[order.status]; return <tr key={order.uuid}><Td><strong>#{String(order.id).padStart(4, "0")}</strong><p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}</p></Td><Td><strong>{order.tableLabel}</strong><p className="text-xs text-muted-foreground">{order.guestName || "Walk-in guest"}</p></Td><Td><div className="max-w-80">{order.items.map(i => `${i.quantity}× ${i.itemName}`).join(", ")}</div></Td><Td>{order.waiterName}</Td><Td>₹{order.items.reduce((n, i) => n + i.quantity * i.unitPrice, 0).toLocaleString("en-IN")}</Td><Td><StatusBadge tone={order.status === "ready" || order.status === "closed" ? "green" : order.status === "bill-waiting" ? "amber" : "blue"}>{order.status}</StatusBadge></Td><Td>{action ? <Button size="sm" disabled={busy} onClick={() => onTransition(order.uuid, action[1])}>{action[0]}</Button> : "—"}</Td></tr>; })}</tbody></table>{!visible.length && <div className="p-12 text-center text-sm text-muted-foreground">No orders found in this list.</div>}</div>
-  </Panel>;
+  const visible = records.filter(
+    (o) =>
+      (!allowed || allowed.includes(o.status)) &&
+      `${o.tableLabel} ${o.waiterName} ${o.guestName ?? ""}`
+        .toLowerCase()
+        .includes(search.toLowerCase())
+  );
+  const labels: Record<string, string> = {
+    kitchen: "Kitchen ticket list",
+    ready: "Ready-to-serve list",
+    "bill-waiting": "Bill waiting list",
+    history: "Complete order history",
+    overview: "All active orders"
+  };
+  const next: Partial<Record<ServiceOrderStatus, [string, ServiceOrderStatus]>> = {
+    submitted: ["Accept", "accepted"],
+    accepted: ["Start preparing", "preparing"],
+    preparing: ["Mark ready", "ready"],
+    ready: ["Mark served", "served"],
+    served: ["Send to bill", "bill-waiting"],
+    "bill-waiting": ["Close bill", "closed"]
+  };
+  return (
+    <Panel
+      title={labels[page] ?? "Order list"}
+      action={
+        <div className="relative">
+          <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="w-64 pl-9"
+            placeholder="Search orders…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      }
+    >
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 text-left text-muted-foreground">
+            <tr>
+              <Th>Order</Th>
+              <Th>Table / guest</Th>
+              <Th>Items</Th>
+              <Th>Waiter</Th>
+              <Th>Total</Th>
+              <Th>Status</Th>
+              <Th>Action</Th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {visible.map((order) => {
+              const action = next[order.status];
+              return (
+                <tr key={order.uuid}>
+                  <Td>
+                    <strong>#{String(order.id).padStart(4, "0")}</strong>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(order.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
+                    </p>
+                  </Td>
+                  <Td>
+                    <strong>{order.tableLabel}</strong>
+                    <p className="text-xs text-muted-foreground">
+                      {order.guestName || "Walk-in guest"}
+                    </p>
+                  </Td>
+                  <Td>
+                    <div className="max-w-80">
+                      {order.items.map((i) => `${i.quantity}× ${i.itemName}`).join(", ")}
+                    </div>
+                  </Td>
+                  <Td>{order.waiterName}</Td>
+                  <Td>
+                    ₹
+                    {order.items
+                      .reduce((n, i) => n + i.quantity * i.unitPrice, 0)
+                      .toLocaleString("en-IN")}
+                  </Td>
+                  <Td>
+                    <StatusBadge
+                      tone={
+                        order.status === "ready" || order.status === "closed"
+                          ? "green"
+                          : order.status === "bill-waiting"
+                            ? "amber"
+                            : "blue"
+                      }
+                    >
+                      {order.status}
+                    </StatusBadge>
+                  </Td>
+                  <Td>
+                    {action ? (
+                      <Button
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => onTransition(order.uuid, action[1])}
+                      >
+                        {action[0]}
+                      </Button>
+                    ) : (
+                      "—"
+                    )}
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {!visible.length && (
+          <div className="p-12 text-center text-sm text-muted-foreground">
+            No orders found in this list.
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
 }
 
-function Panel({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) { return <section className="overflow-hidden rounded-xl border bg-card shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4"><h2 className="text-lg font-semibold">{title}</h2>{action}</div>{children}</section>; }
-function FormBar({ children }: { children: React.ReactNode }) { return <div className="grid gap-3 border-b bg-orange-50/60 p-4 md:grid-cols-5 dark:bg-orange-950/10">{children}</div>; }
-function Select({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: string[] }) { return <select className="h-9 rounded-md border bg-background px-3 text-sm" value={value} onChange={e => onChange(e.target.value)}>{options.map(o => <option key={o}>{o}</option>)}</select>; }
-function Filter({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) { return <button className={`rounded-full px-3 py-1.5 text-sm ${active ? "bg-orange-600 text-white" : "bg-muted"}`} onClick={onClick}>{children}</button>; }
-function Stats({ items }: { items: Array<[string, number, typeof ArmchairIcon]> }) { return <div className="grid gap-3 sm:grid-cols-3">{items.map(([label, value, Icon]) => <div key={label} className="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm"><span className="grid size-11 place-items-center rounded-lg bg-orange-50 text-orange-700"><Icon className="size-5" /></span><div><p className="text-2xl font-bold">{value}</p><p className="text-sm text-muted-foreground">{label}</p></div></div>)}</div>; }
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="grid gap-1.5 text-sm font-medium">{label}{children}</label>; }
-function Th({ children }: { children: React.ReactNode }) { return <th className="whitespace-nowrap px-5 py-3 font-medium">{children}</th>; }
-function Td({ children }: { children: React.ReactNode }) { return <td className="px-5 py-4 align-middle">{children}</td>; }
+function Panel({
+  title,
+  action,
+  children
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+        <h2 className="text-lg font-semibold">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+function FormBar({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid gap-3 border-b bg-orange-50/60 p-4 md:grid-cols-5 dark:bg-orange-950/10">
+      {children}
+    </div>
+  );
+}
+function Select({
+  value,
+  onChange,
+  options
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <select
+      className="h-9 rounded-md border bg-background px-3 text-sm"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {options.map((o) => (
+        <option key={o}>{o}</option>
+      ))}
+    </select>
+  );
+}
+function Filter({
+  active,
+  onClick,
+  children
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      className={`rounded-full px-3 py-1.5 text-sm ${active ? "bg-orange-600 text-white" : "bg-muted"}`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+function Stats({ items }: { items: Array<[string, number, typeof ArmchairIcon]> }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      {items.map(([label, value, Icon]) => (
+        <div
+          key={label}
+          className="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm"
+        >
+          <span className="grid size-11 place-items-center rounded-lg bg-orange-50 text-orange-700">
+            <Icon className="size-5" />
+          </span>
+          <div>
+            <p className="text-2xl font-bold">{value}</p>
+            <p className="text-sm text-muted-foreground">{label}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="grid gap-1.5 text-sm font-medium">
+      {label}
+      {children}
+    </label>
+  );
+}
+function Th({ children }: { children: React.ReactNode }) {
+  return <th className="whitespace-nowrap px-5 py-3 font-medium">{children}</th>;
+}
+function Td({ children }: { children: React.ReactNode }) {
+  return <td className="px-5 py-4 align-middle">{children}</td>;
+}

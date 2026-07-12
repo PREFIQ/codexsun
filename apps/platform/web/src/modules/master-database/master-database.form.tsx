@@ -19,16 +19,20 @@ export function MasterDatabaseForm({
   return (
     <div className="flex flex-wrap justify-end gap-2">
       <Button disabled={loading} variant="outline" onClick={onRefresh}>
-        <RefreshCwIcon className="size-4" />Refresh
+        <RefreshCwIcon className="size-4" />
+        Refresh
       </Button>
       <Button disabled={busy} variant="outline" onClick={onBackup}>
-        <DownloadIcon className="size-4" />Backup
+        <DownloadIcon className="size-4" />
+        Backup
       </Button>
       <Button disabled={busy} variant="outline" onClick={onRestore}>
-        <UploadIcon className="size-4" />Restore
+        <UploadIcon className="size-4" />
+        Restore
       </Button>
       <Button disabled={busy} onClick={onMigrate}>
-        <RotateCcwIcon className="size-4" />Migrate
+        <RotateCcwIcon className="size-4" />
+        Migrate
       </Button>
     </div>
   );

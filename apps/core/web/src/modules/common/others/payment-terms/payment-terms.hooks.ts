@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { paymentTermsDefinition } from "./payment-terms.definition";
-export function usePaymentTermsQuery() { return useCommonMasterQuery(paymentTermsDefinition.key, paymentTermsDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listPaymentTerms } from "./payment-terms.services";
+export function usePaymentTermsQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listPaymentTerms(path), queryKey: ["core", "common", key] });
+}

@@ -139,4 +139,3 @@ Owns:
 - Database tables from another domain must not be directly modified.
 - UI screens should respect domain ownership even when they combine data from multiple modules.
 - Reports may read across domains through approved reporting models or read replicas.
-

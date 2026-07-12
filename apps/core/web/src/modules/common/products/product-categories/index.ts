@@ -1,2 +1,2 @@
-export * from "./product-categories.definition";
+export * from "./product-categories.types";
 export * from "./product-categories.workspace";

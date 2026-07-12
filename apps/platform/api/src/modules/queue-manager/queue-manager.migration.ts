@@ -21,13 +21,29 @@ export async function migrateQueueManagerModule(db: Kysely<PlatformDatabase>) {
     .addColumn("payload_json", "json", (column) => column.notNull())
     .addColumn("result_json", "json", (column) => column.notNull())
     .addColumn("error_message", "text")
-    .addColumn("available_at", "datetime", (column) => column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("available_at", "datetime", (column) =>
+      column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
+    )
     .addColumn("started_at", "datetime")
     .addColumn("completed_at", "datetime")
-    .addColumn("created_at", "datetime", (column) => column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-    .addColumn("updated_at", "datetime", (column) => column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("created_at", "datetime", (column) =>
+      column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
+    )
+    .addColumn("updated_at", "datetime", (column) =>
+      column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
+    )
     .execute();
 
-  await db.schema.createIndex("queue_jobs_status_idx").ifNotExists().on("queue_jobs").column("status").execute();
-  await db.schema.createIndex("queue_jobs_queue_status_idx").ifNotExists().on("queue_jobs").columns(["queue_name", "status"]).execute();
+  await db.schema
+    .createIndex("queue_jobs_status_idx")
+    .ifNotExists()
+    .on("queue_jobs")
+    .column("status")
+    .execute();
+  await db.schema
+    .createIndex("queue_jobs_queue_status_idx")
+    .ifNotExists()
+    .on("queue_jobs")
+    .columns(["queue_name", "status"])
+    .execute();
 }

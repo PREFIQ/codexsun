@@ -6,7 +6,9 @@ import type { AccountGroup, Ledger, LedgerLookup, LedgerSavePayload } from "./le
 export class LedgersRepository {
   async groups(databaseName: string) {
     const db = await getAccountsDatabase(databaseName);
-    const result = await sql<GroupRow>`SELECT * FROM account_groups ORDER BY nature, name`.execute(db);
+    const result = await sql<GroupRow>`SELECT * FROM account_groups ORDER BY nature, name`.execute(
+      db
+    );
     return result.rows.map(mapGroup);
   }
 
@@ -24,7 +26,16 @@ export class LedgersRepository {
   }
 
   async lookup(databaseName: string): Promise<LedgerLookup[]> {
-    return (await this.list(databaseName)).filter((ledger) => ledger.status === "active").map(({ classification, code, groupName, id, name, status }) => ({ classification, code, groupName, id, name, status }));
+    return (await this.list(databaseName))
+      .filter((ledger) => ledger.status === "active")
+      .map(({ classification, code, groupName, id, name, status }) => ({
+        classification,
+        code,
+        groupName,
+        id,
+        name,
+        status
+      }));
   }
 
   async get(databaseName: string, id: string) {

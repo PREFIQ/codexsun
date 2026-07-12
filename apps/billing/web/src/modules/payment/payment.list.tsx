@@ -1,2 +1,4 @@
 import { PaymentWorkspace } from "./payment.page";
-export function PaymentList() { return <PaymentWorkspace />; }
+export function PaymentList() {
+  return <PaymentWorkspace />;
+}

@@ -17,20 +17,39 @@ export class VouchersRepository {
       ORDER BY voucher_date DESC, id DESC
     `.execute(db);
     const vouchers = result.rows.map((row) => mapVoucher(row, []));
-    const lines = await this.linesFor(databaseName, vouchers.map((voucher) => voucher.id));
-    return vouchers.map((voucher) => ({ ...voucher, lines: lines.filter((line) => line.voucherId === voucher.id).map(({ voucherId: _voucherId, ...line }) => line) }));
+    const lines = await this.linesFor(
+      databaseName,
+      vouchers.map((voucher) => voucher.id)
+    );
+    return vouchers.map((voucher) => ({
+      ...voucher,
+      lines: lines
+        .filter((line) => line.voucherId === voucher.id)
+        .map(({ voucherId: _voucherId, ...line }) => line)
+    }));
   }
 
   async get(databaseName: string, id: string) {
     const db = await getAccountsDatabase(databaseName);
-    const result = await sql<VoucherRow>`SELECT * FROM account_vouchers WHERE uuid = ${id} OR voucher_no = ${id} LIMIT 1`.execute(db);
+    const result =
+      await sql<VoucherRow>`SELECT * FROM account_vouchers WHERE uuid = ${id} OR voucher_no = ${id} LIMIT 1`.execute(
+        db
+      );
     const row = result.rows[0];
     if (!row) return null;
     const lines = await this.linesFor(databaseName, [row.uuid]);
-    return mapVoucher(row, lines.map(({ voucherId: _voucherId, ...line }) => line));
+    return mapVoucher(
+      row,
+      lines.map(({ voucherId: _voucherId, ...line }) => line)
+    );
   }
 
-  async findActiveBySource(databaseName: string, sourceApp: string, sourceModule: string, sourceDocumentId: string) {
+  async findActiveBySource(
+    databaseName: string,
+    sourceApp: string,
+    sourceModule: string,
+    sourceDocumentId: string
+  ) {
     const db = await getAccountsDatabase(databaseName);
     const result = await sql<VoucherRow>`
       SELECT *
@@ -56,10 +75,15 @@ export class VouchersRepository {
     return Number(result.rows[0]?.lock_count ?? 0) > 0;
   }
 
-  async create(databaseName: string, payload: VoucherSavePayload, totals: { credit: number; debit: number }) {
+  async create(
+    databaseName: string,
+    payload: VoucherSavePayload,
+    totals: { credit: number; debit: number }
+  ) {
     const db = await getAccountsDatabase(databaseName);
     const uuid = randomBytes(4).toString("hex");
-    const voucherNo = payload.voucherNo?.trim() || await this.nextVoucherNo(databaseName, payload.voucherType);
+    const voucherNo =
+      payload.voucherNo?.trim() || (await this.nextVoucherNo(databaseName, payload.voucherType));
     await sql`
       INSERT INTO account_vouchers (
         uuid, voucher_no, voucher_date, voucher_type, status, narration, source_app, source_module,
@@ -80,13 +104,22 @@ export class VouchersRepository {
   async markStatus(databaseName: string, id: string, status: VoucherStatus) {
     const db = await getAccountsDatabase(databaseName);
     const lineStatus = status === "posted" ? "posted" : "cancelled";
-    await sql`UPDATE account_vouchers SET status = ${status}, updated_at = CURRENT_TIMESTAMP WHERE uuid = ${id} OR voucher_no = ${id}`.execute(db);
+    await sql`UPDATE account_vouchers SET status = ${status}, updated_at = CURRENT_TIMESTAMP WHERE uuid = ${id} OR voucher_no = ${id}`.execute(
+      db
+    );
     const voucherId = await this.internalVoucherId(databaseName, id);
-    await sql`UPDATE account_voucher_lines SET status = ${lineStatus} WHERE voucher_id = ${voucherId}`.execute(db);
+    await sql`UPDATE account_voucher_lines SET status = ${lineStatus} WHERE voucher_id = ${voucherId}`.execute(
+      db
+    );
     return this.get(databaseName, id);
   }
 
-  private async insertLines(databaseName: string, voucherId: number, lines: VoucherSavePayload["lines"], status: VoucherStatus) {
+  private async insertLines(
+    databaseName: string,
+    voucherId: number,
+    lines: VoucherSavePayload["lines"],
+    status: VoucherStatus
+  ) {
     const db = await getAccountsDatabase(databaseName);
     const lineStatus = status === "posted" ? "posted" : "cancelled";
     for (const [index, line] of lines.entries()) {
@@ -114,7 +147,11 @@ export class VouchersRepository {
 
   private async internalVoucherId(databaseName: string, id: string) {
     const db = await getAccountsDatabase(databaseName);
-    const result = await sql<{ id: number }>`SELECT id FROM account_vouchers WHERE uuid = ${id} OR voucher_no = ${id} LIMIT 1`.execute(db);
+    const result = await sql<{
+      id: number;
+    }>`SELECT id FROM account_vouchers WHERE uuid = ${id} OR voucher_no = ${id} LIMIT 1`.execute(
+      db
+    );
     const value = result.rows[0]?.id;
     if (!value) throw new Error(`Voucher not found: ${id}`);
     return value;
@@ -122,7 +159,9 @@ export class VouchersRepository {
 
   private async internalLedgerId(databaseName: string, id: string) {
     const db = await getAccountsDatabase(databaseName);
-    const result = await sql<{ id: number }>`SELECT id FROM account_ledgers WHERE uuid = ${id} OR code = ${id} LIMIT 1`.execute(db);
+    const result = await sql<{
+      id: number;
+    }>`SELECT id FROM account_ledgers WHERE uuid = ${id} OR code = ${id} LIMIT 1`.execute(db);
     const value = result.rows[0]?.id;
     if (!value) throw new Error(`Ledger not found: ${id}`);
     return value;
@@ -132,12 +171,19 @@ export class VouchersRepository {
     const db = await getAccountsDatabase(databaseName);
     const settings = await this.settings.get(databaseName);
     const prefix = prefixForVoucherType(type, settings.voucherNumbering);
-    const result = await sql<{ count_value: number | string }>`SELECT COUNT(*) + 1 AS count_value FROM account_vouchers WHERE voucher_type = ${type}`.execute(db);
+    const result = await sql<{
+      count_value: number | string;
+    }>`SELECT COUNT(*) + 1 AS count_value FROM account_vouchers WHERE voucher_type = ${type}`.execute(
+      db
+    );
     return `${prefix}-${String(Number(result.rows[0]?.count_value ?? 1)).padStart(5, "0")}`;
   }
 }
 
-function prefixForVoucherType(type: string, numbering: Awaited<ReturnType<AccountsSettingsRepository["get"]>>["voucherNumbering"]) {
+function prefixForVoucherType(
+  type: string,
+  numbering: Awaited<ReturnType<AccountsSettingsRepository["get"]>>["voucherNumbering"]
+) {
   if (type === "sales") return numbering.salesPrefix;
   if (type === "receipt") return numbering.receiptPrefix;
   if (type === "payment") return numbering.paymentPrefix;

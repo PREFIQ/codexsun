@@ -10,17 +10,17 @@ Data transfers follow: profile databases and tables, map columns and relationshi
 
 ## Module Boundaries
 
-| Module | Ownership |
-|---|---|
-| Overview | Portfolio readiness, risks, blocked work, and recent audited activity |
-| Migration Projects | Tenant-scoped case, source product, target release, owners, and lifecycle |
-| Connections & Secrets | Adapter configuration and encrypted secret references; never raw browser credentials |
-| Discovery Snapshots | Immutable structural, volume, relationship, and sensitivity metadata |
-| Schema Comparison | Compatibility findings, ordered DDL plan, recovery notes, and dry-run evidence |
-| Mappings & Transforms | Table/column mappings, defaults, normalization, validation, redaction, and rejects |
-| Review & Approvals | Separation of duties, risk decisions, approval reference, and immutable checksum |
-| Execution Runs | Idempotent jobs, batches, checkpoints, retries, pause/cancel/resume, and quarantine |
-| Reconciliation & Audit | Counts, hashes, financial controls, exceptions, client sign-off, and audit export |
+| Module                 | Ownership                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------ |
+| Overview               | Portfolio readiness, risks, blocked work, and recent audited activity                |
+| Migration Projects     | Tenant-scoped case, source product, target release, owners, and lifecycle            |
+| Connections & Secrets  | Adapter configuration and encrypted secret references; never raw browser credentials |
+| Discovery Snapshots    | Immutable structural, volume, relationship, and sensitivity metadata                 |
+| Schema Comparison      | Compatibility findings, ordered DDL plan, recovery notes, and dry-run evidence       |
+| Mappings & Transforms  | Table/column mappings, defaults, normalization, validation, redaction, and rejects   |
+| Review & Approvals     | Separation of duties, risk decisions, approval reference, and immutable checksum     |
+| Execution Runs         | Idempotent jobs, batches, checkpoints, retries, pause/cancel/resume, and quarantine  |
+| Reconciliation & Audit | Counts, hashes, financial controls, exceptions, client sign-off, and audit export    |
 
 Migration Projects is the orchestration aggregate. Other modules own their records and publish immutable evidence back to the project. No adapter may bypass the approval gate or write directly into another module's storage.
 

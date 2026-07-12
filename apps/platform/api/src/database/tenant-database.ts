@@ -72,7 +72,9 @@ export async function closeAllTenantDatabases() {
 
 export async function dropTenantDatabase(tenant: Tenant) {
   await closeTenantDatabase(tenant);
-  console.warn(`[database] dropping tenant database "${tenant.dbName}" for tenant "${tenant.tenantCode}"`);
+  console.warn(
+    `[database] dropping tenant database "${tenant.dbName}" for tenant "${tenant.tenantCode}"`
+  );
   const connection = await createConnection({
     host: tenant.dbHost || env.DB_HOST,
     password: env.DB_PASSWORD,

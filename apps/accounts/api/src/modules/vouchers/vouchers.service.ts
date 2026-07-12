@@ -2,9 +2,23 @@ import { LedgersRepository } from "../ledgers/ledgers.repository.js";
 import { AccountsSettingsRepository } from "../settings/settings.repository.js";
 import type { Ledger } from "../ledgers/ledgers.types.js";
 import { VouchersRepository } from "./vouchers.repository.js";
-import type { AccountsPostingRequest, VoucherLineInput, VoucherSavePayload, VoucherType } from "./vouchers.types.js";
+import type {
+  AccountsPostingRequest,
+  VoucherLineInput,
+  VoucherSavePayload,
+  VoucherType
+} from "./vouchers.types.js";
 
-const voucherTypes: VoucherType[] = ["sales", "purchase", "receipt", "payment", "contra", "journal", "credit_note", "debit_note"];
+const voucherTypes: VoucherType[] = [
+  "sales",
+  "purchase",
+  "receipt",
+  "payment",
+  "contra",
+  "journal",
+  "credit_note",
+  "debit_note"
+];
 
 export class VouchersService {
   constructor(
@@ -46,12 +60,26 @@ export class VouchersService {
   async postSource(databaseName: string, request: AccountsPostingRequest) {
     await this.assertPeriodOpen(databaseName, request.documentDate);
     if (request.operation === "cancel" || request.operation === "delete") {
-      const existing = await this.repository.findActiveBySource(databaseName, request.sourceApp, request.sourceModule, request.sourceDocumentId);
+      const existing = await this.repository.findActiveBySource(
+        databaseName,
+        request.sourceApp,
+        request.sourceModule,
+        request.sourceDocumentId
+      );
       if (!existing) return null;
-      return this.reverse(databaseName, existing.id, `${request.sourceDocumentNo} ${request.operation} reversal`);
+      return this.reverse(
+        databaseName,
+        existing.id,
+        `${request.sourceDocumentNo} ${request.operation} reversal`
+      );
     }
 
-    const existing = await this.repository.findActiveBySource(databaseName, request.sourceApp, request.sourceModule, request.sourceDocumentId);
+    const existing = await this.repository.findActiveBySource(
+      databaseName,
+      request.sourceApp,
+      request.sourceModule,
+      request.sourceDocumentId
+    );
     if (existing && request.operation === "update") {
       await this.reverse(databaseName, existing.id, `${request.sourceDocumentNo} update reversal`);
     }
@@ -101,40 +129,140 @@ export class VouchersService {
     };
   }
 
-  private async payloadFromPosting(databaseName: string, request: AccountsPostingRequest): Promise<VoucherSavePayload> {
+  private async payloadFromPosting(
+    databaseName: string,
+    request: AccountsPostingRequest
+  ): Promise<VoucherSavePayload> {
     const party = await this.partyLedger(databaseName, request);
-    const trade = await this.requiredLedger(databaseName, request.sourceModule === "purchase" ? "PURCHASE" : "SALES");
+    const trade = await this.requiredLedger(
+      databaseName,
+      request.sourceModule === "purchase" ? "PURCHASE" : "SALES"
+    );
     const settings = await this.settings.get(databaseName);
-    const roundOff = await this.requiredLedger(databaseName, settings.postingRules.roundOffLedgerCode || "ROUND_OFF");
+    const roundOff = await this.requiredLedger(
+      databaseName,
+      settings.postingRules.roundOffLedgerCode || "ROUND_OFF"
+    );
     const lines: VoucherLineInput[] = [];
     const taxAmount = round(Number(request.taxAmount ?? 0));
-    const taxableAmount = round(Number(request.taxableAmount ?? Math.max(0, request.totalAmount - taxAmount - Number(request.roundOff ?? 0))));
+    const taxableAmount = round(
+      Number(
+        request.taxableAmount ??
+          Math.max(0, request.totalAmount - taxAmount - Number(request.roundOff ?? 0))
+      )
+    );
     const totalAmount = round(Number(request.totalAmount));
 
     if (request.sourceModule === "sales") {
-      lines.push({ amount: totalAmount, dc: "debit", ledgerId: party.id, narration: request.sourceDocumentNo });
-      lines.push({ amount: taxableAmount, dc: "credit", ledgerId: trade.id, narration: request.sourceDocumentNo });
-      for (const taxLine of await this.outputTaxLines(databaseName, request.placeOfSupply ?? "cgst-sgst", taxAmount)) lines.push(taxLine);
+      lines.push({
+        amount: totalAmount,
+        dc: "debit",
+        ledgerId: party.id,
+        narration: request.sourceDocumentNo
+      });
+      lines.push({
+        amount: taxableAmount,
+        dc: "credit",
+        ledgerId: trade.id,
+        narration: request.sourceDocumentNo
+      });
+      for (const taxLine of await this.outputTaxLines(
+        databaseName,
+        request.placeOfSupply ?? "cgst-sgst",
+        taxAmount
+      ))
+        lines.push(taxLine);
     } else if (request.sourceModule === "purchase") {
-      lines.push({ amount: taxableAmount, dc: "debit", ledgerId: trade.id, narration: request.sourceDocumentNo });
-      for (const taxLine of await this.inputTaxLines(databaseName, request.placeOfSupply ?? "cgst-sgst", taxAmount)) lines.push(taxLine);
-      lines.push({ amount: totalAmount, dc: "credit", ledgerId: party.id, narration: request.sourceDocumentNo });
+      lines.push({
+        amount: taxableAmount,
+        dc: "debit",
+        ledgerId: trade.id,
+        narration: request.sourceDocumentNo
+      });
+      for (const taxLine of await this.inputTaxLines(
+        databaseName,
+        request.placeOfSupply ?? "cgst-sgst",
+        taxAmount
+      ))
+        lines.push(taxLine);
+      lines.push({
+        amount: totalAmount,
+        dc: "credit",
+        ledgerId: party.id,
+        narration: request.sourceDocumentNo
+      });
     } else if (request.sourceModule === "receipt") {
-      const cashOrBank = await this.requiredLedger(databaseName, request.cashOrBankLedgerCode || "CASH");
-      lines.push({ amount: totalAmount, dc: "debit", ledgerId: cashOrBank.id, narration: request.sourceDocumentNo });
-      lines.push({ amount: totalAmount, dc: "credit", ledgerId: party.id, narration: request.sourceDocumentNo });
+      const cashOrBank = await this.requiredLedger(
+        databaseName,
+        request.cashOrBankLedgerCode || "CASH"
+      );
+      lines.push({
+        amount: totalAmount,
+        dc: "debit",
+        ledgerId: cashOrBank.id,
+        narration: request.sourceDocumentNo
+      });
+      lines.push({
+        amount: totalAmount,
+        dc: "credit",
+        ledgerId: party.id,
+        narration: request.sourceDocumentNo
+      });
     } else if (request.sourceModule === "payment") {
-      const cashOrBank = await this.requiredLedger(databaseName, request.cashOrBankLedgerCode || "CASH");
-      lines.push({ amount: totalAmount, dc: "debit", ledgerId: party.id, narration: request.sourceDocumentNo });
-      lines.push({ amount: totalAmount, dc: "credit", ledgerId: cashOrBank.id, narration: request.sourceDocumentNo });
+      const cashOrBank = await this.requiredLedger(
+        databaseName,
+        request.cashOrBankLedgerCode || "CASH"
+      );
+      lines.push({
+        amount: totalAmount,
+        dc: "debit",
+        ledgerId: party.id,
+        narration: request.sourceDocumentNo
+      });
+      lines.push({
+        amount: totalAmount,
+        dc: "credit",
+        ledgerId: cashOrBank.id,
+        narration: request.sourceDocumentNo
+      });
     } else if (request.sourceModule === "credit-note") {
-      lines.push({ amount: taxableAmount, dc: "debit", ledgerId: trade.id, narration: request.sourceDocumentNo });
-      for (const taxLine of await this.outputTaxLines(databaseName, request.placeOfSupply ?? "cgst-sgst", taxAmount)) lines.push({ ...taxLine, dc: "debit" });
-      lines.push({ amount: totalAmount, dc: "credit", ledgerId: party.id, narration: request.sourceDocumentNo });
+      lines.push({
+        amount: taxableAmount,
+        dc: "debit",
+        ledgerId: trade.id,
+        narration: request.sourceDocumentNo
+      });
+      for (const taxLine of await this.outputTaxLines(
+        databaseName,
+        request.placeOfSupply ?? "cgst-sgst",
+        taxAmount
+      ))
+        lines.push({ ...taxLine, dc: "debit" });
+      lines.push({
+        amount: totalAmount,
+        dc: "credit",
+        ledgerId: party.id,
+        narration: request.sourceDocumentNo
+      });
     } else if (request.sourceModule === "debit-note") {
-      lines.push({ amount: totalAmount, dc: "debit", ledgerId: party.id, narration: request.sourceDocumentNo });
-      lines.push({ amount: taxableAmount, dc: "credit", ledgerId: trade.id, narration: request.sourceDocumentNo });
-      for (const taxLine of await this.outputTaxLines(databaseName, request.placeOfSupply ?? "cgst-sgst", taxAmount)) lines.push(taxLine);
+      lines.push({
+        amount: totalAmount,
+        dc: "debit",
+        ledgerId: party.id,
+        narration: request.sourceDocumentNo
+      });
+      lines.push({
+        amount: taxableAmount,
+        dc: "credit",
+        ledgerId: trade.id,
+        narration: request.sourceDocumentNo
+      });
+      for (const taxLine of await this.outputTaxLines(
+        databaseName,
+        request.placeOfSupply ?? "cgst-sgst",
+        taxAmount
+      ))
+        lines.push(taxLine);
     } else {
       throw new Error(`Posting source module is not implemented yet: ${request.sourceModule}`);
     }
@@ -157,11 +285,17 @@ export class VouchersService {
 
   private async partyLedger(databaseName: string, request: AccountsPostingRequest) {
     const supplierSide = request.sourceModule === "purchase" || request.sourceModule === "payment";
-    const code = `${supplierSide ? "SUP" : "CUS"}_${request.partyLedgerName.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_").slice(0, 40)}`;
+    const code = `${supplierSide ? "SUP" : "CUS"}_${request.partyLedgerName
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .slice(0, 40)}`;
     const existing = await this.ledgers.findByCode(databaseName, code);
     if (existing) return existing;
     const groups = await this.ledgers.groups(databaseName);
-    const group = groups.find((item) => item.code === (supplierSide ? "SUNDRY_CREDITORS" : "SUNDRY_DEBTORS"));
+    const group = groups.find(
+      (item) => item.code === (supplierSide ? "SUNDRY_CREDITORS" : "SUNDRY_DEBTORS")
+    );
     if (!group) throw new Error("Party ledger group is missing.");
     const created = await this.ledgers.create(databaseName, {
       classification: supplierSide ? "supplier" : "customer",
@@ -188,38 +322,93 @@ export class VouchersService {
       throw new Error(`Accounting period is locked up to ${lockDate}.`);
     }
     if (await this.repository.isPeriodLocked(databaseName, date)) {
-      throw new Error(`Accounting period is locked for ${date}. Use an adjustment voucher in an open period.`);
+      throw new Error(
+        `Accounting period is locked for ${date}. Use an adjustment voucher in an open period.`
+      );
     }
   }
 
-  private async outputTaxLines(databaseName: string, placeOfSupply: "cgst-sgst" | "igst", taxAmount: number) {
+  private async outputTaxLines(
+    databaseName: string,
+    placeOfSupply: "cgst-sgst" | "igst",
+    taxAmount: number
+  ) {
     if (!taxAmount) return [];
-    if (placeOfSupply === "igst") return [{ amount: taxAmount, dc: "credit" as const, ledgerId: (await this.requiredLedger(databaseName, "OUTPUT_IGST")).id, narration: "Output IGST" }];
+    if (placeOfSupply === "igst")
+      return [
+        {
+          amount: taxAmount,
+          dc: "credit" as const,
+          ledgerId: (await this.requiredLedger(databaseName, "OUTPUT_IGST")).id,
+          narration: "Output IGST"
+        }
+      ];
     return [
-      { amount: round(taxAmount / 2), dc: "credit" as const, ledgerId: (await this.requiredLedger(databaseName, "OUTPUT_CGST")).id, narration: "Output CGST" },
-      { amount: round(taxAmount / 2), dc: "credit" as const, ledgerId: (await this.requiredLedger(databaseName, "OUTPUT_SGST")).id, narration: "Output SGST" }
+      {
+        amount: round(taxAmount / 2),
+        dc: "credit" as const,
+        ledgerId: (await this.requiredLedger(databaseName, "OUTPUT_CGST")).id,
+        narration: "Output CGST"
+      },
+      {
+        amount: round(taxAmount / 2),
+        dc: "credit" as const,
+        ledgerId: (await this.requiredLedger(databaseName, "OUTPUT_SGST")).id,
+        narration: "Output SGST"
+      }
     ];
   }
 
-  private async inputTaxLines(databaseName: string, placeOfSupply: "cgst-sgst" | "igst", taxAmount: number) {
+  private async inputTaxLines(
+    databaseName: string,
+    placeOfSupply: "cgst-sgst" | "igst",
+    taxAmount: number
+  ) {
     if (!taxAmount) return [];
-    if (placeOfSupply === "igst") return [{ amount: taxAmount, dc: "debit" as const, ledgerId: (await this.requiredLedger(databaseName, "INPUT_IGST")).id, narration: "Input IGST" }];
+    if (placeOfSupply === "igst")
+      return [
+        {
+          amount: taxAmount,
+          dc: "debit" as const,
+          ledgerId: (await this.requiredLedger(databaseName, "INPUT_IGST")).id,
+          narration: "Input IGST"
+        }
+      ];
     return [
-      { amount: round(taxAmount / 2), dc: "debit" as const, ledgerId: (await this.requiredLedger(databaseName, "INPUT_CGST")).id, narration: "Input CGST" },
-      { amount: round(taxAmount / 2), dc: "debit" as const, ledgerId: (await this.requiredLedger(databaseName, "INPUT_SGST")).id, narration: "Input SGST" }
+      {
+        amount: round(taxAmount / 2),
+        dc: "debit" as const,
+        ledgerId: (await this.requiredLedger(databaseName, "INPUT_CGST")).id,
+        narration: "Input CGST"
+      },
+      {
+        amount: round(taxAmount / 2),
+        dc: "debit" as const,
+        ledgerId: (await this.requiredLedger(databaseName, "INPUT_SGST")).id,
+        narration: "Input SGST"
+      }
     ];
   }
 }
 
 function totalsFor(lines: VoucherLineInput[]) {
   return {
-    credit: round(lines.filter((line) => line.dc === "credit").reduce((sum, line) => sum + Number(line.amount || 0), 0)),
-    debit: round(lines.filter((line) => line.dc === "debit").reduce((sum, line) => sum + Number(line.amount || 0), 0))
+    credit: round(
+      lines
+        .filter((line) => line.dc === "credit")
+        .reduce((sum, line) => sum + Number(line.amount || 0), 0)
+    ),
+    debit: round(
+      lines
+        .filter((line) => line.dc === "debit")
+        .reduce((sum, line) => sum + Number(line.amount || 0), 0)
+    )
   };
 }
 
 function assertBalanced(totals: { credit: number; debit: number }) {
-  if (totals.credit <= 0 || totals.debit <= 0) throw new Error("Voucher must contain debit and credit lines.");
+  if (totals.credit <= 0 || totals.debit <= 0)
+    throw new Error("Voucher must contain debit and credit lines.");
   if (Math.abs(totals.credit - totals.debit) > 0.01) throw new Error("Voucher is not balanced.");
 }
 

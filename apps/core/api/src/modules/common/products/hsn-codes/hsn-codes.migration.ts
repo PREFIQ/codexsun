@@ -12,15 +12,14 @@ export function migrateHsnCodes(database: Kysely<CoreDatabase>) {
     .raw(
       `
     CREATE TABLE IF NOT EXISTS hsn_codes (
-      id VARCHAR(160) NOT NULL PRIMARY KEY,
-      uuid CHAR(8) NOT NULL UNIQUE,
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
       code VARCHAR(255) NOT NULL,
       description VARCHAR(255) NOT NULL,
-      is_active TINYINT(1) NOT NULL DEFAULT 1,
+      status VARCHAR(24) NOT NULL DEFAULT 'active',
       sort_order INT NOT NULL DEFAULT 1000,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      UNIQUE KEY hsn_codes_code_unique (code),
+      UNIQUE KEY hsn_codes_code_unique (code)
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `
     )

@@ -25,20 +25,34 @@ export function TenantAccessList({ records }: { records: TenantAccessSummary[] }
                 {record.activeSubscription ? (
                   <div className="space-y-1">
                     <div>{record.activeSubscription.planName}</div>
-                    <StatusBadge tone={record.activeSubscription.status === "active" ? "green" : "blue"}>{record.activeSubscription.status}</StatusBadge>
+                    <StatusBadge
+                      tone={record.activeSubscription.status === "active" ? "green" : "blue"}
+                    >
+                      {record.activeSubscription.status}
+                    </StatusBadge>
                   </div>
                 ) : (
                   <StatusBadge tone="amber">No active plan</StatusBadge>
                 )}
               </td>
-              <td className="px-4 py-3 text-muted-foreground">{record.planModuleKeys.join(", ") || "-"}</td>
-              <td className="px-4 py-3 text-muted-foreground">{record.manualModuleKeys.join(", ") || "-"}</td>
-              <td className="px-4 py-3 font-medium">{record.enabledModuleKeys.join(", ") || "-"}</td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {record.planModuleKeys.join(", ") || "-"}
+              </td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {record.manualModuleKeys.join(", ") || "-"}
+              </td>
+              <td className="px-4 py-3 font-medium">
+                {record.enabledModuleKeys.join(", ") || "-"}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {records.length === 0 ? <div className="px-4 py-8 text-center text-sm text-muted-foreground">No tenant access records found.</div> : null}
+      {records.length === 0 ? (
+        <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+          No tenant access records found.
+        </div>
+      ) : null}
     </div>
   );
 }

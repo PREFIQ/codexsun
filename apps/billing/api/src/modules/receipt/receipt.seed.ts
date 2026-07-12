@@ -1,1 +1,3 @@
-export async function seedReceiptModule() { return { module: "receipt" as const, seeded: false }; }
+export async function seedReceiptModule() {
+  return { module: "receipt" as const, seeded: false };
+}

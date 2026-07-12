@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { contactGroupsDefinition } from "./contact-groups.definition";
-export function useContactGroupsQuery() { return useCommonMasterQuery(contactGroupsDefinition.key, contactGroupsDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listContactGroups } from "./contact-groups.services";
+export function useContactGroupsQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listContactGroups(path), queryKey: ["core", "common", key] });
+}

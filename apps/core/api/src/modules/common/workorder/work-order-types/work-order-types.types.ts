@@ -1,6 +1,5 @@
 export type WorkOrderTypesRecord = {
-  id: string;
-  uuid: string;
+  id: number;
   name: string;
   isActive: boolean;
   sortOrder: number;

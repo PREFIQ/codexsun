@@ -16,7 +16,7 @@ const lookupPaths = {
   taxes: "/core/common/products/taxes",
   transports: "/core/common/workorder/transports",
   sizes: "/core/common/products/sizes",
-  workOrders: "/core/master/work-orders",
+  workOrders: "/core/master/work-orders"
 } as const;
 
 export type SaleLookupKind = keyof typeof lookupPaths;
@@ -29,11 +29,22 @@ export class SaleLookupService {
   }
 
   create(kind: SaleLookupKind, headers: LookupHeaders, input: Record<string, unknown>) {
-    return this.request(lookupPaths[kind], headers, { body: JSON.stringify(input), method: "POST" }).then(responseData);
+    return this.request(lookupPaths[kind], headers, {
+      body: JSON.stringify(input),
+      method: "POST"
+    }).then(responseData);
   }
 
-  update(kind: "contacts" | "products" | "workOrders", headers: LookupHeaders, id: string, input: Record<string, unknown>) {
-    return this.request(`${lookupPaths[kind]}/${encodeURIComponent(id)}`, headers, { body: JSON.stringify(input), method: "PUT" }).then(responseData);
+  update(
+    kind: "contacts" | "products" | "workOrders",
+    headers: LookupHeaders,
+    id: string,
+    input: Record<string, unknown>
+  ) {
+    return this.request(`${lookupPaths[kind]}/${encodeURIComponent(id)}`, headers, {
+      body: JSON.stringify(input),
+      method: "PUT"
+    }).then(responseData);
   }
 
   private request(path: string, headers: LookupHeaders, init?: RequestInit) {
@@ -42,9 +53,11 @@ export class SaleLookupService {
       headers: {
         Accept: "application/json",
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
-        ...(headerValue(headers.authorization) ? { Authorization: headerValue(headers.authorization)! } : {}),
-        ...(headerValue(headers.tenantId) ? { "x-tenant-id": headerValue(headers.tenantId)! } : {}),
-      },
+        ...(headerValue(headers.authorization)
+          ? { Authorization: headerValue(headers.authorization)! }
+          : {}),
+        ...(headerValue(headers.tenantId) ? { "x-tenant-id": headerValue(headers.tenantId)! } : {})
+      }
     });
   }
 }
@@ -52,8 +65,13 @@ export class SaleLookupService {
 type LookupHeaders = { authorization?: string | string[]; tenantId?: string | string[] };
 
 async function responseData(response: Response) {
-  const payload = await response.json() as { data?: unknown; error?: { message?: string }; success?: boolean };
-  if (!response.ok || payload.success === false) throw new Error(payload.error?.message || "Sales lookup could not be loaded.");
+  const payload = (await response.json()) as {
+    data?: unknown;
+    error?: { message?: string };
+    success?: boolean;
+  };
+  if (!response.ok || payload.success === false)
+    throw new Error(payload.error?.message || "Sales lookup could not be loaded.");
   return payload.data ?? [];
 }
 

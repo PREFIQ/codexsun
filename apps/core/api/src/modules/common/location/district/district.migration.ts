@@ -13,7 +13,6 @@ export function migrateDistrictModule(database: Kysely<CoreDatabase>) {
       `
     CREATE TABLE IF NOT EXISTS districts (
       id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-      uuid VARCHAR(8) NOT NULL UNIQUE,
       state_id INT NOT NULL,
       name VARCHAR(200) NOT NULL,
       sort_order INT(11) NOT NULL DEFAULT 1000,

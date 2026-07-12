@@ -8,7 +8,9 @@ export type ComposedModule<TDependencies extends object> = {
   register: (dependencies: TDependencies) => Promise<void> | void;
 };
 
-export function defineModule<TDependencies extends object>(module: ComposedModule<TDependencies>): ComposedModule<TDependencies> {
+export function defineModule<TDependencies extends object>(
+  module: ComposedModule<TDependencies>
+): ComposedModule<TDependencies> {
   return module;
 }
 

@@ -1,4 +1,8 @@
-import type { ProjectManagerForm, ProjectManagerKind, ProjectManagerRecord } from "./project-manager.types";
+import type {
+  ProjectManagerForm,
+  ProjectManagerKind,
+  ProjectManagerRecord
+} from "./project-manager.types";
 
 export const projectManagerKinds: Array<{ kind: ProjectManagerKind; label: string }> = [
   { kind: "issue", label: "Issues" },

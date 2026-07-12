@@ -13,7 +13,6 @@ export function migrateCountryModule(database: Kysely<CoreDatabase>) {
       `
     CREATE TABLE IF NOT EXISTS countries (
       id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-      uuid VARCHAR(8) NOT NULL UNIQUE,
       code VARCHAR(80) NOT NULL UNIQUE,
       name VARCHAR(200) NOT NULL,
       sort_order INT(11) NOT NULL DEFAULT 1000,

@@ -14,20 +14,20 @@ This deployment is for the current CODEXSUN monorepo described in `assist/README
 
 Default ports:
 
-| Service | Host Port |
-| --- | ---: |
-| Platform API | 7010 |
-| Platform Web | 7020 |
-| Core API | 7030 |
-| Core Web | 7040 |
-| Billing API | 7050 |
-| Billing Web | 7060 |
-| Accounts API | 7070 |
-| Accounts Web | 7080 |
-| File server | 7090 |
-| Docker admin, Portainer | 7091 |
-| MariaDB admin, Adminer | 7092 |
-| Redis admin, Redis Commander | 7093 |
+| Service                      | Host Port |
+| ---------------------------- | --------: |
+| Platform API                 |      7010 |
+| Platform Web                 |      7020 |
+| Core API                     |      7030 |
+| Core Web                     |      7040 |
+| Billing API                  |      7050 |
+| Billing Web                  |      7060 |
+| Accounts API                 |      7070 |
+| Accounts Web                 |      7080 |
+| File server                  |      7090 |
+| Docker admin, Portainer      |      7091 |
+| MariaDB admin, Adminer       |      7092 |
+| Redis admin, Redis Commander |      7093 |
 
 ## First Deploy
 

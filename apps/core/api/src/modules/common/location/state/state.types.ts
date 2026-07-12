@@ -1,9 +1,8 @@
 export type StateStatus = "active" | "inactive";
 
 export type State = {
-  id: string;
-  uuid: string;
-  countryId: string;
+  id: number;
+  countryId: number;
   countryName: string;
   name: string;
   sortOrder: number;
@@ -11,7 +10,7 @@ export type State = {
 };
 
 export type StateSavePayload = {
-  countryId: string;
+  countryId: number;
   name: string;
   sortOrder: number;
   status: StateStatus;

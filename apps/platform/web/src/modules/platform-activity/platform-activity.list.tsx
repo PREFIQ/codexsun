@@ -20,14 +20,22 @@ export function PlatformActivityList({ records }: { records: PlatformActivity[] 
             <tr className="border-t" key={record.uuid}>
               <td className="px-4 py-3 font-medium">{record.action}</td>
               <td className="px-4 py-3">{record.recordLabel}</td>
-              <td className="px-4 py-3"><StatusBadge tone="blue">{record.moduleKey}</StatusBadge></td>
+              <td className="px-4 py-3">
+                <StatusBadge tone="blue">{record.moduleKey}</StatusBadge>
+              </td>
               <td className="px-4 py-3 text-muted-foreground">{record.actorEmail}</td>
-              <td className="px-4 py-3 text-muted-foreground">{formatDistanceToNow(new Date(record.createdAt), { addSuffix: true })}</td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {formatDistanceToNow(new Date(record.createdAt), { addSuffix: true })}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {records.length === 0 ? <div className="px-4 py-8 text-center text-sm text-muted-foreground">No activity found.</div> : null}
+      {records.length === 0 ? (
+        <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+          No activity found.
+        </div>
+      ) : null}
     </div>
   );
 }

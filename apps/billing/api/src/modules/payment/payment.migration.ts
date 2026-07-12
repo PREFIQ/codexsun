@@ -1,7 +1,9 @@
 import { sql, type Kysely } from "kysely";
 
 export async function migratePaymentModule(database: Kysely<any>) {
-  await sql.raw(`CREATE TABLE IF NOT EXISTS billing_payments (
+  await sql
+    .raw(
+      `CREATE TABLE IF NOT EXISTS billing_payments (
     id varchar(80) primary key,
     payment_number varchar(80) not null unique,
     payment_date varchar(16) not null,
@@ -24,5 +26,7 @@ export async function migratePaymentModule(database: Kysely<any>) {
     allocations_json longtext null,
     created_at varchar(40) not null,
     updated_at varchar(40) not null
-  )`).execute(database);
+  )`
+    )
+    .execute(database);
 }

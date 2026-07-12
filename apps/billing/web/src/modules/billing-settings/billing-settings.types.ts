@@ -66,28 +66,94 @@ export const defaultBillingLayout: BillingDocumentLayoutSettings = {
   useEinvoice: true,
   useEway: true,
   usePo: false,
-  useSize: true,
+  useSize: true
 };
 
 export const defaultBillingSettings: BillingSettings = {
   features: {
     exportSales: false,
     quotation: true,
-    tconnect: true,
+    tconnect: true
   },
   gstApiMode: "einvoice_eway",
   layout: { ...defaultBillingLayout },
   numbering: {
-    exportSales: { automatic: true, nextNumber: 1, padding: 4, prefix: "EXP", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
-    payment: { automatic: true, nextNumber: 1, padding: 4, prefix: "PAY", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
-    purchase: { automatic: true, nextNumber: 1, padding: 4, prefix: "PUR", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
-    quotation: { automatic: true, nextNumber: 1, padding: 4, prefix: "QUO", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
-    receipt: { automatic: true, nextNumber: 1, padding: 4, prefix: "REC", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
-    sales: { automatic: true, nextNumber: 1, padding: 4, prefix: "SAL", separator: "-", suffix: "", usePrefix: true, useSeparator: true, useSuffix: false },
+    exportSales: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "EXP",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    },
+    payment: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "PAY",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    },
+    purchase: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "PUR",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    },
+    quotation: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "QUO",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    },
+    receipt: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "REC",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    },
+    sales: {
+      automatic: true,
+      nextNumber: 1,
+      padding: 4,
+      prefix: "SAL",
+      separator: "-",
+      suffix: "",
+      usePrefix: true,
+      useSeparator: true,
+      useSuffix: false
+    }
   },
   customise: {
-    documentTitles: { payment: "Payment Voucher", purchase: "Purchase", quotation: "Quotation", receipt: "Receipt Voucher", sales: "Tax Invoice" },
-    printLanguage: "english",
+    documentTitles: {
+      payment: "Payment Voucher",
+      purchase: "Purchase",
+      quotation: "Quotation",
+      receipt: "Receipt Voucher",
+      sales: "Tax Invoice"
+    },
+    printLanguage: "english"
   },
   printing: {
     addressMode: "billing_and_shipping",
@@ -106,10 +172,10 @@ export const defaultBillingSettings: BillingSettings = {
       logoLeftMm: 4,
       logoTopMm: 9,
       logoWidthMm: 28,
-      taxSize: 11,
+      taxSize: 11
     },
     printAccountNumber: true,
     printQrAccountDetails: true,
-    printWithLogo: true,
-  },
+    printWithLogo: true
+  }
 };

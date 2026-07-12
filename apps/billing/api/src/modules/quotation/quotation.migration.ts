@@ -1,7 +1,9 @@
 import { sql, type Kysely } from "kysely";
 
 export async function migrateQuotationModule(database: Kysely<any>) {
-  await sql.raw(`
+  await sql
+    .raw(
+      `
     CREATE TABLE IF NOT EXISTS billing_quotations (
       id varchar(80) primary key,
       quotation_number varchar(80) not null unique,
@@ -24,10 +26,16 @@ export async function migrateQuotationModule(database: Kysely<any>) {
       created_at varchar(40) null,
       updated_at varchar(40) null
     )
-  `).execute(database);
+  `
+    )
+    .execute(database);
 
-  await sql.raw(`
+  await sql
+    .raw(
+      `
     ALTER TABLE billing_quotations
       ADD COLUMN IF NOT EXISTS sales_ledger varchar(180) null AFTER work_order_no
-  `).execute(database);
+  `
+    )
+    .execute(database);
 }

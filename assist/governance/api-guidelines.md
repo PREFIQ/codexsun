@@ -146,19 +146,19 @@ Error:
 
 ### Envelope Meta Fields
 
-| Field | Required | Description |
-| --- | --- | --- |
+| Field           | Required | Description                                                          |
+| --------------- | -------- | -------------------------------------------------------------------- |
 | `correlationId` | optional | Echoes `x-correlation-id` header. Auto-generated if client omits it. |
-| `requestId` | always | Fastify request ID, used as internal trace value |
-| `timestamp` | always | ISO 8601 timestamp of response generation |
-| `tenantId` | optional | Present when the request carried a validated `x-tenant-id` header |
+| `requestId`     | always   | Fastify request ID, used as internal trace value                     |
+| `timestamp`     | always   | ISO 8601 timestamp of response generation                            |
+| `tenantId`      | optional | Present when the request carried a validated `x-tenant-id` header    |
 
 ### Request Header Contract
 
-| Header | When to send | Description |
-| --- | --- | --- |
-| `x-tenant-id` | Tenant-scoped API calls | Validated database tenant ID from session/JWT. Never used alone for auth. |
-| `x-correlation-id` | All API calls | Restored in v1.0.4. Echoed in envelope meta as `correlationId`. Task 1 proposes deprecating in favor of `requestId` + `tenantId` separation. |
+| Header             | When to send            | Description                                                                                                                                  |
+| ------------------ | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `x-tenant-id`      | Tenant-scoped API calls | Validated database tenant ID from session/JWT. Never used alone for auth.                                                                    |
+| `x-correlation-id` | All API calls           | Restored in v1.0.4. Echoed in envelope meta as `correlationId`. Task 1 proposes deprecating in favor of `requestId` + `tenantId` separation. |
 
 ## API Guard Pattern
 
@@ -166,34 +166,34 @@ All protected routes use shared guard helpers from `apps/platform/api/src/auth/g
 
 ### Available Guards
 
-| Guard | Purpose | Throws |
-| --- | --- | --- |
-| `requireSession(app, request)` | Resolves active session from Bearer token or `codexsun_session` cookie | `AppError.unauthorized()` if missing or invalid |
-| `requireUserType(session, allowedTypes)` | Checks user type against allowed list | `AppError.forbidden()` if type not allowed |
-| `requireSuperAdmin(app, request)` | Wrapper for super-admin-only routes | `AppError.unauthorized()` or `AppError.forbidden()` |
-| `requireTenantMatch(request, session)` | Verifies `x-tenant-id` header matches authenticated session tenant | `AppError.validation()` or `AppError.forbidden()` on mismatch |
-| `requirePermission(session, permission)` | Placeholder: super-admin allowed, others denied | `AppError.forbidden()` with permission name |
-| `requireActiveTenant(session)` | Placeholder: always passes | None yet |
-| `requireFeatureEnabled(tenantId, featureKey)` | Placeholder: always passes | None yet |
+| Guard                                         | Purpose                                                                | Throws                                                        |
+| --------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `requireSession(app, request)`                | Resolves active session from Bearer token or `codexsun_session` cookie | `AppError.unauthorized()` if missing or invalid               |
+| `requireUserType(session, allowedTypes)`      | Checks user type against allowed list                                  | `AppError.forbidden()` if type not allowed                    |
+| `requireSuperAdmin(app, request)`             | Wrapper for super-admin-only routes                                    | `AppError.unauthorized()` or `AppError.forbidden()`           |
+| `requireTenantMatch(request, session)`        | Verifies `x-tenant-id` header matches authenticated session tenant     | `AppError.validation()` or `AppError.forbidden()` on mismatch |
+| `requirePermission(session, permission)`      | Placeholder: super-admin allowed, others denied                        | `AppError.forbidden()` with permission name                   |
+| `requireActiveTenant(session)`                | Placeholder: always passes                                             | None yet                                                      |
+| `requireFeatureEnabled(tenantId, featureKey)` | Placeholder: always passes                                             | None yet                                                      |
 
 ### Route Ownership
 
-| Route module | File | Owner |
-| --- | --- | --- |
-| Auth (login, session, logout) | `apps/platform/api/src/auth/routes.ts` | `@codexsun/platform-api` |
-| Tenant management CRUD | `apps/platform/api/src/tenant/routes.ts` | `@codexsun/platform-api` |
+| Route module                  | File                                     | Owner                    |
+| ----------------------------- | ---------------------------------------- | ------------------------ |
+| Auth (login, session, logout) | `apps/platform/api/src/auth/routes.ts`   | `@codexsun/platform-api` |
+| Tenant management CRUD        | `apps/platform/api/src/tenant/routes.ts` | `@codexsun/platform-api` |
 
 ### Audit Events
 
 Auth and tenant mutations write audit events through `AuditService` (`@codexsun/platform/audit`).
 
-| Event Name | Trigger | Fields |
-| --- | --- | --- |
-| `auth.login.success` | Successful login | actorType, actorEmail, tenantId (optional) |
-| `auth.login.failed` | Failed login attempt | actorType, actorEmail |
-| `auth.logout` | Logout call | actorType, actorEmail, tenantId (optional) |
-| `tenant.created` | Tenant created by super admin | actorEmail, tenantId, tenantCode |
-| `tenant.updated` | Tenant updated by super admin | actorEmail, tenantId, changes |
-| `tenant.deleted` | Tenant deleted by super admin | actorEmail, tenantId, tenantCode |
+| Event Name           | Trigger                       | Fields                                     |
+| -------------------- | ----------------------------- | ------------------------------------------ |
+| `auth.login.success` | Successful login              | actorType, actorEmail, tenantId (optional) |
+| `auth.login.failed`  | Failed login attempt          | actorType, actorEmail                      |
+| `auth.logout`        | Logout call                   | actorType, actorEmail, tenantId (optional) |
+| `tenant.created`     | Tenant created by super admin | actorEmail, tenantId, tenantCode           |
+| `tenant.updated`     | Tenant updated by super admin | actorEmail, tenantId, changes              |
+| `tenant.deleted`     | Tenant deleted by super admin | actorEmail, tenantId, tenantCode           |
 
 Audit failures are non-blocking: the main action completes and the failure is logged.

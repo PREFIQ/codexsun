@@ -1,4 +1,13 @@
-export type ProjectManagerKind = "activity" | "discussion" | "issue" | "kanban" | "release" | "review" | "task" | "timeline" | "todo";
+export type ProjectManagerKind =
+  | "activity"
+  | "discussion"
+  | "issue"
+  | "kanban"
+  | "release"
+  | "review"
+  | "task"
+  | "timeline"
+  | "todo";
 
 export type ProjectManagerRecord = {
   active: boolean;
@@ -21,7 +30,9 @@ export type ProjectManagerRecord = {
   updatedAt: string;
 };
 
-export type ProjectManagerSavePayload = Partial<Omit<ProjectManagerRecord, "createdAt" | "id" | "kind" | "updatedAt">> & {
+export type ProjectManagerSavePayload = Partial<
+  Omit<ProjectManagerRecord, "createdAt" | "id" | "kind" | "updatedAt">
+> & {
   key: string;
   title: string;
 };
@@ -81,8 +92,20 @@ export type ProjectManagerRegistryModule = {
   updatedAt: string;
 };
 
-export type ProjectManagerDocumentationRow = { createdAt: string; id: string; key: string; updatedAt: string; value: string };
-export type ProjectManagerPlanningNote = { body: string; createdAt: string; id: string; title: string; updatedAt: string };
+export type ProjectManagerDocumentationRow = {
+  createdAt: string;
+  id: string;
+  key: string;
+  updatedAt: string;
+  value: string;
+};
+export type ProjectManagerPlanningNote = {
+  body: string;
+  createdAt: string;
+  id: string;
+  title: string;
+  updatedAt: string;
+};
 
 export type ProjectManagerRegistryModuleNode = ProjectManagerRegistryModule & {
   children: ProjectManagerRegistryModuleNode[];

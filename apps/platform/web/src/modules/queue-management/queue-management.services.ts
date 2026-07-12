@@ -1,5 +1,10 @@
 import { apiGet, apiPost } from "../../shared/api/platform-api";
-import type { QueueCleanupResult, QueueJobFilters, QueueJobRecord, QueueRuntimeSettings } from "./queue-management.types";
+import type {
+  QueueCleanupResult,
+  QueueJobFilters,
+  QueueJobRecord,
+  QueueRuntimeSettings
+} from "./queue-management.types";
 
 export function getQueueRuntimeSettings() {
   return apiGet<QueueRuntimeSettings>("/admin/queue/settings", "sa");

@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { type ReactNode } from "react"
-import { motion } from "framer-motion"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/tabs"
-import { cn } from "../lib/utils"
+import { type ReactNode } from "react";
+import { motion } from "framer-motion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/tabs";
+import { cn } from "../lib/utils";
 
 export type WorkspaceAnimatedTab = {
-  content: ReactNode
-  label: ReactNode
-  value: string
-}
+  content: ReactNode;
+  label: ReactNode;
+  value: string;
+};
 
 export function WorkspaceAnimatedTabs({
   className,
@@ -19,23 +19,23 @@ export function WorkspaceAnimatedTabs({
   onValueChange,
   tabs,
   triggerClassName,
-  value,
+  value
 }: {
-  className?: string
-  contentClassName?: string
-  keepMounted?: boolean
-  listClassName?: string
-  onValueChange: (value: string) => void
-  tabs: WorkspaceAnimatedTab[]
-  triggerClassName?: string
-  value: string
+  className?: string;
+  contentClassName?: string;
+  keepMounted?: boolean;
+  listClassName?: string;
+  onValueChange: (value: string) => void;
+  tabs: WorkspaceAnimatedTab[];
+  triggerClassName?: string;
+  value: string;
 }) {
   return (
     <Tabs value={value} onValueChange={onValueChange} className={cn("w-full", className)}>
       <TabsList
         className={cn(
           "relative h-auto w-full flex-nowrap justify-start overflow-x-auto overflow-y-hidden rounded-none border-0 border-b border-border/90 bg-transparent p-0 shadow-[inset_0_-1px_0_rgba(15,23,42,0.04)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          listClassName,
+          listClassName
         )}
       >
         {tabs.map((tab) => (
@@ -44,7 +44,7 @@ export function WorkspaceAnimatedTabs({
             value={tab.value}
             className={cn(
               "relative -mb-px shrink-0 overflow-visible rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 py-2 text-sm font-medium text-muted-foreground shadow-none transition-colors duration-200 data-[state=active]:border-transparent data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none",
-              triggerClassName,
+              triggerClassName
             )}
           >
             {tab.label}
@@ -64,11 +64,15 @@ export function WorkspaceAnimatedTabs({
           key={tab.value}
           value={tab.value}
           {...(keepMounted ? { forceMount: true } : {})}
-          className={cn("mt-6 pb-2", keepMounted && "data-[state=inactive]:hidden", contentClassName)}
+          className={cn(
+            "mt-6 pb-2",
+            keepMounted && "data-[state=inactive]:hidden",
+            contentClassName
+          )}
         >
           {tab.content}
         </TabsContent>
       ))}
     </Tabs>
-  )
+  );
 }

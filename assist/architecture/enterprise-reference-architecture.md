@@ -105,4 +105,3 @@ Modules that may later become separately deployable:
 - Notification delivery.
 
 Split only when there is proven pressure from scale, reliability, security, or team ownership.
-

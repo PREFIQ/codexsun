@@ -10,7 +10,7 @@ export const saleLineItemSchema = z.object({
   rate: z.number().nonnegative("Rate must be zero or more."),
   size: z.string(),
   taxRate: z.number().min(0, "Tax rate must be zero or more."),
-  unit: z.string().trim().min(1, "Unit is required."),
+  unit: z.string().trim().min(1, "Unit is required.")
 });
 
 export const salesSchema = z.object({
@@ -25,5 +25,5 @@ export const salesSchema = z.object({
   notes: z.string(),
   roundOff: z.number(),
   shippingAddress: z.string().trim().min(1, "Shipping address is required."),
-  status: z.enum(["draft", "confirmed", "cancelled"]),
+  status: z.enum(["draft", "confirmed", "cancelled"])
 });

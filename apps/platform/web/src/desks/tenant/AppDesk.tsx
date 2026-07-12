@@ -18,9 +18,23 @@ import {
   WalletCardsIcon
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { ApplicationLayout, Button, Card, Label, RadioGroup, RadioGroupItem, StatusBadge } from "@codexsun/ui";
+import {
+  ApplicationLayout,
+  Button,
+  Card,
+  Label,
+  RadioGroup,
+  RadioGroupItem,
+  StatusBadge
+} from "@codexsun/ui";
 import { AuthGate } from "../../shared/auth/AuthGate";
-import { appMenuItemsFor, appWorkspaceItems, defaultLandingApp, enabledAppIds, type PlatformAppId } from "../../app/app-registry";
+import {
+  appMenuItemsFor,
+  appWorkspaceItems,
+  defaultLandingApp,
+  enabledAppIds,
+  type PlatformAppId
+} from "../../app/app-registry";
 import { getTenantRuntime } from "../../modules/tenant/tenant.services";
 import { commonMasterDefinitions } from "../../modules/common/registry";
 import { AddressTypesWorkspace } from "@codexsun/core-web/modules/common/contacts/address-types";
@@ -53,15 +67,22 @@ import { TransportsWorkspace } from "@codexsun/core-web/modules/common/workorder
 import { WarehousesWorkspace } from "@codexsun/core-web/modules/common/workorder/warehouses";
 import { WorkOrderTypesWorkspace } from "@codexsun/core-web/modules/common/workorder/work-order-types";
 import { ContactWorkspace, ProductWorkspace, WorkOrderWorkspace } from "../../modules/master";
-import { CompanyWorkspace, listCompanys } from "../../modules/organisation";
+import { CompanyWorkspace, listCompanies } from "../../modules/organisation";
 import { QuotationWorkspace } from "../../modules/quotation/quotation.workspace";
 import { SalesWorkspace } from "../../modules/sales/sales.workspace";
 import { PurchaseWorkspace } from "../../modules/purchase/purchase.workspace";
 import { ExportSalesWorkspace } from "../../modules/export-sales/export-sales.workspace";
 import { PaymentWorkspace } from "../../modules/payment/payment.workspace";
 import { ReceiptWorkspace } from "../../modules/receipt/receipt.workspace";
-import { AccountsSettingsWorkspace, AccountsWorkspace, getAccountsSettings } from "../../modules/accounts";
-import { BillingSettingsWorkspace, DocumentSettingsWorkspace } from "../../modules/billing-settings";
+import {
+  AccountsSettingsWorkspace,
+  AccountsWorkspace,
+  getAccountsSettings
+} from "../../modules/accounts";
+import {
+  BillingSettingsWorkspace,
+  DocumentSettingsWorkspace
+} from "../../modules/billing-settings";
 import { getToken, setTenantDbName, setTenantId } from "../../shared/api/platform-api";
 
 type AppPage =
@@ -112,7 +133,9 @@ const COMPANY_CONTEXT_STORAGE_KEY = "codexsun.tenant.company-id";
 
 export function AppDesk() {
   const [page, setPage] = useState<AppPage>(() => pageFromUrl(readPublishedLandingApp()));
-  const [publishedLandingApp, setPublishedLandingApp] = useState<PlatformAppId | null>(() => readPublishedLandingApp());
+  const [publishedLandingApp, setPublishedLandingApp] = useState<PlatformAppId | null>(() =>
+    readPublishedLandingApp()
+  );
   const [shouldResolveLandingPath, setShouldResolveLandingPath] = useState(() => isAppRootPath());
   const runtimeQuery = useQuery({
     queryFn: getTenantRuntime,
@@ -120,7 +143,7 @@ export function AppDesk() {
   });
   const companiesQuery = useQuery({
     enabled: Boolean(runtimeQuery.data?.tenant?.uuid),
-    queryFn: () => listCompanys(),
+    queryFn: () => listCompanies(),
     queryKey: ["core", "organisation", "companies", runtimeQuery.data?.tenant?.uuid]
   });
   const accountingSettingsQuery = useQuery({
@@ -134,16 +157,28 @@ export function AppDesk() {
   const moduleKeys = runtime?.tenant?.enabledModuleKeys ?? ["platform.application"];
   const enabledApps = enabledAppIds(moduleKeys);
   const switchableApps = uniqueApps(enabledApps);
-  const runtimeLandingApp = runtime?.defaultLandingApp ?? defaultLandingApp(runtime?.tenant?.defaultLandingApp, moduleKeys);
-  const landingApp = publishedLandingApp && enabledApps.includes(publishedLandingApp) ? publishedLandingApp : runtimeLandingApp;
+  const runtimeLandingApp =
+    runtime?.defaultLandingApp ?? defaultLandingApp(runtime?.tenant?.defaultLandingApp, moduleKeys);
+  const landingApp =
+    publishedLandingApp && enabledApps.includes(publishedLandingApp)
+      ? publishedLandingApp
+      : runtimeLandingApp;
   const activeApp = appFromPage(page, landingApp, switchableApps);
   const safePage =
-    ((page.startsWith("billing") || (page.startsWith("core") && !page.startsWith("core.organisation"))) && !switchableApps.includes("billing")) ||
+    ((page.startsWith("billing") ||
+      (page.startsWith("core") && !page.startsWith("core.organisation"))) &&
+      !switchableApps.includes("billing")) ||
     (page.startsWith("accounts") && !switchableApps.includes("accounts"))
       ? pageForApp(landingApp)
       : page;
-  const activeCompanies = useMemo(() => (companiesQuery.data ?? []).filter((company) => company.isActive), [companiesQuery.data]);
-  const selectedCompany = activeCompanies.find((company) => company.id === selectedCompanyId) ?? activeCompanies[0] ?? null;
+  const activeCompanies = useMemo(
+    () => (companiesQuery.data ?? []).filter((company) => company.isActive),
+    [companiesQuery.data]
+  );
+  const selectedCompany =
+    activeCompanies.find((company) => String(company.id) === selectedCompanyId) ??
+    activeCompanies[0] ??
+    null;
   const accountingYear = financialYearLabel(accountingSettingsQuery.data?.financialYear);
 
   useEffect(() => {
@@ -161,9 +196,9 @@ export function AppDesk() {
   }, [runtime?.tenant]);
 
   useEffect(() => {
-    if (!selectedCompany || selectedCompany.id === selectedCompanyId) return;
-    setSelectedCompanyId(selectedCompany.id);
-    window.localStorage.setItem(COMPANY_CONTEXT_STORAGE_KEY, selectedCompany.id);
+    if (!selectedCompany || String(selectedCompany.id) === selectedCompanyId) return;
+    setSelectedCompanyId(String(selectedCompany.id));
+    window.localStorage.setItem(COMPANY_CONTEXT_STORAGE_KEY, String(selectedCompany.id));
   }, [selectedCompany, selectedCompanyId]);
 
   useEffect(() => {
@@ -186,26 +221,52 @@ export function AppDesk() {
     window.localStorage.setItem(LANDING_APP_STORAGE_KEY, nextLandingApp);
   }
 
-  const activeWorkspaceTitle = activeApp === "billing" ? "Billing" : activeApp === "accounts" ? "Accounts" : "Application";
-  const menuItems = appMenuItemsFor(activeApp, safePage, (nextPage) => selectPage(nextPage as AppPage));
+  const activeWorkspaceTitle =
+    activeApp === "billing" ? "Billing" : activeApp === "accounts" ? "Accounts" : "Application";
+  const menuItems = appMenuItemsFor(activeApp, safePage, (nextPage) =>
+    selectPage(nextPage as AppPage)
+  );
   const workspaceItems = appWorkspaceItems(switchableApps, activeApp).map((item) => ({
     ...item,
-    onSelect: () => selectPage(item.title === "Application" ? "application.overview" : item.title === "Billing" ? "billing.overview" : "accounts.overview"),
-    url: item.title === "Application" ? "/app/application/overview" : item.title === "Billing" ? "/app/billing/overview" : "/app/accounts/overview"
+    onSelect: () =>
+      selectPage(
+        item.title === "Application"
+          ? "application.overview"
+          : item.title === "Billing"
+            ? "billing.overview"
+            : "accounts.overview"
+      ),
+    url:
+      item.title === "Application"
+        ? "/app/application/overview"
+        : item.title === "Billing"
+          ? "/app/billing/overview"
+          : "/app/accounts/overview"
   }));
 
   return (
     <AuthGate desk="tenant">
       <ApplicationLayout
         brand={{
-          href: activeApp === "billing" ? "/app/billing/overview" : activeApp === "accounts" ? "/app/accounts/overview" : "/app/application/overview",
-          options: activeCompanies.map((company) => ({ id: company.id, subtitle: `${company.code} · ${accountingYear}`, title: company.name })),
+          href:
+            activeApp === "billing"
+              ? "/app/billing/overview"
+              : activeApp === "accounts"
+                ? "/app/accounts/overview"
+                : "/app/application/overview",
+          options: activeCompanies.map((company) => ({
+            id: String(company.id),
+            subtitle: `${company.code} · ${accountingYear}`,
+            title: company.name
+          })),
           onOptionSelect: (id) => {
             setSelectedCompanyId(id);
             window.localStorage.setItem(COMPANY_CONTEXT_STORAGE_KEY, id);
           },
-          ...(selectedCompany ? { selectedOptionId: selectedCompany.id } : {}),
-          subtitle: selectedCompany ? accountingYear : `${activeWorkspaceTitle.toLowerCase()} workspace`,
+          ...(selectedCompany ? { selectedOptionId: String(selectedCompany.id) } : {}),
+          subtitle: selectedCompany
+            ? accountingYear
+            : `${activeWorkspaceTitle.toLowerCase()} workspace`,
           title: selectedCompany?.name ?? activeWorkspaceTitle
         }}
         headerTitle={titleForPage(safePage)}
@@ -235,7 +296,11 @@ export function AppDesk() {
           {safePage === "billing.receipt" ? <ReceiptWorkspace /> : null}
           {safePage === "billing.settings" ? <BillingSettingsWorkspace /> : null}
           {safePage === "billing.document-settings" ? <DocumentSettingsWorkspace /> : null}
-          {isAccountsPage(safePage) && safePage !== "accounts.settings" && !isAccountsSettingsPage(safePage) ? <AccountsWorkspace page={accountsWorkspacePage(safePage)} /> : null}
+          {isAccountsPage(safePage) &&
+          safePage !== "accounts.settings" &&
+          !isAccountsSettingsPage(safePage) ? (
+            <AccountsWorkspace page={accountsWorkspacePage(safePage)} />
+          ) : null}
           {isAccountsSettingsPage(safePage) ? <AccountsSettings page={safePage} /> : null}
           {safePage === "core.organisation.company" ? <CompanyWorkspace /> : null}
           {renderOwnedLocationPage(safePage)}
@@ -261,7 +326,9 @@ function financialYearLabel(value: { endDate: string; startDate: string } | unde
   if (!value?.startDate || !value.endDate) return "Accounting year";
   const startYear = value.startDate.slice(0, 4);
   const endYear = value.endDate.slice(2, 4);
-  return /^\d{4}$/.test(startYear) && /^\d{2}$/.test(endYear) ? `FY ${startYear}-${endYear}` : `${value.startDate} to ${value.endDate}`;
+  return /^\d{4}$/.test(startYear) && /^\d{2}$/.test(endYear)
+    ? `FY ${startYear}-${endYear}`
+    : `${value.startDate} to ${value.endDate}`;
 }
 
 function uniqueApps(apps: PlatformAppId[]) {
@@ -343,11 +410,32 @@ function LandingDesk({
         ? "Sales, purchase, receipt, payment, report, master, common, and billing settings."
         : appId === "accounts"
           ? "Ledgers, vouchers, balances, reports, and Tally-ready accounting."
-        : "Shared workspace, company setup, roles, and cross-app launch desk.",
-    icon: appId === "billing" ? CreditCardIcon : appId === "accounts" ? LandmarkIcon : appId === "task-manager" ? ListChecksIcon : LayoutDashboardIcon,
-    iconClass: appId === "billing" ? "bg-emerald-600 text-white" : appId === "accounts" ? "bg-blue-700 text-white" : appId === "task-manager" ? "bg-violet-600 text-white" : "bg-slate-950 text-white",
+          : "Shared workspace, company setup, roles, and cross-app launch desk.",
+    icon:
+      appId === "billing"
+        ? CreditCardIcon
+        : appId === "accounts"
+          ? LandmarkIcon
+          : appId === "task-manager"
+            ? ListChecksIcon
+            : LayoutDashboardIcon,
+    iconClass:
+      appId === "billing"
+        ? "bg-emerald-600 text-white"
+        : appId === "accounts"
+          ? "bg-blue-700 text-white"
+          : appId === "task-manager"
+            ? "bg-violet-600 text-white"
+            : "bg-slate-950 text-white",
     id: appId,
-    label: appId === "billing" ? "Billing" : appId === "accounts" ? "Accounts" : appId === "task-manager" ? "Task Manager" : "Application"
+    label:
+      appId === "billing"
+        ? "Billing"
+        : appId === "accounts"
+          ? "Accounts"
+          : appId === "task-manager"
+            ? "Task Manager"
+            : "Application"
   })) satisfies Array<{
     description: string;
     icon: typeof LayoutDashboardIcon;
@@ -361,13 +449,11 @@ function LandingDesk({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">Landing Desk</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Choose which enabled app opens first for this workspace.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Choose which enabled app opens first for this workspace.
+          </p>
         </div>
-        <Button
-          disabled={!dirty}
-          icon={<RocketIcon />}
-          onClick={() => onPublish(draftLandingApp)}
-        >
+        <Button disabled={!dirty} icon={<RocketIcon />} onClick={() => onPublish(draftLandingApp)}>
           Publish live
         </Button>
       </div>
@@ -376,7 +462,9 @@ function LandingDesk({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold tracking-normal">Default landing app</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Only enabled apps are available as landing choices.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Only enabled apps are available as landing choices.
+            </p>
           </div>
           <StatusBadge tone={dirty ? "amber" : "green"}>
             {dirty ? "Draft not live" : "Live"}
@@ -400,14 +488,18 @@ function LandingDesk({
                 }`}
               >
                 <RadioGroupItem value={choice.id} className="mt-1" />
-                <span className={`grid size-10 shrink-0 place-items-center rounded-md ${choice.iconClass}`}>
+                <span
+                  className={`grid size-10 shrink-0 place-items-center rounded-md ${choice.iconClass}`}
+                >
                   <Icon className="size-5" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold">{choice.label}</span>
                   </span>
-                  <span className="mt-2 block text-sm font-normal leading-5 text-muted-foreground">{choice.description}</span>
+                  <span className="mt-2 block text-sm font-normal leading-5 text-muted-foreground">
+                    {choice.description}
+                  </span>
                 </span>
               </Label>
             );
@@ -435,7 +527,8 @@ function ApplicationOverview() {
                 <p className="text-sm font-semibold uppercase text-muted-foreground">Application</p>
                 <h1 className="mt-1 text-3xl font-semibold tracking-normal">Application Desk</h1>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                  Tenant application workspace for landing setup, platform profile, settings, users, and access.
+                  Tenant application workspace for landing setup, platform profile, settings, users,
+                  and access.
                 </p>
               </div>
             </div>
@@ -543,7 +636,15 @@ function ApplicationDetailCard({
   );
 }
 
-function ApplicationShortcut({ description, icon: Icon, title }: { description: string; icon: typeof LayoutDashboardIcon; title: string }) {
+function ApplicationShortcut({
+  description,
+  icon: Icon,
+  title
+}: {
+  description: string;
+  icon: typeof LayoutDashboardIcon;
+  title: string;
+}) {
   return (
     <div className="flex min-h-28 items-start gap-3 rounded-md border bg-background p-4">
       <span className="grid size-10 shrink-0 place-items-center rounded-md bg-muted text-foreground">
@@ -559,7 +660,10 @@ function ApplicationShortcut({ description, icon: Icon, title }: { description: 
 
 function ApplicationProfile() {
   return (
-    <Card title="Application Profile" description="Platform identity, workspace access, and tenant context.">
+    <Card
+      title="Application Profile"
+      description="Platform identity, workspace access, and tenant context."
+    >
       <div className="flex flex-wrap gap-2">
         <StatusBadge tone="green">Always enabled</StatusBadge>
       </div>
@@ -652,18 +756,46 @@ function BillingOverview() {
             <StatusBadge tone="green">Ready</StatusBadge>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <BillingShortcut title="Sales Entry" description="Create and review billing sales documents." icon={CreditCardIcon} />
-            <BillingShortcut title="Purchase Entry" description="Track purchase-side billing entries." icon={ShoppingBagIcon} />
-            <BillingShortcut title="Receipt Entry" description="Record collections and receipts." icon={ClipboardListIcon} />
-            <BillingShortcut title="Payment Entry" description="Record outgoing payments." icon={IndianRupeeIcon} />
+            <BillingShortcut
+              title="Sales Entry"
+              description="Create and review billing sales documents."
+              icon={CreditCardIcon}
+            />
+            <BillingShortcut
+              title="Purchase Entry"
+              description="Track purchase-side billing entries."
+              icon={ShoppingBagIcon}
+            />
+            <BillingShortcut
+              title="Receipt Entry"
+              description="Record collections and receipts."
+              icon={ClipboardListIcon}
+            />
+            <BillingShortcut
+              title="Payment Entry"
+              description="Record outgoing payments."
+              icon={IndianRupeeIcon}
+            />
           </div>
         </div>
         <div className="rounded-md border bg-card p-5 shadow-sm">
           <h2 className="text-lg font-semibold tracking-normal">Billing Setup</h2>
           <div className="mt-4 space-y-3">
-            <BillingSetupRow title="Core Masters" description="Countries and shared billing master data." tone="blue" />
-            <BillingSetupRow title="Document Settings" description="Billing module settings and document setup." tone="green" />
-            <BillingSetupRow title="Reports" description="Sales, purchase, receipt, and payment summaries." tone="amber" />
+            <BillingSetupRow
+              title="Core Masters"
+              description="Countries and shared billing master data."
+              tone="blue"
+            />
+            <BillingSetupRow
+              title="Document Settings"
+              description="Billing module settings and document setup."
+              tone="green"
+            />
+            <BillingSetupRow
+              title="Reports"
+              description="Sales, purchase, receipt, and payment summaries."
+              tone="amber"
+            />
           </div>
         </div>
       </div>
@@ -711,7 +843,15 @@ function BillingEntryCard({
   );
 }
 
-function BillingShortcut({ description, icon: Icon, title }: { description: string; icon: typeof CreditCardIcon; title: string }) {
+function BillingShortcut({
+  description,
+  icon: Icon,
+  title
+}: {
+  description: string;
+  icon: typeof CreditCardIcon;
+  title: string;
+}) {
   return (
     <div className="flex min-h-28 items-start gap-3 rounded-md border bg-background p-4">
       <span className="grid size-10 shrink-0 place-items-center rounded-md bg-muted text-foreground">
@@ -725,7 +865,15 @@ function BillingShortcut({ description, icon: Icon, title }: { description: stri
   );
 }
 
-function BillingSetupRow({ description, title, tone }: { description: string; title: string; tone: "amber" | "blue" | "green" }) {
+function BillingSetupRow({
+  description,
+  title,
+  tone
+}: {
+  description: string;
+  title: string;
+  tone: "amber" | "blue" | "green";
+}) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-md border bg-background px-4 py-3">
       <div>
@@ -747,14 +895,20 @@ function decodeTokenEmail(token: string) {
   try {
     const encoded = token.split(".")[1];
     if (!encoded) return "";
-    const payload = JSON.parse(atob(encoded.replace(/-/g, "+").replace(/_/g, "/"))) as { email?: unknown };
+    const payload = JSON.parse(atob(encoded.replace(/-/g, "+").replace(/_/g, "/"))) as {
+      email?: unknown;
+    };
     return typeof payload.email === "string" ? payload.email : "";
   } catch {
     return "";
   }
 }
 
-function AccountsSettings({ page = "accounts.settings" }: { page?: Extract<AppPage, `accounts.${string}`> }) {
+function AccountsSettings({
+  page = "accounts.settings"
+}: {
+  page?: Extract<AppPage, `accounts.${string}`>;
+}) {
   const title = titleForPage(page);
   const description = accountsSettingsDescription(page);
   return (
@@ -773,27 +927,56 @@ function AccountsSettings({ page = "accounts.settings" }: { page?: Extract<AppPa
 }
 
 function isAccountsSettingsPage(page: AppPage): page is Extract<AppPage, `accounts.${string}`> {
-  return page === "accounts.settings" || page === "accounts.posting-rules" || page === "accounts.financial-year" || page === "accounts.voucher-numbering" || page === "accounts.tally-integration";
+  return (
+    page === "accounts.settings" ||
+    page === "accounts.posting-rules" ||
+    page === "accounts.financial-year" ||
+    page === "accounts.voucher-numbering" ||
+    page === "accounts.tally-integration"
+  );
 }
 
 function isAccountsPage(page: AppPage): page is Extract<AppPage, `accounts.${string}`> {
   return page.startsWith("accounts.");
 }
 
-function accountsWorkspacePage(page: Extract<AppPage, `accounts.${string}`>): "overview" | "ledgers" | "vouchers" | "reports" {
-  if (page === "accounts.groups" || page === "accounts.ledgers" || page === "accounts.opening-balances") return "ledgers";
-  if (page === "accounts.vouchers" || page === "accounts.sales-postings" || page === "accounts.receipts-payments") return "vouchers";
-  if (page === "accounts.reports" || page === "accounts.trial-balance" || page === "accounts.ledger-statement" || page === "accounts.balance-sheet" || page === "accounts.profit-loss") return "reports";
+function accountsWorkspacePage(
+  page: Extract<AppPage, `accounts.${string}`>
+): "overview" | "ledgers" | "vouchers" | "reports" {
+  if (
+    page === "accounts.groups" ||
+    page === "accounts.ledgers" ||
+    page === "accounts.opening-balances"
+  )
+    return "ledgers";
+  if (
+    page === "accounts.vouchers" ||
+    page === "accounts.sales-postings" ||
+    page === "accounts.receipts-payments"
+  )
+    return "vouchers";
+  if (
+    page === "accounts.reports" ||
+    page === "accounts.trial-balance" ||
+    page === "accounts.ledger-statement" ||
+    page === "accounts.balance-sheet" ||
+    page === "accounts.profit-loss"
+  )
+    return "reports";
   return "overview";
 }
 
 function accountsSettingsDescription(page: Extract<AppPage, `accounts.${string}`>) {
   const descriptions: Partial<Record<Extract<AppPage, `accounts.${string}`>, string>> = {
     "accounts.financial-year": "Financial year, period locks, and accounting period controls.",
-    "accounts.posting-rules": "Backend billing-to-accounts posting rules for save, update, delete, and reversal flows.",
-    "accounts.settings": "Financial year, posting policy, period locks, voucher numbering, and Tally sync settings.",
-    "accounts.tally-integration": "Tally-ready ledger names, voucher export mapping, and next integration settings.",
-    "accounts.voucher-numbering": "Voucher numbering series for sales, journal, receipt, payment, debit note, and credit note entries."
+    "accounts.posting-rules":
+      "Backend billing-to-accounts posting rules for save, update, delete, and reversal flows.",
+    "accounts.settings":
+      "Financial year, posting policy, period locks, voucher numbering, and Tally sync settings.",
+    "accounts.tally-integration":
+      "Tally-ready ledger names, voucher export mapping, and next integration settings.",
+    "accounts.voucher-numbering":
+      "Voucher numbering series for sales, journal, receipt, payment, debit note, and credit note entries."
   };
   return descriptions[page] ?? "Accounts configuration.";
 }
@@ -830,7 +1013,8 @@ function renderOwnedCommonMasterPage(page: AppPage) {
   if (page === "core.common.workorder.transports") return <TransportsWorkspace />;
   if (page === "core.common.workorder.warehouses") return <WarehousesWorkspace />;
   if (page === "core.common.workorder.destinations") return <DestinationsWorkspace />;
-  if (page === "core.common.workorder.stock-rejection-types") return <StockRejectionTypesWorkspace />;
+  if (page === "core.common.workorder.stock-rejection-types")
+    return <StockRejectionTypesWorkspace />;
   if (page === "core.common.others.currencies") return <CurrenciesWorkspace />;
   if (page === "core.common.others.priorities") return <PrioritiesWorkspace />;
   if (page === "core.common.others.payment-terms") return <PaymentTermsWorkspace />;
@@ -840,7 +1024,9 @@ function renderOwnedCommonMasterPage(page: AppPage) {
 }
 
 function titleForPage(page: AppPage) {
-  const commonDefinition = commonMasterDefinitions.find((definition) => pageKeyForCommonMaster(definition.path) === page);
+  const commonDefinition = commonMasterDefinitions.find(
+    (definition) => pageKeyForCommonMaster(definition.path) === page
+  );
   if (commonDefinition) return commonDefinition.label;
   const labels: Partial<Record<AppPage, string>> = {
     "application.overview": "Overview",
@@ -888,11 +1074,18 @@ function titleForPage(page: AppPage) {
   return labels[page] ?? "Application";
 }
 
-function appFromPage(page: AppPage, landingApp: PlatformAppId, enabledApps: PlatformAppId[]): PlatformAppId {
+function appFromPage(
+  page: AppPage,
+  landingApp: PlatformAppId,
+  enabledApps: PlatformAppId[]
+): PlatformAppId {
   if (page.startsWith("core.organisation")) return "application";
-  if (page.startsWith("billing") || page.startsWith("core")) return enabledApps.includes("billing") ? "billing" : landingApp;
-  if (page.startsWith("accounts")) return enabledApps.includes("accounts") ? "accounts" : landingApp;
-  if (page.startsWith("task-manager")) return enabledApps.includes("task-manager") ? "task-manager" : landingApp;
+  if (page.startsWith("billing") || page.startsWith("core"))
+    return enabledApps.includes("billing") ? "billing" : landingApp;
+  if (page.startsWith("accounts"))
+    return enabledApps.includes("accounts") ? "accounts" : landingApp;
+  if (page.startsWith("task-manager"))
+    return enabledApps.includes("task-manager") ? "task-manager" : landingApp;
   return "application";
 }
 
@@ -909,7 +1102,12 @@ function isAppRootPath() {
 function readPublishedLandingApp(): PlatformAppId | null {
   try {
     const stored = window.localStorage.getItem(LANDING_APP_STORAGE_KEY);
-    return stored === "application" || stored === "billing" || stored === "accounts" || stored === "task-manager" ? stored : null;
+    return stored === "application" ||
+      stored === "billing" ||
+      stored === "accounts" ||
+      stored === "task-manager"
+      ? stored
+      : null;
   } catch {
     return null;
   }

@@ -86,4 +86,3 @@ For compliance submissions:
 - User approval is required for final submission.
 - Source data should be locked or versioned where required.
 - Provider response should be stored.
-

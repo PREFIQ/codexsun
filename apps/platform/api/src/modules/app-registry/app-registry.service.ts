@@ -1,4 +1,8 @@
-import type { PlatformAppDefinition, PlatformAppId, PlatformAppSavePayload } from "./app-registry.types.js";
+import type {
+  PlatformAppDefinition,
+  PlatformAppId,
+  PlatformAppSavePayload
+} from "./app-registry.types.js";
 import { AppRegistryRepository } from "./app-registry.repository.js";
 
 export const platformAppRegistry: PlatformAppDefinition[] = [
@@ -27,7 +31,8 @@ export const platformAppRegistry: PlatformAppDefinition[] = [
   {
     alwaysEnabled: false,
     defaultLanding: false,
-    description: "Ledgers, vouchers, double-entry postings, balances, reports, and Tally-ready accounting.",
+    description:
+      "Ledgers, vouchers, double-entry postings, balances, reports, and Tally-ready accounting.",
     appId: "accounts",
     id: 0,
     label: "Accounts",
@@ -67,11 +72,20 @@ export function resolveLandingApp(value: unknown, enabledModuleKeys: string[]): 
 
 export class AppRegistryService {
   constructor(private readonly repository = new AppRegistryRepository()) {}
-  listApps() { return this.repository.list(); }
-  createApp(input: PlatformAppSavePayload) { validateApp(input); return this.repository.create(input); }
-  updateApp(id: string, input: PlatformAppSavePayload) { validateApp(input); return this.repository.update(Number(id), input); }
+  listApps() {
+    return this.repository.list();
+  }
+  createApp(input: PlatformAppSavePayload) {
+    validateApp(input);
+    return this.repository.create(input);
+  }
+  updateApp(id: string, input: PlatformAppSavePayload) {
+    validateApp(input);
+    return this.repository.update(Number(id), input);
+  }
 }
 
 function validateApp(input: PlatformAppSavePayload) {
-  if (!input.label.trim() || !input.moduleKey.trim()) throw new Error("App label and module key are required.");
+  if (!input.label.trim() || !input.moduleKey.trim())
+    throw new Error("App label and module key are required.");
 }

@@ -21,7 +21,9 @@ export type ContractRouteContext<TSchemas extends RouteSchemas> = {
 };
 
 export type ContractRouteOptions<TSchemas extends RouteSchemas> = {
-  handler: (context: ContractRouteContext<TSchemas>) => Promise<z.output<TSchemas["response"]>> | z.output<TSchemas["response"]>;
+  handler: (
+    context: ContractRouteContext<TSchemas>
+  ) => Promise<z.output<TSchemas["response"]>> | z.output<TSchemas["response"]>;
   method: "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
   preHandler?: RouteOptions["preHandler"];
   schemas: TSchemas;
@@ -33,7 +35,10 @@ export type ContractRouteOptions<TSchemas extends RouteSchemas> = {
  * code runs, successful data is checked before it leaves the module, and every
  * success uses the standard response envelope.
  */
-export function registerContractRoute<TSchemas extends RouteSchemas>(app: FastifyInstance, options: ContractRouteOptions<TSchemas>): void {
+export function registerContractRoute<TSchemas extends RouteSchemas>(
+  app: FastifyInstance,
+  options: ContractRouteOptions<TSchemas>
+): void {
   app.route({
     method: options.method,
     url: options.url,
@@ -58,7 +63,11 @@ export function registerContractRoute<TSchemas extends RouteSchemas>(app: Fastif
   });
 }
 
-function parsePart<TSchema extends AnySchema | undefined>(schema: TSchema, value: unknown, location: string) {
+function parsePart<TSchema extends AnySchema | undefined>(
+  schema: TSchema,
+  value: unknown,
+  location: string
+) {
   if (!schema) return undefined;
 
   const result = schema.safeParse(value);

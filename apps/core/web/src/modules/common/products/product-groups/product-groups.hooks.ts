@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { productGroupsDefinition } from "./product-groups.definition";
-export function useProductGroupsQuery() { return useCommonMasterQuery(productGroupsDefinition.key, productGroupsDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listProductGroups } from "./product-groups.services";
+export function useProductGroupsQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listProductGroups(path), queryKey: ["core", "common", key] });
+}

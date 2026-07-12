@@ -1,5 +1,13 @@
 import { createConnection } from "mysql2/promise";
-import { closePlatformDatabase, createMasterDatabase, dropPlatformDatabases, migratePlatformDatabase, platformDatabaseName, resetPlatformDatabases, seedPlatformDatabase } from "./platform-database.js";
+import {
+  closePlatformDatabase,
+  createMasterDatabase,
+  dropPlatformDatabases,
+  migratePlatformDatabase,
+  platformDatabaseName,
+  resetPlatformDatabases,
+  seedPlatformDatabase
+} from "./platform-database.js";
 import { closeTenantDatabase, createTenantDatabase, getTenantDatabase } from "./tenant-database.js";
 import { migrateTenantRuntimeModule } from "../modules/tenant/tenant.migration.js";
 import { TenantRepository } from "../modules/tenant/tenant.repository.js";
@@ -121,7 +129,9 @@ async function migrateTenantAppDatabases() {
   const tenants = await new TenantRepository().list();
   console.info(`[database] tenant app migration targets: ${tenants.length}`);
   for (const tenant of tenants) {
-    console.info(`[database] migrating tenant app modules for "${tenant.tenantCode}" (${tenant.dbName})`);
+    console.info(
+      `[database] migrating tenant app modules for "${tenant.tenantCode}" (${tenant.dbName})`
+    );
     await createTenantDatabase(tenant.dbName);
     const database = getTenantDatabase(tenant);
     try {
@@ -136,7 +146,9 @@ async function seedTenantAppDatabases() {
   const tenants = await new TenantRepository().list();
   console.info(`[seeder] tenant app seed targets: ${tenants.length}`);
   for (const tenant of tenants) {
-    console.info(`[seeder] seeding tenant app modules for "${tenant.tenantCode}" (${tenant.dbName})`);
+    console.info(
+      `[seeder] seeding tenant app modules for "${tenant.tenantCode}" (${tenant.dbName})`
+    );
     await createTenantDatabase(tenant.dbName);
     const database = getTenantDatabase(tenant);
     try {
@@ -189,7 +201,9 @@ async function listMigrationState() {
       console.info(`[database] tenant "${tenant.tenantCode}" (${tenant.dbName})`);
       console.table(tenantRows);
     } catch (error) {
-      console.warn(`[database] tenant "${tenant.tenantCode}" migration table is not readable yet: ${formatError(error)}`);
+      console.warn(
+        `[database] tenant "${tenant.tenantCode}" migration table is not readable yet: ${formatError(error)}`
+      );
     } finally {
       await tenantConnection.end();
     }
@@ -198,11 +212,15 @@ async function listMigrationState() {
 
 async function runMigrationPreflight() {
   const masterName = platformDatabaseName();
-  console.info(`[database] preflight target: ${env.NODE_ENV} ${env.DB_HOST}:${env.DB_PORT}/${masterName}`);
+  console.info(
+    `[database] preflight target: ${env.NODE_ENV} ${env.DB_HOST}:${env.DB_PORT}/${masterName}`
+  );
   assertDatabaseName(masterName, "master database name");
 
   if (env.NODE_ENV === "production" && !process.env.CODEXSUN_VERIFIED_BACKUP_ID) {
-    throw new Error("production migration preflight refused. Set CODEXSUN_VERIFIED_BACKUP_ID to the verified pre-migration backup id.");
+    throw new Error(
+      "production migration preflight refused. Set CODEXSUN_VERIFIED_BACKUP_ID to the verified pre-migration backup id."
+    );
   }
 
   const tenants = await new TenantRepository().list().catch(() => []);
@@ -219,22 +237,30 @@ async function runLocalMigrationTest() {
   }
 
   if (process.env.CODEXSUN_RESTORED_DUMP_TEST !== "1") {
-    throw new Error("local migration test requires CODEXSUN_RESTORED_DUMP_TEST=1 after restoring a dump into the configured local databases.");
+    throw new Error(
+      "local migration test requires CODEXSUN_RESTORED_DUMP_TEST=1 after restoring a dump into the configured local databases."
+    );
   }
 
   await runMigrationPreflight();
   await migrateAll();
-  console.info("[database] local restored-dump migration test completed. Run affected app/API tests before promoting the migration.");
+  console.info(
+    "[database] local restored-dump migration test completed. Run affected app/API tests before promoting the migration."
+  );
 }
 
 async function runRestoreTest() {
   if (env.NODE_ENV === "production") {
-    throw new Error("restore test refused in production. Restore into a sandbox environment first.");
+    throw new Error(
+      "restore test refused in production. Restore into a sandbox environment first."
+    );
   }
 
   const restoreDatabaseName = process.env.CODEXSUN_RESTORE_TEST_DB_NAME;
   if (!restoreDatabaseName) {
-    throw new Error("restore test requires CODEXSUN_RESTORE_TEST_DB_NAME set to an explicit sandbox database name.");
+    throw new Error(
+      "restore test requires CODEXSUN_RESTORE_TEST_DB_NAME set to an explicit sandbox database name."
+    );
   }
 
   const sandboxName = assertDatabaseName(restoreDatabaseName, "restore test database name");
@@ -255,7 +281,9 @@ async function runRestoreTest() {
       `CREATE DATABASE IF NOT EXISTS ${quoteIdentifier(sandboxName)} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
     );
     const [rows] = await connection.query(`SHOW TABLES FROM ${quoteIdentifier(sandboxName)}`);
-    console.info(`[database] restore-test sandbox "${sandboxName}" is reachable with ${Array.isArray(rows) ? rows.length : 0} table(s)`);
+    console.info(
+      `[database] restore-test sandbox "${sandboxName}" is reachable with ${Array.isArray(rows) ? rows.length : 0} table(s)`
+    );
   } finally {
     await connection.end();
   }
@@ -264,14 +292,20 @@ async function runRestoreTest() {
 async function runBackupVerify() {
   const backupId = process.env.CODEXSUN_BACKUP_VERIFY_ID;
   if (!backupId) {
-    throw new Error("backup verification requires CODEXSUN_BACKUP_VERIFY_ID set to the backup artifact/run id being verified.");
+    throw new Error(
+      "backup verification requires CODEXSUN_BACKUP_VERIFY_ID set to the backup artifact/run id being verified."
+    );
   }
-  console.info(`[database] backup verification marker accepted for "${backupId}". Run db:restore:test against its sandbox restore before marking it verified.`);
+  console.info(
+    `[database] backup verification marker accepted for "${backupId}". Run db:restore:test against its sandbox restore before marking it verified.`
+  );
 }
 
 function printExternalToolingRequired(commandName: "dump:create" | "dump:download") {
   console.info(`[database] ${commandName} is reserved as the stable CODEXSUN operator command.`);
-  console.info("[database] Wire this command to the deployment provider dump/export tool before production use; every dump must be permission-checked and audited.");
+  console.info(
+    "[database] Wire this command to the deployment provider dump/export tool before production use; every dump must be permission-checked and audited."
+  );
 }
 
 function warnDestructive(message: string) {

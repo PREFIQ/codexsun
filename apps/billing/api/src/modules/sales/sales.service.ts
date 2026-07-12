@@ -1,9 +1,19 @@
 import { env } from "../../env.js";
 import { AppError } from "@codexsun/framework/errors";
 import { SalesRepository } from "./sales.repository.js";
-import type { Sale, SaleEinvoiceDetails, SaleEwayDetails, SaleLineItem, SaleLineItemInput, SaleSavePayload } from "./sales.types.js";
+import type {
+  Sale,
+  SaleEinvoiceDetails,
+  SaleEwayDetails,
+  SaleLineItem,
+  SaleLineItemInput,
+  SaleSavePayload
+} from "./sales.types.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
-import { formatBillingDocumentNumber, nextBillingDocumentNumber } from "../settings/settings.types.js";
+import {
+  formatBillingDocumentNumber,
+  nextBillingDocumentNumber
+} from "../settings/settings.types.js";
 import { generateSaleEinvoice, generateSaleEway } from "./whitebooks.client.js";
 
 export class SalesService {
@@ -23,7 +33,11 @@ export class SalesService {
   async createSale(databaseName: string, input: SaleSavePayload) {
     const billingSettings = await this.settings.getBillingSettings(databaseName);
     const numbering = billingSettings.numbering.sales;
-    const { generated, input: numberedInput, nextNumber } = await resolveNextSaleNumber(databaseName, input, numbering, this.repository);
+    const {
+      generated,
+      input: numberedInput,
+      nextNumber
+    } = await resolveNextSaleNumber(databaseName, input, numbering, this.repository);
     const normalizedInput = numberedInput;
     const sale = await this.repository.create(databaseName, normalizeSaleInput(normalizedInput));
     if (numbering.automatic && (generated || nextNumber > numbering.nextNumber)) {
@@ -40,8 +54,12 @@ export class SalesService {
   }
 
   async updateSale(databaseName: string, id: string, input: SaleSavePayload) {
-    const duplicate = await this.repository.findByInvoiceNumber(databaseName, input.invoiceNumber.trim().toUpperCase());
-    if (duplicate && duplicate.id !== id) throw AppError.conflict("Sales invoice number already exists. Enter a unique number.");
+    const duplicate = await this.repository.findByInvoiceNumber(
+      databaseName,
+      input.invoiceNumber.trim().toUpperCase()
+    );
+    if (duplicate && duplicate.id !== id)
+      throw AppError.conflict("Sales invoice number already exists. Enter a unique number.");
     const sale = await this.repository.update(databaseName, id, normalizeSaleInput(input));
     if (sale) await postSaleToAccounts(databaseName, sale, "update");
     return sale;
@@ -60,17 +78,24 @@ export class SalesService {
   async generateEinvoice(databaseName: string, id: string, details?: SaleEinvoiceDetails) {
     let sale = await this.repository.get(databaseName, id);
     if (!sale) return null;
-    if (details) sale = await this.repository.updateCompliance(databaseName, id, { einvoice: details }) ?? sale;
+    if (details)
+      sale =
+        (await this.repository.updateCompliance(databaseName, id, { einvoice: details })) ?? sale;
     const result = await generateSaleEinvoice(sale);
-    return this.repository.updateCompliance(databaseName, id, { einvoice: { ...sale.einvoice, ...result.einvoice, status: "generated" } });
+    return this.repository.updateCompliance(databaseName, id, {
+      einvoice: { ...sale.einvoice, ...result.einvoice, status: "generated" }
+    });
   }
 
   async generateEway(databaseName: string, id: string, details?: SaleEwayDetails) {
     let sale = await this.repository.get(databaseName, id);
     if (!sale) return null;
-    if (details) sale = await this.repository.updateCompliance(databaseName, id, { eway: details }) ?? sale;
+    if (details)
+      sale = (await this.repository.updateCompliance(databaseName, id, { eway: details })) ?? sale;
     const result = await generateSaleEway(sale);
-    return this.repository.updateCompliance(databaseName, id, { eway: { ...sale.eway, ...result.eway, status: "generated" } });
+    return this.repository.updateCompliance(databaseName, id, {
+      eway: { ...sale.eway, ...result.eway, status: "generated" }
+    });
   }
 }
 
@@ -110,7 +135,7 @@ export function normalizeSaleInput(input: SaleSavePayload): SaleSavePayload {
     taxType: input.taxType ?? "cgst-sgst",
     terms: input.terms?.trim() ?? "",
     workOrderNo: input.workOrderNo?.trim() ?? "",
-    eway: normalizeEway(input.eway),
+    eway: normalizeEway(input.eway)
   };
 }
 
@@ -123,7 +148,7 @@ function normalizeEway(value?: SaleEwayDetails): SaleEwayDetails {
     status: value?.status === "generated" ? "generated" : "not-generated",
     transport: value?.transport?.trim() ?? "",
     transportGst: value?.transportGst?.trim().toUpperCase() ?? "",
-    vehicleNo: value?.vehicleNo?.trim().toUpperCase() ?? "",
+    vehicleNo: value?.vehicleNo?.trim().toUpperCase() ?? ""
   };
 }
 
@@ -133,14 +158,19 @@ function normalizeEinvoice(value?: SaleEinvoiceDetails): SaleEinvoiceDetails {
     ackNo: value?.ackNo?.trim() ?? "",
     irn: value?.irn?.trim().toUpperCase() ?? "",
     signedQr: value?.signedQr?.trim() ?? "",
-    status: value?.status === "generated" ? "generated" : "not-generated",
+    status: value?.status === "generated" ? "generated" : "not-generated"
   };
 }
 
-export function resolveSaleNumber(input: SaleSavePayload, numbering: Parameters<typeof formatBillingDocumentNumber>[0]): SaleSavePayload & { generated: boolean } {
+export function resolveSaleNumber(
+  input: SaleSavePayload,
+  numbering: Parameters<typeof formatBillingDocumentNumber>[0]
+): SaleSavePayload & { generated: boolean } {
   const generatedNumber = formatBillingDocumentNumber(numbering);
   const enteredNumber = input.invoiceNumber.trim();
-  const generated = numbering.automatic && (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
+  const generated =
+    numbering.automatic &&
+    (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
   return { ...(enteredNumber ? input : { ...input, invoiceNumber: generatedNumber }), generated };
 }
 
@@ -148,16 +178,26 @@ async function resolveNextSaleNumber(
   databaseName: string,
   input: SaleSavePayload,
   numbering: Parameters<typeof formatBillingDocumentNumber>[0],
-  repository: Pick<SalesRepository, "findByInvoiceNumber">,
+  repository: Pick<SalesRepository, "findByInvoiceNumber">
 ) {
   const enteredNumber = input.invoiceNumber.trim();
   const configuredNumber = formatBillingDocumentNumber(numbering);
-  const generated = numbering.automatic && (!enteredNumber || enteredNumber.toUpperCase() === configuredNumber.toUpperCase());
+  const generated =
+    numbering.automatic &&
+    (!enteredNumber || enteredNumber.toUpperCase() === configuredNumber.toUpperCase());
 
   if (!generated) {
-    const duplicate = await repository.findByInvoiceNumber(databaseName, enteredNumber.toUpperCase());
-    if (duplicate) throw AppError.conflict("Sales invoice number already exists. Enter a unique number.");
-    return { generated: false, input, nextNumber: nextBillingDocumentNumber(numbering, enteredNumber) };
+    const duplicate = await repository.findByInvoiceNumber(
+      databaseName,
+      enteredNumber.toUpperCase()
+    );
+    if (duplicate)
+      throw AppError.conflict("Sales invoice number already exists. Enter a unique number.");
+    return {
+      generated: false,
+      input,
+      nextNumber: nextBillingDocumentNumber(numbering, enteredNumber)
+    };
   }
 
   let nextNumber = Math.max(1, numbering.nextNumber);
@@ -184,14 +224,16 @@ function normalizeSaleLineItem(item: SaleLineItemInput): SaleLineItemInput {
     rate: roundMoney(Number(item.rate) || 0),
     size: item.size?.trim() ?? "",
     taxRate: roundMoney(Number(item.taxRate) || 0),
-    unit: item.unit.trim().toUpperCase() || "NOS",
+    unit: item.unit.trim().toUpperCase() || "NOS"
   };
 }
 
-export function buildSaleTotals(input: SaleSavePayload): Pick<Sale, "amount" | "items" | "subtotal" | "taxAmount"> {
+export function buildSaleTotals(
+  input: SaleSavePayload
+): Pick<Sale, "amount" | "items" | "subtotal" | "taxAmount"> {
   const items: SaleLineItem[] = input.items.map((item, index) => {
     const taxableAmount = roundMoney(item.quantity * item.rate);
-    const taxAmount = roundMoney(taxableAmount * item.taxRate / 100);
+    const taxAmount = roundMoney((taxableAmount * item.taxRate) / 100);
     const cgstAmount = input.taxType === "igst" ? 0 : roundMoney(taxAmount / 2);
     const sgstAmount = input.taxType === "igst" ? 0 : roundMoney(taxAmount / 2);
     const igstAmount = input.taxType === "igst" ? taxAmount : 0;
@@ -203,7 +245,7 @@ export function buildSaleTotals(input: SaleSavePayload): Pick<Sale, "amount" | "
       lineTotal: roundMoney(taxableAmount + taxAmount),
       sgstAmount,
       taxableAmount,
-      taxAmount,
+      taxAmount
     };
   });
 
@@ -215,7 +257,7 @@ export function buildSaleTotals(input: SaleSavePayload): Pick<Sale, "amount" | "
     amount,
     items,
     subtotal,
-    taxAmount,
+    taxAmount
   };
 }
 
@@ -223,7 +265,11 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-async function postSaleToAccounts(databaseName: string, sale: Sale, operation: "create" | "update" | "cancel") {
+async function postSaleToAccounts(
+  databaseName: string,
+  sale: Sale,
+  operation: "create" | "update" | "cancel"
+) {
   try {
     const response = await fetch(`${env.ACCOUNTS_API_URL}/accounts/postings/billing`, {
       body: JSON.stringify({
@@ -249,9 +295,13 @@ async function postSaleToAccounts(databaseName: string, sale: Sale, operation: "
 
     if (!response.ok) {
       const message = await response.text().catch(() => "");
-      console.warn(`[sales] Accounts posting deferred for ${sale.invoiceNumber}: ${message || response.statusText}`);
+      console.warn(
+        `[sales] Accounts posting deferred for ${sale.invoiceNumber}: ${message || response.statusText}`
+      );
     }
   } catch (error) {
-    console.warn(`[sales] Accounts posting deferred for ${sale.invoiceNumber}: ${error instanceof Error ? error.message : String(error)}`);
+    console.warn(
+      `[sales] Accounts posting deferred for ${sale.invoiceNumber}: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }

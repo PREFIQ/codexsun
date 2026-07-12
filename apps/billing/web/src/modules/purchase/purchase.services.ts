@@ -1,4 +1,9 @@
-import { billingApiDelete, billingApiGet, billingApiPost, billingApiPut } from "../../shared/api/billing-api";
+import {
+  billingApiDelete,
+  billingApiGet,
+  billingApiPost,
+  billingApiPut
+} from "../../shared/api/billing-api";
 import type { Purchase, PurchaseSavePayload, PurchaseStatus } from "./purchase.types";
 
 export type PurchaseLookupOption = {
@@ -93,7 +98,9 @@ export type PurchaseMasterSavePayload = {
 };
 
 export async function listPurchases() {
-  return billingApiGet<Purchase[]>("/billing/purchase").then((records) => records.map(fromApiPurchase));
+  return billingApiGet<Purchase[]>("/billing/purchase").then((records) =>
+    records.map(fromApiPurchase)
+  );
 }
 
 export async function getPurchase(id: string) {
@@ -105,7 +112,9 @@ export async function createPurchase(payload: PurchaseSavePayload) {
 }
 
 export async function updatePurchase(id: string, payload: PurchaseSavePayload) {
-  return billingApiPut<Purchase>(`/billing/purchase/${id}`, toApiPayload(payload)).then(fromApiPurchase);
+  return billingApiPut<Purchase>(`/billing/purchase/${id}`, toApiPayload(payload)).then(
+    fromApiPurchase
+  );
 }
 
 export async function deletePurchase(id: string) {
@@ -113,7 +122,9 @@ export async function deletePurchase(id: string) {
 }
 
 export async function setPurchaseStatus(id: string, status: Exclude<PurchaseStatus, "draft">) {
-  return billingApiPost<Purchase>(`/billing/purchase/${id}/${status === "confirmed" ? "confirm" : "cancel"}`).then(fromApiPurchase);
+  return billingApiPost<Purchase>(
+    `/billing/purchase/${id}/${status === "confirmed" ? "confirm" : "cancel"}`
+  ).then(fromApiPurchase);
 }
 
 export async function revokePurchase(id: string) {
@@ -121,19 +132,33 @@ export async function revokePurchase(id: string) {
 }
 
 export function createPurchaseContact(payload: PurchaseContactSavePayload) {
-  return billingApiPost<PurchaseLookupRecord>("/billing/purchase/lookups/contacts", contactPayload(payload));
+  return billingApiPost<PurchaseLookupRecord>(
+    "/billing/purchase/lookups/contacts",
+    contactPayload(payload)
+  );
 }
 
 export function updatePurchaseContact(id: string, payload: PurchaseContactSavePayload) {
-  return billingApiPut<PurchaseLookupRecord>(`/billing/purchase/lookups/contacts/${id}`, contactPayload(payload));
+  return billingApiPut<PurchaseLookupRecord>(
+    `/billing/purchase/lookups/contacts/${id}`,
+    contactPayload(payload)
+  );
 }
 
-export function listPurchaseLocations(kind: "cities" | "countries" | "districts" | "pincodes" | "states") {
+export function listPurchaseLocations(
+  kind: "cities" | "countries" | "districts" | "pincodes" | "states"
+) {
   return billingApiGet<PurchaseLocationRecord[]>(`/billing/purchase/lookups/${kind}`);
 }
 
-export function createPurchaseLocation(kind: PurchaseLocationKind, payload: Record<string, unknown>) {
-  return billingApiPost<PurchaseLocationRecord>(`/billing/purchase/lookups/locations/${kind}`, payload);
+export function createPurchaseLocation(
+  kind: PurchaseLocationKind,
+  payload: Record<string, unknown>
+) {
+  return billingApiPost<PurchaseLocationRecord>(
+    `/billing/purchase/lookups/locations/${kind}`,
+    payload
+  );
 }
 
 export function listPurchaseAddressTypes() {
@@ -141,10 +166,24 @@ export function listPurchaseAddressTypes() {
 }
 
 export function createPurchaseAddressType(name: string) {
-  return billingApiPost<PurchaseLookupRecord>("/billing/purchase/lookups/address-types", { isActive: true, name: name.trim() });
+  return billingApiPost<PurchaseLookupRecord>("/billing/purchase/lookups/address-types", {
+    isActive: true,
+    name: name.trim()
+  });
 }
 
-export function createPurchaseLookup(kind: "colours" | "products" | "sizes" | "workOrders" | "productCategories" | "hsnCodes" | "units" | "taxes", payload: Record<string, unknown>) {
+export function createPurchaseLookup(
+  kind:
+    | "colours"
+    | "products"
+    | "sizes"
+    | "workOrders"
+    | "productCategories"
+    | "hsnCodes"
+    | "units"
+    | "taxes",
+  payload: Record<string, unknown>
+) {
   return billingApiPost<PurchaseLookupRecord>(`/billing/purchase/lookups/${kind}`, payload);
 }
 
@@ -164,45 +203,52 @@ export function listPurchaseTaxes() {
   return billingApiGet<PurchaseLookupRecord[]>("/billing/purchase/lookups/taxes");
 }
 
-export function updatePurchaseLookup(kind: "products" | "workOrders", id: string, payload: Record<string, unknown>) {
+export function updatePurchaseLookup(
+  kind: "products" | "workOrders",
+  id: string,
+  payload: Record<string, unknown>
+) {
   return billingApiPut<PurchaseLookupRecord>(`/billing/purchase/lookups/${kind}/${id}`, payload);
 }
 
 export function listPurchaseContacts() {
-  return billingApiGet<PurchaseLookupRecord[]>("/billing/purchase/lookups/contacts").then((records) =>
-    records.filter(isActiveRecord).map((record) =>
-      lookupOption(record, {
-        description: record.primaryPhone || record.primaryEmail || "",
-        label: record.name || record.code || record.id,
-        meta: record.code || "",
-        value: record.name || record.code || record.id,
-      }),
-    ),
+  return billingApiGet<PurchaseLookupRecord[]>("/billing/purchase/lookups/contacts").then(
+    (records) =>
+      records.filter(isActiveRecord).map((record) =>
+        lookupOption(record, {
+          description: record.primaryPhone || record.primaryEmail || "",
+          label: record.name || record.code || record.id,
+          meta: record.code || "",
+          value: record.name || record.code || record.id
+        })
+      )
   );
 }
 
 export function listPurchaseWorkOrders() {
-  return billingApiGet<PurchaseLookupRecord[]>("/billing/purchase/lookups/workOrders").then((records) =>
-    records.filter(isActiveRecord).map((record) => {
-      const workOrderNo = record.code || record.workOrderNo || record.name || record.id;
-      return lookupOption(record, {
-        description: record.name || record.typeName || "",
-        label: workOrderNo,
-        meta: record.typeName || "",
-        value: workOrderNo,
-      });
-    }),
+  return billingApiGet<PurchaseLookupRecord[]>("/billing/purchase/lookups/workOrders").then(
+    (records) =>
+      records.filter(isActiveRecord).map((record) => {
+        const workOrderNo = record.code || record.workOrderNo || record.name || record.id;
+        return lookupOption(record, {
+          description: record.name || record.typeName || "",
+          label: workOrderNo,
+          meta: record.typeName || "",
+          value: workOrderNo
+        });
+      })
   );
 }
 
 export function listPurchaseProducts() {
-  return billingApiGet<PurchaseLookupRecord[]>("/billing/purchase/lookups/products").then((records) =>
-    records.filter(isActiveRecord).map((record) =>
-      lookupOption(record, {
-        label: record.name || record.code || record.id,
-        value: record.name || record.code || record.id,
-      }),
-    ),
+  return billingApiGet<PurchaseLookupRecord[]>("/billing/purchase/lookups/products").then(
+    (records) =>
+      records.filter(isActiveRecord).map((record) =>
+        lookupOption(record, {
+          label: record.name || record.code || record.id,
+          value: record.name || record.code || record.id
+        })
+      )
   );
 }
 
@@ -233,7 +279,7 @@ export function purchaseToPayload(purchase: Purchase): PurchaseSavePayload {
       rate: item.rate,
       size: item.size,
       taxRate: item.taxRate,
-      unit: item.unit,
+      unit: item.unit
     })),
     notes: purchase.notes,
     invoiceNumber: purchase.invoiceNumber,
@@ -244,7 +290,7 @@ export function purchaseToPayload(purchase: Purchase): PurchaseSavePayload {
     status: purchase.status,
     taxType: purchase.taxType,
     terms: purchase.terms,
-    workOrderNo: purchase.workOrderNo,
+    workOrderNo: purchase.workOrderNo
   };
 }
 
@@ -253,7 +299,7 @@ export function formatMoney(value: number) {
     currency: "INR",
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
-    style: "currency",
+    style: "currency"
   }).format(Number(value ?? 0));
 }
 
@@ -264,7 +310,7 @@ export function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
     month: "short",
-    year: "numeric",
+    year: "numeric"
   }).format(date);
 }
 
@@ -273,22 +319,26 @@ export function totalPurchaseQuantity(purchase: Purchase) {
 }
 
 function listPurchaseCommonOptions(kind: "colours" | "sizes") {
-  return billingApiGet<PurchaseLookupRecord[]>(`/billing/purchase/lookups/${kind}`).then((records) =>
-    records.filter(isActiveRecord).map((record) => {
-      const label = record.name || record.code || record.id;
-      return lookupOption(record, {
-        description: record.description || record.code || "",
-        label,
-        value: label,
-      });
-    }),
+  return billingApiGet<PurchaseLookupRecord[]>(`/billing/purchase/lookups/${kind}`).then(
+    (records) =>
+      records.filter(isActiveRecord).map((record) => {
+        const label = record.name || record.code || record.id;
+        return lookupOption(record, {
+          description: record.description || record.code || "",
+          label,
+          value: label
+        });
+      })
   );
 }
 
-function lookupOption(record: PurchaseLookupRecord, option: Omit<PurchaseLookupOption, "record">): PurchaseLookupOption {
+function lookupOption(
+  record: PurchaseLookupRecord,
+  option: Omit<PurchaseLookupOption, "record">
+): PurchaseLookupOption {
   return {
     ...option,
-    record,
+    record
   };
 }
 
@@ -314,7 +364,7 @@ function toApiPayload(payload: PurchaseSavePayload) {
     supplierBillNo: payload.supplierBillNo,
     taxType: payload.taxType === "igst" ? "IGST" : "CGST + SGST",
     terms: payload.terms,
-    workOrderNo: payload.workOrderNo,
+    workOrderNo: payload.workOrderNo
   };
 }
 
@@ -326,37 +376,49 @@ function fromApiPurchase(record: Purchase): Purchase {
     customerEmail: record.customerEmail || "",
     customerPhone: record.customerPhone || "",
     invoiceNumber,
-    taxType: String(record.taxType || "CGST + SGST").toLowerCase().includes("igst") ? "igst" : "cgst-sgst",
+    taxType: String(record.taxType || "CGST + SGST")
+      .toLowerCase()
+      .includes("igst")
+      ? "igst"
+      : "cgst-sgst",
     terms: record.terms || "",
-    workOrderNo: record.workOrderNo || "",
+    workOrderNo: record.workOrderNo || ""
   };
 }
 
 function contactPayload(payload: PurchaseContactSavePayload) {
   return {
-    addresses: payload.addressLine1.trim() || payload.addressLine2.trim() || payload.stateId || payload.districtId || payload.cityId || payload.pincodeId
-      ? [{
-          addressLine1: payload.addressLine1.trim(),
-          addressLine2: payload.addressLine2.trim(),
-          addressTypeName: payload.addressTypeName.trim() || "Billing",
-          cityId: payload.cityId || null,
-          cityName: payload.cityName || null,
-          countryId: payload.countryId || null,
-          countryName: payload.countryName || "India",
-          districtId: payload.districtId || null,
-          districtName: payload.districtName || null,
-          isDefault: true,
-          pincodeId: payload.pincodeId || null,
-          pincodeName: payload.pincodeName || null,
-          stateId: payload.stateId || null,
-          stateName: payload.stateName || null,
-        }]
-      : [],
+    addresses:
+      payload.addressLine1.trim() ||
+      payload.addressLine2.trim() ||
+      payload.stateId ||
+      payload.districtId ||
+      payload.cityId ||
+      payload.pincodeId
+        ? [
+            {
+              addressLine1: payload.addressLine1.trim(),
+              addressLine2: payload.addressLine2.trim(),
+              addressTypeName: payload.addressTypeName.trim() || "Billing",
+              cityId: payload.cityId || null,
+              cityName: payload.cityName || null,
+              countryId: payload.countryId || null,
+              countryName: payload.countryName || "India",
+              districtId: payload.districtId || null,
+              districtName: payload.districtName || null,
+              isDefault: true,
+              pincodeId: payload.pincodeId || null,
+              pincodeName: payload.pincodeName || null,
+              stateId: payload.stateId || null,
+              stateName: payload.stateName || null
+            }
+          ]
+        : [],
     gstin: payload.gstin.trim().toUpperCase(),
     isActive: true,
     legalName: payload.legalName.trim(),
     name: payload.name.trim(),
     primaryEmail: payload.primaryEmail.trim(),
-    primaryPhone: payload.primaryPhone.trim(),
+    primaryPhone: payload.primaryPhone.trim()
   };
 }

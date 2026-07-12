@@ -83,7 +83,12 @@ export async function registerMappingsTransformsRoutes(app: FastifyInstance) {
       mappings: body.mappings,
       updatedAt: new Date().toISOString()
     } as never);
-    if (plan) await upsertTransformPlan(id, String(body.name), body.mappings as Array<Record<string, unknown>>);
+    if (plan)
+      await upsertTransformPlan(
+        id,
+        String(body.name),
+        body.mappings as Array<Record<string, unknown>>
+      );
     return plan
       ? { data: { saved: true } }
       : reply.code(404).send({ message: "Mapping plan not found." });
@@ -97,8 +102,49 @@ export async function registerMappingsTransformsRoutes(app: FastifyInstance) {
   });
 }
 
-async function upsertTransformPlan(mappingPlanId:number,name:string,mappings:Array<Record<string,unknown>>){
-  const tables=mappings.map((mapping)=>{const fields=(Array.isArray(mapping.fields)?mapping.fields:[]).filter((field):field is Record<string,unknown>=>typeof field==="object"&&field!==null&&!field.skipped&&Boolean(field.targetColumn));const sourceTable=String(mapping.sourceTable??"");const targetTable=String(mapping.targetTable??"");const sourceFields=fields.map((field)=>String(field.sourceColumn));const targetFields=fields.map((field)=>String(field.targetColumn));return{sourceTable,targetTable,group:String(mapping.group??""),fields:fields.map((field)=>({sourceField:String(field.sourceColumn),targetField:String(field.targetColumn)})),sourceQuery:`SELECT ${sourceFields.map(identifier).join(", ")} FROM ${identifier(sourceTable)};`,targetQuery:`INSERT INTO ${identifier(targetTable)} (${targetFields.map(identifier).join(", ")}) VALUES (${targetFields.map(()=>"?").join(", ")});`};});
-  const plans=await dataBridgeJsonStore.list("transformPlans");const existing=plans.find((item)=>Number(item.mappingPlanId)===mappingPlanId);const timestamp=new Date().toISOString();const payload={mappingPlanId,name:`${name} transforms`,status:"draft",tables,updatedAt:timestamp};if(existing)await dataBridgeJsonStore.update("transformPlans",existing.id,payload as never);else await dataBridgeJsonStore.create("transformPlans",{...payload,createdAt:timestamp} as never);
+async function upsertTransformPlan(
+  mappingPlanId: number,
+  name: string,
+  mappings: Array<Record<string, unknown>>
+) {
+  const tables = mappings.map((mapping) => {
+    const fields = (Array.isArray(mapping.fields) ? mapping.fields : []).filter(
+      (field): field is Record<string, unknown> =>
+        typeof field === "object" && field !== null && !field.skipped && Boolean(field.targetColumn)
+    );
+    const sourceTable = String(mapping.sourceTable ?? "");
+    const targetTable = String(mapping.targetTable ?? "");
+    const sourceFields = fields.map((field) => String(field.sourceColumn));
+    const targetFields = fields.map((field) => String(field.targetColumn));
+    return {
+      sourceTable,
+      targetTable,
+      group: String(mapping.group ?? ""),
+      fields: fields.map((field) => ({
+        sourceField: String(field.sourceColumn),
+        targetField: String(field.targetColumn)
+      })),
+      sourceQuery: `SELECT ${sourceFields.map(identifier).join(", ")} FROM ${identifier(sourceTable)};`,
+      targetQuery: `INSERT INTO ${identifier(targetTable)} (${targetFields.map(identifier).join(", ")}) VALUES (${targetFields.map(() => "?").join(", ")});`
+    };
+  });
+  const plans = await dataBridgeJsonStore.list("transformPlans");
+  const existing = plans.find((item) => Number(item.mappingPlanId) === mappingPlanId);
+  const timestamp = new Date().toISOString();
+  const payload = {
+    mappingPlanId,
+    name: `${name} transforms`,
+    status: "draft",
+    tables,
+    updatedAt: timestamp
+  };
+  if (existing) await dataBridgeJsonStore.update("transformPlans", existing.id, payload as never);
+  else
+    await dataBridgeJsonStore.create("transformPlans", {
+      ...payload,
+      createdAt: timestamp
+    } as never);
 }
-function identifier(value:string){return `\`${value.replace(/`/g,"``")}\``;}
+function identifier(value: string) {
+  return `\`${value.replace(/`/g, "``")}\``;
+}

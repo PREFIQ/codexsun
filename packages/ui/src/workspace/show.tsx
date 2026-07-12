@@ -1,26 +1,28 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
-import { cn } from "../lib/utils"
+import type { ReactNode } from "react";
+import { cn } from "../lib/utils";
 
 export function WorkspaceShowLayout({
   children,
-  className,
+  className
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
-  return <div className={cn("grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]", className)}>{children}</div>
+  return (
+    <div className={cn("grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]", className)}>{children}</div>
+  );
 }
 
 export function WorkspaceShowCard({
   children,
   className,
-  title,
+  title
 }: {
-  children: ReactNode
-  className?: string
-  title?: string
+  children: ReactNode;
+  className?: string;
+  title?: string;
 }) {
   return (
     <div className={cn("rounded-md border border-border/70 bg-card/95 shadow-sm", className)}>
@@ -31,14 +33,10 @@ export function WorkspaceShowCard({
       ) : null}
       <div>{children}</div>
     </div>
-  )
+  );
 }
 
-export function WorkspaceDetailTable({
-  rows,
-}: {
-  rows: Array<[string, ReactNode]>
-}) {
+export function WorkspaceDetailTable({ rows }: { rows: Array<[string, ReactNode]> }) {
   return (
     <div className="overflow-hidden rounded-b-md">
       <table className="w-full border-collapse text-sm">
@@ -56,5 +54,5 @@ export function WorkspaceDetailTable({
         </tbody>
       </table>
     </div>
-  )
+  );
 }

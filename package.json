@@ -1,6 +1,6 @@
 {
   "name": "codexsun",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "private": true,
   "packageManager": "npm@11.17.0",
   "description": "CODEXSUN",
@@ -21,6 +21,8 @@
     "build": "node tools/clean-root-dist.mjs && node tools/clean-workspace-artifacts.mjs && node tools/run-turbo-clean.mjs build && node tools/collect-dist.mjs && node tools/clean-workspace-artifacts.mjs",
     "typecheck": "node tools/run-turbo-clean.mjs typecheck",
     "lint": "node tools/run-turbo-clean.mjs lint",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
     "verify:platform": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "verify:billing": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "verify:accounts": "npm run check:module-boundaries && npm run typecheck && npm run build",
@@ -29,6 +31,7 @@
     "verify:kitchen-serve": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "check": "npm run check:module-boundaries && npm run typecheck && npm run lint",
     "check:module-boundaries": "node tools/check-module-boundaries.mjs",
+    "check:core-boundaries": "node tools/check-module-boundaries.mjs core",
     "db:migrate": "npm run db:migrate -w @codexsun/platform-api",
     "db:migrations:list": "npm run db:migrations:list -w @codexsun/platform-api",
     "db:migrations:preflight": "npm run db:migrations:preflight -w @codexsun/platform-api",
@@ -41,8 +44,6 @@
     "db:dump:download": "npm run db:dump:download -w @codexsun/platform-api",
     "db:restore:test": "npm run db:restore:test -w @codexsun/platform-api",
     "db:backup:verify": "npm run db:backup:verify -w @codexsun/platform-api",
-    "test:e2e:tenant": "npm run test:e2e:tenant -w @codexsun/platform-api",
-    "test:e2e:platform": "npm run test:e2e -w @codexsun/platform-web",
     "version:show": "node tools/version/version.mjs show",
     "version:bump": "node tools/version-bump.mjs",
     "changelog:append": "node tools/version/version.mjs append",
@@ -51,7 +52,6 @@
     "env:jwt-secret": "node tools/env-jwt-secret.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
     "@tailwindcss/vite": "^4.3.1",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
@@ -64,8 +64,7 @@
     "recharts": "^2.15.4",
     "tailwindcss": "^4.3.1",
     "turbo": "^2.10.4",
-    "typescript": "^5.7.2",
-    "vitest": "^4.1.9"
+    "typescript": "^5.7.2"
   },
   "engines": {
     "node": ">=22.0.0",

@@ -1,2 +1,2 @@
-export * from "./priorities.definition";
+export * from "./priorities.types";
 export * from "./priorities.workspace";

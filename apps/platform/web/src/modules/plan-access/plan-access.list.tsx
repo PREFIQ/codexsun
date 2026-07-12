@@ -1,7 +1,15 @@
 import { CheckIcon, XIcon } from "lucide-react";
 import type { PlanAccessApp } from "./plan-access.types";
 
-export function PlanAccessList({ apps, selectedKeys, onToggle }: { apps: PlanAccessApp[]; selectedKeys: string[]; onToggle: (moduleKey: string, enabled: boolean) => void }) {
+export function PlanAccessList({
+  apps,
+  selectedKeys,
+  onToggle
+}: {
+  apps: PlanAccessApp[];
+  selectedKeys: string[];
+  onToggle: (moduleKey: string, enabled: boolean) => void;
+}) {
   const selected = new Set(selectedKeys);
   return (
     <div className="overflow-x-auto rounded-md border bg-card shadow-sm">

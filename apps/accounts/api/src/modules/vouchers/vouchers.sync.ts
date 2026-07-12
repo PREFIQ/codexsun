@@ -5,7 +5,12 @@ export const vouchersSyncPolicy = {
   supportsOfflineDrafts: true
 } as const;
 
-export function canSyncVoucher(record: { status?: string; totalCredit?: number; totalDebit?: number }) {
-  if (record.status === "posted") return Number(record.totalCredit ?? 0) === Number(record.totalDebit ?? 0);
+export function canSyncVoucher(record: {
+  status?: string;
+  totalCredit?: number;
+  totalDebit?: number;
+}) {
+  if (record.status === "posted")
+    return Number(record.totalCredit ?? 0) === Number(record.totalDebit ?? 0);
   return record.status === "draft";
 }

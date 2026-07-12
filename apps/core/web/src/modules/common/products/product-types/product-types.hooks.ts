@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { productTypesDefinition } from "./product-types.definition";
-export function useProductTypesQuery() { return useCommonMasterQuery(productTypesDefinition.key, productTypesDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listProductTypes } from "./product-types.services";
+export function useProductTypesQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listProductTypes(path), queryKey: ["core", "common", key] });
+}

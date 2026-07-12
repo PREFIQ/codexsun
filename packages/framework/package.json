@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/framework",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "private": true,
   "type": "module",
   "exports": {
@@ -55,17 +55,12 @@
     "./storage": {
       "types": "./src/storage/index.ts",
       "default": "./storage.js"
-    },
-    "./testing": {
-      "types": "./src/testing/index.ts",
-      "default": "./testing.js"
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json --emitDeclarationOnly false",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src --ext .ts",
-    "test": "vitest run"
+    "lint": "eslint src --ext .ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.1",

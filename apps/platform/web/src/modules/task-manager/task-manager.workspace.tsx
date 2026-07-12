@@ -1,8 +1,21 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { closestCenter, DndContext, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors
+} from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Check, GripVertical, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -42,7 +55,14 @@ import {
   setTodoStatus,
   updateTodo
 } from "./task-manager.services";
-import type { Todo, TodoInput, TodoLookup, TodoLookupKind, TodoPriority, TodoStatus } from "./task-manager.types";
+import type {
+  Todo,
+  TodoInput,
+  TodoLookup,
+  TodoLookupKind,
+  TodoPriority,
+  TodoStatus
+} from "./task-manager.types";
 
 export function TaskManagerWorkspace() {
   const client = useQueryClient();
@@ -65,7 +85,11 @@ export function TaskManagerWorkspace() {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
   const [deleting, setDeleting] = useState<Todo | null>(null);
-  const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor), useSensor(KeyboardSensor));
+  const sensors = useSensors(
+    useSensor(MouseSensor),
+    useSensor(TouchSensor),
+    useSensor(KeyboardSensor)
+  );
   const refresh = () => client.invalidateQueries({ queryKey: ["task-manager", "todos"] });
   const lookupOptions = (kind: TodoLookupKind) => toLookupOptions(lookupQuery.data ?? [], kind);
   const addLookup = async (kind: TodoLookupKind, name: string) => {
@@ -97,21 +121,38 @@ export function TaskManagerWorkspace() {
       toast.success("Todo deleted");
       if (editing?.id === id) setEditing(null);
     },
-    onError: (error) => toast.error("Todo could not be deleted", { description: error instanceof Error ? error.message : "Please try again." })
+    onError: (error) =>
+      toast.error("Todo could not be deleted", {
+        description: error instanceof Error ? error.message : "Please try again."
+      })
   });
-  const reorder = useMutation({ mutationFn: reorderTodos, onSuccess: refresh, onError: () => toast.error("Todo order could not be saved") });
-  const groupOptions = useMemo(() => [
-    { label: "All groups / clients", value: "all" },
-    { label: "No group / client", value: "__none__" },
-    ...toLookupOptions(lookupQuery.data ?? [], "group").map((option) => ({ label: option.label, value: option.label }))
-  ], [lookupQuery.data]);
+  const reorder = useMutation({
+    mutationFn: reorderTodos,
+    onSuccess: refresh,
+    onError: () => toast.error("Todo order could not be saved")
+  });
+  const groupOptions = useMemo(
+    () => [
+      { label: "All groups / clients", value: "all" },
+      { label: "No group / client", value: "__none__" },
+      ...toLookupOptions(lookupQuery.data ?? [], "group").map((option) => ({
+        label: option.label,
+        value: option.label
+      }))
+    ],
+    [lookupQuery.data]
+  );
   const todos = useMemo(
     () =>
-      (query.data ?? []).filter((todo) =>
-        (statusFilter === "all" || todo.status === statusFilter) &&
-        (categoryFilter === "all" || todo.category === categoryFilter) &&
-        (groupFilter === "all" || (groupFilter === "__none__" ? !todo.groupName : todo.groupName === groupFilter)) &&
-        `${todo.title} ${todo.description} ${todo.category} ${todo.groupName} ${todo.priority} ${todo.status}`.toLowerCase().includes(search.toLowerCase())
+      (query.data ?? []).filter(
+        (todo) =>
+          (statusFilter === "all" || todo.status === statusFilter) &&
+          (categoryFilter === "all" || todo.category === categoryFilter) &&
+          (groupFilter === "all" ||
+            (groupFilter === "__none__" ? !todo.groupName : todo.groupName === groupFilter)) &&
+          `${todo.title} ${todo.description} ${todo.category} ${todo.groupName} ${todo.priority} ${todo.status}`
+            .toLowerCase()
+            .includes(search.toLowerCase())
       ),
     [categoryFilter, groupFilter, query.data, search, statusFilter]
   );
@@ -158,8 +199,14 @@ export function TaskManagerWorkspace() {
           ...lookupOptions("status").map((option) => ({ id: option.value, label: option.label }))
         ]}
         filterValue={statusFilter}
-        onFilterValueChange={(value) => { setStatusFilter(value); setPage(1); }}
-        onSearchValueChange={(value) => { setSearch(value); setPage(1); }}
+        onFilterValueChange={(value) => {
+          setStatusFilter(value);
+          setPage(1);
+        }}
+        onSearchValueChange={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
         searchPlaceholder="Search Todos"
         searchValue={search}
         toolbarAction={
@@ -167,12 +214,18 @@ export function TaskManagerWorkspace() {
             <WorkspaceSelect
               options={[{ label: "All categories", value: "all" }, ...lookupOptions("category")]}
               value={categoryFilter}
-              onValueChange={(value) => { setCategoryFilter(value); setPage(1); }}
+              onValueChange={(value) => {
+                setCategoryFilter(value);
+                setPage(1);
+              }}
             />
             <WorkspaceSelect
               options={groupOptions}
               value={groupFilter}
-              onValueChange={(value) => { setGroupFilter(value); setPage(1); }}
+              onValueChange={(value) => {
+                setGroupFilter(value);
+                setPage(1);
+              }}
             />
           </div>
         }
@@ -202,25 +255,37 @@ export function TaskManagerWorkspace() {
           }}
           sensors={sensors}
         >
-        <table className="w-full min-w-[980px] text-sm">
-          <thead className="border-b bg-muted/50">
-            <tr>
-              <th className="w-12 px-2 py-3" aria-label="Reorder" />
-              <th className="px-4 py-3 text-left">Todo</th>
-              <th className="px-4 py-3 text-left">Category</th>
-              <th className="px-4 py-3 text-left">Group / Client</th>
-              <th className="px-4 py-3 text-left">Priority</th>
-              <th className="px-4 py-3 text-left">Due date</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <SortableContext items={pageTodos.map((todo) => todo.id)} strategy={verticalListSortingStrategy}>
-              {pageTodos.map((todo) => <SortableTodoRow key={todo.id} lookups={lookupQuery.data ?? []} todo={todo} onEdit={setEditing} onComplete={(id) => status.mutate({ id, value: "completed" })} onDelete={() => setDeleting(todo)} />)}
-            </SortableContext>
-          </tbody>
-        </table>
+          <table className="w-full min-w-[980px] text-sm">
+            <thead className="border-b bg-muted/50">
+              <tr>
+                <th className="w-12 px-2 py-3" aria-label="Reorder" />
+                <th className="px-4 py-3 text-left">Todo</th>
+                <th className="px-4 py-3 text-left">Category</th>
+                <th className="px-4 py-3 text-left">Group / Client</th>
+                <th className="px-4 py-3 text-left">Priority</th>
+                <th className="px-4 py-3 text-left">Due date</th>
+                <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <SortableContext
+                items={pageTodos.map((todo) => todo.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {pageTodos.map((todo) => (
+                  <SortableTodoRow
+                    key={todo.id}
+                    lookups={lookupQuery.data ?? []}
+                    todo={todo}
+                    onEdit={setEditing}
+                    onComplete={(id) => status.mutate({ id, value: "completed" })}
+                    onDelete={() => setDeleting(todo)}
+                  />
+                ))}
+              </SortableContext>
+            </tbody>
+          </table>
         </DndContext>
         {!todos.length ? (
           <p className="p-10 text-center text-muted-foreground">No Todos found.</p>
@@ -236,14 +301,23 @@ export function TaskManagerWorkspace() {
         onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
         onPageChange={setPage}
         onPreviousPage={() => setPage((value) => Math.max(1, value - 1))}
-        onRowsPerPageChange={(value) => { setRowsPerPage(value); setPage(1); }}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(1);
+        }}
       />
-      <AlertDialog open={deleting !== null} onOpenChange={(open) => { if (!open) setDeleting(null); }}>
+      <AlertDialog
+        open={deleting !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null);
+        }}
+      >
         <AlertDialogContent className="rounded-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Todo?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete <span className="font-medium text-foreground">{deleting?.title}</span>.
+              This will permanently delete{" "}
+              <span className="font-medium text-foreground">{deleting?.title}</span>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -251,7 +325,12 @@ export function TaskManagerWorkspace() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={remove.isPending}
-              onClick={() => { if (deleting) { remove.mutate(deleting.id); setDeleting(null); } }}
+              onClick={() => {
+                if (deleting) {
+                  remove.mutate(deleting.id);
+                  setDeleting(null);
+                }
+              }}
             >
               Delete Todo
             </AlertDialogAction>
@@ -261,18 +340,103 @@ export function TaskManagerWorkspace() {
     </WorkspacePage>
   );
 }
-function SortableTodoRow({ todo, lookups, onEdit, onComplete, onDelete }: { todo: Todo; lookups: TodoLookup[]; onEdit: (todo: Todo) => void; onComplete: (id: string) => void; onDelete: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: todo.id });
-  return <tr ref={setNodeRef} className="border-b last:border-0" style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.65 : 1 }}>
-    <td className="px-2 py-3"><Button {...attributes} {...listeners} aria-label={`Reorder ${todo.title}`} className="cursor-grab text-muted-foreground active:cursor-grabbing" size="icon" title="Drag to reorder" type="button" variant="ghost"><GripVertical className="size-4" /></Button></td>
-    <td className="px-4 py-3"><button className={`text-left font-medium hover:underline ${todo.status === "completed" ? "text-emerald-700 line-through decoration-emerald-600" : ""}`} type="button" onClick={() => onEdit(todo)}>{todo.title}</button>{todo.description ? <div className={`mt-1 max-w-[44rem] truncate text-xs text-muted-foreground ${todo.status === "completed" ? "line-through decoration-emerald-500" : ""}`} title={todo.description}>{descriptionPreview(todo.description)}</div> : null}</td>
-    <td className="px-4 py-3">{lookupLabel(lookups, "category", todo.category)}</td>
-    <td className="px-4 py-3">{todo.groupName || "-"}</td>
-    <td className="px-4 py-3"><span className="inline-flex items-center gap-2"><span aria-hidden="true" className={`size-2.5 rounded-full ${prioritySwatch(todo.priority)}`} />{lookupLabel(lookups, "priority", todo.priority)}</span></td>
-    <td className="px-4 py-3">{formatTodoDate(todo.dueDate)}</td>
-    <td className="px-4 py-3"><WorkspaceStatusBadge label={lookupLabel(lookups, "status", todo.status)} tone={statusTone(todo.status)} /></td>
-    <td className="px-4 py-3"><div className="flex justify-end gap-1"><Button size="icon" variant="outline" title="Edit" onClick={() => onEdit(todo)}><Pencil className="size-4" /></Button>{todo.status !== "completed" ? <Button size="icon" variant="outline" title="Complete" onClick={() => onComplete(todo.id)}><Check className="size-4" /></Button> : null}<Button size="icon" variant="outline" title="Delete" onClick={onDelete}><Trash2 className="size-4" /></Button></div></td>
-  </tr>;
+function SortableTodoRow({
+  todo,
+  lookups,
+  onEdit,
+  onComplete,
+  onDelete
+}: {
+  todo: Todo;
+  lookups: TodoLookup[];
+  onEdit: (todo: Todo) => void;
+  onComplete: (id: string) => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: todo.id
+  });
+  return (
+    <tr
+      ref={setNodeRef}
+      className="border-b last:border-0"
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.65 : 1
+      }}
+    >
+      <td className="px-2 py-3">
+        <Button
+          {...attributes}
+          {...listeners}
+          aria-label={`Reorder ${todo.title}`}
+          className="cursor-grab text-muted-foreground active:cursor-grabbing"
+          size="icon"
+          title="Drag to reorder"
+          type="button"
+          variant="ghost"
+        >
+          <GripVertical className="size-4" />
+        </Button>
+      </td>
+      <td className="px-4 py-3">
+        <button
+          className={`text-left font-medium hover:underline ${todo.status === "completed" ? "text-emerald-700 line-through decoration-emerald-600" : ""}`}
+          type="button"
+          onClick={() => onEdit(todo)}
+        >
+          {todo.title}
+        </button>
+        {todo.description ? (
+          <div
+            className={`mt-1 max-w-[44rem] truncate text-xs text-muted-foreground ${todo.status === "completed" ? "line-through decoration-emerald-500" : ""}`}
+            title={todo.description}
+          >
+            {descriptionPreview(todo.description)}
+          </div>
+        ) : null}
+      </td>
+      <td className="px-4 py-3">{lookupLabel(lookups, "category", todo.category)}</td>
+      <td className="px-4 py-3">{todo.groupName || "-"}</td>
+      <td className="px-4 py-3">
+        <span className="inline-flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className={`size-2.5 rounded-full ${prioritySwatch(todo.priority)}`}
+          />
+          {lookupLabel(lookups, "priority", todo.priority)}
+        </span>
+      </td>
+      <td className="px-4 py-3">{formatTodoDate(todo.dueDate)}</td>
+      <td className="px-4 py-3">
+        <WorkspaceStatusBadge
+          label={lookupLabel(lookups, "status", todo.status)}
+          tone={statusTone(todo.status)}
+        />
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex justify-end gap-1">
+          <Button size="icon" variant="outline" title="Edit" onClick={() => onEdit(todo)}>
+            <Pencil className="size-4" />
+          </Button>
+          {todo.status !== "completed" ? (
+            <Button
+              size="icon"
+              variant="outline"
+              title="Complete"
+              onClick={() => onComplete(todo.id)}
+            >
+              <Check className="size-4" />
+            </Button>
+          ) : null}
+          <Button size="icon" variant="outline" title="Delete" onClick={onDelete}>
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
 }
 function TodoForm({
   value,
@@ -324,14 +488,48 @@ function TodoForm({
             />
           </WorkspaceFormField>
           <WorkspaceFormField label="Due date">
-            <WorkspaceDatePicker value={form.dueDate ?? ""} onValueChange={(value) => patch("dueDate", value)} />
+            <WorkspaceDatePicker
+              value={form.dueDate ?? ""}
+              onValueChange={(value) => patch("dueDate", value)}
+            />
           </WorkspaceFormField>
-          <TodoLookupField kind="category" label="Category" lookups={lookups} value={String(form.category ?? "work")} onCreate={onCreateLookup} onValueChange={(next) => patch("category", next)} />
-          <TodoLookupField kind="group" label="Group / Client" lookups={lookups} value={form.groupName ?? ""} onCreate={onCreateLookup} onValueChange={(next, option) => patch("groupName", option?.label ?? next)} />
-          <TodoLookupField kind="status" label="Status" lookups={lookups} value={String(form.status ?? "open")} onCreate={onCreateLookup} onValueChange={(next) => patch("status", next)} />
-          <TodoLookupField kind="priority" label="Priority" lookups={lookups} value={String(form.priority ?? "medium")} onCreate={onCreateLookup} onValueChange={(next) => patch("priority", next)} />
+          <TodoLookupField
+            kind="category"
+            label="Category"
+            lookups={lookups}
+            value={String(form.category ?? "work")}
+            onCreate={onCreateLookup}
+            onValueChange={(next) => patch("category", next)}
+          />
+          <TodoLookupField
+            kind="group"
+            label="Group / Client"
+            lookups={lookups}
+            value={form.groupName ?? ""}
+            onCreate={onCreateLookup}
+            onValueChange={(next, option) => patch("groupName", option?.label ?? next)}
+          />
+          <TodoLookupField
+            kind="status"
+            label="Status"
+            lookups={lookups}
+            value={String(form.status ?? "open")}
+            onCreate={onCreateLookup}
+            onValueChange={(next) => patch("status", next)}
+          />
+          <TodoLookupField
+            kind="priority"
+            label="Priority"
+            lookups={lookups}
+            value={String(form.priority ?? "medium")}
+            onCreate={onCreateLookup}
+            onValueChange={(next) => patch("priority", next)}
+          />
           <WorkspaceFormField className="md:col-span-2" label="Description">
-            <WorkspaceMinimalEditor content={form.description ?? ""} onChange={(value) => patch("description", value)} />
+            <WorkspaceMinimalEditor
+              content={form.description ?? ""}
+              onChange={(value) => patch("description", value)}
+            />
           </WorkspaceFormField>
         </WorkspaceFormGrid>
         <WorkspaceFormFooter
@@ -344,7 +542,14 @@ function TodoForm({
     </WorkspaceUpsertDialog>
   );
 }
-function TodoLookupField({ kind, label, lookups, onCreate, onValueChange, value }: {
+function TodoLookupField({
+  kind,
+  label,
+  lookups,
+  onCreate,
+  onValueChange,
+  value
+}: {
   kind: TodoLookupKind;
   label: string;
   lookups: TodoLookup[];
@@ -377,21 +582,54 @@ function toLookupOptions(lookups: TodoLookup[], kind: TodoLookupKind): Workspace
 }
 
 function lookupLabel(lookups: TodoLookup[], kind: TodoLookupKind, value: string) {
-  return lookups.find((item) => item.kind === kind && item.value === value)?.name ?? statusLabel(value);
+  return (
+    lookups.find((item) => item.kind === kind && item.value === value)?.name ?? statusLabel(value)
+  );
 }
 
 function prioritySwatch(priority: TodoPriority) {
-  return priority === "urgent" ? "bg-rose-600" : priority === "high" ? "bg-orange-500" : priority === "medium" ? "bg-amber-500" : "bg-sky-500";
+  return priority === "urgent"
+    ? "bg-rose-600"
+    : priority === "high"
+      ? "bg-orange-500"
+      : priority === "medium"
+        ? "bg-amber-500"
+        : "bg-sky-500";
 }
 
-function statusLabel(status: TodoStatus) { return status.split("-").filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" "); }
-function statusTone(status: TodoStatus) { return status === "completed" ? "success" : status === "in-progress" || status === "review" ? "info" : status === "blocked" || status === "cancelled" ? "danger" : "warning"; }
+function statusLabel(status: TodoStatus) {
+  return status
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+function statusTone(status: TodoStatus) {
+  return status === "completed"
+    ? "success"
+    : status === "in-progress" || status === "review"
+      ? "info"
+      : status === "blocked" || status === "cancelled"
+        ? "danger"
+        : "warning";
+}
 
 function formatTodoDate(value: string) {
   if (!value) return "-";
   const [year, month, day] = value.split("-").map(Number);
   if (!year || !month || !day) return value;
-  return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(year, month - 1, day));
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }).format(new Date(year, month - 1, day));
 }
 
-function descriptionPreview(value: string) { return value.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim(); }
+function descriptionPreview(value: string) {
+  return value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}

@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { sql } from "kysely";
 import { getCoreDatabase } from "../../../../database/core-database.js";
 import type {
@@ -10,7 +9,6 @@ import type {
 
 type DistrictRow = {
   id: number;
-  uuid: string;
   state_id: number;
   state_name: string;
   country_id: number;
@@ -22,7 +20,7 @@ type DistrictRow = {
 
 export class DistrictRepository {
   async list(filters: DistrictListFilters = {}) {
-    const rows = await sql<DistrictRow>`SELECT districts.id, districts.uuid, districts.state_id,
+    const rows = await sql<DistrictRow>`SELECT districts.id, districts.state_id,
         states.name state_name, states.country_id, countries.name country_name,
         districts.name, districts.sort_order, districts.status
       FROM districts
@@ -35,8 +33,8 @@ export class DistrictRepository {
     return rows.rows.map(toDistrict);
   }
 
-  async find(id: string) {
-    const rows = await sql<DistrictRow>`SELECT districts.id, districts.uuid, districts.state_id,
+  async find(id: string | number) {
+    const rows = await sql<DistrictRow>`SELECT districts.id, districts.state_id,
         states.name state_name, states.country_id, countries.name country_name,
         districts.name, districts.sort_order, districts.status
       FROM districts
@@ -46,7 +44,7 @@ export class DistrictRepository {
     return rows.rows[0] ? toDistrict(rows.rows[0]) : null;
   }
 
-  async stateExists(stateId: string) {
+  async stateExists(stateId: string | number) {
     const rows = await sql<{
       id: number;
     }>`SELECT id FROM states WHERE id=${Number(stateId)} LIMIT 1`.execute(getCoreDatabase());
@@ -54,35 +52,35 @@ export class DistrictRepository {
   }
 
   async create(input: DistrictSavePayload) {
-    const result = await sql`INSERT INTO districts (uuid, state_id, name, sort_order, status) VALUES
-      (${randomBytes(4).toString("hex")}, ${Number(input.stateId)}, ${input.name}, ${input.sortOrder}, ${input.status})`.execute(
+    const result = await sql`INSERT INTO districts (state_id, name, sort_order, status) VALUES
+      (${Number(input.stateId)}, ${input.name}, ${input.sortOrder}, ${input.status})`.execute(
       getCoreDatabase()
     );
     return (await this.find(String(result.insertId)))!;
   }
 
-  async update(id: string, input: DistrictSavePayload) {
+  async update(id: string | number, input: DistrictSavePayload) {
     await sql`UPDATE districts SET state_id=${Number(input.stateId)}, name=${input.name}, sort_order=${input.sortOrder}, status=${input.status} WHERE id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return this.find(id);
   }
 
-  async setStatus(id: string, status: DistrictStatus) {
+  async setStatus(id: string | number, status: DistrictStatus) {
     await sql`UPDATE districts SET status=${status} WHERE id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return this.find(id);
   }
 
-  async forceDelete(id: string) {
+  async forceDelete(id: string | number) {
     const existing = await this.find(id);
     if (!existing) return null;
     await sql`DELETE FROM districts WHERE id=${Number(id)}`.execute(getCoreDatabase());
     return existing;
   }
 
-  async dependentCount(id: string) {
+  async dependentCount(id: string | number) {
     const rows = await sql<{
       count: number | string;
     }>`SELECT COUNT(*) count FROM cities WHERE district_id=${Number(id)}`.execute(
@@ -94,11 +92,10 @@ export class DistrictRepository {
 
 function toDistrict(row: DistrictRow): District {
   return {
-    id: String(row.id),
-    uuid: row.uuid,
-    stateId: String(row.state_id),
+    id: Number(row.id),
+    stateId: Number(row.state_id),
     stateName: row.state_name,
-    countryId: String(row.country_id),
+    countryId: Number(row.country_id),
     countryName: row.country_name,
     name: row.name,
     sortOrder: Number(row.sort_order),

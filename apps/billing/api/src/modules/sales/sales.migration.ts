@@ -6,7 +6,9 @@ export const salesMigration = {
 };
 
 export async function migrateSalesModule(database: Kysely<any>) {
-  await sql.raw(`
+  await sql
+    .raw(
+      `
     CREATE TABLE IF NOT EXISTS billing_sales (
       id varchar(80) primary key,
       invoice_number varchar(80) not null unique,
@@ -33,7 +35,9 @@ export async function migrateSalesModule(database: Kysely<any>) {
       created_at varchar(40) null,
       updated_at varchar(40) null
     )
-  `).execute(database);
+  `
+    )
+    .execute(database);
 
   const alterStatements = [
     "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS customer_email varchar(180) null",
@@ -52,7 +56,7 @@ export async function migrateSalesModule(database: Kysely<any>) {
     "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS items_json longtext null",
     "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS notes text null",
     "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS created_at varchar(40) null",
-    "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS updated_at varchar(40) null",
+    "ALTER TABLE billing_sales ADD COLUMN IF NOT EXISTS updated_at varchar(40) null"
   ];
 
   for (const statement of alterStatements) {

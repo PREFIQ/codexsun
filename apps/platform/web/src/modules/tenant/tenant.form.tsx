@@ -18,7 +18,12 @@ export function TenantIdentityFields({
         <Input required value={name} onChange={(event) => onNameChange(event.target.value)} />
       </WorkspaceFormField>
       <WorkspaceFormField label="Tenant code" required>
-        <Input className="font-mono" required value={code} onChange={(event) => onCodeChange(event.target.value)} />
+        <Input
+          className="font-mono"
+          required
+          value={code}
+          onChange={(event) => onCodeChange(event.target.value)}
+        />
       </WorkspaceFormField>
     </WorkspaceFormGrid>
   );

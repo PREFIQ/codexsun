@@ -102,4 +102,3 @@ Sync must record:
 - Sync result.
 - Conflict reason.
 - Resolution action.
-

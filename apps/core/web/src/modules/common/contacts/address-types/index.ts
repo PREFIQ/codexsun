@@ -1,2 +1,2 @@
-export * from "./address-types.definition";
+export * from "./address-types.types";
 export * from "./address-types.workspace";

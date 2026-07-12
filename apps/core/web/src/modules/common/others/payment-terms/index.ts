@@ -1,2 +1,2 @@
-export * from "./payment-terms.definition";
+export * from "./payment-terms.types";
 export * from "./payment-terms.workspace";

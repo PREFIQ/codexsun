@@ -1,6 +1,9 @@
 import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
 import type { HealthCheck } from "@codexsun/framework/health";
-import { bootstrapRegisteredAccountsDatabases, closeAllAccountsDatabases } from "./database/accounts-database.js";
+import {
+  bootstrapRegisteredAccountsDatabases,
+  closeAllAccountsDatabases
+} from "./database/accounts-database.js";
 import { env } from "./env.js";
 import { ledgersModule } from "./modules/ledgers/index.js";
 import { vouchersModule } from "./modules/vouchers/index.js";
@@ -26,7 +29,12 @@ export async function createApp() {
       name: "accounts-api",
       check: () => ({
         details: {
-          modules: [ledgersModule.key, vouchersModule.key, reportsModule.key, accountsSettingsModule.key],
+          modules: [
+            ledgersModule.key,
+            vouchersModule.key,
+            reportsModule.key,
+            accountsSettingsModule.key
+          ],
           runtime: "accounts-foundation"
         },
         status: "ok"

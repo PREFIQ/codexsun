@@ -8,7 +8,11 @@ type TenantPrimaryDomainFieldProps = {
   value: string;
 };
 
-export function TenantPrimaryDomainField({ onChange, onTouched, value }: TenantPrimaryDomainFieldProps) {
+export function TenantPrimaryDomainField({
+  onChange,
+  onTouched,
+  value
+}: TenantPrimaryDomainFieldProps) {
   return (
     <WorkspaceFormField label="Primary domain" required>
       <Input

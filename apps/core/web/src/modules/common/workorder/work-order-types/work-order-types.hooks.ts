@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { workOrderTypesDefinition } from "./work-order-types.definition";
-export function useWorkOrderTypesQuery() { return useCommonMasterQuery(workOrderTypesDefinition.key, workOrderTypesDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listWorkOrderTypes } from "./work-order-types.services";
+export function useWorkOrderTypesQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listWorkOrderTypes(path), queryKey: ["core", "common", key] });
+}

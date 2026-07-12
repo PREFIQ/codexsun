@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { sizesDefinition } from "./sizes.definition";
-export function useSizesQuery() { return useCommonMasterQuery(sizesDefinition.key, sizesDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listSizes } from "./sizes.services";
+export function useSizesQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listSizes(path), queryKey: ["core", "common", key] });
+}

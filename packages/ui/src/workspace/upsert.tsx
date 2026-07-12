@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
-import { AlertCircle, AlertTriangle, ArrowLeft, Info } from "lucide-react"
-import { Button } from "../components/button"
-import { Label } from "../components/label"
-import { cn } from "../lib/utils"
+import type { ReactNode } from "react";
+import { AlertCircle, AlertTriangle, ArrowLeft, Info } from "lucide-react";
+import { Button } from "../components/button";
+import { Label } from "../components/label";
+import { cn } from "../lib/utils";
 
 export function WorkspaceUpsertPage({
   action,
@@ -13,22 +13,29 @@ export function WorkspaceUpsertPage({
   className,
   description,
   onBack,
-  title,
+  title
 }: {
-  action?: ReactNode
-  backLabel?: string
-  children: ReactNode
-  className?: string
-  description?: string
-  onBack?: () => void
-  title: string
+  action?: ReactNode;
+  backLabel?: string;
+  children: ReactNode;
+  className?: string;
+  description?: string;
+  onBack?: () => void;
+  title: string;
 }) {
   return (
-    <section className={cn("mx-auto w-[calc(100%-2rem)] max-w-[92rem] space-y-4 py-4 lg:w-[calc(100%-3rem)] lg:py-5", className)}>
+    <section
+      className={cn(
+        "mx-auto w-[calc(100%-2rem)] max-w-[92rem] space-y-4 py-4 lg:w-[calc(100%-3rem)] lg:py-5",
+        className
+      )}
+    >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold tracking-normal text-foreground/80">{title}</h1>
-          {description ? <p className="mt-0.5 text-sm text-muted-foreground/70">{description}</p> : null}
+          {description ? (
+            <p className="mt-0.5 text-sm text-muted-foreground/70">{description}</p>
+          ) : null}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {onBack ? (
@@ -42,7 +49,7 @@ export function WorkspaceUpsertPage({
       </div>
       {children}
     </section>
-  )
+  );
 }
 
 export function WorkspaceFormPanel({
@@ -50,13 +57,13 @@ export function WorkspaceFormPanel({
   className,
   description,
   footer,
-  title,
+  title
 }: {
-  children: ReactNode
-  className?: string
-  description?: string
-  footer?: ReactNode
-  title?: string
+  children: ReactNode;
+  className?: string;
+  description?: string;
+  footer?: ReactNode;
+  title?: string;
 }) {
   return (
     <WorkspaceFormSurface {...(className ? { className } : {})}>
@@ -75,74 +82,81 @@ export function WorkspaceFormPanel({
         </div>
       ) : null}
     </WorkspaceFormSurface>
-  )
+  );
 }
 
 export function WorkspaceFormSurface({
   children,
-  className,
+  className
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
   return (
     <div
       className={cn(
         "overflow-hidden rounded-md border border-border/90 bg-card/95 shadow-[0_14px_34px_rgba(15,23,42,0.08),0_2px_6px_rgba(15,23,42,0.06)] ring-1 ring-emerald-200/45",
-        className,
+        className
       )}
     >
       {children}
     </div>
-  )
+  );
 }
 
 export function WorkspaceFormBody({
   children,
-  className,
+  className
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
-  return <div className={cn("px-4 py-5 sm:px-6 sm:py-6", className)}>{children}</div>
+  return <div className={cn("px-4 py-5 sm:px-6 sm:py-6", className)}>{children}</div>;
 }
 
 export function WorkspaceFormTabbedBody({
   children,
-  className,
+  className
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
-  return <WorkspaceFormBody className={cn("pt-1 pb-10", className)}>{children}</WorkspaceFormBody>
+  return <WorkspaceFormBody className={cn("pt-1 pb-10", className)}>{children}</WorkspaceFormBody>;
 }
 
 export function WorkspaceFormActions({
   children,
-  className,
+  className
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className={cn("border-t border-border/90 bg-card px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] sm:px-6", className)}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 [&>button]:w-full sm:[&>button]:w-auto">{children}</div>
+    <div
+      className={cn(
+        "border-t border-border/90 bg-card px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] sm:px-6",
+        className
+      )}
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 [&>button]:w-full sm:[&>button]:w-auto">
+        {children}
+      </div>
     </div>
-  )
+  );
 }
 
 export function WorkspaceFormBanner({
   children,
   className,
   title,
-  tone = "error",
+  tone = "error"
 }: {
-  children: ReactNode
-  className?: string
-  title: string
-  tone?: "error" | "info" | "warning"
+  children: ReactNode;
+  className?: string;
+  title: string;
+  tone?: "error" | "info" | "warning";
 }) {
-  const Icon = tone === "warning" ? AlertTriangle : tone === "info" ? Info : AlertCircle
+  const Icon = tone === "warning" ? AlertTriangle : tone === "info" ? Info : AlertCircle;
 
   return (
     <div
@@ -151,7 +165,7 @@ export function WorkspaceFormBanner({
         tone === "error" && "border-destructive/30 bg-destructive/10 text-destructive",
         tone === "warning" && "border-amber-300 bg-amber-50 text-amber-900",
         tone === "info" && "border-sky-300 bg-sky-50 text-sky-900",
-        className,
+        className
       )}
       role={tone === "error" ? "alert" : "status"}
     >
@@ -161,17 +175,17 @@ export function WorkspaceFormBanner({
         <div className="mt-0.5 text-current/80">{children}</div>
       </div>
     </div>
-  )
+  );
 }
 
 export function WorkspaceFormGrid({
   children,
   className,
-  columns = 2,
+  columns = 2
 }: {
-  children: ReactNode
-  className?: string
-  columns?: 1 | 2 | 3
+  children: ReactNode;
+  className?: string;
+  columns?: 1 | 2 | 3;
 }) {
   return (
     <div
@@ -180,24 +194,24 @@ export function WorkspaceFormGrid({
         columns === 1 && "grid-cols-1",
         columns === 2 && "grid-cols-1 md:grid-cols-2",
         columns === 3 && "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
-        className,
+        className
       )}
     >
       {children}
     </div>
-  )
+  );
 }
 
 export function WorkspaceFormField({
   children,
   className,
   label,
-  required,
+  required
 }: {
-  children: ReactNode
-  className?: string
-  label: ReactNode
-  required?: boolean
+  children: ReactNode;
+  className?: string;
+  label: ReactNode;
+  required?: boolean;
 }) {
   return (
     <div className={cn("grid gap-2", className)}>
@@ -207,7 +221,7 @@ export function WorkspaceFormField({
       </Label>
       {children}
     </div>
-  )
+  );
 }
 
 export function WorkspaceFormFooter({
@@ -217,15 +231,15 @@ export function WorkspaceFormFooter({
   onCancel,
   primaryLabel,
   primaryLoading,
-  primaryProps,
+  primaryProps
 }: {
-  cancelLabel?: string
-  children?: ReactNode
-  className?: string
-  onCancel?: () => void
-  primaryLabel: string
-  primaryLoading?: boolean
-  primaryProps?: React.ComponentProps<typeof Button>
+  cancelLabel?: string;
+  children?: ReactNode;
+  className?: string;
+  onCancel?: () => void;
+  primaryLabel: string;
+  primaryLoading?: boolean;
+  primaryProps?: React.ComponentProps<typeof Button>;
 }) {
   return (
     <div className={cn("flex flex-wrap items-center gap-3", className)}>
@@ -239,10 +253,16 @@ export function WorkspaceFormFooter({
         </Button>
       ) : null}
     </div>
-  )
+  );
 }
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../components/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "../components/dialog";
 
 export function WorkspaceUpsertDialog({
   children,
@@ -250,14 +270,14 @@ export function WorkspaceUpsertDialog({
   description,
   onClose,
   open,
-  title,
+  title
 }: {
-  children: ReactNode
-  className?: string
-  description?: string
-  onClose?: () => void
-  open: boolean
-  title: string
+  children: ReactNode;
+  className?: string;
+  description?: string;
+  onClose?: () => void;
+  open: boolean;
+  title: string;
 }) {
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose?.()}>
@@ -269,5 +289,5 @@ export function WorkspaceUpsertDialog({
         {children}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

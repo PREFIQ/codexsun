@@ -3,8 +3,13 @@ import type { PlatformActivityInput } from "./platform-activity.types.js";
 
 export class PlatformActivityService {
   constructor(private readonly repository = new PlatformActivityRepository()) {}
-  listActivity() { return this.repository.list(); }
-  recordActivity(input: PlatformActivityInput) { validateActivity(input); return this.repository.record(input); }
+  listActivity() {
+    return this.repository.list();
+  }
+  recordActivity(input: PlatformActivityInput) {
+    validateActivity(input);
+    return this.repository.record(input);
+  }
 }
 
 export function validateActivity(input: PlatformActivityInput) {

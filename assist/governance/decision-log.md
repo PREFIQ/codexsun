@@ -62,4 +62,3 @@ Consequences:
 - CODEIT can access code and planning context.
 - ZERO can access only permitted tenant business data through approved tools.
 - Both assistants require separate prompts, permissions, tools, logs, and interfaces.
-

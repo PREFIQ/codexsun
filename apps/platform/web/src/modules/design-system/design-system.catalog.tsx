@@ -219,7 +219,8 @@ import {
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import type { ComponentType, ReactNode } from "react";
 
-export type CatalogCategory = "Control" | "Form" | "Feedback" | "Navigation" | "Overlay" | "Data" | "Layout";
+export type CatalogCategory =
+  "Control" | "Form" | "Feedback" | "Navigation" | "Overlay" | "Data" | "Layout";
 
 export type CatalogItem = {
   category: CatalogCategory;
@@ -265,23 +266,51 @@ const treeData = [
 ];
 
 export const catalogItems: CatalogItem[] = [
-  item("accordion", "Accordion", "Data", "Stacked disclosure sections for dense business content.", [
-    variant("default", "Default", <AccordionPreview />),
-    variant("contained", "Contained", <AccordionPreview className="rounded-md border px-4" />)
-  ]),
-  item("alert", "Alert", "Feedback", "Inline message pattern for warnings, success context, and destructive states.", [
-    variant("default", "Default", <AlertPreview />),
-    variant("destructive", "Destructive", <AlertPreview destructive />)
-  ]),
-  item("alert-dialog", "Alert Dialog", "Overlay", "Blocking confirmation surface for destructive or irreversible actions.", [
-    variant("default", "Default", <AlertDialogPreview />)
-  ]),
-  item("aspect-ratio", "Aspect Ratio", "Layout", "Fixed-ratio media frame for previews and document panels.", [
-    variant("video", "Video", <AspectRatioPreview ratio={16 / 9} />),
-    variant("square", "Square", <AspectRatioPreview ratio={1} />)
-  ]),
+  item(
+    "accordion",
+    "Accordion",
+    "Data",
+    "Stacked disclosure sections for dense business content.",
+    [
+      variant("default", "Default", <AccordionPreview />),
+      variant("contained", "Contained", <AccordionPreview className="rounded-md border px-4" />)
+    ]
+  ),
+  item(
+    "alert",
+    "Alert",
+    "Feedback",
+    "Inline message pattern for warnings, success context, and destructive states.",
+    [
+      variant("default", "Default", <AlertPreview />),
+      variant("destructive", "Destructive", <AlertPreview destructive />)
+    ]
+  ),
+  item(
+    "alert-dialog",
+    "Alert Dialog",
+    "Overlay",
+    "Blocking confirmation surface for destructive or irreversible actions.",
+    [variant("default", "Default", <AlertDialogPreview />)]
+  ),
+  item(
+    "aspect-ratio",
+    "Aspect Ratio",
+    "Layout",
+    "Fixed-ratio media frame for previews and document panels.",
+    [
+      variant("video", "Video", <AspectRatioPreview ratio={16 / 9} />),
+      variant("square", "Square", <AspectRatioPreview ratio={1} />)
+    ]
+  ),
   item("avatar", "Avatar", "Data", "Compact identity marker for users, tenants, and companies.", [
-    variant("initials", "Initials", <Avatar><AvatarFallback>CS</AvatarFallback></Avatar>),
+    variant(
+      "initials",
+      "Initials",
+      <Avatar>
+        <AvatarFallback>CS</AvatarFallback>
+      </Avatar>
+    ),
     variant("group", "Group", <AvatarGroupPreview />)
   ]),
   item("badge", "Badge", "Feedback", "Small status and metadata labels.", [
@@ -290,39 +319,95 @@ export const catalogItems: CatalogItem[] = [
     variant("outline", "Outline", <Badge variant="outline">Outline</Badge>),
     variant("destructive", "Destructive", <Badge variant="destructive">Blocked</Badge>)
   ]),
-  item("breadcrumb", "Breadcrumb", "Navigation", "Hierarchical page location for deep platform screens.", [
-    variant("default", "Default", <BreadcrumbPreview />)
-  ]),
-  item("button", "Button", "Control", "Action buttons. The selected default changes every Button without an explicit variant.", [
-    variant("default", "Default", <Button icon={<SaveIcon />}>Save</Button>),
-    variant("secondary", "Secondary", <Button variant="secondary" icon={<FilterIcon />}>Filter</Button>),
-    variant("outline", "Outline", <Button variant="outline" icon={<CopyIcon />}>Copy</Button>),
-    variant("ghost", "Ghost", <Button variant="ghost">Ghost</Button>),
-    variant("danger", "Danger", <Button variant="danger">Delete</Button>),
-    variant("link", "Link", <Button variant="link">Open record</Button>)
-  ]),
+  item(
+    "breadcrumb",
+    "Breadcrumb",
+    "Navigation",
+    "Hierarchical page location for deep platform screens.",
+    [variant("default", "Default", <BreadcrumbPreview />)]
+  ),
+  item(
+    "button",
+    "Button",
+    "Control",
+    "Action buttons. The selected default changes every Button without an explicit variant.",
+    [
+      variant("default", "Default", <Button icon={<SaveIcon />}>Save</Button>),
+      variant(
+        "secondary",
+        "Secondary",
+        <Button variant="secondary" icon={<FilterIcon />}>
+          Filter
+        </Button>
+      ),
+      variant(
+        "outline",
+        "Outline",
+        <Button variant="outline" icon={<CopyIcon />}>
+          Copy
+        </Button>
+      ),
+      variant("ghost", "Ghost", <Button variant="ghost">Ghost</Button>),
+      variant("danger", "Danger", <Button variant="danger">Delete</Button>),
+      variant("link", "Link", <Button variant="link">Open record</Button>)
+    ]
+  ),
   item("button-group", "Button Group", "Control", "Grouped command controls with shared borders.", [
     variant("horizontal", "Horizontal", <ButtonGroupPreview />),
     variant("vertical", "Vertical", <ButtonGroupPreview vertical />)
   ]),
   item("calendar", "Calendar", "Form", "Themed date picker calendar foundation.", [
     variant("single", "Single Month", <Calendar mode="single" selected={new Date(2026, 6, 8)} />),
-    variant("dropdown", "Dropdown Caption", <Calendar mode="single" captionLayout="dropdown" selected={new Date(2026, 6, 8)} />)
+    variant(
+      "dropdown",
+      "Dropdown Caption",
+      <Calendar mode="single" captionLayout="dropdown" selected={new Date(2026, 6, 8)} />
+    )
   ]),
   item("card", "Card", "Layout", "Framed content surface for repeated items and focused panels.", [
-    variant("default", "Default", <Card title="Billing Engine" description="GST, invoices, payments, and compliance."><StatusRow /></Card>),
-    variant("compact", "Compact", <Card className="p-4"><StatusRow /></Card>)
+    variant(
+      "default",
+      "Default",
+      <Card title="Billing Engine" description="GST, invoices, payments, and compliance.">
+        <StatusRow />
+      </Card>
+    ),
+    variant(
+      "compact",
+      "Compact",
+      <Card className="p-4">
+        <StatusRow />
+      </Card>
+    )
   ]),
-  item("carousel", "Carousel", "Navigation", "Embla-backed horizontal and vertical content carousel.", [
-    variant("horizontal", "Horizontal", <CarouselPreview />),
-    variant("vertical", "Vertical", <CarouselPreview vertical />)
-  ]),
+  item(
+    "carousel",
+    "Carousel",
+    "Navigation",
+    "Embla-backed horizontal and vertical content carousel.",
+    [
+      variant("horizontal", "Horizontal", <CarouselPreview />),
+      variant("vertical", "Vertical", <CarouselPreview vertical />)
+    ]
+  ),
   item("chart", "Chart", "Data", "Token-aware chart container, tooltip, and legend primitives.", [
     variant("bar", "Bar Chart", <ChartPreview />)
   ]),
   item("checkbox", "Checkbox", "Form", "Binary selection control.", [
-    variant("checked", "Checked", <Label className="flex items-center gap-3"><Checkbox defaultChecked /> Active tenant</Label>),
-    variant("unchecked", "Unchecked", <Label className="flex items-center gap-3"><Checkbox /> Enable sync</Label>)
+    variant(
+      "checked",
+      "Checked",
+      <Label className="flex items-center gap-3">
+        <Checkbox defaultChecked /> Active tenant
+      </Label>
+    ),
+    variant(
+      "unchecked",
+      "Unchecked",
+      <Label className="flex items-center gap-3">
+        <Checkbox /> Enable sync
+      </Label>
+    )
   ]),
   item("collapsible", "Collapsible", "Data", "Compact show/hide region.", [
     variant("default", "Default", <CollapsiblePreview />)
@@ -350,9 +435,21 @@ export const catalogItems: CatalogItem[] = [
     variant("vertical", "Vertical", <FieldPreview />),
     variant("horizontal", "Horizontal", <FieldPreview horizontal />)
   ]),
-  item("global-loader", "Global Loader", "Feedback", "CODEXSUN loading indicator for full page or inline loading.", [
-    variant("inline", "Inline", <div className="relative h-64 overflow-hidden rounded-md border"><GlobalLoader fullScreen={false} /></div>)
-  ]),
+  item(
+    "global-loader",
+    "Global Loader",
+    "Feedback",
+    "CODEXSUN loading indicator for full page or inline loading.",
+    [
+      variant(
+        "inline",
+        "Inline",
+        <div className="relative h-64 overflow-hidden rounded-md border">
+          <GlobalLoader fullScreen={false} />
+        </div>
+      )
+    ]
+  ),
   item("hover-card", "Hover Card", "Overlay", "Hover-triggered information preview.", [
     variant("default", "Default", <HoverCardPreview />)
   ]),
@@ -374,7 +471,14 @@ export const catalogItems: CatalogItem[] = [
   ]),
   item("kbd", "Kbd", "Data", "Keyboard shortcut marker.", [
     variant("single", "Single", <Kbd>Ctrl</Kbd>),
-    variant("group", "Group", <KbdGroup><Kbd>Ctrl</Kbd><Kbd>B</Kbd></KbdGroup>)
+    variant(
+      "group",
+      "Group",
+      <KbdGroup>
+        <Kbd>Ctrl</Kbd>
+        <Kbd>B</Kbd>
+      </KbdGroup>
+    )
   ]),
   item("label", "Label", "Form", "Accessible field label.", [
     variant("default", "Default", <Label htmlFor="label-preview">Tenant name</Label>)
@@ -382,9 +486,13 @@ export const catalogItems: CatalogItem[] = [
   item("menubar", "Menubar", "Navigation", "Horizontal application command menu.", [
     variant("default", "Default", <MenubarPreview />)
   ]),
-  item("navigation-menu", "Navigation Menu", "Navigation", "Top navigation menu with dropdown content.", [
-    variant("default", "Default", <NavigationMenuPreview />)
-  ]),
+  item(
+    "navigation-menu",
+    "Navigation Menu",
+    "Navigation",
+    "Top navigation menu with dropdown content.",
+    [variant("default", "Default", <NavigationMenuPreview />)]
+  ),
   item("pagination", "Pagination", "Navigation", "Page navigation controls.", [
     variant("default", "Default", <PaginationPreview />)
   ]),
@@ -409,7 +517,15 @@ export const catalogItems: CatalogItem[] = [
   ]),
   item("separator", "Separator", "Layout", "Horizontal or vertical visual divider.", [
     variant("horizontal", "Horizontal", <Separator />),
-    variant("vertical", "Vertical", <div className="flex h-14 items-center gap-4">Left<Separator orientation="vertical" />Right</div>)
+    variant(
+      "vertical",
+      "Vertical",
+      <div className="flex h-14 items-center gap-4">
+        Left
+        <Separator orientation="vertical" />
+        Right
+      </div>
+    )
   ]),
   item("sheet", "Sheet", "Overlay", "Side panel for inspection and settings.", [
     variant("right", "Right", <SheetPreview />)
@@ -459,19 +575,45 @@ export const catalogItems: CatalogItem[] = [
     variant("outline", "Outline", <Toggle variant="outline">Italic</Toggle>)
   ]),
   item("toggle-group", "Toggle Group", "Control", "Single or multiple toggle selections.", [
-    variant("single", "Single", <ToggleGroup type="single" defaultValue="list"><ToggleGroupItem value="list">List</ToggleGroupItem><ToggleGroupItem value="grid">Grid</ToggleGroupItem></ToggleGroup>),
-    variant("multiple", "Multiple", <ToggleGroup type="multiple" defaultValue={["filter"]}><ToggleGroupItem value="filter">Filter</ToggleGroupItem><ToggleGroupItem value="sort">Sort</ToggleGroupItem></ToggleGroup>)
+    variant(
+      "single",
+      "Single",
+      <ToggleGroup type="single" defaultValue="list">
+        <ToggleGroupItem value="list">List</ToggleGroupItem>
+        <ToggleGroupItem value="grid">Grid</ToggleGroupItem>
+      </ToggleGroup>
+    ),
+    variant(
+      "multiple",
+      "Multiple",
+      <ToggleGroup type="multiple" defaultValue={["filter"]}>
+        <ToggleGroupItem value="filter">Filter</ToggleGroupItem>
+        <ToggleGroupItem value="sort">Sort</ToggleGroupItem>
+      </ToggleGroup>
+    )
   ]),
   item("tooltip", "Tooltip", "Overlay", "Short hover or focus helper.", [
     variant("default", "Default", <TooltipPreview />)
   ]),
   item("tree", "Tree", "Data", "Hierarchical selectable navigation data.", [
     variant("default", "Default", <Tree data={treeData} defaultExpandedValues={["platform"]} />),
-    variant("lines", "With Lines", <Tree data={treeData} defaultExpandedValues={["platform", "business-apps"]} withLines />)
+    variant(
+      "lines",
+      "With Lines",
+      <Tree data={treeData} defaultExpandedValues={["platform", "business-apps"]} withLines />
+    )
   ])
 ];
 
-export const categoryOrder: CatalogCategory[] = ["Control", "Form", "Feedback", "Navigation", "Overlay", "Data", "Layout"];
+export const categoryOrder: CatalogCategory[] = [
+  "Control",
+  "Form",
+  "Feedback",
+  "Navigation",
+  "Overlay",
+  "Data",
+  "Layout"
+];
 
 export const categoryIcons: Record<CatalogCategory, ComponentType<{ className?: string }>> = {
   Control: ToggleLeftIcon,
@@ -483,7 +625,13 @@ export const categoryIcons: Record<CatalogCategory, ComponentType<{ className?: 
   Overlay: PanelTopIcon
 };
 
-function item(id: string, name: string, category: CatalogCategory, description: string, variants: CatalogVariant[]): CatalogItem {
+function item(
+  id: string,
+  name: string,
+  category: CatalogCategory,
+  description: string,
+  variants: CatalogVariant[]
+): CatalogItem {
   return {
     category,
     defaultVariantId: variants[0]?.id ?? "default",
@@ -494,7 +642,12 @@ function item(id: string, name: string, category: CatalogCategory, description: 
   };
 }
 
-function variant(id: string, name: string, preview: ReactNode, description?: string): CatalogVariant {
+function variant(
+  id: string,
+  name: string,
+  preview: ReactNode,
+  description?: string
+): CatalogVariant {
   return description ? { id, name, preview, description } : { id, name, preview };
 }
 
@@ -503,11 +656,15 @@ function AccordionPreview({ className }: { className?: string }) {
     <Accordion type="single" collapsible defaultValue="one" className={className}>
       <AccordionItem value="one">
         <AccordionTrigger>Can I change an invoice after posting?</AccordionTrigger>
-        <AccordionContent>Use an audited correction flow when compliance records are affected.</AccordionContent>
+        <AccordionContent>
+          Use an audited correction flow when compliance records are affected.
+        </AccordionContent>
       </AccordionItem>
       <AccordionItem value="two">
         <AccordionTrigger>Does this follow theme tokens?</AccordionTrigger>
-        <AccordionContent>Yes, borders, text, and focus states use the active design variant.</AccordionContent>
+        <AccordionContent>
+          Yes, borders, text, and focus states use the active design variant.
+        </AccordionContent>
       </AccordionItem>
     </Accordion>
   );
@@ -518,7 +675,11 @@ function AlertPreview({ destructive = false }: { destructive?: boolean }) {
     <Alert variant={destructive ? "destructive" : "default"} className="max-w-xl">
       <AlertCircleIcon className="size-4" />
       <AlertTitle>{destructive ? "Action blocked" : "Tenant checks complete"}</AlertTitle>
-      <AlertDescription>{destructive ? "Resolve pending relationships before deleting this record." : "Database, subscription, and access boundaries are aligned."}</AlertDescription>
+      <AlertDescription>
+        {destructive
+          ? "Resolve pending relationships before deleting this record."
+          : "Database, subscription, and access boundaries are aligned."}
+      </AlertDescription>
     </Alert>
   );
 }
@@ -526,11 +687,15 @@ function AlertPreview({ destructive = false }: { destructive?: boolean }) {
 function AlertDialogPreview() {
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild><Button variant="outline">Open confirmation</Button></AlertDialogTrigger>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline">Open confirmation</Button>
+      </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Force delete tenant?</AlertDialogTitle>
-          <AlertDialogDescription>This action needs a relationship safety check before it can continue.</AlertDialogDescription>
+          <AlertDialogDescription>
+            This action needs a relationship safety check before it can continue.
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -544,7 +709,9 @@ function AlertDialogPreview() {
 function AspectRatioPreview({ ratio }: { ratio: number }) {
   return (
     <AspectRatio ratio={ratio} className="overflow-hidden rounded-md border bg-muted">
-      <div className="grid h-full place-items-center text-sm font-semibold text-muted-foreground">Preview Frame</div>
+      <div className="grid h-full place-items-center text-sm font-semibold text-muted-foreground">
+        Preview Frame
+      </div>
     </AspectRatio>
   );
 }
@@ -553,7 +720,9 @@ function AvatarGroupPreview() {
   return (
     <div className="flex -space-x-2">
       {["SA", "AD", "TN"].map((label) => (
-        <Avatar key={label} className="border-2 border-background"><AvatarFallback>{label}</AvatarFallback></Avatar>
+        <Avatar key={label} className="border-2 border-background">
+          <AvatarFallback>{label}</AvatarFallback>
+        </Avatar>
       ))}
     </div>
   );
@@ -563,9 +732,15 @@ function BreadcrumbPreview() {
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        <BreadcrumbItem><BreadcrumbLink href="/sa">Super Admin</BreadcrumbLink></BreadcrumbItem>
-        <BreadcrumbSeparator><ChevronRightIcon /></BreadcrumbSeparator>
-        <BreadcrumbItem><BreadcrumbPage>Components</BreadcrumbPage></BreadcrumbItem>
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/sa">Super Admin</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator>
+          <ChevronRightIcon />
+        </BreadcrumbSeparator>
+        <BreadcrumbItem>
+          <BreadcrumbPage>Components</BreadcrumbPage>
+        </BreadcrumbItem>
       </BreadcrumbList>
     </Breadcrumb>
   );
@@ -584,11 +759,16 @@ function ButtonGroupPreview({ vertical = false }: { vertical?: boolean }) {
 
 function CarouselPreview({ vertical = false }: { vertical?: boolean }) {
   return (
-    <Carousel orientation={vertical ? "vertical" : "horizontal"} className={vertical ? "mx-auto h-48 w-64" : "mx-auto w-64"}>
+    <Carousel
+      orientation={vertical ? "vertical" : "horizontal"}
+      className={vertical ? "mx-auto h-48 w-64" : "mx-auto w-64"}
+    >
       <CarouselContent className={vertical ? "h-48" : undefined}>
         {[1, 2, 3].map((number) => (
           <CarouselItem key={number}>
-            <div className="grid h-36 place-items-center rounded-md border bg-muted text-2xl font-semibold">{number}</div>
+            <div className="grid h-36 place-items-center rounded-md border bg-muted text-2xl font-semibold">
+              {number}
+            </div>
           </CarouselItem>
         ))}
       </CarouselContent>
@@ -616,8 +796,12 @@ function ChartPreview() {
 function CollapsiblePreview() {
   return (
     <Collapsible defaultOpen className="w-full max-w-md rounded-md border p-4">
-      <CollapsibleTrigger asChild><Button variant="ghost">Toggle compliance notes</Button></CollapsibleTrigger>
-      <CollapsibleContent className="pt-3 text-sm text-muted-foreground">Keep GST-impacting changes audited and reversible.</CollapsibleContent>
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost">Toggle compliance notes</Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-3 text-sm text-muted-foreground">
+        Keep GST-impacting changes audited and reversible.
+      </CollapsibleContent>
     </Collapsible>
   );
 }
@@ -629,8 +813,12 @@ function CommandPreview() {
       <CommandList>
         <CommandEmpty>No result found.</CommandEmpty>
         <CommandGroup heading="Modules">
-          <CommandItem><SearchIcon /> Tenants <CommandShortcut>Ctrl T</CommandShortcut></CommandItem>
-          <CommandItem><SettingsIcon /> Settings <CommandShortcut>Ctrl S</CommandShortcut></CommandItem>
+          <CommandItem>
+            <SearchIcon /> Tenants <CommandShortcut>Ctrl T</CommandShortcut>
+          </CommandItem>
+          <CommandItem>
+            <SettingsIcon /> Settings <CommandShortcut>Ctrl S</CommandShortcut>
+          </CommandItem>
         </CommandGroup>
       </CommandList>
     </Command>
@@ -640,7 +828,9 @@ function CommandPreview() {
 function ContextMenuPreview() {
   return (
     <ContextMenu>
-      <ContextMenuTrigger className="grid h-28 place-items-center rounded-md border border-dashed text-sm text-muted-foreground">Right click area</ContextMenuTrigger>
+      <ContextMenuTrigger className="grid h-28 place-items-center rounded-md border border-dashed text-sm text-muted-foreground">
+        Right click area
+      </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuLabel>Record</ContextMenuLabel>
         <ContextMenuSeparator />
@@ -654,13 +844,17 @@ function ContextMenuPreview() {
 function DialogPreview() {
   return (
     <Dialog>
-      <DialogTrigger asChild><Button variant="outline">Open dialog</Button></DialogTrigger>
+      <DialogTrigger asChild>
+        <Button variant="outline">Open dialog</Button>
+      </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Publish component default?</DialogTitle>
           <DialogDescription>This updates the app default for matching controls.</DialogDescription>
         </DialogHeader>
-        <DialogFooter><Button>Publish</Button></DialogFooter>
+        <DialogFooter>
+          <Button>Publish</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -669,13 +863,17 @@ function DialogPreview() {
 function DrawerPreview() {
   return (
     <Drawer>
-      <DrawerTrigger asChild><Button variant="outline">Open drawer</Button></DrawerTrigger>
+      <DrawerTrigger asChild>
+        <Button variant="outline">Open drawer</Button>
+      </DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>Mobile action panel</DrawerTitle>
           <DrawerDescription>Use this for compact workflows and quick review.</DrawerDescription>
         </DrawerHeader>
-        <DrawerFooter><Button>Apply</Button></DrawerFooter>
+        <DrawerFooter>
+          <Button>Apply</Button>
+        </DrawerFooter>
       </DrawerContent>
     </Drawer>
   );
@@ -684,7 +882,9 @@ function DrawerPreview() {
 function DropdownPreview() {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild><Button variant="outline">Actions</Button></DropdownMenuTrigger>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">Actions</Button>
+      </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuLabel>Component</DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -703,7 +903,9 @@ function EmptyPreview({ icon = false }: { icon?: boolean }) {
         <EmptyTitle>No records found</EmptyTitle>
         <EmptyDescription>Create the first record or adjust the current filters.</EmptyDescription>
       </EmptyHeader>
-      <EmptyContent><Button size="sm">New record</Button></EmptyContent>
+      <EmptyContent>
+        <Button size="sm">New record</Button>
+      </EmptyContent>
     </Empty>
   );
 }
@@ -713,7 +915,9 @@ function FieldPreview({ horizontal = false }: { horizontal?: boolean }) {
     <FieldSet className="max-w-md">
       <FieldLegend>Tenant details</FieldLegend>
       <Field orientation={horizontal ? "horizontal" : "vertical"}>
-        <FieldLabel htmlFor={horizontal ? "tenant-code-horizontal" : "tenant-code"}>Tenant code</FieldLabel>
+        <FieldLabel htmlFor={horizontal ? "tenant-code-horizontal" : "tenant-code"}>
+          Tenant code
+        </FieldLabel>
         <FieldContent>
           <Input id={horizontal ? "tenant-code-horizontal" : "tenant-code"} placeholder="CXSUN" />
           <FieldDescription>Unique short code for the tenant workspace.</FieldDescription>
@@ -728,8 +932,12 @@ function FieldPreview({ horizontal = false }: { horizontal?: boolean }) {
 function HoverCardPreview() {
   return (
     <HoverCard>
-      <HoverCardTrigger asChild><Button variant="link">Tenant isolation</Button></HoverCardTrigger>
-      <HoverCardContent>Tenant context must be explicit across API, queues, jobs, and logs.</HoverCardContent>
+      <HoverCardTrigger asChild>
+        <Button variant="link">Tenant isolation</Button>
+      </HoverCardTrigger>
+      <HoverCardContent>
+        Tenant context must be explicit across API, queues, jobs, and logs.
+      </HoverCardContent>
     </HoverCard>
   );
 }
@@ -737,10 +945,16 @@ function HoverCardPreview() {
 function InputGroupPreview({ block = false }: { block?: boolean }) {
   return (
     <InputGroup className="max-w-md">
-      <InputGroupAddon align={block ? "block-start" : "inline-start"}><MailIcon /> Email</InputGroupAddon>
+      <InputGroupAddon align={block ? "block-start" : "inline-start"}>
+        <MailIcon /> Email
+      </InputGroupAddon>
       <InputGroupInput placeholder="admin@tenant.com" />
       {!block ? <InputGroupButton>Check</InputGroupButton> : null}
-      {block ? <InputGroupAddon align="block-end"><InputGroupText>Used for login and recovery.</InputGroupText></InputGroupAddon> : null}
+      {block ? (
+        <InputGroupAddon align="block-end">
+          <InputGroupText>Used for login and recovery.</InputGroupText>
+        </InputGroupAddon>
+      ) : null}
     </InputGroup>
   );
 }
@@ -766,12 +980,18 @@ function InputOTPPreview() {
 function ItemPreview({ variant = "default" }: { variant?: "default" | "outline" | "muted" }) {
   return (
     <Item variant={variant} className="max-w-lg">
-      <ItemMedia variant="icon"><UserIcon /></ItemMedia>
+      <ItemMedia variant="icon">
+        <UserIcon />
+      </ItemMedia>
       <ItemContent>
         <ItemTitle>Super Admin</ItemTitle>
-        <ItemDescription>Can manage tenants, access, database context, and design-system defaults.</ItemDescription>
+        <ItemDescription>
+          Can manage tenants, access, database context, and design-system defaults.
+        </ItemDescription>
       </ItemContent>
-      <ItemActions><Badge variant="outline">Active</Badge></ItemActions>
+      <ItemActions>
+        <Badge variant="outline">Active</Badge>
+      </ItemActions>
     </Item>
   );
 }
@@ -806,8 +1026,12 @@ function NavigationMenuPreview() {
           <NavigationMenuTrigger>Platform</NavigationMenuTrigger>
           <NavigationMenuContent>
             <div className="grid w-72 gap-2 p-3">
-              <NavigationMenuLink className="rounded-md p-2 text-sm hover:bg-muted">Tenants</NavigationMenuLink>
-              <NavigationMenuLink className="rounded-md p-2 text-sm hover:bg-muted">Access</NavigationMenuLink>
+              <NavigationMenuLink className="rounded-md p-2 text-sm hover:bg-muted">
+                Tenants
+              </NavigationMenuLink>
+              <NavigationMenuLink className="rounded-md p-2 text-sm hover:bg-muted">
+                Access
+              </NavigationMenuLink>
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
@@ -820,11 +1044,23 @@ function PaginationPreview() {
   return (
     <Pagination>
       <PaginationContent>
-        <PaginationItem><PaginationPrevious href="#" /></PaginationItem>
-        <PaginationItem><PaginationLink href="#" isActive>1</PaginationLink></PaginationItem>
-        <PaginationItem><PaginationLink href="#">2</PaginationLink></PaginationItem>
-        <PaginationItem><PaginationEllipsis /></PaginationItem>
-        <PaginationItem><PaginationNext href="#" /></PaginationItem>
+        <PaginationItem>
+          <PaginationPrevious href="#" />
+        </PaginationItem>
+        <PaginationItem>
+          <PaginationLink href="#" isActive>
+            1
+          </PaginationLink>
+        </PaginationItem>
+        <PaginationItem>
+          <PaginationLink href="#">2</PaginationLink>
+        </PaginationItem>
+        <PaginationItem>
+          <PaginationEllipsis />
+        </PaginationItem>
+        <PaginationItem>
+          <PaginationNext href="#" />
+        </PaginationItem>
       </PaginationContent>
     </Pagination>
   );
@@ -833,11 +1069,15 @@ function PaginationPreview() {
 function PopoverPreview() {
   return (
     <Popover>
-      <PopoverTrigger asChild><Button variant="outline">Open popover</Button></PopoverTrigger>
+      <PopoverTrigger asChild>
+        <Button variant="outline">Open popover</Button>
+      </PopoverTrigger>
       <PopoverContent>
         <div className="space-y-1">
           <div className="font-semibold">Theme default</div>
-          <p className="text-sm text-muted-foreground">Saved preferences can drive app-wide component defaults.</p>
+          <p className="text-sm text-muted-foreground">
+            Saved preferences can drive app-wide component defaults.
+          </p>
         </div>
       </PopoverContent>
     </Popover>
@@ -847,18 +1087,29 @@ function PopoverPreview() {
 function RadioPreview() {
   return (
     <RadioGroup defaultValue="enterprise" className="grid gap-2">
-      <Label className="flex items-center gap-3"><RadioGroupItem value="standard" /> Standard</Label>
-      <Label className="flex items-center gap-3"><RadioGroupItem value="enterprise" /> Enterprise</Label>
+      <Label className="flex items-center gap-3">
+        <RadioGroupItem value="standard" /> Standard
+      </Label>
+      <Label className="flex items-center gap-3">
+        <RadioGroupItem value="enterprise" /> Enterprise
+      </Label>
     </RadioGroup>
   );
 }
 
 function ResizablePreview({ vertical = false }: { vertical?: boolean }) {
   return (
-    <ResizablePanelGroup orientation={vertical ? "vertical" : "horizontal"} className="h-48 rounded-md border">
-      <ResizablePanel defaultSize={45}><div className="grid h-full place-items-center text-sm">Panel A</div></ResizablePanel>
+    <ResizablePanelGroup
+      orientation={vertical ? "vertical" : "horizontal"}
+      className="h-48 rounded-md border"
+    >
+      <ResizablePanel defaultSize={45}>
+        <div className="grid h-full place-items-center text-sm">Panel A</div>
+      </ResizablePanel>
       <ResizableHandle withHandle />
-      <ResizablePanel defaultSize={55}><div className="grid h-full place-items-center text-sm">Panel B</div></ResizablePanel>
+      <ResizablePanel defaultSize={55}>
+        <div className="grid h-full place-items-center text-sm">Panel B</div>
+      </ResizablePanel>
     </ResizablePanelGroup>
   );
 }
@@ -868,7 +1119,9 @@ function ScrollAreaPreview() {
     <ScrollArea className="h-44 rounded-md border p-4">
       <div className="space-y-3">
         {Array.from({ length: 10 }, (_, index) => (
-          <div key={index} className="text-sm">Scrollable audit entry {index + 1}</div>
+          <div key={index} className="text-sm">
+            Scrollable audit entry {index + 1}
+          </div>
         ))}
       </div>
     </ScrollArea>
@@ -878,7 +1131,9 @@ function ScrollAreaPreview() {
 function SelectPreview() {
   return (
     <Select defaultValue="sa">
-      <SelectTrigger className="w-full max-w-sm"><SelectValue placeholder="Choose desk" /></SelectTrigger>
+      <SelectTrigger className="w-full max-w-sm">
+        <SelectValue placeholder="Choose desk" />
+      </SelectTrigger>
       <SelectContent>
         <SelectItem value="sa">Super Admin</SelectItem>
         <SelectItem value="admin">Staff Admin</SelectItem>
@@ -891,7 +1146,9 @@ function SelectPreview() {
 function SheetPreview() {
   return (
     <Sheet>
-      <SheetTrigger asChild><Button variant="outline">Open sheet</Button></SheetTrigger>
+      <SheetTrigger asChild>
+        <Button variant="outline">Open sheet</Button>
+      </SheetTrigger>
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Pattern details</SheetTitle>
@@ -909,7 +1166,11 @@ function SidebarPreview() {
         <Sidebar collapsible="none">
           <SidebarHeader>
             <SidebarMenu>
-              <SidebarMenuItem><SidebarMenuButton isActive><ShieldCheckIcon /> <span>Platform</span></SidebarMenuButton></SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton isActive>
+                  <ShieldCheckIcon /> <span>Platform</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent>
@@ -917,8 +1178,16 @@ function SidebarPreview() {
               <SidebarGroupLabel>Components</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  <SidebarMenuItem><SidebarMenuButton><CircleIcon /> <span>Button</span></SidebarMenuButton></SidebarMenuItem>
-                  <SidebarMenuItem><SidebarMenuButton><CircleIcon /> <span>Input</span></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton>
+                      <CircleIcon /> <span>Button</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton>
+                      <CircleIcon /> <span>Input</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -953,11 +1222,23 @@ function TablePreview() {
     <Table>
       <TableCaption>Tenant module status.</TableCaption>
       <TableHeader>
-        <TableRow><TableHead>Module</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Records</TableHead></TableRow>
+        <TableRow>
+          <TableHead>Module</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="text-right">Records</TableHead>
+        </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow><TableCell>Billing</TableCell><TableCell>Active</TableCell><TableCell className="text-right">128</TableCell></TableRow>
-        <TableRow><TableCell>Accounts</TableCell><TableCell>Ready</TableCell><TableCell className="text-right">42</TableCell></TableRow>
+        <TableRow>
+          <TableCell>Billing</TableCell>
+          <TableCell>Active</TableCell>
+          <TableCell className="text-right">128</TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell>Accounts</TableCell>
+          <TableCell>Ready</TableCell>
+          <TableCell className="text-right">42</TableCell>
+        </TableRow>
       </TableBody>
     </Table>
   );
@@ -970,8 +1251,12 @@ function TabsPreview() {
         <TabsTrigger value="components">Components</TabsTrigger>
         <TabsTrigger value="theme">Theme</TabsTrigger>
       </TabsList>
-      <TabsContent value="components" className="rounded-md border bg-card p-4 text-sm">Reusable controls stay consistent.</TabsContent>
-      <TabsContent value="theme" className="rounded-md border bg-card p-4 text-sm">Theme tokens update previews.</TabsContent>
+      <TabsContent value="components" className="rounded-md border bg-card p-4 text-sm">
+        Reusable controls stay consistent.
+      </TabsContent>
+      <TabsContent value="theme" className="rounded-md border bg-card p-4 text-sm">
+        Theme tokens update previews.
+      </TabsContent>
     </Tabs>
   );
 }
@@ -979,8 +1264,12 @@ function TabsPreview() {
 function ToastStaticPreview() {
   return (
     <div className="grid max-w-md gap-2">
-      <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">Success toast with close button.</div>
-      <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">Info toast for background updates.</div>
+      <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+        Success toast with close button.
+      </div>
+      <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+        Info toast for background updates.
+      </div>
     </div>
   );
 }
@@ -991,7 +1280,9 @@ function ToastPrimitivePreview({ destructive = false }: { destructive?: boolean 
       <Toast open variant={destructive ? "destructive" : "default"}>
         <div className="grid gap-1">
           <ToastTitle>{destructive ? "Delete failed" : "Saved"}</ToastTitle>
-          <ToastDescription>{destructive ? "Relationship safety blocked this action." : "Component default saved."}</ToastDescription>
+          <ToastDescription>
+            {destructive ? "Relationship safety blocked this action." : "Component default saved."}
+          </ToastDescription>
         </div>
         <ToastAction altText="Undo">Undo</ToastAction>
         <ToastClose />
@@ -1005,7 +1296,11 @@ function TooltipPreview() {
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild><Button size="icon" variant="outline"><SlidersHorizontalIcon /></Button></TooltipTrigger>
+        <TooltipTrigger asChild>
+          <Button size="icon" variant="outline">
+            <SlidersHorizontalIcon />
+          </Button>
+        </TooltipTrigger>
         <TooltipContent>Set component default</TooltipContent>
       </Tooltip>
     </TooltipProvider>

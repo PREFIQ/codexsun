@@ -32,7 +32,9 @@ type ExportSalesDatabase = {
 
 export class ExportSalesRepository {
   async list(databaseName: string) {
-    const rows = await (await exportSalesDatabase(databaseName))
+    const rows = await (
+      await exportSalesDatabase(databaseName)
+    )
       .selectFrom("billing_export_sales")
       .selectAll()
       .orderBy("issued_on", "desc")
@@ -42,7 +44,9 @@ export class ExportSalesRepository {
   }
 
   async get(databaseName: string, id: string) {
-    const row = await (await exportSalesDatabase(databaseName))
+    const row = await (
+      await exportSalesDatabase(databaseName)
+    )
       .selectFrom("billing_export_sales")
       .selectAll()
       .where("id", "=", id)
@@ -51,46 +55,85 @@ export class ExportSalesRepository {
   }
 
   async findByInvoiceNumber(databaseName: string, invoiceNumber: string) {
-    const row = await (await exportSalesDatabase(databaseName)).selectFrom("billing_export_sales").selectAll().where("invoice_number", "=", invoiceNumber).executeTakeFirst();
+    const row = await (
+      await exportSalesDatabase(databaseName)
+    )
+      .selectFrom("billing_export_sales")
+      .selectAll()
+      .where("invoice_number", "=", invoiceNumber)
+      .executeTakeFirst();
     return row ? toExportSale(row) : null;
   }
 
   async create(databaseName: string, input: ExportSaleSavePayload) {
     const sale = createExportSaleRecord(input);
-    await (await exportSalesDatabase(databaseName)).insertInto("billing_export_sales").values(toExportSaleRow(sale)).execute();
+    await (
+      await exportSalesDatabase(databaseName)
+    )
+      .insertInto("billing_export_sales")
+      .values(toExportSaleRow(sale))
+      .execute();
     return sale;
   }
 
   async update(databaseName: string, id: string, input: ExportSaleSavePayload) {
     const db = await exportSalesDatabase(databaseName);
-    const existing = await db.selectFrom("billing_export_sales").select("id").where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_export_sales")
+      .select("id")
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
     const sale = createExportSaleRecord(input, { id });
-    await db.updateTable("billing_export_sales").set(toExportSaleRow(sale)).where("id", "=", id).execute();
+    await db
+      .updateTable("billing_export_sales")
+      .set(toExportSaleRow(sale))
+      .where("id", "=", id)
+      .execute();
     return sale;
   }
 
   async setStatus(databaseName: string, id: string, status: ExportSale["status"]) {
     const db = await exportSalesDatabase(databaseName);
-    const existing = await db.selectFrom("billing_export_sales").selectAll().where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_export_sales")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
     const updatedAt = new Date().toISOString();
-    await db.updateTable("billing_export_sales").set({ status, updated_at: updatedAt }).where("id", "=", id).execute();
+    await db
+      .updateTable("billing_export_sales")
+      .set({ status, updated_at: updatedAt })
+      .where("id", "=", id)
+      .execute();
     return { ...toExportSale(existing), status, updatedAt };
   }
 
   async revoke(databaseName: string, id: string) {
     const db = await exportSalesDatabase(databaseName);
-    const existing = await db.selectFrom("billing_export_sales").selectAll().where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_export_sales")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
     const updatedAt = new Date().toISOString();
-    await db.updateTable("billing_export_sales").set({ status: "draft", updated_at: updatedAt }).where("id", "=", id).execute();
+    await db
+      .updateTable("billing_export_sales")
+      .set({ status: "draft", updated_at: updatedAt })
+      .where("id", "=", id)
+      .execute();
     return { ...toExportSale(existing), status: "draft" as const, updatedAt };
   }
 
   async delete(databaseName: string, id: string) {
     const db = await exportSalesDatabase(databaseName);
-    const existing = await db.selectFrom("billing_export_sales").selectAll().where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_export_sales")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
     await db.deleteFrom("billing_export_sales").where("id", "=", id).execute();
     return toExportSale(existing);
@@ -123,7 +166,7 @@ function toExportSale(row: ExportSalesTableRow): ExportSale {
     taxAmount: Number(row.tax_amount ?? items.reduce((sum, item) => sum + item.taxAmount, 0)),
     taxType: row.tax_type ?? "IGST",
     updatedAt: row.updated_at ?? row.created_at ?? "",
-    workOrderNo: row.work_order_no ?? "",
+    workOrderNo: row.work_order_no ?? ""
   };
 }
 
@@ -148,11 +191,14 @@ function toExportSaleRow(sale: ExportSale): ExportSalesTableRow {
     tax_amount: sale.taxAmount,
     tax_type: sale.taxType,
     updated_at: sale.updatedAt,
-    work_order_no: sale.workOrderNo,
+    work_order_no: sale.workOrderNo
   };
 }
 
-function createExportSaleRecord(input: ExportSaleSavePayload, current?: Partial<Pick<ExportSale, "createdAt" | "id">>) {
+function createExportSaleRecord(
+  input: ExportSaleSavePayload,
+  current?: Partial<Pick<ExportSale, "createdAt" | "id">>
+) {
   const now = new Date().toISOString();
   const totals = buildExportSaleTotals(input);
   return {
@@ -175,7 +221,7 @@ function createExportSaleRecord(input: ExportSaleSavePayload, current?: Partial<
     taxAmount: totals.taxAmount,
     taxType: input.taxType ?? "IGST",
     updatedAt: now,
-    workOrderNo: input.workOrderNo ?? "",
+    workOrderNo: input.workOrderNo ?? ""
   } satisfies ExportSale;
 }
 
@@ -192,13 +238,13 @@ function parseItems(value: string | null) {
 function buildExportSaleTotals(input: ExportSaleSavePayload) {
   const items = input.items.map((item, index) => {
     const taxableAmount = roundMoney(item.quantity * item.rate);
-    const taxAmount = roundMoney(taxableAmount * item.taxRate / 100);
+    const taxAmount = roundMoney((taxableAmount * item.taxRate) / 100);
     return {
       ...item,
       id: `item-${index + 1}`,
       lineTotal: roundMoney(taxableAmount + taxAmount),
       taxableAmount,
-      taxAmount,
+      taxAmount
     };
   });
 

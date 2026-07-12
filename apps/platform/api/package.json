@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/platform-api",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "private": true,
   "type": "module",
   "scripts": {
@@ -20,12 +20,10 @@
     "db:restore:test": "tsx src/database/db-cli.ts restore:test",
     "db:backup:verify": "tsx src/database/db-cli.ts backup:verify",
     "typecheck": "npm run build -w @codexsun/framework && tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src --ext .ts",
-    "test": "vitest run",
-    "test:e2e:tenant": "vitest run src/modules/tenant/tenant.database.e2e.test.ts src/auth/default-tenant-auth.e2e.test.ts"
+    "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@codexsun/framework": "^1.0.25",
+    "@codexsun/framework": "^1.0.26",
     "bullmq": "^5.79.3",
     "fastify": "^5.2.1",
     "ioredis": "^5.11.1",

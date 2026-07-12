@@ -41,9 +41,24 @@ export async function migrateVouchersModule(db: Kysely<any>) {
     .addColumn("created_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .execute();
 
-  await db.schema.createIndex("account_vouchers_source_idx").ifNotExists().on("account_vouchers").columns(["source_app", "source_module", "source_document_id"]).execute();
-  await db.schema.createIndex("account_voucher_lines_voucher_idx").ifNotExists().on("account_voucher_lines").column("voucher_id").execute();
-  await db.schema.createIndex("account_voucher_lines_ledger_idx").ifNotExists().on("account_voucher_lines").column("ledger_id").execute();
+  await db.schema
+    .createIndex("account_vouchers_source_idx")
+    .ifNotExists()
+    .on("account_vouchers")
+    .columns(["source_app", "source_module", "source_document_id"])
+    .execute();
+  await db.schema
+    .createIndex("account_voucher_lines_voucher_idx")
+    .ifNotExists()
+    .on("account_voucher_lines")
+    .column("voucher_id")
+    .execute();
+  await db.schema
+    .createIndex("account_voucher_lines_ledger_idx")
+    .ifNotExists()
+    .on("account_voucher_lines")
+    .column("ledger_id")
+    .execute();
 
   await db.schema
     .createTable("account_period_locks")

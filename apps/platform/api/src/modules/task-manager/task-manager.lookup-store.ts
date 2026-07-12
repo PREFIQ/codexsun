@@ -6,7 +6,10 @@ import { randomUUID } from "node:crypto";
 import { AppError } from "@codexsun/framework/errors";
 import type { TodoLookup, TodoLookupKind } from "./task-manager.types.js";
 
-const defaultDatabaseDir = join(dirname(fileURLToPath(import.meta.url)), "../../../task-manager-json");
+const defaultDatabaseDir = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../task-manager-json"
+);
 const baseDir = process.env.TASK_MANAGER_JSON_DIR ?? defaultDatabaseDir;
 const kinds: TodoLookupKind[] = ["category", "group", "status", "priority"];
 const defaults: Array<Pick<TodoLookup, "kind" | "name" | "value">> = [
@@ -36,9 +39,17 @@ export class TaskManagerLookupStore {
     const name = nameInput.trim();
     if (!name) throw AppError.validation("Lookup name is required.");
     const records = await this.read(tenantKey);
-    const duplicate = records.find((item) => item.kind === kind && item.name.toLowerCase() === name.toLowerCase());
+    const duplicate = records.find(
+      (item) => item.kind === kind && item.name.toLowerCase() === name.toLowerCase()
+    );
     if (duplicate) return duplicate;
-    const record: TodoLookup = { id: `lookup-${randomUUID().slice(0, 8)}`, kind, name, value: toValue(name), createdAt: new Date().toISOString() };
+    const record: TodoLookup = {
+      id: `lookup-${randomUUID().slice(0, 8)}`,
+      kind,
+      name,
+      value: toValue(name),
+      createdAt: new Date().toISOString()
+    };
     records.push(record);
     await this.write(tenantKey, records);
     return record;
@@ -48,7 +59,11 @@ export class TaskManagerLookupStore {
     const file = fileFor(tenantKey);
     if (!existsSync(file)) {
       const createdAt = new Date().toISOString();
-      const records = defaults.map((item, index) => ({ ...item, id: `lookup-default-${index}`, createdAt }));
+      const records = defaults.map((item, index) => ({
+        ...item,
+        id: `lookup-default-${index}`,
+        createdAt
+      }));
       await this.write(tenantKey, records);
       return records;
     }
@@ -67,5 +82,10 @@ function fileFor(tenantKey: string) {
 }
 
 function toValue(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || randomUUID().slice(0, 8);
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || randomUUID().slice(0, 8)
+  );
 }

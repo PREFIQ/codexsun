@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { brandsDefinition } from "./brands.definition";
-export function useBrandsQuery() { return useCommonMasterQuery(brandsDefinition.key, brandsDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listBrands } from "./brands.services";
+export function useBrandsQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listBrands(path), queryKey: ["core", "common", key] });
+}

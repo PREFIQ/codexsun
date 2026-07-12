@@ -1,12 +1,143 @@
-import type { MasterTab } from "../master.workspace";
-import type { MasterRecord } from "../master.types";
-
-export const productTabs = ["details", "stock", "settings"] as const satisfies readonly MasterTab[];
-
-export function nextProductCode(records: MasterRecord[]) {
-  const next = records.reduce((highest, record) => {
-    const match = /^P-(\d+)$/i.exec(record.code.trim());
-    return match ? Math.max(highest, Number(match[1])) : highest;
-  }, 0) + 1;
-  return `P-${String(next).padStart(4, "0")}`;
+import { useState } from "react";
+import { ArrowLeft, Save, X } from "lucide-react";
+import { Button } from "@codexsun/ui/components/button";
+import { Input } from "@codexsun/ui/components/input";
+import { Switch } from "@codexsun/ui/components/switch";
+import {
+  WorkspaceFormActions,
+  WorkspaceFormBody,
+  WorkspaceFormField,
+  WorkspaceFormGrid,
+  WorkspaceFormSurface
+} from "@codexsun/ui/workspace/upsert";
+import type { ProductRecord, ProductSavePayload } from "./product.types";
+export function ProductForm({
+  error,
+  loading,
+  onBack,
+  onSubmit,
+  record
+}: {
+  error: string;
+  loading: boolean;
+  onBack: () => void;
+  onSubmit: (payload: ProductSavePayload) => void;
+  record: ProductRecord | null;
+}) {
+  const [form, setForm] = useState<ProductSavePayload>(() =>
+    record
+      ? { ...record }
+      : { name: "", openingRate: 0, openingStock: 0, isActive: true, status: "active" }
+  );
+  const field = (key: keyof ProductSavePayload, value: unknown) =>
+    setForm((current) => ({ ...current, [key]: value }));
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">{record ? "Edit Product" : "New Product"}</h1>
+        <Button variant="outline" onClick={onBack}>
+          <ArrowLeft className="size-4" />
+          Back
+        </Button>
+      </div>
+      <WorkspaceFormSurface>
+        <WorkspaceFormBody>
+          <WorkspaceFormGrid columns={2}>
+            <Text
+              label="Product name"
+              value={form.name}
+              onChange={(value) => field("name", value)}
+            />
+            {(["typeId", "productCategoryId", "hsnCodeId", "unitId", "taxId"] as const).map(
+              (key) => (
+                <NumberField
+                  key={key}
+                  label={labels[key]}
+                  value={form[key]}
+                  onChange={(value) => field(key, value)}
+                />
+              )
+            )}
+            <NumberField
+              label="Opening quantity"
+              value={form.openingStock}
+              onChange={(value) => field("openingStock", value ?? 0)}
+            />
+            <NumberField
+              label="Opening price"
+              value={form.openingRate}
+              onChange={(value) => field("openingRate", value ?? 0)}
+            />
+            <WorkspaceFormField label="Active">
+              <div className="flex h-11 items-center justify-between rounded-md border px-3">
+                <span className="text-sm">Available for use</span>
+                <Switch
+                  checked={form.isActive !== false}
+                  onCheckedChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      isActive: value,
+                      status: value ? "active" : "inactive"
+                    }))
+                  }
+                />
+              </div>
+            </WorkspaceFormField>
+          </WorkspaceFormGrid>
+          {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+        </WorkspaceFormBody>
+        <WorkspaceFormActions>
+          <Button disabled={loading || !form.name.trim()} onClick={() => onSubmit(form)}>
+            <Save className="size-4" />
+            Save
+          </Button>
+          <Button variant="outline" onClick={onBack}>
+            <X className="size-4" />
+            Cancel
+          </Button>
+        </WorkspaceFormActions>
+      </WorkspaceFormSurface>
+    </section>
+  );
+}
+const labels = {
+  typeId: "Product type ID",
+  productCategoryId: "Category ID",
+  hsnCodeId: "HSN code ID",
+  unitId: "Unit ID",
+  taxId: "GST tax ID"
+};
+function Text({
+  label,
+  value,
+  onChange
+}: {
+  label: string;
+  value: unknown;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <WorkspaceFormField label={label} required>
+      <Input value={String(value ?? "")} onChange={(event) => onChange(event.target.value)} />
+    </WorkspaceFormField>
+  );
+}
+function NumberField({
+  label,
+  value,
+  onChange
+}: {
+  label: string;
+  value: unknown;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <WorkspaceFormField label={label}>
+      <Input
+        type="number"
+        value={value == null ? "" : String(value)}
+        onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)}
+      />
+    </WorkspaceFormField>
+  );
 }

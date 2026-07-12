@@ -10,7 +10,9 @@ type StartApiServerOptions = {
 };
 
 function isAddressInUseError(error: unknown): error is { code: "EADDRINUSE" } {
-  return typeof error === "object" && error !== null && "code" in error && error.code === "EADDRINUSE";
+  return (
+    typeof error === "object" && error !== null && "code" in error && error.code === "EADDRINUSE"
+  );
 }
 
 export async function startApiServer(options: StartApiServerOptions) {
@@ -28,7 +30,9 @@ export async function startApiServer(options: StartApiServerOptions) {
       return address;
     } catch (error) {
       if (isAddressInUseError(error) && attempt < retries) {
-        options.app.log.warn(`Port ${options.port} in use, retrying in ${retryDelayMs}ms... (attempt ${attempt}/${retries})`);
+        options.app.log.warn(
+          `Port ${options.port} in use, retrying in ${retryDelayMs}ms... (attempt ${attempt}/${retries})`
+        );
         await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
         continue;
       }

@@ -88,7 +88,9 @@ export function AuthGate({ children, desk }: { children: ReactElement; desk: Des
     } else {
       setServerValid(false);
     }
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [desk, localValid]);
 
   const valid = serverValid === null ? localValid : serverValid;
@@ -107,10 +109,7 @@ export function AuthGate({ children, desk }: { children: ReactElement; desk: Des
             : `You need an active ${deskLabels[desk]} session to view this page.`}
         </p>
         {serverValid === false ? (
-          <Button
-            style={{ width: "100%" }}
-            onClick={() => navigate({ to: loginPaths[desk] })}
-          >
+          <Button style={{ width: "100%" }} onClick={() => navigate({ to: loginPaths[desk] })}>
             Go to Login
           </Button>
         ) : null}

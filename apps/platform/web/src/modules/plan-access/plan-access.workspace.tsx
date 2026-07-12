@@ -16,12 +16,21 @@ export function PlanAccessWorkspace() {
   const apps = access.data?.apps ?? [];
 
   useEffect(() => {
-    if (access.data) setSelectedKeys(normalizePlanAccessKeys(access.data.apps.filter((app) => app.enabled).map((app) => app.moduleKey)));
+    if (access.data)
+      setSelectedKeys(
+        normalizePlanAccessKeys(
+          access.data.apps.filter((app) => app.enabled).map((app) => app.moduleKey)
+        )
+      );
   }, [access.data]);
 
   function toggle(moduleKey: string, enabled: boolean) {
     if (moduleKey === "platform.application") return;
-    setSelectedKeys((current) => normalizePlanAccessKeys(enabled ? [...current, moduleKey] : current.filter((key) => key !== moduleKey)));
+    setSelectedKeys((current) =>
+      normalizePlanAccessKeys(
+        enabled ? [...current, moduleKey] : current.filter((key) => key !== moduleKey)
+      )
+    );
   }
 
   function save() {

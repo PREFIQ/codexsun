@@ -1,2 +1,2 @@
-export * from "./styles.definition";
+export * from "./styles.types";
 export * from "./styles.workspace";

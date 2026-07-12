@@ -1,2 +1,2 @@
-export * from "./sizes.definition";
+export * from "./sizes.types";
 export * from "./sizes.workspace";

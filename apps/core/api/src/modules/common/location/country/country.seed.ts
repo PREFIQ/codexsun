@@ -8,9 +8,8 @@ export const countrySeed = {
 
 export async function seedCountryModule() {
   for (const country of countrySeeds) {
-    const uuid = country.code.toLowerCase().padEnd(8, "0").slice(0, 8);
-    await sql`INSERT INTO countries (uuid, code, name, sort_order, status)
-      VALUES (${uuid}, ${country.code}, ${country.name}, ${country.sortOrder}, ${country.status})
+    await sql`INSERT INTO countries (code, name, sort_order, status)
+      VALUES (${country.code}, ${country.name}, ${country.sortOrder}, ${country.status})
       ON DUPLICATE KEY UPDATE name=VALUES(name), sort_order=VALUES(sort_order), status=VALUES(status)`.execute(
       getCoreDatabase()
     );

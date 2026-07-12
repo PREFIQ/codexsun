@@ -1,2 +1,2 @@
-export * from "./brands.definition";
+export * from "./brands.types";
 export * from "./brands.workspace";

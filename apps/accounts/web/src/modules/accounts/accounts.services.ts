@@ -1,6 +1,14 @@
 import { getTenantDbName, getTenantId, getToken } from "../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../shared/env/client-env";
-import type { AccountGroup, AccountsReportsOverview, AccountsSettings, Ledger, LedgerSavePayload, Voucher, VoucherSavePayload } from "./accounts.types";
+import type {
+  AccountGroup,
+  AccountsReportsOverview,
+  AccountsSettings,
+  Ledger,
+  LedgerSavePayload,
+  Voucher,
+  VoucherSavePayload
+} from "./accounts.types";
 
 const accountsApiBaseUrl = requiredClientEnv("VITE_ACCOUNTS_API_URL");
 
@@ -22,7 +30,8 @@ async function request<T>(path: string, options: RequestInit = {}) {
     }
   });
   const envelope = (await response.json()) as Envelope<T>;
-  if (!response.ok || !envelope.success) throw new Error(envelope.success ? "Accounts API request failed." : envelope.error.message);
+  if (!response.ok || !envelope.success)
+    throw new Error(envelope.success ? "Accounts API request failed." : envelope.error.message);
   return envelope.data;
 }
 
@@ -39,7 +48,10 @@ export function createLedger(payload: LedgerSavePayload) {
 }
 
 export function updateLedger(id: string, payload: LedgerSavePayload) {
-  return request<Ledger>(`/accounts/ledgers/${id}`, { body: JSON.stringify(payload), method: "PUT" });
+  return request<Ledger>(`/accounts/ledgers/${id}`, {
+    body: JSON.stringify(payload),
+    method: "PUT"
+  });
 }
 
 export function listVouchers(search = "") {
@@ -59,5 +71,8 @@ export function getAccountsSettings() {
 }
 
 export function saveAccountsSettings(payload: AccountsSettings) {
-  return request<AccountsSettings>("/accounts/settings", { body: JSON.stringify(payload), method: "PUT" });
+  return request<AccountsSettings>("/accounts/settings", {
+    body: JSON.stringify(payload),
+    method: "PUT"
+  });
 }

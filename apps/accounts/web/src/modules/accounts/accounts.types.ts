@@ -65,12 +65,25 @@ export type Voucher = {
   totalDebit: number;
   voucherDate: string;
   voucherNo: string;
-  voucherType: "sales" | "purchase" | "receipt" | "payment" | "contra" | "journal" | "credit_note" | "debit_note";
+  voucherType:
+    | "sales"
+    | "purchase"
+    | "receipt"
+    | "payment"
+    | "contra"
+    | "journal"
+    | "credit_note"
+    | "debit_note";
   lines: VoucherLine[];
 };
 
 export type VoucherSavePayload = {
-  lines: Array<{ amount: number; dc: "debit" | "credit"; ledgerId: string; narration?: string | null | undefined }>;
+  lines: Array<{
+    amount: number;
+    dc: "debit" | "credit";
+    ledgerId: string;
+    narration?: string | null | undefined;
+  }>;
   narration?: string | null | undefined;
   status: "draft" | "posted";
   voucherDate: string;

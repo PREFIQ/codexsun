@@ -108,6 +108,14 @@ index.ts
 
 Each reduced Common module must own concrete migration SQL, repository queries, service validation, HTTP routes, lifecycle behavior, seeds, types, and executable tests. Shared factories, generic inherited repositories/services, alias wrappers, and metadata definitions do not satisfy these roles. These synchronous CRUD masters must not carry separate metadata-only definition, event, sync, or worker files. If a Common module later gains real event, offline-sync, or background-job behavior, promote it to the full module contract when that behavior is implemented.
 
+### Mandatory Boundary Audit For Every Application
+
+The same ownership discipline applies to Core, Platform, Billing, Accounts, Data Bridge, Kitchen Serve, and every future application. Before an application change is finalized, audit its complete backend and frontend module tree for wrapper/alias roles, inherited or metadata-driven generic CRUD, private cross-module imports, centralized business implementations, stale exports and proxies, misplaced files, and business behavior stored in app-level shared folders. Composition roots contain registration and lifecycle composition only; leaf modules own executable behavior.
+
+Allowed shared infrastructure is narrow: API transport/session context, environment readers, observability, and reusable `@codexsun/ui` controls. Shared code must not know a business module's fields, validation, tables, lifecycle, routes, forms, lists, workspaces, settings, or print behavior.
+
+Run `node tools/check-module-boundaries.mjs <app>` for the changed application, followed by formatting, lint, TypeScript, owned tests, and Platform composition validation. A new application is incomplete until the boundary checker understands and enforces its approved full or reduced contract.
+
 Strict naming rules:
 
 - Use the module name as the filename prefix, for example `quotation.service.ts`, not `service.ts`.

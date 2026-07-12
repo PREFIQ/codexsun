@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
+import type { ReactNode } from "react";
 
 export function WorkspacePrintPreview({
   children,
   className,
-  label = "Print Preview",
+  label = "Print Preview"
 }: {
-  children: ReactNode
-  className?: string
-  label?: string
+  children: ReactNode;
+  className?: string;
+  label?: string;
 }) {
   return (
     <section className={className}>
@@ -22,15 +22,15 @@ export function WorkspacePrintPreview({
         {children}
       </div>
     </section>
-  )
+  );
 }
 
 export function WorkspacePrintSheet({
   children,
-  className,
+  className
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
   return (
     <>
@@ -90,9 +90,11 @@ export function WorkspacePrintSheet({
           .billing-print-document .text-\\[10px\\] { font-size: 11px !important; }
         }
       `}</style>
-      <div className={`print-sheet mx-auto w-[210mm] max-w-full origin-top bg-white font-sans text-[10px] text-black print:mx-0 print:mt-0 print:w-[198mm] print:max-w-none ${className ?? ""}`}>
+      <div
+        className={`print-sheet mx-auto w-[210mm] max-w-full origin-top bg-white font-sans text-[10px] text-black print:mx-0 print:mt-0 print:w-[198mm] print:max-w-none ${className ?? ""}`}
+      >
         {children}
       </div>
     </>
-  )
+  );
 }

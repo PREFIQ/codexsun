@@ -36,7 +36,8 @@ export function resolveBillingDatabaseName(value: unknown) {
   const requested = typeof value === "string" ? value.trim() : "";
   if (!requested) throw new Error("x-tenant-db is required for Billing database access.");
   const name = assertDatabaseName(requested);
-  if (name === env.DB_MASTER_NAME) throw new Error("Billing tables cannot use the Platform master database.");
+  if (name === env.DB_MASTER_NAME)
+    throw new Error("Billing tables cannot use the Platform master database.");
   return name;
 }
 
@@ -54,14 +55,22 @@ export async function bootstrapBillingDatabase(databaseName: string) {
 
   const activeBootstrap = bootstrapping.get(name);
   if (activeBootstrap) {
-    await withTimeout(activeBootstrap, bootstrapTimeoutMs, `Billing database bootstrap timed out after ${bootstrapTimeoutMs}ms for ${name}`);
+    await withTimeout(
+      activeBootstrap,
+      bootstrapTimeoutMs,
+      `Billing database bootstrap timed out after ${bootstrapTimeoutMs}ms for ${name}`
+    );
     return;
   }
 
   const bootstrapPromise = bootstrapBillingDatabaseOnce(name);
   bootstrapping.set(name, bootstrapPromise);
   try {
-    await withTimeout(bootstrapPromise, bootstrapTimeoutMs, `Billing database bootstrap timed out after ${bootstrapTimeoutMs}ms for ${name}`);
+    await withTimeout(
+      bootstrapPromise,
+      bootstrapTimeoutMs,
+      `Billing database bootstrap timed out after ${bootstrapTimeoutMs}ms for ${name}`
+    );
   } finally {
     bootstrapping.delete(name);
   }
@@ -83,13 +92,16 @@ async function bootstrapBillingDatabaseOnce(name: string) {
     const settingsRepository = new BillingSettingsRepository();
     const settings = await settingsRepository.getSalesSettings(name);
     const sales = await new SalesRepository().list(name);
-    const nextNumber = nextAvailableSalesNumber(sales.map((sale) => sale.invoiceNumber), settings.numbering.sales);
+    const nextNumber = nextAvailableSalesNumber(
+      sales.map((sale) => sale.invoiceNumber),
+      settings.numbering.sales
+    );
     await settingsRepository.saveSalesSettings(name, {
       ...settings,
       numbering: {
         ...settings.numbering,
-        sales: { ...settings.numbering.sales, nextNumber },
-      },
+        sales: { ...settings.numbering.sales, nextNumber }
+      }
     });
   } catch (error) {
     migrated.delete(name);
@@ -104,7 +116,15 @@ export async function bootstrapRegisteredBillingDatabases() {
 
 function nextAvailableSalesNumber(
   invoiceNumbers: string[],
-  settings: { nextNumber: number; prefix: string; separator: string; suffix: string; usePrefix: boolean; useSeparator: boolean; useSuffix: boolean },
+  settings: {
+    nextNumber: number;
+    prefix: string;
+    separator: string;
+    suffix: string;
+    usePrefix: boolean;
+    useSeparator: boolean;
+    useSuffix: boolean;
+  }
 ) {
   const prefix = `${settings.usePrefix ? settings.prefix : ""}${settings.useSeparator ? settings.separator : ""}`;
   const suffix = settings.useSuffix ? settings.suffix : "";
@@ -153,7 +173,9 @@ async function ensureDatabase(databaseName: string) {
     connectTimeout: 5_000
   });
   try {
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${name}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    await connection.query(
+      `CREATE DATABASE IF NOT EXISTS \`${name}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    );
   } finally {
     await connection.end();
   }
@@ -170,8 +192,12 @@ async function registeredTenantDatabaseNames() {
     connectTimeout: 5_000
   });
   try {
-    const [rows] = await connection.query("SELECT db_name FROM tenants WHERE db_name IS NOT NULL AND status <> 'deleted'");
-    return (rows as Array<{ db_name: string }>).map(({ db_name }) => resolveBillingDatabaseName(db_name));
+    const [rows] = await connection.query(
+      "SELECT db_name FROM tenants WHERE db_name IS NOT NULL AND status <> 'deleted'"
+    );
+    return (rows as Array<{ db_name: string }>).map(({ db_name }) =>
+      resolveBillingDatabaseName(db_name)
+    );
   } finally {
     await connection.end();
   }

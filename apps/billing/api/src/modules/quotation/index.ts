@@ -7,5 +7,11 @@ export * from "./quotation.routes.js";
 export * from "./quotation.seed.js";
 export * from "./quotation.service.js";
 export * from "./quotation.sync.js";
-export type { Quotation, QuotationLineItemInput, QuotationSavePayload, QuotationStatus, QuotationTaxType } from "./quotation.types.js";
+export type {
+  Quotation,
+  QuotationLineItemInput,
+  QuotationSavePayload,
+  QuotationStatus,
+  QuotationTaxType
+} from "./quotation.types.js";
 export * from "./quotation.worker.js";

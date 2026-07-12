@@ -31,11 +31,21 @@ export function EntitlementWorkspace() {
   const mutations = useEntitlementMutations();
   const planMutations = usePlanMutations();
   const appMutations = usePlatformAppMutations();
-  const fields = entitlementFields(tenants.data ?? [], plans.data ?? [], apps.data ?? [], createPlan, createApp);
+  const fields = entitlementFields(
+    tenants.data ?? [],
+    plans.data ?? [],
+    apps.data ?? [],
+    createPlan,
+    createApp
+  );
 
   async function createPlan(name: string) {
     const trimmed = name.trim();
-    const code = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "plan";
+    const code =
+      trimmed
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "plan";
     const plan = await planMutations.create.mutateAsync({
       annualPrice: 0,
       code,
@@ -51,7 +61,11 @@ export function EntitlementWorkspace() {
 
   async function createApp(name: string) {
     const trimmed = name.trim();
-    const code = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, "") || "app";
+    const code =
+      trimmed
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ".")
+        .replace(/^\.+|\.+$/g, "") || "app";
     const app = await appMutations.create.mutateAsync({
       alwaysEnabled: false,
       appId: code.split(".")[0] || "application",
@@ -64,7 +78,10 @@ export function EntitlementWorkspace() {
     return { label: app.label, value: String(app.id) };
   }
 
-  const save = (value: Omit<Entitlement, "id" | "uuid">, action: (payload: EntitlementSavePayload) => void) => {
+  const save = (
+    value: Omit<Entitlement, "id" | "uuid">,
+    action: (payload: EntitlementSavePayload) => void
+  ) => {
     const app = (apps.data ?? []).find((item) => item.id === value.appId);
     const payload = {
       appId: value.appId,
@@ -93,8 +110,20 @@ export function EntitlementWorkspace() {
       initialValue={empty}
       loading={query.isLoading || tenants.isLoading || plans.isLoading || apps.isLoading}
       records={query.data ?? []}
-      saving={mutations.create.isPending || mutations.update.isPending || planMutations.create.isPending || appMutations.create.isPending}
-      saveError={(mutations.create.error ?? mutations.update.error ?? planMutations.create.error ?? appMutations.create.error)?.message}
+      saving={
+        mutations.create.isPending ||
+        mutations.update.isPending ||
+        planMutations.create.isPending ||
+        appMutations.create.isPending
+      }
+      saveError={
+        (
+          mutations.create.error ??
+          mutations.update.error ??
+          planMutations.create.error ??
+          appMutations.create.error
+        )?.message
+      }
       singular="Entitlement"
       technicalName="page.entitlement.list"
       title="Entitlements"

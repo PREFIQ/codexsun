@@ -13,9 +13,7 @@ const TOKEN_KEYS: Record<Desk, string> = {
 const TENANT_ID_KEY = "codexsun_tenant_id";
 const TENANT_DB_NAME_KEY = "codexsun_tenant_db_name";
 
-type ApiEnvelope<T> =
-  | { data: T; success: true }
-  | { error: { message: string }; success: false };
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
 export function getToken(desk: Desk): string | null {
   try {
@@ -114,7 +112,13 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Request failed";
 }
 
-export async function login(input: { corporateId?: string; desk: Desk; email: string; password: string; tenantCode?: string }) {
+export async function login(input: {
+  corporateId?: string;
+  desk: Desk;
+  email: string;
+  password: string;
+  tenantCode?: string;
+}) {
   try {
     const data = await apiPost<{
       accessToken?: string;

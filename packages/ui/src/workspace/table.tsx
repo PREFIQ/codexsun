@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   flexRender,
@@ -6,23 +6,23 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
-  type SortingState,
-} from "@tanstack/react-table"
-import { ArrowUpDown } from "lucide-react"
-import { useState, type ReactNode, type ThHTMLAttributes } from "react"
-import { Skeleton } from "../components/skeleton"
-import { cn } from "../lib/utils"
+  type SortingState
+} from "@tanstack/react-table";
+import { ArrowUpDown } from "lucide-react";
+import { useState, type ReactNode, type ThHTMLAttributes } from "react";
+import { Skeleton } from "../components/skeleton";
+import { cn } from "../lib/utils";
 
 export const workspaceTablePanelClass =
-  "overflow-hidden rounded-md border border-border/70 bg-card/95 shadow-sm"
+  "overflow-hidden rounded-md border border-border/70 bg-card/95 shadow-sm";
 
 export const workspaceTableHeaderClass =
-  "border-b border-border/70 bg-muted/50 px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+  "border-b border-border/70 bg-muted/50 px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground";
 
 export const workspaceTableRowClass =
-  "border-b border-border/70 transition-colors last:border-b-0 hover:bg-muted/20"
+  "border-b border-border/70 transition-colors last:border-b-0 hover:bg-muted/20";
 
-export const workspaceTableCellClass = "px-4 py-2.5 text-foreground"
+export const workspaceTableCellClass = "px-4 py-2.5 text-foreground";
 
 export function WorkspaceTable<T>({
   columns,
@@ -30,16 +30,16 @@ export function WorkspaceTable<T>({
   emptyState,
   isLoading,
   minWidth = "640px",
-  onRowClick,
+  onRowClick
 }: {
-  columns: ColumnDef<T>[]
-  data: T[]
-  emptyState?: ReactNode
-  isLoading?: boolean
-  minWidth?: string
-  onRowClick?: (row: T) => void
+  columns: ColumnDef<T>[];
+  data: T[];
+  emptyState?: ReactNode;
+  isLoading?: boolean;
+  minWidth?: string;
+  onRowClick?: (row: T) => void;
 }) {
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const table = useReactTable({
     columns,
@@ -47,8 +47,8 @@ export function WorkspaceTable<T>({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
-    state: { sorting },
-  })
+    state: { sorting }
+  });
 
   return (
     <WorkspaceTablePanel>
@@ -66,7 +66,7 @@ export function WorkspaceTable<T>({
                       <div
                         className={cn(
                           "flex items-center gap-1",
-                          header.column.getCanSort() && "cursor-pointer select-none",
+                          header.column.getCanSort() && "cursor-pointer select-none"
                         )}
                         onClick={header.column.getToggleSortingHandler()}
                       >
@@ -85,10 +85,7 @@ export function WorkspaceTable<T>({
             {table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                className={cn(
-                  workspaceTableRowClass,
-                  onRowClick && "cursor-pointer",
-                )}
+                className={cn(workspaceTableRowClass, onRowClick && "cursor-pointer")}
                 onClick={() => onRowClick?.(row.original)}
               >
                 {row.getVisibleCells().map((cell) => (
@@ -102,24 +99,24 @@ export function WorkspaceTable<T>({
         </table>
       </div>
       {table.getRowModel().rows.length === 0 ? (
-        isLoading ? <WorkspaceTableSkeletonRows columns={columns.length} /> : <WorkspaceTableEmptyState>{emptyState ?? "No records found."}</WorkspaceTableEmptyState>
+        isLoading ? (
+          <WorkspaceTableSkeletonRows columns={columns.length} />
+        ) : (
+          <WorkspaceTableEmptyState>{emptyState ?? "No records found."}</WorkspaceTableEmptyState>
+        )
       ) : null}
     </WorkspaceTablePanel>
-  )
+  );
 }
 
 export function WorkspaceTablePanel({
   children,
-  className,
+  className
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
-  return (
-    <div className={cn(workspaceTablePanelClass, className)}>
-      {children}
-    </div>
-  )
+  return <div className={cn(workspaceTablePanelClass, className)}>{children}</div>;
 }
 
 export function WorkspaceTableHeaderCell({
@@ -131,39 +128,43 @@ export function WorkspaceTableHeaderCell({
     <th className={cn(workspaceTableHeaderClass, className)} {...props}>
       {children}
     </th>
-  )
+  );
 }
 
 export function WorkspaceTableEmptyState({
   children,
-  className,
+  className
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
   return (
     <div className={cn("px-6 py-14 text-center text-sm text-muted-foreground", className)}>
       {children}
     </div>
-  )
+  );
 }
 
 export function WorkspaceTableSkeletonRows({
   columns,
-  rows = 5,
+  rows = 5
 }: {
-  columns: number
-  rows?: number
+  columns: number;
+  rows?: number;
 }) {
   return (
     <div className="space-y-2 px-4 py-4">
       {Array.from({ length: rows }).map((_, rowIndex) => (
-        <div key={rowIndex} className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(columns, 1)}, minmax(0, 1fr))` }}>
+        <div
+          key={rowIndex}
+          className="grid gap-3"
+          style={{ gridTemplateColumns: `repeat(${Math.max(columns, 1)}, minmax(0, 1fr))` }}
+        >
           {Array.from({ length: Math.max(columns, 1) }).map((__, columnIndex) => (
             <Skeleton key={columnIndex} className="h-5 w-full" />
           ))}
         </div>
       ))}
     </div>
-  )
+  );
 }

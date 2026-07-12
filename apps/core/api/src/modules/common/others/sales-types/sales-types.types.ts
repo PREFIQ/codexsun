@@ -1,6 +1,5 @@
 export type SalesTypesRecord = {
-  id: string;
-  uuid: string;
+  id: number;
   name: string;
   description: string | null;
   isActive: boolean;

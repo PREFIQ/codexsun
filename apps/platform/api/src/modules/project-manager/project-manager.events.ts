@@ -3,7 +3,10 @@ export const projectManagerEvents = {
   registryChanged: "platform.project-manager.registry-changed"
 } as const;
 
-export function createProjectManagerEvent(action: "created" | "updated" | "status-changed", payload: { id: string; kind: string }) {
+export function createProjectManagerEvent(
+  action: "created" | "updated" | "status-changed",
+  payload: { id: string; kind: string }
+) {
   return {
     name: projectManagerEvents.changed,
     occurredAt: new Date().toISOString(),

@@ -19,7 +19,10 @@ export function BillingHomePage() {
           <div>
             <StatusBadge tone="blue">Billing</StatusBadge>
             <h1>CODEXSUN Billing</h1>
-            <p>Sales, quotations, purchase bills, export sales, and billing workflows for upcoming CODEXSUN apps.</p>
+            <p>
+              Sales, quotations, purchase bills, export sales, and billing workflows for upcoming
+              CODEXSUN apps.
+            </p>
           </div>
           <Button asChild>
             <Link to="/billing/sales">Open sales</Link>
@@ -30,12 +33,18 @@ export function BillingHomePage() {
           <Card className="billing-card">
             <span>Workspace</span>
             <strong>Sales</strong>
-            <p>Sales, quotation, purchase, and export sales surfaces are now live under the billing side menu.</p>
+            <p>
+              Sales, quotation, purchase, and export sales surfaces are now live under the billing
+              side menu.
+            </p>
           </Card>
           <Card className="billing-card">
             <span>API</span>
             <strong>Billing API</strong>
-            <p>Available at the configured billing API endpoint with sales, purchase, and export sales list and detail endpoints.</p>
+            <p>
+              Available at the configured billing API endpoint with sales, purchase, and export
+              sales list and detail endpoints.
+            </p>
           </Card>
         </section>
       </main>

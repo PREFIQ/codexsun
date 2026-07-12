@@ -1,4 +1,9 @@
-export { companyDefinition } from "./company.definition.js";
-export { CompanyRepository } from "./company.repository.js";
-export { CompanyService } from "./company.service.js";
-export type { CompanyRecord, CompanySaveInput } from "./company.types.js";
+export { companyModule } from "./company.module.js";
+export { migrateCompanyModule } from "./company.migration.js";
+export { seedCompanyModule } from "./company.seed.js";
+export type {
+  CompanyChild,
+  CompanyIndustry,
+  CompanyRecord,
+  CompanySaveInput
+} from "./company.types.js";

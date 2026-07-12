@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { sql } from "kysely";
 import { getCoreDatabase } from "../../../../database/core-database.js";
 import type {
@@ -8,62 +7,59 @@ import type {
 } from "./product-categories.types.js";
 
 type ProductCategoriesRow = {
-  id: string;
-  uuid: string;
+  id: number;
   name: string;
-  is_active: number | boolean;
+  status: string;
   sort_order: number;
 };
 
 export class ProductCategoriesRepository {
   async list(filters: ProductCategoriesListFilters = {}) {
     const rows =
-      await sql<ProductCategoriesRow>`SELECT id, uuid, name, is_active, sort_order FROM product_categories
+      await sql<ProductCategoriesRow>`SELECT id, name, status, sort_order FROM product_categories
       WHERE (${filters.search ?? ""} = '' OR LOWER(name) LIKE ${like(filters.search)})
       ORDER BY sort_order, id`.execute(getCoreDatabase());
     return rows.rows.map(toProductCategories);
   }
 
-  async find(id: string) {
+  async find(id: string | number) {
     const rows =
-      await sql<ProductCategoriesRow>`SELECT id, uuid, name, is_active, sort_order FROM product_categories
-      WHERE id=${id} LIMIT 1`.execute(getCoreDatabase());
+      await sql<ProductCategoriesRow>`SELECT id, name, status, sort_order FROM product_categories
+      WHERE id=${Number(id)} LIMIT 1`.execute(getCoreDatabase());
     return rows.rows[0] ? toProductCategories(rows.rows[0]) : null;
   }
 
   async create(input: ProductCategoriesSavePayload) {
-    const id = `productCategories-${randomUUID()}`;
-    const uuid = randomUUID().replaceAll("-", "").slice(0, 8);
-    await sql`INSERT INTO product_categories (id, uuid, name, is_active, sort_order) VALUES
-      (${id}, ${uuid}, ${normalizeString(input.name)}, ${input.isActive === false ? 0 : 1}, ${numberValue(input.sortOrder, 1000)})`.execute(
+    const result = await sql`INSERT INTO product_categories (name, status, sort_order) VALUES
+      (${normalizeString(input.name)}, ${input.isActive === false ? "inactive" : "active"}, ${numberValue(input.sortOrder, 1000)})`.execute(
       getCoreDatabase()
     );
-    return (await this.find(id))!;
+    return (await this.find(String(result.insertId)))!;
   }
 
-  async update(id: string, input: ProductCategoriesSavePayload) {
+  async update(id: string | number, input: ProductCategoriesSavePayload) {
     const existing = await this.find(id);
     if (!existing || !canMutate(existing)) return null;
-    await sql`UPDATE product_categories SET name=${normalizeString(input.name)}, is_active=${input.isActive === false ? 0 : 1},
-      sort_order=${numberValue(input.sortOrder, 1000)}, updated_at=CURRENT_TIMESTAMP WHERE id=${id}`.execute(
-      getCoreDatabase()
-    );
-    return this.find(id);
-  }
-
-  async setActive(id: string, isActive: boolean) {
-    const existing = await this.find(id);
-    if (!existing || !canMutate(existing)) return null;
-    await sql`UPDATE product_categories SET is_active=${isActive ? 1 : 0}, updated_at=CURRENT_TIMESTAMP WHERE id=${id}`.execute(
+    await sql`UPDATE product_categories SET name=${normalizeString(input.name)}, status=${input.isActive === false ? "inactive" : "active"},
+      sort_order=${numberValue(input.sortOrder, 1000)}, updated_at=CURRENT_TIMESTAMP WHERE id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return this.find(id);
   }
 
-  async forceDelete(id: string) {
+  async setActive(id: string | number, isActive: boolean) {
     const existing = await this.find(id);
     if (!existing || !canMutate(existing)) return null;
-    await sql`DELETE FROM product_categories WHERE id=${id}`.execute(getCoreDatabase());
+    await sql`UPDATE product_categories SET status=${isActive ? "active" : "inactive"}, updated_at=CURRENT_TIMESTAMP WHERE id=${Number(id)}`.execute(
+      getCoreDatabase()
+    );
+    return this.find(id);
+  }
+
+  async forceDelete(id: string | number) {
+    const existing = await this.find(id);
+    if (!existing || !canMutate(existing)) return null;
+    await sql`DELETE FROM product_categories WHERE id=${Number(id)}`.execute(getCoreDatabase());
     return existing;
   }
 }
@@ -75,10 +71,9 @@ function canMutate(record: ProductCategoriesRecord) {
 
 function toProductCategories(row: ProductCategoriesRow): ProductCategoriesRecord {
   return {
-    id: row.id,
-    uuid: row.uuid,
+    id: Number(row.id),
     name: row.name,
-    isActive: Boolean(row.is_active),
+    isActive: row.status === "active",
     sortOrder: Number(row.sort_order)
   };
 }

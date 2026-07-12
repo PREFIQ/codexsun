@@ -62,72 +62,440 @@ async function api<T>(path: string, init?: RequestInit) {
   return body.data;
 }
 
-function UngroupedSplitTableMapper({ snapshot, disabled, onSkip, onMap, onGroup }: { snapshot: Snapshot; disabled: boolean; onSkip: (table: string, checked: boolean) => void; onMap: (target: string, source: string) => void; onGroup: (target: string, group: string) => Promise<void> }) {
+function UngroupedSplitTableMapper({
+  snapshot,
+  disabled,
+  onSkip,
+  onMap,
+  onGroup
+}: {
+  snapshot: Snapshot;
+  disabled: boolean;
+  onSkip: (table: string, checked: boolean) => void;
+  onMap: (target: string, source: string) => void;
+  onGroup: (target: string, group: string) => Promise<void>;
+}) {
   const targets = snapshot.target.filter((table) => !snapshot.omittedTables.includes(table.name));
   const mappedSources = new Set(Object.keys(snapshot.tableMappings));
-  const targetSections = splitByMapped(targets, (table) => Boolean(sourceForTarget(snapshot.tableMappings, table.name)));
+  const targetSections = splitByMapped(targets, (table) =>
+    Boolean(sourceForTarget(snapshot.tableMappings, table.name))
+  );
   const sourceSections = splitByMapped(snapshot.source, (table) => mappedSources.has(table.name));
-  const knownGroups = Array.from(new Set(["Sales", "Purchase", "Accounts", "Inventory", "Contacts", "Products", ...Object.values(snapshot.tableGroups)])).filter(Boolean).map((value) => ({ label: value, value }));
-  return <div className="grid overflow-hidden rounded-md border bg-card lg:grid-cols-[1.45fr_1fr]">
-    <section className="min-w-0 border-b lg:border-b-0 lg:border-r"><div className="grid grid-cols-[3rem_9rem_minmax(11rem,0.8fr)_minmax(17rem,1.2fr)_6rem] border-b bg-muted/50 text-xs font-semibold uppercase text-muted-foreground"><div className="border-r px-2 py-3 text-center">Skip</div><div className="border-r px-3 py-3">Group</div><div className="border-r px-3 py-3">{`Target — ${snapshot.targetDatabase}`}</div><div className="border-r px-3 py-3">Source mapping</div><div className="px-2 py-3 text-center">Attach</div></div><div className="h-[36rem] overflow-y-auto [scrollbar-color:hsl(var(--muted-foreground)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/35 [&::-webkit-scrollbar-track]:bg-transparent">
-      {targetSections.map((section) => <div className={section.label === "To discover" ? "mt-6 border-t-8 border-background pt-2" : ""} key={section.label}><div className="sticky top-0 z-20 border-y bg-primary/10 px-3 py-2 text-xs font-bold uppercase text-primary">{section.label}</div>{section.tables.sort((a,b)=>a.name.localeCompare(b.name)).map((target)=>{const sourceName=sourceForTarget(snapshot.tableMappings,target.name);const group=snapshot.tableGroups[target.name]??"";return <div className="grid min-h-12 grid-cols-[3rem_9rem_minmax(11rem,0.8fr)_minmax(17rem,1.2fr)_6rem] border-b text-sm" key={target.name}><div className="flex items-center justify-center border-r"><Checkbox disabled={disabled} checked={false} aria-label={`Skip ${target.name}`} onCheckedChange={(checked)=>onSkip(target.name,checked===true)}/></div><div className="border-r px-1.5 py-1.5"><TableGroupLookup disabled={disabled} options={knownGroups} value={group} onSave={(value)=>onGroup(target.name,value)}/></div><div className="flex items-center border-r px-3 font-mono text-xs">{target.name}</div><div className="border-r px-2 py-1.5"><WorkspaceLookup key={`${target.name}-${sourceName}`} className="[&_input]:h-9 [&_input]:font-mono [&_input]:text-xs" createMode="none" emptyLabel="No Source table found." options={snapshot.source.map((table)=>({label:table.name,value:table.name}))} placeholder="Select Source table" value={sourceName} onValueChange={(value,option)=>{if(!value||option)onMap(target.name,value);}}/></div><div className="p-2" onDragOver={(event)=>{event.preventDefault();event.dataTransfer.dropEffect="copy";}} onDrop={(event)=>{event.preventDefault();const source=event.dataTransfer.getData("text/plain").trim();if(source)onMap(target.name,source);}}><div className={`flex h-full min-h-8 items-center justify-center rounded-md border border-dashed text-[11px] font-semibold ${sourceName?"border-emerald-500 bg-emerald-50 text-emerald-700":"border-primary/40 text-muted-foreground"}`}>{sourceName?"Attached":"Drop"}</div></div></div>})}</div>)}
-    </div></section>
-    <section className="min-w-0"><div className="grid grid-cols-[1fr_7rem] border-b bg-muted/50 text-xs font-semibold uppercase text-muted-foreground"><div className="border-r px-3 py-3">{`Source — ${snapshot.sourceDatabase}`}</div><div className="px-2 py-3 text-center">Status</div></div><div className="h-[36rem] overflow-y-auto [scrollbar-color:hsl(var(--muted-foreground)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/35 [&::-webkit-scrollbar-track]:bg-transparent">{sourceSections.map((section)=><div className={section.label==="To discover"?"mt-6 border-t-8 border-background pt-2":""} key={section.label}><div className="sticky top-0 z-20 border-y bg-primary/10 px-3 py-2 text-xs font-bold uppercase text-primary">{section.label==="To discover"?"Available":section.label}</div>{section.tables.sort((a,b)=>a.name.localeCompare(b.name)).map((source)=>{const target=snapshot.tableMappings[source.name]??"";return <div className="grid min-h-12 cursor-grab grid-cols-[1fr_7rem] border-b text-sm active:cursor-grabbing" draggable key={source.name} onDragStart={(event)=>{event.dataTransfer.effectAllowed="copy";event.dataTransfer.setData("text/plain",source.name);}}><div className="flex items-center border-r px-3 font-mono text-xs">{source.name}</div><div className="flex items-center justify-center px-2"><WorkspaceStatusBadge label={target?"mapped":"available"} tone={target?"success":"neutral"}/></div></div>})}</div>)}</div></section>
-  </div>;
-}
-
-function TableGroupLookup({ disabled, options, value, onSave }: { disabled: boolean; options: Array<{ label: string; value: string }>; value: string; onSave: (value: string) => Promise<void> }) {
-  const [localValue, setLocalValue] = useState(value);
-  useEffect(() => setLocalValue(value), [value]);
-  async function save(next: string) { setLocalValue(next); await onSave(next); }
-  const mergedOptions = Array.from(new Map([...(localValue ? [{ label: localValue, value: localValue }] : []), ...options].map((option) => [option.value, option])).values());
-  return <WorkspaceLookup allowTextValue className="[&_input]:h-9 [&_input]:text-xs" createLabel="Use group" createMode="inline" disabled={disabled} emptyLabel="Type a group name." options={mergedOptions} placeholder="Group" value={localValue} onCreate={async(name)=>{await save(name);return{label:name,value:name};}} onValueChange={(next,option)=>{if(!next||option)void save(next);}}/>;
-}
-
-function SplitTableMapper({ snapshot, disabled, onSkip, onMap, onGroup }: { snapshot: Snapshot; disabled: boolean; onSkip: (table: string, checked: boolean) => void; onMap: (target: string, source: string) => void; onGroup: (target: string, group: string) => void }) {
-  const targets = snapshot.target.filter((table) => !snapshot.omittedTables.includes(table.name));
-  const mappedSources = new Set(Object.keys(snapshot.tableMappings));
-  const targetSections = splitByMapped(targets, (table) => Boolean(sourceForTarget(snapshot.tableMappings, table.name)));
-  const sourceSections = splitByMapped(snapshot.source, (table) => mappedSources.has(table.name));
+  const knownGroups = Array.from(
+    new Set([
+      "Sales",
+      "Purchase",
+      "Accounts",
+      "Inventory",
+      "Contacts",
+      "Products",
+      ...Object.values(snapshot.tableGroups)
+    ])
+  )
+    .filter(Boolean)
+    .map((value) => ({ label: value, value }));
   return (
-    <div className="grid overflow-hidden rounded-md border bg-card lg:grid-cols-[1.35fr_1fr]">
+    <div className="grid overflow-hidden rounded-md border bg-card lg:grid-cols-[1.45fr_1fr]">
       <section className="min-w-0 border-b lg:border-b-0 lg:border-r">
-        <div className="grid grid-cols-[3rem_minmax(11rem,0.8fr)_minmax(17rem,1.2fr)_6rem] border-b bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
-          <div className="border-r px-2 py-3 text-center">Skip</div><div className="border-r px-3 py-3">{`Target — ${snapshot.targetDatabase}`}</div><div className="border-r px-3 py-3">Source mapping</div><div className="px-2 py-3 text-center">Attach</div>
+        <div className="grid grid-cols-[3rem_9rem_minmax(11rem,0.8fr)_minmax(17rem,1.2fr)_6rem] border-b bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
+          <div className="border-r px-2 py-3 text-center">Skip</div>
+          <div className="border-r px-3 py-3">Group</div>
+          <div className="border-r px-3 py-3">{`Target — ${snapshot.targetDatabase}`}</div>
+          <div className="border-r px-3 py-3">Source mapping</div>
+          <div className="px-2 py-3 text-center">Attach</div>
         </div>
-        <div className="h-[36rem] overflow-y-auto">
-          {targetSections.map((section) => <TableSection key={section.label} label={section.label} groups={groupTables(section.tables)} render={(target) => {
-            const sourceName = sourceForTarget(snapshot.tableMappings, target.name);
-            return <div className="grid min-h-12 grid-cols-[3rem_minmax(11rem,0.8fr)_minmax(17rem,1.2fr)_6rem] border-b text-sm" key={target.name}>
-              <div className="flex items-center justify-center border-r"><Checkbox disabled={disabled} checked={false} aria-label={`Skip ${target.name}`} onCheckedChange={(checked) => onSkip(target.name, checked === true)} /></div>
-              <div className="flex items-center border-r px-3 font-mono text-xs">{target.name}</div>
-              <div className="border-r px-2 py-1.5"><WorkspaceLookup key={`${target.name}-${sourceName}`} className="[&_input]:h-9 [&_input]:font-mono [&_input]:text-xs" createMode="none" emptyLabel="No Source table found." options={snapshot.source.map((table) => ({ label: table.name, value: table.name, description: tableGroup(table.name) }))} placeholder="Select Source table" value={sourceName} onValueChange={(value, option) => { if (!value || option) onMap(target.name, value); }} /></div>
-              <div className="p-2" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }} onDrop={(event) => { event.preventDefault(); const source = event.dataTransfer.getData("text/plain").trim(); if (source) onMap(target.name, source); }}><div className={`flex h-full min-h-8 items-center justify-center rounded-md border border-dashed text-[11px] font-semibold ${sourceName ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-primary/40 text-muted-foreground"}`}>{sourceName ? "Attached" : "Drop"}</div></div>
-            </div>;
-          }} />)}
+        <div className="h-[36rem] overflow-y-auto [scrollbar-color:hsl(var(--muted-foreground)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/35 [&::-webkit-scrollbar-track]:bg-transparent">
+          {targetSections.map((section) => (
+            <div
+              className={
+                section.label === "To discover" ? "mt-6 border-t-8 border-background pt-2" : ""
+              }
+              key={section.label}
+            >
+              <div className="sticky top-0 z-20 border-y bg-primary/10 px-3 py-2 text-xs font-bold uppercase text-primary">
+                {section.label}
+              </div>
+              {section.tables
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((target) => {
+                  const sourceName = sourceForTarget(snapshot.tableMappings, target.name);
+                  const group = snapshot.tableGroups[target.name] ?? "";
+                  return (
+                    <div
+                      className="grid min-h-12 grid-cols-[3rem_9rem_minmax(11rem,0.8fr)_minmax(17rem,1.2fr)_6rem] border-b text-sm"
+                      key={target.name}
+                    >
+                      <div className="flex items-center justify-center border-r">
+                        <Checkbox
+                          disabled={disabled}
+                          checked={false}
+                          aria-label={`Skip ${target.name}`}
+                          onCheckedChange={(checked) => onSkip(target.name, checked === true)}
+                        />
+                      </div>
+                      <div className="border-r px-1.5 py-1.5">
+                        <TableGroupLookup
+                          disabled={disabled}
+                          options={knownGroups}
+                          value={group}
+                          onSave={(value) => onGroup(target.name, value)}
+                        />
+                      </div>
+                      <div className="flex items-center border-r px-3 font-mono text-xs">
+                        {target.name}
+                      </div>
+                      <div className="border-r px-2 py-1.5">
+                        <WorkspaceLookup
+                          key={`${target.name}-${sourceName}`}
+                          className="[&_input]:h-9 [&_input]:font-mono [&_input]:text-xs"
+                          createMode="none"
+                          emptyLabel="No Source table found."
+                          options={snapshot.source.map((table) => ({
+                            label: table.name,
+                            value: table.name
+                          }))}
+                          placeholder="Select Source table"
+                          value={sourceName}
+                          onValueChange={(value, option) => {
+                            if (!value || option) onMap(target.name, value);
+                          }}
+                        />
+                      </div>
+                      <div
+                        className="p-2"
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "copy";
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const source = event.dataTransfer.getData("text/plain").trim();
+                          if (source) onMap(target.name, source);
+                        }}
+                      >
+                        <div
+                          className={`flex h-full min-h-8 items-center justify-center rounded-md border border-dashed text-[11px] font-semibold ${sourceName ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-primary/40 text-muted-foreground"}`}
+                        >
+                          {sourceName ? "Attached" : "Drop"}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ))}
         </div>
       </section>
       <section className="min-w-0">
-        <div className="grid grid-cols-[1fr_7rem] border-b bg-muted/50 text-xs font-semibold uppercase text-muted-foreground"><div className="border-r px-3 py-3">{`Source — ${snapshot.sourceDatabase}`}</div><div className="px-2 py-3 text-center">Status</div></div>
-        <div className="h-[36rem] overflow-y-auto">
-          {sourceSections.map((section) => <div className={section.label === "To discover" ? "mt-6 border-t-8 border-background pt-2" : ""} key={section.label}><div className="sticky top-0 z-20 border-y bg-primary/10 px-3 py-2 text-xs font-bold uppercase text-primary">{section.label === "To discover" ? "Available" : section.label}</div>{section.tables.sort((a, b) => a.name.localeCompare(b.name)).map((source) => {
-            const targetName = snapshot.tableMappings[source.name] ?? "";
-            return <div className="grid min-h-12 cursor-grab grid-cols-[1fr_7rem] border-b text-sm active:cursor-grabbing" draggable key={source.name} onDragStart={(event) => { event.dataTransfer.effectAllowed = "copy"; event.dataTransfer.setData("text/plain", source.name); }}><div className="flex items-center border-r px-3 font-mono text-xs">{source.name}</div><div className="flex items-center justify-center px-2"><WorkspaceStatusBadge label={targetName ? "mapped" : "available"} tone={targetName ? "success" : "neutral"} /></div></div>;
-          })}</div>)}
+        <div className="grid grid-cols-[1fr_7rem] border-b bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
+          <div className="border-r px-3 py-3">{`Source — ${snapshot.sourceDatabase}`}</div>
+          <div className="px-2 py-3 text-center">Status</div>
+        </div>
+        <div className="h-[36rem] overflow-y-auto [scrollbar-color:hsl(var(--muted-foreground)/0.35)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/35 [&::-webkit-scrollbar-track]:bg-transparent">
+          {sourceSections.map((section) => (
+            <div
+              className={
+                section.label === "To discover" ? "mt-6 border-t-8 border-background pt-2" : ""
+              }
+              key={section.label}
+            >
+              <div className="sticky top-0 z-20 border-y bg-primary/10 px-3 py-2 text-xs font-bold uppercase text-primary">
+                {section.label === "To discover" ? "Available" : section.label}
+              </div>
+              {section.tables
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((source) => {
+                  const target = snapshot.tableMappings[source.name] ?? "";
+                  return (
+                    <div
+                      className="grid min-h-12 cursor-grab grid-cols-[1fr_7rem] border-b text-sm active:cursor-grabbing"
+                      draggable
+                      key={source.name}
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "copy";
+                        event.dataTransfer.setData("text/plain", source.name);
+                      }}
+                    >
+                      <div className="flex items-center border-r px-3 font-mono text-xs">
+                        {source.name}
+                      </div>
+                      <div className="flex items-center justify-center px-2">
+                        <WorkspaceStatusBadge
+                          label={target ? "mapped" : "available"}
+                          tone={target ? "success" : "neutral"}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ))}
         </div>
       </section>
     </div>
   );
 }
 
-function TableSection({ label, groups, render }: { label: string; groups: Array<{ name: string; tables: SchemaTable[] }>; render: (table: SchemaTable) => ReactNode }) {
-  return <div className={label === "To discover" ? "mt-6 border-t-8 border-background pt-2" : ""}><div className="sticky top-0 z-20 border-y bg-primary/10 px-3 py-2 text-xs font-bold uppercase text-primary">{label}</div>{groups.map((group) => <div key={group.name}><div className="sticky top-8 z-10 border-b bg-muted px-3 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">{group.name}</div>{group.tables.map(render)}</div>)}</div>;
+function TableGroupLookup({
+  disabled,
+  options,
+  value,
+  onSave
+}: {
+  disabled: boolean;
+  options: Array<{ label: string; value: string }>;
+  value: string;
+  onSave: (value: string) => Promise<void>;
+}) {
+  const [localValue, setLocalValue] = useState(value);
+  useEffect(() => setLocalValue(value), [value]);
+  async function save(next: string) {
+    setLocalValue(next);
+    await onSave(next);
+  }
+  const mergedOptions = Array.from(
+    new Map(
+      [...(localValue ? [{ label: localValue, value: localValue }] : []), ...options].map(
+        (option) => [option.value, option]
+      )
+    ).values()
+  );
+  return (
+    <WorkspaceLookup
+      allowTextValue
+      className="[&_input]:h-9 [&_input]:text-xs"
+      createLabel="Use group"
+      createMode="inline"
+      disabled={disabled}
+      emptyLabel="Type a group name."
+      options={mergedOptions}
+      placeholder="Group"
+      value={localValue}
+      onCreate={async (name) => {
+        await save(name);
+        return { label: name, value: name };
+      }}
+      onValueChange={(next, option) => {
+        if (!next || option) void save(next);
+      }}
+    />
+  );
 }
 
-function splitByMapped(tables: SchemaTable[], mapped: (table: SchemaTable) => boolean) { return [{ label: "Mapped", tables: tables.filter(mapped) }, { label: "To discover", tables: tables.filter((table) => !mapped(table)) }].filter((section) => section.tables.length); }
-function groupTables(tables: SchemaTable[]) { const groups = new Map<string, SchemaTable[]>(); for (const table of tables) { const group = tableGroup(table.name); groups.set(group, [...(groups.get(group) ?? []), table]); } return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([name, items]) => ({ name, tables: items.sort((a, b) => a.name.localeCompare(b.name)) })); }
-function tableGroup(name: string) { const root = name.replace(/(?:_activities|_allocations|_comments|_items|_lines|_entries|_details|_compliances|_payments|_receipts|_settings|_logs|_links)$/, ""); const first = root.split("_")[0] ?? root; const labels: Record<string, string> = { sale: "Sales", sales: "Sales", export: "Export Sales", purchase: "Purchase", purchases: "Purchase", payment: "Payments", receipt: "Receipts", account: "Accounts", billing: "Billing", contact: "Contacts", customer: "Customers", product: "Products", stock: "Inventory", inventory: "Inventory" }; return labels[first] ?? first.replace(/\b\w/g, (letter) => letter.toUpperCase()); }
-function sourceForTarget(mappings: Record<string, string>, target: string) { return Object.entries(mappings).find(([, value]) => value === target)?.[0] ?? ""; }
+function _SplitTableMapper({
+  snapshot,
+  disabled,
+  onSkip,
+  onMap,
+  onGroup: _onGroup
+}: {
+  snapshot: Snapshot;
+  disabled: boolean;
+  onSkip: (table: string, checked: boolean) => void;
+  onMap: (target: string, source: string) => void;
+  onGroup: (target: string, group: string) => void;
+}) {
+  const targets = snapshot.target.filter((table) => !snapshot.omittedTables.includes(table.name));
+  const mappedSources = new Set(Object.keys(snapshot.tableMappings));
+  const targetSections = splitByMapped(targets, (table) =>
+    Boolean(sourceForTarget(snapshot.tableMappings, table.name))
+  );
+  const sourceSections = splitByMapped(snapshot.source, (table) => mappedSources.has(table.name));
+  return (
+    <div className="grid overflow-hidden rounded-md border bg-card lg:grid-cols-[1.35fr_1fr]">
+      <section className="min-w-0 border-b lg:border-b-0 lg:border-r">
+        <div className="grid grid-cols-[3rem_minmax(11rem,0.8fr)_minmax(17rem,1.2fr)_6rem] border-b bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
+          <div className="border-r px-2 py-3 text-center">Skip</div>
+          <div className="border-r px-3 py-3">{`Target — ${snapshot.targetDatabase}`}</div>
+          <div className="border-r px-3 py-3">Source mapping</div>
+          <div className="px-2 py-3 text-center">Attach</div>
+        </div>
+        <div className="h-[36rem] overflow-y-auto">
+          {targetSections.map((section) => (
+            <TableSection
+              key={section.label}
+              label={section.label}
+              groups={groupTables(section.tables)}
+              render={(target) => {
+                const sourceName = sourceForTarget(snapshot.tableMappings, target.name);
+                return (
+                  <div
+                    className="grid min-h-12 grid-cols-[3rem_minmax(11rem,0.8fr)_minmax(17rem,1.2fr)_6rem] border-b text-sm"
+                    key={target.name}
+                  >
+                    <div className="flex items-center justify-center border-r">
+                      <Checkbox
+                        disabled={disabled}
+                        checked={false}
+                        aria-label={`Skip ${target.name}`}
+                        onCheckedChange={(checked) => onSkip(target.name, checked === true)}
+                      />
+                    </div>
+                    <div className="flex items-center border-r px-3 font-mono text-xs">
+                      {target.name}
+                    </div>
+                    <div className="border-r px-2 py-1.5">
+                      <WorkspaceLookup
+                        key={`${target.name}-${sourceName}`}
+                        className="[&_input]:h-9 [&_input]:font-mono [&_input]:text-xs"
+                        createMode="none"
+                        emptyLabel="No Source table found."
+                        options={snapshot.source.map((table) => ({
+                          label: table.name,
+                          value: table.name,
+                          description: tableGroup(table.name)
+                        }))}
+                        placeholder="Select Source table"
+                        value={sourceName}
+                        onValueChange={(value, option) => {
+                          if (!value || option) onMap(target.name, value);
+                        }}
+                      />
+                    </div>
+                    <div
+                      className="p-2"
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "copy";
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        const source = event.dataTransfer.getData("text/plain").trim();
+                        if (source) onMap(target.name, source);
+                      }}
+                    >
+                      <div
+                        className={`flex h-full min-h-8 items-center justify-center rounded-md border border-dashed text-[11px] font-semibold ${sourceName ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-primary/40 text-muted-foreground"}`}
+                      >
+                        {sourceName ? "Attached" : "Drop"}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+          ))}
+        </div>
+      </section>
+      <section className="min-w-0">
+        <div className="grid grid-cols-[1fr_7rem] border-b bg-muted/50 text-xs font-semibold uppercase text-muted-foreground">
+          <div className="border-r px-3 py-3">{`Source — ${snapshot.sourceDatabase}`}</div>
+          <div className="px-2 py-3 text-center">Status</div>
+        </div>
+        <div className="h-[36rem] overflow-y-auto">
+          {sourceSections.map((section) => (
+            <div
+              className={
+                section.label === "To discover" ? "mt-6 border-t-8 border-background pt-2" : ""
+              }
+              key={section.label}
+            >
+              <div className="sticky top-0 z-20 border-y bg-primary/10 px-3 py-2 text-xs font-bold uppercase text-primary">
+                {section.label === "To discover" ? "Available" : section.label}
+              </div>
+              {section.tables
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((source) => {
+                  const targetName = snapshot.tableMappings[source.name] ?? "";
+                  return (
+                    <div
+                      className="grid min-h-12 cursor-grab grid-cols-[1fr_7rem] border-b text-sm active:cursor-grabbing"
+                      draggable
+                      key={source.name}
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "copy";
+                        event.dataTransfer.setData("text/plain", source.name);
+                      }}
+                    >
+                      <div className="flex items-center border-r px-3 font-mono text-xs">
+                        {source.name}
+                      </div>
+                      <div className="flex items-center justify-center px-2">
+                        <WorkspaceStatusBadge
+                          label={targetName ? "mapped" : "available"}
+                          tone={targetName ? "success" : "neutral"}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TableSection({
+  label,
+  groups,
+  render
+}: {
+  label: string;
+  groups: Array<{ name: string; tables: SchemaTable[] }>;
+  render: (table: SchemaTable) => ReactNode;
+}) {
+  return (
+    <div className={label === "To discover" ? "mt-6 border-t-8 border-background pt-2" : ""}>
+      <div className="sticky top-0 z-20 border-y bg-primary/10 px-3 py-2 text-xs font-bold uppercase text-primary">
+        {label}
+      </div>
+      {groups.map((group) => (
+        <div key={group.name}>
+          <div className="sticky top-8 z-10 border-b bg-muted px-3 py-1.5 text-[11px] font-semibold uppercase text-muted-foreground">
+            {group.name}
+          </div>
+          {group.tables.map(render)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function splitByMapped(tables: SchemaTable[], mapped: (table: SchemaTable) => boolean) {
+  return [
+    { label: "Mapped", tables: tables.filter(mapped) },
+    { label: "To discover", tables: tables.filter((table) => !mapped(table)) }
+  ].filter((section) => section.tables.length);
+}
+function groupTables(tables: SchemaTable[]) {
+  const groups = new Map<string, SchemaTable[]>();
+  for (const table of tables) {
+    const group = tableGroup(table.name);
+    groups.set(group, [...(groups.get(group) ?? []), table]);
+  }
+  return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, items]) => ({ name, tables: items.sort((a, b) => a.name.localeCompare(b.name)) }));
+}
+function tableGroup(name: string) {
+  const root = name.replace(
+    /(?:_activities|_allocations|_comments|_items|_lines|_entries|_details|_compliances|_payments|_receipts|_settings|_logs|_links)$/,
+    ""
+  );
+  const first = root.split("_")[0] ?? root;
+  const labels: Record<string, string> = {
+    sale: "Sales",
+    sales: "Sales",
+    export: "Export Sales",
+    purchase: "Purchase",
+    purchases: "Purchase",
+    payment: "Payments",
+    receipt: "Receipts",
+    account: "Accounts",
+    billing: "Billing",
+    contact: "Contacts",
+    customer: "Customers",
+    product: "Products",
+    stock: "Inventory",
+    inventory: "Inventory"
+  };
+  return labels[first] ?? first.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+function sourceForTarget(mappings: Record<string, string>, target: string) {
+  return Object.entries(mappings).find(([, value]) => value === target)?.[0] ?? "";
+}
 const list = () => api<Summary[]>("/data-bridge/discovery-snapshots");
 const get = (id: number) => api<Snapshot>(`/data-bridge/discovery-snapshots/${id}`);
 const run = (migrationJobId: number) =>
@@ -330,7 +698,7 @@ function SnapshotShow({ snapshot: initial, onBack }: { snapshot: Snapshot; onBac
     if (checked) setShowSkipped(false);
   }
 
-  function updateTableMapping(sourceTable: string, targetTable: string, persist = false) {
+  function _updateTableMapping(sourceTable: string, targetTable: string, persist = false) {
     const mappings = { ...snapshot.tableMappings };
     if (targetTable.trim()) mappings[sourceTable] = targetTable.trim();
     else delete mappings[sourceTable];
@@ -361,7 +729,12 @@ function SnapshotShow({ snapshot: initial, onBack }: { snapshot: Snapshot; onBac
     const groups = { ...snapshot.tableGroups };
     if (group.trim()) groups[targetTable] = group.trim();
     else delete groups[targetTable];
-    setSnapshot((current) => ({ ...current, tableGroups: groups, mappingInput: null, preparedAt: null }));
+    setSnapshot((current) => ({
+      ...current,
+      tableGroups: groups,
+      mappingInput: null,
+      preparedAt: null
+    }));
     await tableGrouping.mutateAsync(groups);
   }
 
@@ -419,139 +792,145 @@ function SnapshotShow({ snapshot: initial, onBack }: { snapshot: Snapshot; onBac
           />
         </WorkspaceShowCard>
       </div>
-      <UngroupedSplitTableMapper snapshot={snapshot} disabled={omit.isPending || tableMapping.isPending || tableGrouping.isPending} onSkip={toggle} onMap={updateTargetMapping} onGroup={updateTableGroup} />
-      <div className="hidden">
-      <WorkspaceTablePanel>
-        <table className="w-full min-w-[900px] table-fixed border-collapse text-sm">
-          <colgroup>
-            <col className="w-[5%]" />
-            <col className="w-[22%]" />
-            <col className="w-[30%]" />
-            <col className="w-[8%]" />
-            <col className="w-[25%]" />
-            <col className="w-[10%]" />
-          </colgroup>
-          <thead className="bg-muted/50">
-            <tr>
-              <WorkspaceTableHeaderCell className="border px-2 text-center">
-                Skip
-              </WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell className="border">{`Target Table — ${snapshot.targetDatabase}`}</WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell className="border text-center">
-                Mapping
-              </WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell className="border text-center">
-                Drop & Attach
-              </WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell className="border">{`Source Table — ${snapshot.sourceDatabase}`}</WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell className="border px-2">Status</WorkspaceTableHeaderCell>
-            </tr>
-          </thead>
-          <tbody>
-            {pageTables.map((item) => {
-              const targetName = item.name;
-              const sourceName =
-                Object.entries(snapshot.tableMappings).find(
-                  ([, target]) => target === targetName
-                )?.[0] ?? "";
-              const skipped = snapshot.omittedTables.includes(targetName);
-              const mappedName = sourceName;
-              return (
-                <tr className="h-12" key={targetName}>
-                  <td className="border px-2 py-3 text-center align-middle">
-                    <Checkbox
-                      checked={skipped}
-                      disabled={omit.isPending}
-                      aria-label={`Skip ${targetName}`}
-                      onCheckedChange={(checked) => toggle(targetName, checked === true)}
-                    />
-                  </td>
-                  <td
-                    className="cursor-grab border px-4 py-3 align-middle font-mono font-medium active:cursor-grabbing"
-                    draggable
-                    onDragStart={(event) => {
-                      event.dataTransfer.effectAllowed = "copy";
-                      event.dataTransfer.setData("text/plain", targetName);
-                    }}
-                  >
-                    {targetName}
-                  </td>
-                  <td className="border bg-muted/10 px-3 py-2 align-middle">
-                    <WorkspaceLookup
-                      key={`${targetName}-${mappedName}`}
-                      allowTextValue
-                      className="[&_input]:h-8 [&_input]:font-mono [&_input]:text-xs"
-                      createMode="none"
-                      emptyLabel="No Source table matches this name."
-                      options={snapshot.source.map((table) => ({
-                        label: table.name,
-                        value: table.name
-                      }))}
-                      placeholder="Search, type, or paste Source table"
-                      value={mappedName}
-                      onValueChange={(value, option) => {
-                        if (!value || option) updateTargetMapping(targetName, value);
-                      }}
-                    />
-                  </td>
-                  <td
-                    className="border bg-muted/20 px-2 py-2 align-middle"
-                    onDragEnter={(event) => event.preventDefault()}
-                    onDragOverCapture={(event) => {
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = "copy";
-                    }}
-                    onDropCapture={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      const tableName = event.dataTransfer.getData("text/plain").trim();
-                      if (tableName) updateTargetMapping(targetName, tableName);
-                    }}
-                  >
-                    <div
-                      className={`flex h-8 items-center justify-center rounded-md border border-dashed text-[11px] font-semibold ${mappedName ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-primary/40 bg-background text-muted-foreground"}`}
-                    >
-                      {mappedName ? "Attached" : "Drop Source"}
-                    </div>
-                  </td>
-                  <td
-                    className="cursor-grab border px-4 py-3 align-middle font-mono font-medium active:cursor-grabbing"
-                    draggable={Boolean(sourceName)}
-                    onDragStart={(event) => {
-                      if (!sourceName) return;
-                      event.dataTransfer.effectAllowed = "copy";
-                      event.dataTransfer.setData("text/plain", sourceName);
-                    }}
-                  >
-                    {sourceName || "—"}
-                  </td>
-                  <td className="border px-2 py-3 align-middle">
-                    <WorkspaceStatusBadge
-                      label={skipped ? "skipped" : mappedName ? "mapped" : "unmapped"}
-                      tone={skipped ? "neutral" : mappedName ? "success" : "warning"}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </WorkspaceTablePanel>
-      <WorkspacePagination
-        page={safePage}
-        rowsPerPage={rowsPerPage}
-        showingLabel={buildShowingLabel(safePage, rowsPerPage, visibleTables.length)}
-        singularLabel="tables"
-        totalCount={visibleTables.length}
-        totalPages={totalPages}
-        onNextPage={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-        onPageChange={setCurrentPage}
-        onPreviousPage={() => setCurrentPage((page) => Math.max(1, page - 1))}
-        onRowsPerPageChange={(value) => {
-          setRowsPerPage(value);
-          setCurrentPage(1);
-        }}
+      <UngroupedSplitTableMapper
+        snapshot={snapshot}
+        disabled={omit.isPending || tableMapping.isPending || tableGrouping.isPending}
+        onSkip={toggle}
+        onMap={updateTargetMapping}
+        onGroup={updateTableGroup}
       />
+      <div className="hidden">
+        <WorkspaceTablePanel>
+          <table className="w-full min-w-[900px] table-fixed border-collapse text-sm">
+            <colgroup>
+              <col className="w-[5%]" />
+              <col className="w-[22%]" />
+              <col className="w-[30%]" />
+              <col className="w-[8%]" />
+              <col className="w-[25%]" />
+              <col className="w-[10%]" />
+            </colgroup>
+            <thead className="bg-muted/50">
+              <tr>
+                <WorkspaceTableHeaderCell className="border px-2 text-center">
+                  Skip
+                </WorkspaceTableHeaderCell>
+                <WorkspaceTableHeaderCell className="border">{`Target Table — ${snapshot.targetDatabase}`}</WorkspaceTableHeaderCell>
+                <WorkspaceTableHeaderCell className="border text-center">
+                  Mapping
+                </WorkspaceTableHeaderCell>
+                <WorkspaceTableHeaderCell className="border text-center">
+                  Drop & Attach
+                </WorkspaceTableHeaderCell>
+                <WorkspaceTableHeaderCell className="border">{`Source Table — ${snapshot.sourceDatabase}`}</WorkspaceTableHeaderCell>
+                <WorkspaceTableHeaderCell className="border px-2">Status</WorkspaceTableHeaderCell>
+              </tr>
+            </thead>
+            <tbody>
+              {pageTables.map((item) => {
+                const targetName = item.name;
+                const sourceName =
+                  Object.entries(snapshot.tableMappings).find(
+                    ([, target]) => target === targetName
+                  )?.[0] ?? "";
+                const skipped = snapshot.omittedTables.includes(targetName);
+                const mappedName = sourceName;
+                return (
+                  <tr className="h-12" key={targetName}>
+                    <td className="border px-2 py-3 text-center align-middle">
+                      <Checkbox
+                        checked={skipped}
+                        disabled={omit.isPending}
+                        aria-label={`Skip ${targetName}`}
+                        onCheckedChange={(checked) => toggle(targetName, checked === true)}
+                      />
+                    </td>
+                    <td
+                      className="cursor-grab border px-4 py-3 align-middle font-mono font-medium active:cursor-grabbing"
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "copy";
+                        event.dataTransfer.setData("text/plain", targetName);
+                      }}
+                    >
+                      {targetName}
+                    </td>
+                    <td className="border bg-muted/10 px-3 py-2 align-middle">
+                      <WorkspaceLookup
+                        key={`${targetName}-${mappedName}`}
+                        allowTextValue
+                        className="[&_input]:h-8 [&_input]:font-mono [&_input]:text-xs"
+                        createMode="none"
+                        emptyLabel="No Source table matches this name."
+                        options={snapshot.source.map((table) => ({
+                          label: table.name,
+                          value: table.name
+                        }))}
+                        placeholder="Search, type, or paste Source table"
+                        value={mappedName}
+                        onValueChange={(value, option) => {
+                          if (!value || option) updateTargetMapping(targetName, value);
+                        }}
+                      />
+                    </td>
+                    <td
+                      className="border bg-muted/20 px-2 py-2 align-middle"
+                      onDragEnter={(event) => event.preventDefault()}
+                      onDragOverCapture={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "copy";
+                      }}
+                      onDropCapture={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        const tableName = event.dataTransfer.getData("text/plain").trim();
+                        if (tableName) updateTargetMapping(targetName, tableName);
+                      }}
+                    >
+                      <div
+                        className={`flex h-8 items-center justify-center rounded-md border border-dashed text-[11px] font-semibold ${mappedName ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-primary/40 bg-background text-muted-foreground"}`}
+                      >
+                        {mappedName ? "Attached" : "Drop Source"}
+                      </div>
+                    </td>
+                    <td
+                      className="cursor-grab border px-4 py-3 align-middle font-mono font-medium active:cursor-grabbing"
+                      draggable={Boolean(sourceName)}
+                      onDragStart={(event) => {
+                        if (!sourceName) return;
+                        event.dataTransfer.effectAllowed = "copy";
+                        event.dataTransfer.setData("text/plain", sourceName);
+                      }}
+                    >
+                      {sourceName || "—"}
+                    </td>
+                    <td className="border px-2 py-3 align-middle">
+                      <WorkspaceStatusBadge
+                        label={skipped ? "skipped" : mappedName ? "mapped" : "unmapped"}
+                        tone={skipped ? "neutral" : mappedName ? "success" : "warning"}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </WorkspaceTablePanel>
+        <WorkspacePagination
+          page={safePage}
+          rowsPerPage={rowsPerPage}
+          showingLabel={buildShowingLabel(safePage, rowsPerPage, visibleTables.length)}
+          singularLabel="tables"
+          totalCount={visibleTables.length}
+          totalPages={totalPages}
+          onNextPage={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+          onPageChange={setCurrentPage}
+          onPreviousPage={() => setCurrentPage((page) => Math.max(1, page - 1))}
+          onRowsPerPageChange={(value) => {
+            setRowsPerPage(value);
+            setCurrentPage(1);
+          }}
+        />
       </div>
     </WorkspacePage>
   );

@@ -141,6 +141,8 @@ function bearerToken(request: FastifyRequest) {
 
 function requestDomain(request: FastifyRequest) {
   const forwardedHost = request.headers["x-forwarded-host"];
-  const host = Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost || request.headers.host || "";
+  const host = Array.isArray(forwardedHost)
+    ? forwardedHost[0]
+    : forwardedHost || request.headers.host || "";
   return String(host);
 }

@@ -1,6 +1,10 @@
 import { apiGet, apiPost, getToken } from "../../shared/api/platform-api";
 import { requiredClientEnv } from "../../shared/env/client-env";
-import type { StorageBrowserState, StorageListing, StorageRootSummary } from "./storage-manager.types";
+import type {
+  StorageBrowserState,
+  StorageListing,
+  StorageRootSummary
+} from "./storage-manager.types";
 import { cleanStorageState } from "./storage-manager.schema";
 
 const apiBaseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
@@ -15,12 +19,20 @@ export function listStorage(state: StorageBrowserState) {
 }
 
 export function createStorageFolder(state: StorageBrowserState, name: string) {
-  return apiPost<StorageListing>("/admin/storage/folders", { ...cleanStorageState(state), name }, "sa");
+  return apiPost<StorageListing>(
+    "/admin/storage/folders",
+    { ...cleanStorageState(state), name },
+    "sa"
+  );
 }
 
 export function uploadStorageFile(state: StorageBrowserState, file: File) {
   return fileToBase64(file).then((contentBase64) =>
-    apiPost<StorageListing>("/admin/storage/upload", { ...cleanStorageState(state), contentBase64, fileName: file.name, mimeType: file.type }, "sa")
+    apiPost<StorageListing>(
+      "/admin/storage/upload",
+      { ...cleanStorageState(state), contentBase64, fileName: file.name, mimeType: file.type },
+      "sa"
+    )
   );
 }
 
@@ -59,7 +71,7 @@ function fileToBase64(file: File) {
     reader.onerror = () => reject(new Error("Unable to read file."));
     reader.onload = () => {
       const value = String(reader.result ?? "");
-      resolve(value.includes(",") ? value.split(",").pop() ?? "" : value);
+      resolve(value.includes(",") ? (value.split(",").pop() ?? "") : value);
     };
     reader.readAsDataURL(file);
   });

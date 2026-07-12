@@ -7,7 +7,10 @@ import { createQuotationEvent } from "./quotation.events.js";
 import { QuotationRepository } from "./quotation.repository.js";
 import type { QuotationLineItemInput, QuotationSavePayload } from "./quotation.types.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
-import { formatBillingDocumentNumber, nextBillingDocumentNumber } from "../settings/settings.types.js";
+import {
+  formatBillingDocumentNumber,
+  nextBillingDocumentNumber
+} from "../settings/settings.types.js";
 
 export class QuotationService {
   constructor(
@@ -15,7 +18,7 @@ export class QuotationService {
     private readonly settings = new BillingSettingsRepository(),
     private readonly sales = new SalesService(),
     private readonly events: EventPublisher = new InMemoryEventPublisher(),
-    private readonly queue: QueueAdapter = new InMemoryQueueAdapter(),
+    private readonly queue: QueueAdapter = new InMemoryQueueAdapter()
   ) {}
 
   async list(databaseName: string) {
@@ -31,11 +34,14 @@ export class QuotationService {
     const numbering = billingSettings.numbering.quotation;
     const generatedNumber = formatBillingDocumentNumber(numbering);
     const enteredNumber = input.quotationNumber.trim();
-    const generated = numbering.automatic && (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
+    const generated =
+      numbering.automatic &&
+      (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
     const normalizedInput = enteredNumber ? input : { ...input, quotationNumber: generatedNumber };
     const payload = normalizeInput(normalizedInput);
     const existing = await this.repository.findByNumber(databaseName, payload.quotationNumber);
-    if (existing) throw AppError.conflict("Quotation number already exists. Enter a unique quotation number.");
+    if (existing)
+      throw AppError.conflict("Quotation number already exists. Enter a unique quotation number.");
     const quotation = await this.repository.create(databaseName, payload);
     const nextNumber = nextBillingDocumentNumber(numbering, payload.quotationNumber);
     if (numbering.automatic && (generated || nextNumber > numbering.nextNumber)) {
@@ -57,7 +63,8 @@ export class QuotationService {
     this.assertDraft(current.status, "update");
     const payload = normalizeInput(input);
     const duplicate = await this.repository.findByNumber(databaseName, payload.quotationNumber);
-    if (duplicate && duplicate.id !== id) throw AppError.conflict("Quotation number already exists. Enter a unique quotation number.");
+    if (duplicate && duplicate.id !== id)
+      throw AppError.conflict("Quotation number already exists. Enter a unique quotation number.");
     const quotation = await this.repository.update(databaseName, id, payload);
     if (quotation) await this.publish("updated", quotation, databaseName);
     return quotation;
@@ -84,8 +91,10 @@ export class QuotationService {
   async revoke(databaseName: string, id: string) {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
-    if (current.generatedSalesInvoiceNo) throw AppError.conflict("An invoiced quotation cannot be revoked.");
-    if (current.status === "draft") throw AppError.conflict("A draft quotation does not need to be revoked.");
+    if (current.generatedSalesInvoiceNo)
+      throw AppError.conflict("An invoiced quotation cannot be revoked.");
+    if (current.status === "draft")
+      throw AppError.conflict("A draft quotation does not need to be revoked.");
     const quotation = await this.repository.setStatus(databaseName, id, "draft");
     if (quotation) await this.publish("updated", quotation, databaseName);
     return quotation;
@@ -95,7 +104,8 @@ export class QuotationService {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
     if (current.status === "cancelled") throw AppError.conflict("Quotation is already cancelled.");
-    if (current.generatedSalesInvoiceNo) throw AppError.conflict("A converted quotation cannot be cancelled.");
+    if (current.generatedSalesInvoiceNo)
+      throw AppError.conflict("A converted quotation cannot be cancelled.");
     const quotation = await this.repository.setStatus(databaseName, id, "cancelled");
     if (quotation) await this.publish("cancelled", quotation, databaseName);
     return quotation;
@@ -104,8 +114,12 @@ export class QuotationService {
   async convertToSale(databaseName: string, id: string) {
     const quotation = await this.repository.get(databaseName, id);
     if (!quotation) return null;
-    if (quotation.status === "cancelled") throw AppError.conflict("A cancelled quotation cannot be converted.");
-    if (quotation.generatedSalesInvoiceNo) throw AppError.conflict(`Quotation is already converted to ${quotation.generatedSalesInvoiceNo}.`);
+    if (quotation.status === "cancelled")
+      throw AppError.conflict("A cancelled quotation cannot be converted.");
+    if (quotation.generatedSalesInvoiceNo)
+      throw AppError.conflict(
+        `Quotation is already converted to ${quotation.generatedSalesInvoiceNo}.`
+      );
 
     const billingSettings = await this.settings.getBillingSettings(databaseName);
     const salesNumbering = billingSettings.numbering.sales;
@@ -127,23 +141,27 @@ export class QuotationService {
         rate: item.rate,
         size: item.size,
         taxRate: item.taxRate,
-        unit: item.unit,
+        unit: item.unit
       })),
       notes: quotation.notes,
       roundOff: quotation.roundOff,
       shippingAddress: quotation.shippingAddress,
-      status: "draft",
+      status: "draft"
     });
     if (!salesNumbering.automatic) {
       await this.settings.saveBillingSettings(databaseName, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
-          sales: { ...salesNumbering, nextNumber: salesNumbering.nextNumber + 1 },
-        },
+          sales: { ...salesNumbering, nextNumber: salesNumbering.nextNumber + 1 }
+        }
       });
     }
-    const converted = await this.repository.setGeneratedSalesInvoice(databaseName, id, sale.invoiceNumber);
+    const converted = await this.repository.setGeneratedSalesInvoice(
+      databaseName,
+      id,
+      sale.invoiceNumber
+    );
     if (!converted) throw AppError.notFound("Quotation not found.");
     await this.publish("converted", converted, databaseName, sale.invoiceNumber);
     return { quotation: converted, sale };
@@ -153,9 +171,14 @@ export class QuotationService {
     const uniqueIds = Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
     if (!uniqueIds.length) throw AppError.conflict("Select at least one quotation.");
 
-    const quotations = await Promise.all(uniqueIds.map((id) => this.repository.get(databaseName, id)));
-    if (quotations.some((quotation) => !quotation)) throw AppError.notFound("One or more quotations were not found.");
-    const selected = quotations.filter((quotation): quotation is NonNullable<typeof quotation> => Boolean(quotation));
+    const quotations = await Promise.all(
+      uniqueIds.map((id) => this.repository.get(databaseName, id))
+    );
+    if (quotations.some((quotation) => !quotation))
+      throw AppError.notFound("One or more quotations were not found.");
+    const selected = quotations.filter((quotation): quotation is NonNullable<typeof quotation> =>
+      Boolean(quotation)
+    );
     if (!selected.length) throw AppError.notFound("One or more quotations were not found.");
     const first = selected[0]!;
     const contactKey = quotationContactKey(first);
@@ -164,8 +187,14 @@ export class QuotationService {
       throw AppError.conflict("Selected quotations must belong to the same contact.");
     }
     for (const quotation of selected) {
-      if (quotation.status === "cancelled") throw AppError.conflict(`Cancelled quotation ${quotation.quotationNumber} cannot be invoiced.`);
-      if (quotation.generatedSalesInvoiceNo) throw AppError.conflict(`Quotation ${quotation.quotationNumber} is already invoiced by ${quotation.generatedSalesInvoiceNo}.`);
+      if (quotation.status === "cancelled")
+        throw AppError.conflict(
+          `Cancelled quotation ${quotation.quotationNumber} cannot be invoiced.`
+        );
+      if (quotation.generatedSalesInvoiceNo)
+        throw AppError.conflict(
+          `Quotation ${quotation.quotationNumber} is already invoiced by ${quotation.generatedSalesInvoiceNo}.`
+        );
     }
 
     const billingSettings = await this.settings.getBillingSettings(databaseName);
@@ -179,25 +208,33 @@ export class QuotationService {
       invoiceNumber: formatBillingDocumentNumber(salesNumbering),
       issuedOn: new Date().toISOString().slice(0, 10),
       items: mergeQuotationItems(selected),
-      notes: selected.map((quotation) => quotation.notes).filter(Boolean).join("\n"),
+      notes: selected
+        .map((quotation) => quotation.notes)
+        .filter(Boolean)
+        .join("\n"),
       roundOff: selected.reduce((sum, quotation) => sum + quotation.roundOff, 0),
       shippingAddress: first.shippingAddress,
-      status: "draft",
+      status: "draft"
     });
     if (!salesNumbering.automatic) {
       await this.settings.saveBillingSettings(databaseName, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
-          sales: { ...salesNumbering, nextNumber: salesNumbering.nextNumber + 1 },
-        },
+          sales: { ...salesNumbering, nextNumber: salesNumbering.nextNumber + 1 }
+        }
       });
     }
 
     const converted = [];
     for (const quotation of selected) {
-      const updated = await this.repository.setGeneratedSalesInvoice(databaseName, quotation.id, sale.invoiceNumber);
-      if (!updated) throw AppError.notFound(`Quotation ${quotation.quotationNumber} was not found.`);
+      const updated = await this.repository.setGeneratedSalesInvoice(
+        databaseName,
+        quotation.id,
+        sale.invoiceNumber
+      );
+      if (!updated)
+        throw AppError.notFound(`Quotation ${quotation.quotationNumber} was not found.`);
       await this.publish("converted", updated, databaseName, sale.invoiceNumber);
       converted.push(updated);
     }
@@ -211,25 +248,39 @@ export class QuotationService {
     }
   }
 
-  private async publish(action: "created" | "updated" | "confirmed" | "cancelled" | "converted", quotation: { id: string; status: QuotationSavePayload["status"] }, databaseName: string, salesInvoiceNo?: string) {
-    const event = createQuotationEvent(action, {
-      id: quotation.id,
-      status: quotation.status,
-      ...(salesInvoiceNo ? { salesInvoiceNo } : {}),
-    }, databaseName);
+  private async publish(
+    action: "created" | "updated" | "confirmed" | "cancelled" | "converted",
+    quotation: { id: string; status: QuotationSavePayload["status"] },
+    databaseName: string,
+    salesInvoiceNo?: string
+  ) {
+    const event = createQuotationEvent(
+      action,
+      {
+        id: quotation.id,
+        status: quotation.status,
+        ...(salesInvoiceNo ? { salesInvoiceNo } : {})
+      },
+      databaseName
+    );
     await this.events.publish(event);
     await this.queue.enqueue("billing.quotation", {
       idempotencyKey: `${event.eventName}:${quotation.id}:${event.occurredAt}`,
-      jobName: action === "confirmed" || action === "converted" ? "quotation.confirmation-sync" : "quotation.accounts-preview",
+      jobName:
+        action === "confirmed" || action === "converted"
+          ? "quotation.confirmation-sync"
+          : "quotation.accounts-preview",
       payload: event.payload,
       sourceModule: "billing.quotation",
-      tenantId: databaseName,
+      tenantId: databaseName
     });
   }
 }
 
 function normalizeInput(input: QuotationSavePayload): QuotationSavePayload {
-  const items = input.items.map(normalizeItem).filter((item) => item.productName.length > 0 && item.quantity > 0);
+  const items = input.items
+    .map(normalizeItem)
+    .filter((item) => item.productName.length > 0 && item.quantity > 0);
   if (!input.customerName.trim()) throw new Error("Customer name is required.");
   if (!input.quotationNumber.trim()) throw new Error("Quotation number is required.");
   if (!input.date.trim()) throw new Error("Quotation date is required.");
@@ -247,7 +298,7 @@ function normalizeInput(input: QuotationSavePayload): QuotationSavePayload {
     status: input.status,
     taxType: input.taxType,
     terms: input.terms.trim(),
-    workOrderNo: input.workOrderNo.trim(),
+    workOrderNo: input.workOrderNo.trim()
   };
 }
 
@@ -263,7 +314,7 @@ function normalizeItem(item: QuotationLineItemInput): QuotationLineItemInput {
     rate: roundMoney(Number(item.rate) || 0),
     size: item.size.trim(),
     taxRate: roundMoney(Number(item.taxRate) || 0),
-    unit: item.unit.trim().toUpperCase() || "NOS",
+    unit: item.unit.trim().toUpperCase() || "NOS"
   };
 }
 
@@ -271,7 +322,9 @@ function quotationContactKey(quotation: { customerName: string }) {
   return quotation.customerName.trim().toLowerCase();
 }
 
-function mergeQuotationItems(quotations: Array<{ items: QuotationLineItemInput[] }>): SaleLineItemInput[] {
+function mergeQuotationItems(
+  quotations: Array<{ items: QuotationLineItemInput[] }>
+): SaleLineItemInput[] {
   const merged = new Map<string, SaleLineItemInput>();
   for (const quotation of quotations) {
     for (const item of quotation.items) {
@@ -285,9 +338,25 @@ function mergeQuotationItems(quotations: Array<{ items: QuotationLineItemInput[]
         rate: item.rate,
         size: item.size,
         taxRate: item.taxRate,
-        unit: item.unit,
+        unit: item.unit
       } satisfies SaleLineItemInput;
-      const key = [normalized.description, normalized.hsnCode, normalized.colour, normalized.dcNo, normalized.poNo, normalized.size, normalized.unit, normalized.rate, normalized.taxRate].map((value) => String(value ?? "").trim().toLowerCase()).join("|");
+      const key = [
+        normalized.description,
+        normalized.hsnCode,
+        normalized.colour,
+        normalized.dcNo,
+        normalized.poNo,
+        normalized.size,
+        normalized.unit,
+        normalized.rate,
+        normalized.taxRate
+      ]
+        .map((value) =>
+          String(value ?? "")
+            .trim()
+            .toLowerCase()
+        )
+        .join("|");
       const existing = merged.get(key);
       if (existing) existing.quantity += normalized.quantity;
       else merged.set(key, { ...normalized });

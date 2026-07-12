@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { monthsDefinition } from "./months.definition";
-export function useMonthsQuery() { return useCommonMasterQuery(monthsDefinition.key, monthsDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listMonths } from "./months.services";
+export function useMonthsQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listMonths(path), queryKey: ["core", "common", key] });
+}

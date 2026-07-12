@@ -8,7 +8,8 @@ export const tenantMigration = {
 
 export const tenantRuntimeMigrations = [
   {
-    description: "Tenant runtime foundation tables, module settings, identity/access, and tenant migration ledger.",
+    description:
+      "Tenant runtime foundation tables, module settings, identity/access, and tenant migration ledger.",
     name: "001_tenant_foundation",
     statements: [
       "RENAME legacy tenant_* tables to module-owned names when present",
@@ -146,8 +147,18 @@ export async function migrateTenantRuntimeModule(database: Kysely<TenantDatabase
     .addPrimaryKeyConstraint("user_roles_pk", ["user_id", "role_id"])
     .execute();
 
-  await database.insertInto("schema_migrations").ignore().values([{ name: "001_tenant_foundation" }, { name: "002_runtime_table_names" }, { name: "004_flatten_access_table_names" }]).execute();
-  console.info("[database] tenant runtime migrations applied through: 004_flatten_access_table_names");
+  await database
+    .insertInto("schema_migrations")
+    .ignore()
+    .values([
+      { name: "001_tenant_foundation" },
+      { name: "002_runtime_table_names" },
+      { name: "004_flatten_access_table_names" }
+    ])
+    .execute();
+  console.info(
+    "[database] tenant runtime migrations applied through: 004_flatten_access_table_names"
+  );
 }
 
 const tenantRuntimeTableRenames = [
@@ -167,7 +178,7 @@ const tenantRuntimeTableRenames = [
 
 async function renameLegacyTenantRuntimeTables(database: Kysely<TenantDatabase>) {
   for (const [legacyName, currentName] of tenantRuntimeTableRenames) {
-    if (await tableExists(database, legacyName) && !(await tableExists(database, currentName))) {
+    if ((await tableExists(database, legacyName)) && !(await tableExists(database, currentName))) {
       await sql.raw(`RENAME TABLE \`${legacyName}\` TO \`${currentName}\``).execute(database);
     }
   }
@@ -188,34 +199,85 @@ async function ensureTenantColumns(database: Kysely<PlatformDatabase>) {
   await addColumnIfMissing(database, "tenants", "mobile", "VARCHAR(40) NULL");
   await addColumnIfMissing(database, "tenants", "slug", "VARCHAR(120) NULL");
   await addColumnIfMissing(database, "tenants", "status", "VARCHAR(32) NOT NULL DEFAULT 'active'");
-  await addColumnIfMissing(database, "tenants", "db_type", "VARCHAR(32) NOT NULL DEFAULT 'mariadb'");
-  await addColumnIfMissing(database, "tenants", "db_host", "VARCHAR(180) NOT NULL DEFAULT '127.0.0.1'");
+  await addColumnIfMissing(
+    database,
+    "tenants",
+    "db_type",
+    "VARCHAR(32) NOT NULL DEFAULT 'mariadb'"
+  );
+  await addColumnIfMissing(
+    database,
+    "tenants",
+    "db_host",
+    "VARCHAR(180) NOT NULL DEFAULT '127.0.0.1'"
+  );
   await addColumnIfMissing(database, "tenants", "db_port", "INT NOT NULL DEFAULT 3306");
   await addColumnIfMissing(database, "tenants", "db_name", "VARCHAR(120) NULL");
   await addColumnIfMissing(database, "tenants", "db_user", "VARCHAR(120) NOT NULL DEFAULT 'root'");
-  await addColumnIfMissing(database, "tenants", "db_secret_ref", "VARCHAR(180) NOT NULL DEFAULT 'DB_PASSWORD'");
+  await addColumnIfMissing(
+    database,
+    "tenants",
+    "db_secret_ref",
+    "VARCHAR(180) NOT NULL DEFAULT 'DB_PASSWORD'"
+  );
   await addColumnIfMissing(database, "tenants", "enabled_module_keys", "LONGTEXT NULL");
-  await addColumnIfMissing(database, "tenants", "default_landing_app", "VARCHAR(64) NOT NULL DEFAULT 'application'");
+  await addColumnIfMissing(
+    database,
+    "tenants",
+    "default_landing_app",
+    "VARCHAR(64) NOT NULL DEFAULT 'application'"
+  );
   await addColumnIfMissing(database, "tenants", "payload_settings", "LONGTEXT NULL");
   await addColumnIfMissing(database, "tenants", "storage_root", "VARCHAR(255) NOT NULL DEFAULT ''");
-  await addColumnIfMissing(database, "tenants", "storage_public_root", "VARCHAR(255) NOT NULL DEFAULT ''");
-  await addColumnIfMissing(database, "tenants", "storage_private_root", "VARCHAR(255) NOT NULL DEFAULT ''");
-  await addColumnIfMissing(database, "tenants", "created_at", "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
-  await addColumnIfMissing(database, "tenants", "updated_at", "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP");
+  await addColumnIfMissing(
+    database,
+    "tenants",
+    "storage_public_root",
+    "VARCHAR(255) NOT NULL DEFAULT ''"
+  );
+  await addColumnIfMissing(
+    database,
+    "tenants",
+    "storage_private_root",
+    "VARCHAR(255) NOT NULL DEFAULT ''"
+  );
+  await addColumnIfMissing(
+    database,
+    "tenants",
+    "created_at",
+    "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+  );
+  await addColumnIfMissing(
+    database,
+    "tenants",
+    "updated_at",
+    "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+  );
 }
 
-async function addColumnIfMissing(database: Kysely<PlatformDatabase>, tableName: string, columnName: string, definition: string) {
+async function addColumnIfMissing(
+  database: Kysely<PlatformDatabase>,
+  tableName: string,
+  columnName: string,
+  definition: string
+) {
   if (await columnExists(database, tableName, columnName)) {
     return;
   }
   try {
-    await sql.raw(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`).execute(database);
+    await sql
+      .raw(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`)
+      .execute(database);
   } catch (error) {
     if (!isDuplicateColumnError(error)) throw error;
   }
 }
 
-async function columnExists(database: Kysely<PlatformDatabase>, tableName: string, columnName: string) {
+async function columnExists(
+  database: Kysely<PlatformDatabase>,
+  tableName: string,
+  columnName: string
+) {
   const result = await sql<{ column_count: number | string }>`
     SELECT COUNT(*) AS column_count
     FROM information_schema.COLUMNS
@@ -227,5 +289,11 @@ async function columnExists(database: Kysely<PlatformDatabase>, tableName: strin
 }
 
 function isDuplicateColumnError(error: unknown) {
-  return typeof error === "object" && error !== null && ("code" in error || "errno" in error) && ((error as { code?: string; errno?: number }).code === "ER_DUP_FIELDNAME" || (error as { code?: string; errno?: number }).errno === 1060);
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    ("code" in error || "errno" in error) &&
+    ((error as { code?: string; errno?: number }).code === "ER_DUP_FIELDNAME" ||
+      (error as { code?: string; errno?: number }).errno === 1060)
+  );
 }

@@ -23,22 +23,23 @@ export async function processDatabaseMaintenanceJob(payload: Record<string, unkn
     user: stringDetail(run.details.user) || env.DB_USER
   };
 
-  const result = run.operation === "restore"
-    ? await executeDatabaseRestore({
-        backupPath: await restoreBackupPath(repository, run),
-        liveRestoreConfirm: stringDetail(run.details.liveRestoreConfirm),
-        operation: run.operation,
-        restoreMode: stringDetail(run.details.restoreMode),
-        runId: run.id,
-        scope: run.scope,
-        target
-      })
-    : await executeDatabaseBackup({
-        operation: run.operation,
-        runId: run.id,
-        scope: run.scope,
-        target
-      });
+  const result =
+    run.operation === "restore"
+      ? await executeDatabaseRestore({
+          backupPath: await restoreBackupPath(repository, run),
+          liveRestoreConfirm: stringDetail(run.details.liveRestoreConfirm),
+          operation: run.operation,
+          restoreMode: stringDetail(run.details.restoreMode),
+          runId: run.id,
+          scope: run.scope,
+          target
+        })
+      : await executeDatabaseBackup({
+          operation: run.operation,
+          runId: run.id,
+          scope: run.scope,
+          target
+        });
 
   const details = {
     ...run.details,
@@ -57,13 +58,20 @@ export async function processDatabaseMaintenanceJob(payload: Record<string, unkn
   };
 }
 
-async function restoreBackupPath(repository: DatabaseMaintenanceRepository, run: NonNullable<Awaited<ReturnType<DatabaseMaintenanceRepository["findRun"]>>>) {
+async function restoreBackupPath(
+  repository: DatabaseMaintenanceRepository,
+  run: NonNullable<Awaited<ReturnType<DatabaseMaintenanceRepository["findRun"]>>>
+) {
   const explicitPath = stringDetail(run.details.backupPath) || stringDetail(run.details.filePath);
   if (explicitPath) return explicitPath;
   const backupId = stringDetail(run.details.backupId);
   const latest = await repository.latestCompletedBackup(run.scope, run.targetKey);
   if (!latest) {
-    throw new Error(backupId ? `Backup ${backupId} was not found for restore.` : "No completed backup is available for restore.");
+    throw new Error(
+      backupId
+        ? `Backup ${backupId} was not found for restore.`
+        : "No completed backup is available for restore."
+    );
   }
   const latestBackupId = stringDetail(latest.details.backupId);
   if (backupId && latestBackupId !== backupId) {

@@ -8,9 +8,17 @@ const toneClass: Record<StatusTone, string> = {
   red: "bg-red-100 text-red-800"
 };
 
-export function StatusBadge({ children, tone = "neutral" }: { children: string; tone?: StatusTone }) {
+export function StatusBadge({
+  children,
+  tone = "neutral"
+}: {
+  children: string;
+  tone?: StatusTone;
+}) {
   return (
-    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold leading-none ${toneClass[tone]}`}>
+    <span
+      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold leading-none ${toneClass[tone]}`}
+    >
       {children}
     </span>
   );

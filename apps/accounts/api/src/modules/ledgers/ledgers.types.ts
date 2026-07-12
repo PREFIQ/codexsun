@@ -54,4 +54,7 @@ export type LedgerSavePayload = {
   tallyLedgerName?: string | null;
 };
 
-export type LedgerLookup = Pick<Ledger, "classification" | "code" | "groupName" | "id" | "name" | "status">;
+export type LedgerLookup = Pick<
+  Ledger,
+  "classification" | "code" | "groupName" | "id" | "name" | "status"
+>;

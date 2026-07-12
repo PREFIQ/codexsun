@@ -81,4 +81,3 @@ ZERO should be:
 - Show source records behind financial summaries.
 - Prefer ranges and confidence notes for predictions.
 - Log important assistant actions.
-

@@ -9,7 +9,7 @@ export const quotationEvents = {
 export function createQuotationEvent(
   action: "created" | "updated" | "confirmed" | "cancelled" | "converted",
   payload: { id: string; status: QuotationStatus; salesInvoiceNo?: string },
-  databaseName: string,
+  databaseName: string
 ): DomainEvent<typeof payload & { action: typeof action }> {
   return {
     eventName: action === "confirmed" ? quotationEvents.confirmed : quotationEvents.changed,
@@ -17,6 +17,6 @@ export function createQuotationEvent(
     occurredAt: new Date().toISOString(),
     payload: { action, ...payload },
     sourceModule: "billing.quotation",
-    tenant: { tenantId: databaseName },
+    tenant: { tenantId: databaseName }
   };
 }

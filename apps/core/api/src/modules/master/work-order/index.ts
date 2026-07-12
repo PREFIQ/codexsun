@@ -1,4 +1,9 @@
-export { workOrderDefinition } from "./work-order.definition.js";
-export { WorkOrderRepository } from "./work-order.repository.js";
-export { WorkOrderService } from "./work-order.service.js";
-export type { WorkOrderRecord, WorkOrderSaveInput } from "./work-order.types.js";
+export { workOrderModule } from "./work-order.module.js";
+export { migrateWorkOrderModule } from "./work-order.migration.js";
+export { seedWorkOrderModule } from "./work-order.seed.js";
+export type {
+  WorkOrderListFilters,
+  WorkOrderRecord,
+  WorkOrderSaveInput,
+  WorkOrderStatus
+} from "./work-order.types.js";

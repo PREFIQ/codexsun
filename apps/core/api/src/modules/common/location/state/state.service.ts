@@ -49,7 +49,7 @@ export class StateService {
     return state;
   }
 
-  private async requireCountry(countryId: string) {
+  private async requireCountry(countryId: string | number) {
     if (!(await this.repository.countryExists(countryId))) {
       throw AppError.notFound("Country was not found.");
     }
@@ -68,7 +68,7 @@ export class StateService {
 
 function normalize(input: StateSavePayload): StateSavePayload {
   return {
-    countryId: String(Number(input.countryId)),
+    countryId: Number(input.countryId),
     name: input.name.trim(),
     sortOrder: Number.isFinite(input.sortOrder) ? Number(input.sortOrder) : 1000,
     status: input.status === "inactive" ? "inactive" : "active"

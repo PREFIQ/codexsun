@@ -5,9 +5,13 @@ export const ledgerEvents = {
   balanceRecalculated: "accounts.ledger.balance-recalculated"
 } as const;
 
-export function createLedgerEvent(action: "created" | "updated" | "balance-recalculated", ledger: Ledger) {
+export function createLedgerEvent(
+  action: "created" | "updated" | "balance-recalculated",
+  ledger: Ledger
+) {
   return {
-    name: action === "balance-recalculated" ? ledgerEvents.balanceRecalculated : ledgerEvents.changed,
+    name:
+      action === "balance-recalculated" ? ledgerEvents.balanceRecalculated : ledgerEvents.changed,
     occurredAt: new Date().toISOString(),
     payload: {
       action,

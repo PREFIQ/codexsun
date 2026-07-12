@@ -8,7 +8,11 @@ export const entitlementSeed = {
 };
 
 export async function seedEntitlementModule(db: Kysely<PlatformDatabase>) {
-  const plans = await db.selectFrom("plans").select(["id", "code"]).where("status", "=", "active").execute();
+  const plans = await db
+    .selectFrom("plans")
+    .select(["id", "code"])
+    .where("status", "=", "active")
+    .execute();
   const apps = await db
     .selectFrom("platform_apps")
     .select(["id", "module_key"])

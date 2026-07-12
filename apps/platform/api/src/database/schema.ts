@@ -2,7 +2,11 @@ import type { ColumnType, Generated } from "kysely";
 import type { PlatformAppId } from "../modules/app-registry/app-registry.types.js";
 import type { TenantStatus } from "../modules/tenant/tenant.types.js";
 
-export type TimestampColumn = ColumnType<Date, Date | string | undefined, Date | string | undefined>;
+export type TimestampColumn = ColumnType<
+  Date,
+  Date | string | undefined,
+  Date | string | undefined
+>;
 
 export type PlatformDatabase = {
   access_permissions: AccessPermissionsTable;

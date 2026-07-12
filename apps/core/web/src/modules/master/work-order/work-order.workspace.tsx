@@ -11,9 +11,17 @@ import { cn } from "@codexsun/ui/lib/utils";
 import { WorkOrderForm } from "./work-order.form";
 import { useWorkOrders } from "./work-order.hooks";
 import { WorkOrderList, isProtectedWorkOrder, workOrderColumns } from "./work-order.list";
-import { createWorkOrder, forceDeleteWorkOrder, setWorkOrderActive, updateWorkOrder } from "./work-order.services";
-import { workOrderDefinition } from "./work-order.definition";
-import type { WorkOrderRecord, WorkOrderSavePayload } from "./work-order.types";
+import {
+  createWorkOrder,
+  forceDeleteWorkOrder,
+  setWorkOrderActive,
+  updateWorkOrder
+} from "./work-order.services";
+import {
+  workOrderDefinition,
+  type WorkOrderRecord,
+  type WorkOrderSavePayload
+} from "./work-order.types";
 
 const workOrderFilterOptions = [
   { id: "all", label: "All work orders" },
@@ -31,38 +39,56 @@ export function WorkOrderWorkspace() {
   const [editing, setEditing] = useState<WorkOrderRecord | null | undefined>(undefined);
   const query = useWorkOrders(search);
   const save = useMutation({
-    mutationFn: (payload: WorkOrderSavePayload) => editing ? updateWorkOrder(editing.id, payload) : createWorkOrder(payload),
+    mutationFn: (payload: WorkOrderSavePayload) =>
+      editing ? updateWorkOrder(editing.id, payload) : createWorkOrder(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["core", "work-order", "list"] });
       toast.success("Work order saved");
       setEditing(undefined);
     },
-    onError: (error) => toast.error("Unable to save work order", {
-      description: error instanceof Error ? error.message : "Please try again."
-    })
+    onError: (error) =>
+      toast.error("Unable to save work order", {
+        description: error instanceof Error ? error.message : "Please try again."
+      })
   });
   const rowAction = useMutation({
-    mutationFn: ({ record, type }: { record: WorkOrderRecord; type: "delete" | "toggle" }) => type === "delete"
-      ? forceDeleteWorkOrder(record.id)
-      : setWorkOrderActive(record.id, !record.isActive),
+    mutationFn: ({ record, type }: { record: WorkOrderRecord; type: "delete" | "toggle" }) =>
+      type === "delete"
+        ? forceDeleteWorkOrder(record.id)
+        : setWorkOrderActive(record.id, !record.isActive),
     onSuccess: async (record, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["core", "work-order", "list"] });
-      toast.success(variables.type === "delete" ? "Work order force deleted" : "Work order status updated", { description: record.name });
+      toast.success(
+        variables.type === "delete" ? "Work order force deleted" : "Work order status updated",
+        { description: record.name }
+      );
     },
-    onError: (error) => toast.error("Unable to update work order", { description: error instanceof Error ? error.message : "Please try again." })
+    onError: (error) =>
+      toast.error("Unable to update work order", {
+        description: error instanceof Error ? error.message : "Please try again."
+      })
   });
   const rows = query.data ?? [];
-  const columnOptions = useMemo(() => workOrderColumns.map((column) => ({
-    checked: visibleColumns[column.id] ?? true,
-    id: column.id,
-    label: column.label,
-    onCheckedChange: (checked: boolean) => setVisibleColumns((current) => ({ ...current, [column.id]: checked }))
-  })), [visibleColumns]);
-  const filteredRows = useMemo(() => rows.filter((record) => {
-    if (statusFilter === "active") return record.isActive;
-    if (statusFilter === "inactive") return !record.isActive;
-    return true;
-  }), [rows, statusFilter]);
+  const columnOptions = useMemo(
+    () =>
+      workOrderColumns.map((column) => ({
+        checked: visibleColumns[column.id] ?? true,
+        id: column.id,
+        label: column.label,
+        onCheckedChange: (checked: boolean) =>
+          setVisibleColumns((current) => ({ ...current, [column.id]: checked }))
+      })),
+    [visibleColumns]
+  );
+  const filteredRows = useMemo(
+    () =>
+      rows.filter((record) => {
+        if (statusFilter === "active") return record.isActive;
+        if (statusFilter === "inactive") return !record.isActive;
+        return true;
+      }),
+    [rows, statusFilter]
+  );
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
   const currentPage = Math.min(page, totalPages);
   const pageRows = filteredRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
@@ -88,10 +114,18 @@ export function WorkOrderWorkspace() {
     <WorkspacePage
       title={workOrderDefinition.label}
       description={workOrderDefinition.description}
-      actions={<div className="flex gap-2">
-        <Button className="h-9 rounded-md" variant="outline" onClick={() => void query.refetch()}><RefreshCw className={cn("size-4", query.isFetching && "animate-spin")} />Refresh</Button>
-        <Button className="h-9 rounded-md" onClick={() => setEditing(null)}><Plus className="size-4" />New</Button>
-      </div>}
+      actions={
+        <div className="flex gap-2">
+          <Button className="h-9 rounded-md" variant="outline" onClick={() => void query.refetch()}>
+            <RefreshCw className={cn("size-4", query.isFetching && "animate-spin")} />
+            Refresh
+          </Button>
+          <Button className="h-9 rounded-md" onClick={() => setEditing(null)}>
+            <Plus className="size-4" />
+            New
+          </Button>
+        </div>
+      }
     >
       <WorkspaceFilters
         columnOptions={columnOptions}
@@ -101,14 +135,21 @@ export function WorkOrderWorkspace() {
         searchValue={search}
         onFilterValueChange={setStatusFilter}
         onSearchValueChange={setSearch}
-        onShowAllColumns={() => setVisibleColumns(Object.fromEntries(workOrderColumns.map((column) => [column.id, true])))}
+        onShowAllColumns={() =>
+          setVisibleColumns(Object.fromEntries(workOrderColumns.map((column) => [column.id, true])))
+        }
       />
       <WorkOrderList
         loading={query.isFetching && !query.data}
         records={pageRows}
         visibleColumns={visibleColumns}
-        onEdit={(record) => { if (!isProtectedWorkOrder(record)) setEditing(record); }}
-        onForceDelete={(record) => { if (window.confirm(`Force delete ${record.name}? This cannot be undone.`)) rowAction.mutate({ record, type: "delete" }); }}
+        onEdit={(record) => {
+          if (!isProtectedWorkOrder(record)) setEditing(record);
+        }}
+        onForceDelete={(record) => {
+          if (window.confirm(`Force delete ${record.name}? This cannot be undone.`))
+            rowAction.mutate({ record, type: "delete" });
+        }}
         onToggle={(record) => rowAction.mutate({ record, type: "toggle" })}
       />
       <WorkspacePagination
@@ -121,7 +162,10 @@ export function WorkOrderWorkspace() {
         onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
         onPageChange={setPage}
         onPreviousPage={() => setPage((value) => Math.max(1, value - 1))}
-        onRowsPerPageChange={(value) => { setRowsPerPage(value); setPage(1); }}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(1);
+        }}
       />
     </WorkspacePage>
   );

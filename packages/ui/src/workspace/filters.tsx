@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { Check, Columns3, Filter, Search } from "lucide-react"
-import type { ChangeEvent, ReactNode } from "react"
-import { Button } from "../components/button"
+import { Check, Columns3, Filter, Search } from "lucide-react";
+import type { ChangeEvent, ReactNode } from "react";
+import { Button } from "../components/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -10,11 +10,11 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../components/dropdown-menu"
-import { Input } from "../components/input"
-import { cn } from "../lib/utils"
-import type { WorkspaceColumnOption, WorkspaceFilterOption } from "./types"
+  DropdownMenuTrigger
+} from "../components/dropdown-menu";
+import { Input } from "../components/input";
+import { cn } from "../lib/utils";
+import type { WorkspaceColumnOption, WorkspaceFilterOption } from "./types";
 
 export function WorkspaceFilters({
   className,
@@ -27,25 +27,25 @@ export function WorkspaceFilters({
   onShowAllColumns,
   searchPlaceholder,
   searchValue,
-  toolbarAction,
+  toolbarAction
 }: {
-  className?: string
-  columnOptions?: WorkspaceColumnOption[]
-  filterOptions?: WorkspaceFilterOption[]
-  filterValue?: string
-  onColumnToggle?: (id: string, checked: boolean) => void
-  onFilterValueChange?: (value: string) => void
-  onSearchValueChange: (value: string) => void
-  onShowAllColumns?: () => void
-  searchPlaceholder?: string
-  searchValue: string
-  toolbarAction?: ReactNode
+  className?: string;
+  columnOptions?: WorkspaceColumnOption[];
+  filterOptions?: WorkspaceFilterOption[];
+  filterValue?: string;
+  onColumnToggle?: (id: string, checked: boolean) => void;
+  onFilterValueChange?: (value: string) => void;
+  onSearchValueChange: (value: string) => void;
+  onShowAllColumns?: () => void;
+  searchPlaceholder?: string;
+  searchValue: string;
+  toolbarAction?: ReactNode;
 }) {
   return (
     <div
       className={cn(
         "flex flex-col gap-2 rounded-md border border-border/70 bg-card/95 p-2 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-3",
-        className,
+        className
       )}
     >
       <div className="relative max-w-xl flex-1">
@@ -54,35 +54,48 @@ export function WorkspaceFilters({
           className="h-8 rounded-md border-border/80 bg-white pl-9 text-sm shadow-none"
           {...(searchPlaceholder ? { placeholder: searchPlaceholder } : {})}
           value={searchValue}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => onSearchValueChange(event.target.value)}
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            onSearchValueChange(event.target.value)
+          }
         />
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2.5 self-end sm:self-auto">
         {toolbarAction}
         {filterOptions && filterOptions.length > 0 && filterValue && onFilterValueChange ? (
-          <FilterMenu filterOptions={filterOptions} filterValue={filterValue} onFilterValueChange={onFilterValueChange} />
+          <FilterMenu
+            filterOptions={filterOptions}
+            filterValue={filterValue}
+            onFilterValueChange={onFilterValueChange}
+          />
         ) : null}
         {columnOptions && columnOptions.length > 0 ? (
-          <ColumnMenu columnOptions={columnOptions} {...(onShowAllColumns ? { onShowAllColumns } : {})} />
+          <ColumnMenu
+            columnOptions={columnOptions}
+            {...(onShowAllColumns ? { onShowAllColumns } : {})}
+          />
         ) : null}
       </div>
     </div>
-  )
+  );
 }
 
 function FilterMenu({
   filterOptions,
   filterValue,
-  onFilterValueChange,
+  onFilterValueChange
 }: {
-  filterOptions: WorkspaceFilterOption[]
-  filterValue: string
-  onFilterValueChange: (value: string) => void
+  filterOptions: WorkspaceFilterOption[];
+  filterValue: string;
+  onFilterValueChange: (value: string) => void;
 }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="h-8 rounded-md border-border/80 bg-white px-3 text-sm shadow-none" type="button" variant="outline">
+        <Button
+          className="h-8 rounded-md border-border/80 bg-white px-3 text-sm shadow-none"
+          type="button"
+          variant="outline"
+        >
           <Filter className="size-4" />
           Filters
         </Button>
@@ -101,7 +114,7 @@ function FilterMenu({
         <DropdownMenuSeparator />
         <div className="p-2">
           {filterOptions.map((option) => {
-            const selected = filterValue === option.id
+            const selected = filterValue === option.id;
             return (
               <DropdownMenuItem
                 key={option.id}
@@ -113,25 +126,29 @@ function FilterMenu({
                 </span>
                 <span>{option.label}</span>
               </DropdownMenuItem>
-            )
+            );
           })}
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
 
 function ColumnMenu({
   columnOptions,
-  onShowAllColumns,
+  onShowAllColumns
 }: {
-  columnOptions: WorkspaceColumnOption[]
-  onShowAllColumns?: () => void
+  columnOptions: WorkspaceColumnOption[];
+  onShowAllColumns?: () => void;
 }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="h-8 rounded-md border-border/80 bg-white px-3 text-sm shadow-none" type="button" variant="outline">
+        <Button
+          className="h-8 rounded-md border-border/80 bg-white px-3 text-sm shadow-none"
+          type="button"
+          variant="outline"
+        >
           <Columns3 className="size-4" />
           Columns
         </Button>
@@ -165,5 +182,5 @@ function ColumnMenu({
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

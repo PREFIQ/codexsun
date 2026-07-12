@@ -15,67 +15,136 @@ const lookupPaths = {
   units: "/core/common/products/units",
   taxes: "/core/common/products/taxes",
   sizes: "/core/common/products/sizes",
-  workOrders: "/core/master/work-orders",
+  workOrders: "/core/master/work-orders"
 } as const;
 
 export type ExportSalesLookupKind = keyof typeof lookupPaths;
 export type ExportSalesLocationKind = "cities" | "districts" | "pincodes" | "states";
 
 export class ExportSalesLookupService {
-  async list(kind: ExportSalesLookupKind, headers: { authorization?: string | string[]; tenantId?: string | string[] }) {
+  async list(
+    kind: ExportSalesLookupKind,
+    headers: { authorization?: string | string[]; tenantId?: string | string[] }
+  ) {
     const response = await this.request(lookupPaths[kind], headers);
-    const payload = await response.json() as { data?: unknown; error?: { message?: string }; success?: boolean };
-    if (!response.ok || payload.success === false) throw new Error(payload.error?.message || "ExportSales lookup could not be loaded.");
+    const payload = (await response.json()) as {
+      data?: unknown;
+      error?: { message?: string };
+      success?: boolean;
+    };
+    if (!response.ok || payload.success === false)
+      throw new Error(payload.error?.message || "ExportSales lookup could not be loaded.");
     return payload.data ?? [];
   }
 
-  async createContact(headers: { authorization?: string | string[]; tenantId?: string | string[] }, input: Record<string, unknown>) {
-    const response = await this.request(lookupPaths.contacts, headers, { body: JSON.stringify(input), method: "POST" });
+  async createContact(
+    headers: { authorization?: string | string[]; tenantId?: string | string[] },
+    input: Record<string, unknown>
+  ) {
+    const response = await this.request(lookupPaths.contacts, headers, {
+      body: JSON.stringify(input),
+      method: "POST"
+    });
     return responseData(response);
   }
 
-  async updateContact(headers: { authorization?: string | string[]; tenantId?: string | string[] }, id: string, input: Record<string, unknown>) {
-    const response = await this.request(`${lookupPaths.contacts}/${encodeURIComponent(id)}`, headers, { body: JSON.stringify(input), method: "PUT" });
+  async updateContact(
+    headers: { authorization?: string | string[]; tenantId?: string | string[] },
+    id: string,
+    input: Record<string, unknown>
+  ) {
+    const response = await this.request(
+      `${lookupPaths.contacts}/${encodeURIComponent(id)}`,
+      headers,
+      { body: JSON.stringify(input), method: "PUT" }
+    );
     return responseData(response);
   }
 
-  async createLocation(kind: ExportSalesLocationKind, headers: { authorization?: string | string[]; tenantId?: string | string[] }, input: Record<string, unknown>) {
-    const response = await this.request(lookupPaths[kind], headers, { body: JSON.stringify(input), method: "POST" });
+  async createLocation(
+    kind: ExportSalesLocationKind,
+    headers: { authorization?: string | string[]; tenantId?: string | string[] },
+    input: Record<string, unknown>
+  ) {
+    const response = await this.request(lookupPaths[kind], headers, {
+      body: JSON.stringify(input),
+      method: "POST"
+    });
     return responseData(response);
   }
 
-  async createAddressType(headers: { authorization?: string | string[]; tenantId?: string | string[] }, input: Record<string, unknown>) {
-    const response = await this.request(lookupPaths.addressTypes, headers, { body: JSON.stringify(input), method: "POST" });
+  async createAddressType(
+    headers: { authorization?: string | string[]; tenantId?: string | string[] },
+    input: Record<string, unknown>
+  ) {
+    const response = await this.request(lookupPaths.addressTypes, headers, {
+      body: JSON.stringify(input),
+      method: "POST"
+    });
     return responseData(response);
   }
 
-  async createLookup(kind: "colours" | "products" | "sizes" | "workOrders" | "productCategories" | "hsnCodes" | "units" | "taxes", headers: { authorization?: string | string[]; tenantId?: string | string[] }, input: Record<string, unknown>) {
-    const response = await this.request(lookupPaths[kind], headers, { body: JSON.stringify(input), method: "POST" });
+  async createLookup(
+    kind:
+      | "colours"
+      | "products"
+      | "sizes"
+      | "workOrders"
+      | "productCategories"
+      | "hsnCodes"
+      | "units"
+      | "taxes",
+    headers: { authorization?: string | string[]; tenantId?: string | string[] },
+    input: Record<string, unknown>
+  ) {
+    const response = await this.request(lookupPaths[kind], headers, {
+      body: JSON.stringify(input),
+      method: "POST"
+    });
     return responseData(response);
   }
 
-  async updateLookup(kind: "products" | "workOrders", headers: { authorization?: string | string[]; tenantId?: string | string[] }, id: string, input: Record<string, unknown>) {
-    const response = await this.request(`${lookupPaths[kind]}/${encodeURIComponent(id)}`, headers, { body: JSON.stringify(input), method: "PUT" });
+  async updateLookup(
+    kind: "products" | "workOrders",
+    headers: { authorization?: string | string[]; tenantId?: string | string[] },
+    id: string,
+    input: Record<string, unknown>
+  ) {
+    const response = await this.request(`${lookupPaths[kind]}/${encodeURIComponent(id)}`, headers, {
+      body: JSON.stringify(input),
+      method: "PUT"
+    });
     return responseData(response);
   }
 
-  private request(path: string, headers: { authorization?: string | string[]; tenantId?: string | string[] }, init?: RequestInit) {
+  private request(
+    path: string,
+    headers: { authorization?: string | string[]; tenantId?: string | string[] },
+    init?: RequestInit
+  ) {
     return fetch(`${env.CORE_API_URL}${path}`, {
       ...init,
       headers: {
         Accept: "application/json",
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
-        ...(headerValue(headers.authorization) ? { Authorization: headerValue(headers.authorization)! } : {}),
-        ...(headerValue(headers.tenantId) ? { "x-tenant-id": headerValue(headers.tenantId)! } : {}),
-      },
+        ...(headerValue(headers.authorization)
+          ? { Authorization: headerValue(headers.authorization)! }
+          : {}),
+        ...(headerValue(headers.tenantId) ? { "x-tenant-id": headerValue(headers.tenantId)! } : {})
+      }
     });
   }
 }
 
 async function responseData(response: Response) {
-    const payload = await response.json() as { data?: unknown; error?: { message?: string }; success?: boolean };
-    if (!response.ok || payload.success === false) throw new Error(payload.error?.message || "ExportSales lookup could not be loaded.");
-    return payload.data ?? [];
+  const payload = (await response.json()) as {
+    data?: unknown;
+    error?: { message?: string };
+    success?: boolean;
+  };
+  if (!response.ok || payload.success === false)
+    throw new Error(payload.error?.message || "ExportSales lookup could not be loaded.");
+  return payload.data ?? [];
 }
 
 export function isExportSalesLookupKind(value: string): value is ExportSalesLookupKind {

@@ -11,9 +11,7 @@ if (existsSync(envPath)) {
   process.loadEnvFile(envPath);
 }
 
-const client =
-  process.env.MARIADB_CLIENT ||
-  "C:\\Program Files\\MariaDB 12.3\\bin\\mariadb.exe";
+const client = process.env.MARIADB_CLIENT || "C:\\Program Files\\MariaDB 12.3\\bin\\mariadb.exe";
 
 const adminUser = requiredEnv("DB_ADMIN_USER");
 const adminPassword = process.env.DB_ADMIN_PASSWORD || "";
@@ -25,7 +23,9 @@ const masterDb = requiredEnv("DB_MASTER_NAME");
 const tenantDb = requiredEnv("DEFAULT_TENANT_DB_NAME");
 
 if (!existsSync(client)) {
-  throw new Error(`MariaDB client was not found at ${client}. Set MARIADB_CLIENT to the full mariadb.exe path.`);
+  throw new Error(
+    `MariaDB client was not found at ${client}. Set MARIADB_CLIENT to the full mariadb.exe path.`
+  );
 }
 
 const sql = `
@@ -57,12 +57,16 @@ execFileSync(client, args, {
   stdio: "inherit"
 });
 
-console.log(`Created MariaDB app user ${appUser}. Set DB_USER=${appUser} and DB_PASSWORD=${appPassword}.`);
+console.log(
+  `Created MariaDB app user ${appUser}. Set DB_USER=${appUser} and DB_PASSWORD=${appPassword}.`
+);
 
 function requiredEnv(name) {
   const value = process.env[name]?.trim();
   if (!value) {
-    throw new Error(`Missing ${name}. Create .env from .env.example and set ${name} before running this helper.`);
+    throw new Error(
+      `Missing ${name}. Create .env from .env.example and set ${name} before running this helper.`
+    );
   }
 
   return value;

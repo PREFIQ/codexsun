@@ -1,6 +1,12 @@
 import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
 import type { HealthCheck } from "@codexsun/framework/health";
-import { bootstrapCoreDatabase, bootstrapRegisteredCoreDatabases, closeCoreDatabase, resolveCoreDatabaseName, runWithCoreDatabase } from "./database/core-database.js";
+import {
+  bootstrapCoreDatabase,
+  bootstrapRegisteredCoreDatabases,
+  closeCoreDatabase,
+  resolveCoreDatabaseName,
+  runWithCoreDatabase
+} from "./database/core-database.js";
 import { env } from "./env.js";
 import { commonModule } from "./modules/common/index.js";
 import { locationModules } from "./modules/common/location/location.module.js";
@@ -26,7 +32,12 @@ export async function createApp() {
       name: "core-api",
       check: () => ({
         details: {
-          modules: [commonModule.key, organisationModule.key, masterModule.key, ...locationModules.map((module) => module.key)],
+          modules: [
+            commonModule.key,
+            organisationModule.key,
+            masterModule.key,
+            ...locationModules.map((module) => module.key)
+          ],
           runtime: "core-foundation"
         },
         status: "ok"

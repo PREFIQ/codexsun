@@ -30,7 +30,9 @@ export type AccessUser = {
 };
 
 export type AccessPermissionSavePayload = Omit<AccessPermission, "id" | "uuid">;
-export type AccessRoleSavePayload = Omit<AccessRole, "id" | "permissionKeys" | "uuid"> & { permissionKeysText: string };
+export type AccessRoleSavePayload = Omit<AccessRole, "id" | "permissionKeys" | "uuid"> & {
+  permissionKeysText: string;
+};
 export type AccessUserSavePayload = Omit<AccessUser, "id" | "uuid">;
 export type AccessControlOverview = {
   permissions: AccessPermission[];

@@ -4,14 +4,15 @@ export class ReportsService {
   constructor(private readonly repository = new ReportsRepository()) {}
 
   async overview(databaseName: string) {
-    const [trialBalance, outstanding, voucherRegister, gst, profitAndLoss, balanceSheet] = await Promise.all([
-      this.repository.trialBalance(databaseName),
-      this.repository.outstanding(databaseName),
-      this.repository.voucherRegister(databaseName),
-      this.repository.gstSummary(databaseName),
-      this.repository.profitAndLoss(databaseName),
-      this.repository.balanceSheet(databaseName)
-    ]);
+    const [trialBalance, outstanding, voucherRegister, gst, profitAndLoss, balanceSheet] =
+      await Promise.all([
+        this.repository.trialBalance(databaseName),
+        this.repository.outstanding(databaseName),
+        this.repository.voucherRegister(databaseName),
+        this.repository.gstSummary(databaseName),
+        this.repository.profitAndLoss(databaseName),
+        this.repository.balanceSheet(databaseName)
+      ]);
     return { balanceSheet, gst, outstanding, profitAndLoss, trialBalance, voucherRegister };
   }
 

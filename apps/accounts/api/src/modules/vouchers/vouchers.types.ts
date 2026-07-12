@@ -1,5 +1,13 @@
 export type VoucherStatus = "draft" | "posted" | "cancelled" | "reversed";
-export type VoucherType = "sales" | "purchase" | "receipt" | "payment" | "contra" | "journal" | "credit_note" | "debit_note";
+export type VoucherType =
+  | "sales"
+  | "purchase"
+  | "receipt"
+  | "payment"
+  | "contra"
+  | "journal"
+  | "credit_note"
+  | "debit_note";
 export type DebitCredit = "debit" | "credit";
 export type TallySyncStatus = "pending" | "synced" | "failed" | "skipped";
 export type PostingOperation = "create" | "update" | "cancel" | "delete";

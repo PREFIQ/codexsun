@@ -123,32 +123,32 @@ Task 13 audited all 13 execution tasks, 11 core documentation files, the full co
 
 These are documented gaps or aspirational features that can safely wait until a business module needs them:
 
-| Area | Item | Reason Deferred |
-|------|------|-----------------|
-| Auth | HTTP-only cookie sessions | JWT-only works for current MVP. Cookie support available (`DatabaseSessionStore` exists) but not wired. |
-| Auth | MFA, refresh tokens, passwordless login | Not needed for initial business modules. |
-| Auth | OAuth/SSO | Not needed until third-party integration. |
-| Infrastructure | Real queue backend (BullMQ/Redis) | In-memory queues sufficient for initial modules. |
-| Infrastructure | Event outbox persistence | In-memory publisher sufficient. |
-| Infrastructure | Production file storage (S3/MinIO) | In-memory file metadata fine for MVP. Real storage added when file upload needed. |
-| Infrastructure | Real SMTP/mail provider | In-memory mail shell only. Real provider added when email sending needed. |
-| Database | Tenant database provisioning | Only master DB implemented. Tenant DB per tenant added when tenant isolation needed for data-heavy modules. |
-| Database | Tenant backup/restore | Not needed until production deployment with real data. |
-| Database | Domain/subdomain-based tenant resolution | Only header-based for now. |
-| UI | Responsive/mobile layout | Desk dashboards are desktop-first. Mobile optimization deferred. |
-| UI | E2E tests (Playwright) | Unit/integration tests cover API layer. E2E added when business UI workflows stabilize. |
-| UI | Component tests (Testing Library) | UI patterns are simple enough without them. |
-| Business | All industry modules (contacts, billing, accounting, inventory, POS, etc.) | These ARE the next tasks (starting with Task 14). |
-| AI | CODEIT/ZERO full agent implementation | Agent permission model and audit exist. Real AI tools added when needed. |
+| Area           | Item                                                                       | Reason Deferred                                                                                             |
+| -------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Auth           | HTTP-only cookie sessions                                                  | JWT-only works for current MVP. Cookie support available (`DatabaseSessionStore` exists) but not wired.     |
+| Auth           | MFA, refresh tokens, passwordless login                                    | Not needed for initial business modules.                                                                    |
+| Auth           | OAuth/SSO                                                                  | Not needed until third-party integration.                                                                   |
+| Infrastructure | Real queue backend (BullMQ/Redis)                                          | In-memory queues sufficient for initial modules.                                                            |
+| Infrastructure | Event outbox persistence                                                   | In-memory publisher sufficient.                                                                             |
+| Infrastructure | Production file storage (S3/MinIO)                                         | In-memory file metadata fine for MVP. Real storage added when file upload needed.                           |
+| Infrastructure | Real SMTP/mail provider                                                    | In-memory mail shell only. Real provider added when email sending needed.                                   |
+| Database       | Tenant database provisioning                                               | Only master DB implemented. Tenant DB per tenant added when tenant isolation needed for data-heavy modules. |
+| Database       | Tenant backup/restore                                                      | Not needed until production deployment with real data.                                                      |
+| Database       | Domain/subdomain-based tenant resolution                                   | Only header-based for now.                                                                                  |
+| UI             | Responsive/mobile layout                                                   | Desk dashboards are desktop-first. Mobile optimization deferred.                                            |
+| UI             | E2E tests (Playwright)                                                     | Unit/integration tests cover API layer. E2E added when business UI workflows stabilize.                     |
+| UI             | Component tests (Testing Library)                                          | UI patterns are simple enough without them.                                                                 |
+| Business       | All industry modules (contacts, billing, accounting, inventory, POS, etc.) | These ARE the next tasks (starting with Task 14).                                                           |
+| AI             | CODEIT/ZERO full agent implementation                                      | Agent permission model and audit exist. Real AI tools added when needed.                                    |
 
 ## 5. Documentation Inconsistencies Found & Fixed
 
-| Doc | Issue | Fix |
-|-----|-------|-----|
-| `governance/api-guidelines.md` | `x-correlation-id` marked "Removed" but restored in v1.0.4 | Updated to show current state with `correlationId` in envelope meta |
-| `blueprint/foundation-blueprint.md` | Describes cookie/hybrid auth as current, but code is JWT-only | Noted: `DatabaseSessionStore` exists but not wired; JWT-only since v1.0.3 |
-| `architecture/security-and-compliance.md` | Describes HTTP-only cookie sessions | Noted: v1.0.3 switched to JWT-only stored in localStorage |
-| `assist/README.md` | Describes cookie sessions | Noted: JWT-only since v1.0.3 |
+| Doc                                       | Issue                                                         | Fix                                                                       |
+| ----------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `governance/api-guidelines.md`            | `x-correlation-id` marked "Removed" but restored in v1.0.4    | Updated to show current state with `correlationId` in envelope meta       |
+| `blueprint/foundation-blueprint.md`       | Describes cookie/hybrid auth as current, but code is JWT-only | Noted: `DatabaseSessionStore` exists but not wired; JWT-only since v1.0.3 |
+| `architecture/security-and-compliance.md` | Describes HTTP-only cookie sessions                           | Noted: v1.0.3 switched to JWT-only stored in localStorage                 |
+| `assist/README.md`                        | Describes cookie sessions                                     | Noted: JWT-only since v1.0.3                                              |
 
 ## 6. Tests & Checks Run
 

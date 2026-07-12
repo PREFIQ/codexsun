@@ -15,7 +15,10 @@ export type StorageLocation = {
 export function workspaceRoot() {
   let current = process.cwd();
   for (let index = 0; index < 8; index += 1) {
-    if (existsSync(join(current, "apps", "platform", "api")) && existsSync(join(current, "package.json"))) {
+    if (
+      existsSync(join(current, "apps", "platform", "api")) &&
+      existsSync(join(current, "package.json"))
+    ) {
       return current;
     }
     const parent = dirname(current);
@@ -56,7 +59,9 @@ export function storageBase(input: StorageLocation) {
   if (!input.tenantKey) {
     throw new Error("Tenant storage requires a tenant key.");
   }
-  return input.visibility === "public" ? tenantPublicStorageRoot(input.tenantKey) : tenantPrivateStorageRoot(input.tenantKey);
+  return input.visibility === "public"
+    ? tenantPublicStorageRoot(input.tenantKey)
+    : tenantPrivateStorageRoot(input.tenantKey);
 }
 
 export function resolveInsideStorage(basePath: string, relativePath = "") {
@@ -79,7 +84,11 @@ export function normalizeStorageRelativePath(value = "") {
 }
 
 export function sanitizeStorageSegment(value: string) {
-  const segment = value.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  const segment = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   if (!segment) {
     throw new Error("Storage segment cannot be empty.");
   }
@@ -146,7 +155,12 @@ export async function ensurePublicStorageLink() {
   }
 }
 
-export function databaseBackupPath(input: { databaseName: string; runId: number; scope: "master" | "tenant"; tenantKey?: string }) {
+export function databaseBackupPath(input: {
+  databaseName: string;
+  runId: number;
+  scope: "master" | "tenant";
+  tenantKey?: string;
+}) {
   const now = new Date();
   const dateFolder = storageDateFolder(now);
   const timestamp = storageShortTimestamp(now);

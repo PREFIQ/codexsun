@@ -1,17 +1,16 @@
 export type MonthsRecord = {
-  id: string;
-  uuid: string;
+  id: number;
   name: string;
-  fromDate: string;
-  toDate: string;
+  startDate: string;
+  endDate: string;
   isActive: boolean;
   sortOrder: number;
 };
 
 export type MonthsSavePayload = {
   name: string;
-  fromDate: string;
-  toDate: string;
+  startDate: string;
+  endDate: string;
   isActive?: boolean;
   sortOrder?: number;
 };

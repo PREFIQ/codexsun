@@ -15,7 +15,8 @@ export function useEntitlementMutations() {
   return {
     create: useMutation({ mutationFn: createEntitlement, onSuccess: done }),
     update: useMutation({
-      mutationFn: ({ id, payload }: { id: number; payload: EntitlementSavePayload }) => updateEntitlement(id, payload),
+      mutationFn: ({ id, payload }: { id: number; payload: EntitlementSavePayload }) =>
+        updateEntitlement(id, payload),
       onSuccess: done
     })
   };

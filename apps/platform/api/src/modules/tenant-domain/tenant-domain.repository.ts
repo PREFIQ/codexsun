@@ -1,7 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { getPlatformDatabase } from "../../database/platform-database.js";
 import { env } from "../../env.js";
-import type { TenantDomain, TenantDomainRecord, TenantDomainSavePayload } from "./tenant-domain.types.js";
+import type {
+  TenantDomain,
+  TenantDomainRecord,
+  TenantDomainSavePayload
+} from "./tenant-domain.types.js";
 
 export class TenantDomainRepository {
   async listAll() {
@@ -79,27 +83,29 @@ export class TenantDomainRepository {
     const domain = normalizeTenantDomain(input.domain);
     if (!domain) return "";
 
-    await getPlatformDatabase().transaction().execute(async (database) => {
-      await database
-        .updateTable("tenant_domains")
-        .set({ is_primary: false })
-        .where("tenant_id", "=", input.tenantId)
-        .execute();
+    await getPlatformDatabase()
+      .transaction()
+      .execute(async (database) => {
+        await database
+          .updateTable("tenant_domains")
+          .set({ is_primary: false })
+          .where("tenant_id", "=", input.tenantId)
+          .execute();
 
-      await database
-        .insertInto("tenant_domains")
-        .values({
-          domain,
-          is_primary: true,
-          tenant_id: input.tenantId,
-          uuid: createPublicUuid()
-        })
-        .onDuplicateKeyUpdate({
-          is_primary: true,
-          tenant_id: input.tenantId
-        })
-        .execute();
-    });
+        await database
+          .insertInto("tenant_domains")
+          .values({
+            domain,
+            is_primary: true,
+            tenant_id: input.tenantId,
+            uuid: createPublicUuid()
+          })
+          .onDuplicateKeyUpdate({
+            is_primary: true,
+            tenant_id: input.tenantId
+          })
+          .execute();
+      });
 
     return domain;
   }
@@ -113,22 +119,24 @@ export class TenantDomainRepository {
     const domain = normalizeTenantDomain(input.domain);
     if (!domain) return null;
 
-    await getPlatformDatabase().transaction().execute(async (database) => {
-      await database
-        .updateTable("tenant_domains")
-        .set({ is_primary: false })
-        .where("tenant_id", "=", input.tenantId)
-        .execute();
-      await database
-        .updateTable("tenant_domains")
-        .set({
-          domain,
-          is_primary: true,
-          tenant_id: input.tenantId
-        })
-        .where("id", "=", id)
-        .execute();
-    });
+    await getPlatformDatabase()
+      .transaction()
+      .execute(async (database) => {
+        await database
+          .updateTable("tenant_domains")
+          .set({ is_primary: false })
+          .where("tenant_id", "=", input.tenantId)
+          .execute();
+        await database
+          .updateTable("tenant_domains")
+          .set({
+            domain,
+            is_primary: true,
+            tenant_id: input.tenantId
+          })
+          .where("id", "=", id)
+          .execute();
+      });
 
     return this.findById(id);
   }
@@ -139,17 +147,28 @@ export class TenantDomainRepository {
 
   private async findByTenantIdAndDomain(tenantId: number, value: string) {
     const domain = normalizeTenantDomain(value);
-    return (await this.listAll()).find((item) => item.tenantId === tenantId && item.domain === domain) ?? null;
+    return (
+      (await this.listAll()).find((item) => item.tenantId === tenantId && item.domain === domain) ??
+      null
+    );
   }
 }
 
 export function defaultTenantDomainForSlug(slug: string) {
   const baseDomain = normalizeTenantDomain(env.TENANT_DOMAIN_BASE || "localhost");
-  return normalizeTenantDomain(baseDomain === "localhost" ? `${slug}.localhost` : `${slug}.${baseDomain}`);
+  return normalizeTenantDomain(
+    baseDomain === "localhost" ? `${slug}.localhost` : `${slug}.${baseDomain}`
+  );
 }
 
 export function normalizeTenantDomain(value: string) {
-  return value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/:\d+$/, "").replace(/^www\./, "");
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .replace(/:\d+$/, "")
+    .replace(/^www\./, "");
 }
 
 function createPublicUuid() {

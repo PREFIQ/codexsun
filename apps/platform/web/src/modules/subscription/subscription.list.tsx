@@ -28,10 +28,23 @@ export function subscriptionFields(
       type: "reference",
       ...(createPlan ? { createFromSearch: createPlan } : {})
     },
-    { key: "billingCycle", label: "Billing cycle", type: "select", options: [{ label: "Monthly", value: "monthly" }, { label: "Annual", value: "annual" }] },
+    {
+      key: "billingCycle",
+      label: "Billing cycle",
+      type: "select",
+      options: [
+        { label: "Monthly", value: "monthly" },
+        { label: "Annual", value: "annual" }
+      ]
+    },
     { key: "startsOn", label: "Starts on", required: true },
     { key: "endsOn", label: "Ends on" },
-    { key: "status", label: "Status", type: "select", options: ["trial", "active", "cancelled", "expired"].map((value) => ({ label: value, value })) }
+    {
+      key: "status",
+      label: "Status",
+      type: "select",
+      options: ["trial", "active", "cancelled", "expired"].map((value) => ({ label: value, value }))
+    }
   ];
 }
 

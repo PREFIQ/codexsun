@@ -2,18 +2,26 @@ import { randomBytes } from "node:crypto";
 import { sql } from "kysely";
 import { getPlatformDatabase } from "../../database/platform-database.js";
 import { env } from "../../env.js";
-import type { QueueJobFilters, QueueJobPayload, QueueJobRecord, QueueJobStatus, QueueRuntimeSettings } from "./queue-manager.types.js";
+import type {
+  QueueJobFilters,
+  QueueJobPayload,
+  QueueJobRecord,
+  QueueJobStatus,
+  QueueRuntimeSettings
+} from "./queue-manager.types.js";
 
 export class QueueManagerRepository {
   async list(filters: QueueJobFilters = {}) {
-    let query = getPlatformDatabase()
-      .selectFrom("queue_jobs")
-      .selectAll();
+    let query = getPlatformDatabase().selectFrom("queue_jobs").selectAll();
     if (filters.status) query = query.where("status", "=", filters.status);
     if (filters.queueName) query = query.where("queue_name", "=", filters.queueName);
     if (filters.tenantId) query = query.where("tenant_id", "=", filters.tenantId);
     if (filters.correlationId) query = query.where("correlation_id", "=", filters.correlationId);
-    const rows = await query.orderBy("created_at", "desc").orderBy("id", "desc").limit(100).execute();
+    const rows = await query
+      .orderBy("created_at", "desc")
+      .orderBy("id", "desc")
+      .limit(100)
+      .execute();
     return rows.map(toQueueJob);
   }
 
@@ -21,7 +29,8 @@ export class QueueManagerRepository {
     const jobs = await this.list();
     return {
       backend: env.CODEXSUN_QUEUE_BACKEND,
-      backendLabel: env.CODEXSUN_QUEUE_BACKEND === "bullmq-redis" ? "BullMQ + Redis" : "Database queue",
+      backendLabel:
+        env.CODEXSUN_QUEUE_BACKEND === "bullmq-redis" ? "BullMQ + Redis" : "Database queue",
       canRunInline: env.CODEXSUN_QUEUE_BACKEND !== "bullmq-redis",
       completed: jobs.filter((job) => job.status === "completed").length,
       failed: jobs.filter((job) => job.status === "failed").length,
@@ -67,7 +76,11 @@ export class QueueManagerRepository {
   }
 
   async find(id: number) {
-    const row = await getPlatformDatabase().selectFrom("queue_jobs").selectAll().where("id", "=", id).executeTakeFirst();
+    const row = await getPlatformDatabase()
+      .selectFrom("queue_jobs")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
     return row ? toQueueJob(row) : null;
   }
 
@@ -87,7 +100,13 @@ export class QueueManagerRepository {
   async markRunning(id: number) {
     await getPlatformDatabase()
       .updateTable("queue_jobs")
-      .set({ attempts: sql`attempts + 1`, error_message: null, started_at: new Date(), status: "running", updated_at: new Date() })
+      .set({
+        attempts: sql`attempts + 1`,
+        error_message: null,
+        started_at: new Date(),
+        status: "running",
+        updated_at: new Date()
+      })
       .where("id", "=", id)
       .execute();
     return this.find(id);
@@ -96,7 +115,12 @@ export class QueueManagerRepository {
   async markCompleted(id: number, result: Record<string, unknown>) {
     await getPlatformDatabase()
       .updateTable("queue_jobs")
-      .set({ completed_at: new Date(), result_json: JSON.stringify(result), status: "completed", updated_at: new Date() })
+      .set({
+        completed_at: new Date(),
+        result_json: JSON.stringify(result),
+        status: "completed",
+        updated_at: new Date()
+      })
       .where("id", "=", id)
       .execute();
     return this.find(id);
@@ -105,7 +129,13 @@ export class QueueManagerRepository {
   async markFailed(id: number, errorMessage: string, result: Record<string, unknown> = {}) {
     await getPlatformDatabase()
       .updateTable("queue_jobs")
-      .set({ completed_at: new Date(), error_message: errorMessage, result_json: JSON.stringify(result), status: "failed", updated_at: new Date() })
+      .set({
+        completed_at: new Date(),
+        error_message: errorMessage,
+        result_json: JSON.stringify(result),
+        status: "failed",
+        updated_at: new Date()
+      })
       .where("id", "=", id)
       .execute();
     return this.find(id);
@@ -114,7 +144,14 @@ export class QueueManagerRepository {
   async retry(id: number) {
     await getPlatformDatabase()
       .updateTable("queue_jobs")
-      .set({ available_at: new Date(), completed_at: null, error_message: null, started_at: null, status: "pending", updated_at: new Date() })
+      .set({
+        available_at: new Date(),
+        completed_at: null,
+        error_message: null,
+        started_at: null,
+        status: "pending",
+        updated_at: new Date()
+      })
       .where("id", "=", id)
       .where("status", "in", ["failed", "cancelled"])
       .execute();
@@ -142,7 +179,10 @@ export class QueueManagerRepository {
       .where("status", "=", "failed")
       .where("completed_at", "<", input.failedBefore)
       .executeTakeFirst();
-    return { completedDeleted: Number(completed.numDeletedRows ?? 0), failedDeleted: Number(failed.numDeletedRows ?? 0) };
+    return {
+      completedDeleted: Number(completed.numDeletedRows ?? 0),
+      failedDeleted: Number(failed.numDeletedRows ?? 0)
+    };
   }
 }
 

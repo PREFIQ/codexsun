@@ -1,8 +1,78 @@
-import { MasterList } from "../../master/master.workspace";
-import { useMasterRecords } from "../../master/master.hooks";
-import { companyDefinition } from "./company.definition";
-
-export function CompanyList() {
-  const query = useMasterRecords(companyDefinition);
-  return <MasterList definition={companyDefinition} loading={query.isFetching && !query.data} records={query.data ?? []} onEdit={() => undefined} />;
+import { WorkspaceProtectedIndicator } from "@codexsun/ui/workspace/protected-indicator";
+import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
+import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
+import {
+  WorkspaceTableEmptyState,
+  WorkspaceTableHeaderCell,
+  WorkspaceTablePanel,
+  WorkspaceTableSkeletonRows
+} from "@codexsun/ui/workspace/table";
+import type { CompanyRecord } from "./company.types";
+export function CompanyList({
+  loading,
+  onEdit,
+  records
+}: {
+  loading: boolean;
+  onEdit: (record: CompanyRecord) => void;
+  records: CompanyRecord[];
+}) {
+  return (
+    <WorkspaceTablePanel>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[800px] text-sm">
+          <thead>
+            <tr>
+              {["Company", "Code", "Industry", "Phone", "Status"].map((label) => (
+                <WorkspaceTableHeaderCell key={label}>{label}</WorkspaceTableHeaderCell>
+              ))}
+              <WorkspaceTableHeaderCell className="text-right">Action</WorkspaceTableHeaderCell>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record) => {
+              const locked = record.name.trim() === "-";
+              return (
+                <tr className="border-b last:border-0" key={record.id}>
+                  <td className="px-4 py-3">
+                    <button
+                      className="font-medium hover:underline"
+                      disabled={locked}
+                      onClick={() => onEdit(record)}
+                    >
+                      {record.name}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3">{record.code}</td>
+                  <td className="px-4 py-3">{record.industryName || "-"}</td>
+                  <td className="px-4 py-3">{record.primaryPhone || "-"}</td>
+                  <td className="px-4 py-3">
+                    <WorkspaceStatusBadge
+                      label={record.isActive ? "active" : "inactive"}
+                      tone={record.isActive ? "success" : "warning"}
+                    />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {locked ? (
+                      <WorkspaceProtectedIndicator />
+                    ) : (
+                      <WorkspaceRowActions
+                        actions={[]}
+                        onEdit={() => onEdit(record)}
+                        title={record.name}
+                      />
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {loading ? <WorkspaceTableSkeletonRows columns={6} rows={4} /> : null}
+      {!loading && !records.length ? (
+        <WorkspaceTableEmptyState>No companies found.</WorkspaceTableEmptyState>
+      ) : null}
+    </WorkspaceTablePanel>
+  );
 }

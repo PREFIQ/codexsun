@@ -6,7 +6,8 @@ import { MasterDatabaseList } from "./master-database.list";
 export function MasterDatabaseWorkspace() {
   const query = useMasterDatabaseQuery();
   const mutations = useMasterDatabaseMutations();
-  const busy = mutations.backup.isPending || mutations.migrate.isPending || mutations.restore.isPending;
+  const busy =
+    mutations.backup.isPending || mutations.migrate.isPending || mutations.restore.isPending;
   return (
     <WorkspacePage
       title="Master Database"

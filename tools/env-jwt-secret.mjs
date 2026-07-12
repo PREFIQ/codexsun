@@ -21,7 +21,9 @@ let updated;
 if (hasJwtSecret) {
   updated = content.replace(/^JWT_SECRET=.*$/m, `JWT_SECRET=${secret}`);
 } else {
-  updated = content.endsWith("\n") ? `${content}JWT_SECRET=${secret}\n` : `${content}\nJWT_SECRET=${secret}\n`;
+  updated = content.endsWith("\n")
+    ? `${content}JWT_SECRET=${secret}\n`
+    : `${content}\nJWT_SECRET=${secret}\n`;
 }
 
 writeFileSync(envPath, updated);

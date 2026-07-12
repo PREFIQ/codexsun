@@ -17,7 +17,15 @@ import {
   tenantPublicStorageRoot,
   tenantStorageRoot
 } from "./storage-manager.paths.js";
-import type { CompanyLogoUploadPayload, StorageDownloadInput, StorageEntry, StorageFolderPayload, StorageListing, StorageListInput, StorageUploadPayload } from "./storage-manager.types.js";
+import type {
+  CompanyLogoUploadPayload,
+  StorageDownloadInput,
+  StorageEntry,
+  StorageFolderPayload,
+  StorageListing,
+  StorageListInput,
+  StorageUploadPayload
+} from "./storage-manager.types.js";
 
 export class StorageManagerRepository {
   constructor(private readonly tenants = new TenantRepository()) {}
@@ -68,7 +76,13 @@ export class StorageManagerRepository {
         visibility: context.visibility
       });
     }
-    mapped.sort((left, right) => left.type === right.type ? left.name.localeCompare(right.name) : left.type === "folder" ? -1 : 1);
+    mapped.sort((left, right) =>
+      left.type === right.type
+        ? left.name.localeCompare(right.name)
+        : left.type === "folder"
+          ? -1
+          : 1
+    );
     return {
       currentPath: context.currentPath,
       entries: mapped,
@@ -181,7 +195,10 @@ export class StorageManagerRepository {
     };
   }
 
-  async updateTenantStorageRoots(tenantId: number, roots: { privateRoot: string; publicRoot: string; root: string }) {
+  async updateTenantStorageRoots(
+    tenantId: number,
+    roots: { privateRoot: string; publicRoot: string; root: string }
+  ) {
     await getPlatformDatabase()
       .updateTable("tenants")
       .set({
@@ -200,7 +217,9 @@ export class StorageManagerRepository {
     let tenantKey = input.tenantKey;
 
     if (scope === "tenant") {
-      const tenant = await this.tenants.findByIdOrCode(String(input.tenantId || input.tenantKey || ""));
+      const tenant = await this.tenants.findByIdOrCode(
+        String(input.tenantId || input.tenantKey || "")
+      );
       if (!tenant) {
         throw new Error("Tenant was not found for storage.");
       }
@@ -263,7 +282,11 @@ export class StorageManagerRepository {
 }
 
 function sanitizeFileName(value: string) {
-  const fileName = value.trim().replace(/[\\/]/g, "-").replace(/[^a-zA-Z0-9._ -]+/g, "-").replace(/^-+|-+$/g, "");
+  const fileName = value
+    .trim()
+    .replace(/[\\/]/g, "-")
+    .replace(/[^a-zA-Z0-9._ -]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   if (!fileName || fileName === "." || fileName === "..") {
     throw new Error("A readable file name is required.");
   }
@@ -280,7 +303,8 @@ function mimeTypeFor(filePath: string) {
   if (extension === ".svg") return "image/svg+xml";
   if (extension === ".png") return "image/png";
   if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
-  if (extension === ".sql" || extension === ".txt" || extension === ".log") return "text/plain; charset=utf-8";
+  if (extension === ".sql" || extension === ".txt" || extension === ".log")
+    return "text/plain; charset=utf-8";
   if (extension === ".json") return "application/json";
   return "application/octet-stream";
 }

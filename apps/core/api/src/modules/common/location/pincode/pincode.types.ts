@@ -1,9 +1,8 @@
 export type PincodeStatus = "active" | "inactive";
 
 export type Pincode = {
-  id: string;
-  uuid: string;
-  cityId: string;
+  id: number;
+  cityId: number;
   name: string;
   sortOrder: number;
   status: PincodeStatus;
@@ -11,16 +10,16 @@ export type Pincode = {
 
 export type PincodeWithRelations = Pincode & {
   cityName: string;
-  districtId: string;
+  districtId: number;
   districtName: string;
-  stateId: string;
+  stateId: number;
   stateName: string;
-  countryId: string;
+  countryId: number;
   countryName: string;
 };
 
 export type PincodeSavePayload = {
-  cityId: string;
+  cityId: number;
   name: string;
   sortOrder: number;
   status: PincodeStatus;

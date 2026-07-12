@@ -1,33 +1,47 @@
-"use client"
+"use client";
 
-import { DndContext, DragOverlay, closestCenter } from "@dnd-kit/core"
-import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import { GripVertical } from "lucide-react"
-import { type ReactNode } from "react"
-import { cn } from "../lib/utils"
+import { DndContext, DragOverlay, closestCenter } from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
+import { type ReactNode } from "react";
+import { cn } from "../lib/utils";
 
-export { DndContext, DragOverlay, closestCenter, SortableContext, verticalListSortingStrategy, arrayMove }
+export {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove
+};
 
 export interface SortableItem {
-  id: string | number
+  id: string | number;
 }
 
 export function WorkspaceSortableItem<T extends SortableItem>({
   children,
   className,
-  item,
+  item
 }: {
-  children: ReactNode
-  className?: string
-  item: T
+  children: ReactNode;
+  className?: string;
+  item: T;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-  }
+    transition
+  };
 
   return (
     <div
@@ -47,5 +61,5 @@ export function WorkspaceSortableItem<T extends SortableItem>({
         <div className="min-w-0 flex-1">{children}</div>
       </div>
     </div>
-  )
+  );
 }

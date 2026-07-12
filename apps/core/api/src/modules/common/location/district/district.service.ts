@@ -54,7 +54,7 @@ export class DistrictService {
     return district;
   }
 
-  private async requireState(stateId: string) {
+  private async requireState(stateId: string | number) {
     if (!(await this.repository.stateExists(stateId))) {
       throw AppError.notFound("State was not found.");
     }
@@ -73,7 +73,7 @@ export class DistrictService {
 
 function normalize(input: DistrictSavePayload): DistrictSavePayload {
   return {
-    stateId: String(Number(input.stateId)),
+    stateId: Number(input.stateId),
     name: input.name.trim(),
     sortOrder: Number.isFinite(input.sortOrder) ? Number(input.sortOrder) : 1000,
     status: input.status === "inactive" ? "inactive" : "active"

@@ -23,8 +23,13 @@ export class AuthService {
   private async loginTenant(input: Required<Pick<LoginInput, "email" | "password">> & LoginInput) {
     const domainTenant = await tenantRepository.findByDomain(input.domain ?? "");
     const corporateId = input.corporateId?.trim() ?? "";
-    const tenant = domainTenant ?? (corporateId ? await tenantRepository.findByCorporateId(corporateId) : null);
-    if (!tenant || tenant.status !== "active" || !corporateMatchesTenant(tenant, corporateId, Boolean(domainTenant))) {
+    const tenant =
+      domainTenant ?? (corporateId ? await tenantRepository.findByCorporateId(corporateId) : null);
+    if (
+      !tenant ||
+      tenant.status !== "active" ||
+      !corporateMatchesTenant(tenant, corporateId, Boolean(domainTenant))
+    ) {
       return null;
     }
 
@@ -52,7 +57,11 @@ export class AuthService {
     };
   }
 
-  private loginPlatformUser(input: { desk: "staff" | "super_admin"; email: string; password: string }) {
+  private loginPlatformUser(input: {
+    desk: "staff" | "super_admin";
+    email: string;
+    password: string;
+  }) {
     const seed = input.desk === "super_admin" ? platformSeed("super_admin") : platformSeed("staff");
     if (!seed || input.email !== seed.email || input.password !== seed.password) {
       return null;
@@ -87,8 +96,13 @@ function normalizeDesk(value: unknown): AuthUserType {
 function corporateMatchesTenant(tenant: Tenant, corporateId: string, resolvedByDomain: boolean) {
   if (!corporateId) return false;
   const normalized = corporateId.trim().toLowerCase();
-  const candidates = [tenant.corporateId, tenant.tenantCode, tenant.slug].filter(Boolean).map((value) => String(value).toLowerCase());
-  return candidates.includes(normalized) || (resolvedByDomain && candidates.length > 0 && candidates.includes(normalized));
+  const candidates = [tenant.corporateId, tenant.tenantCode, tenant.slug]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+  return (
+    candidates.includes(normalized) ||
+    (resolvedByDomain && candidates.length > 0 && candidates.includes(normalized))
+  );
 }
 
 function platformSeed(userType: "staff" | "super_admin") {

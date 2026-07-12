@@ -1,78 +1,111 @@
-import { useMemo, useState, type ReactNode } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, CheckCircle2, Pencil, Plus, RefreshCw, Save, X } from "lucide-react"
-import { toast } from "sonner"
-import { Button } from "@codexsun/ui/components/button"
-import { Input } from "@codexsun/ui/components/input"
-import { Switch } from "@codexsun/ui/components/switch"
-import { WorkspaceAnimatedTabs, type WorkspaceAnimatedTab } from "@codexsun/ui/workspace/animated-tabs"
-import { WorkspacePage } from "@codexsun/ui/workspace/page"
-import { WorkspaceFilters } from "@codexsun/ui/workspace/filters"
-import { WorkspacePagination } from "@codexsun/ui/workspace/pagination"
-import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions"
-import { WorkspaceShowCard, WorkspaceShowLayout, WorkspaceDetailTable } from "@codexsun/ui/workspace/show"
-import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status"
-import { WorkspaceTableEmptyState, WorkspaceTableHeaderCell, WorkspaceTablePanel, WorkspaceTableSkeletonRows } from "@codexsun/ui/workspace/table"
-import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormGrid, WorkspaceFormPanel, WorkspaceUpsertPage } from "@codexsun/ui/workspace/upsert"
-import { buildShowingLabel } from "@codexsun/ui/workspace/utils"
-import { cn } from "@codexsun/ui/lib/utils"
-import { TenantPrimaryDomainField } from "../tenant-domain/tenant-domain.form"
-import { defaultTenantDomain, normalizeTenantDomain } from "../tenant-domain/tenant-domain.services"
-import { usePlatformAppsQuery, type PlatformApp } from "../app-registry"
-import { createTenant, listTenantActivity, listTenants, restoreTenant as restoreTenantRecord, suspendTenant as suspendTenantRecord, updateTenant } from "./tenant.services"
-import { defaultLandingApp, normalizeModuleKeys, platformAppRegistry, type PlatformAppId } from "../../app/app-registry"
+import { useMemo, useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, CheckCircle2, Pencil, Plus, RefreshCw, Save, X } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@codexsun/ui/components/button";
+import { Input } from "@codexsun/ui/components/input";
+import { Switch } from "@codexsun/ui/components/switch";
+import {
+  WorkspaceAnimatedTabs,
+  type WorkspaceAnimatedTab
+} from "@codexsun/ui/workspace/animated-tabs";
+import { WorkspacePage } from "@codexsun/ui/workspace/page";
+import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
+import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
+import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
+import {
+  WorkspaceShowCard,
+  WorkspaceShowLayout,
+  WorkspaceDetailTable
+} from "@codexsun/ui/workspace/show";
+import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
+import {
+  WorkspaceTableEmptyState,
+  WorkspaceTableHeaderCell,
+  WorkspaceTablePanel,
+  WorkspaceTableSkeletonRows
+} from "@codexsun/ui/workspace/table";
+import {
+  WorkspaceFormBanner,
+  WorkspaceFormField,
+  WorkspaceFormGrid,
+  WorkspaceFormPanel,
+  WorkspaceUpsertPage
+} from "@codexsun/ui/workspace/upsert";
+import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
+import { cn } from "@codexsun/ui/lib/utils";
+import { TenantPrimaryDomainField } from "../tenant-domain/tenant-domain.form";
+import {
+  defaultTenantDomain,
+  normalizeTenantDomain
+} from "../tenant-domain/tenant-domain.services";
+import { usePlatformAppsQuery, type PlatformApp } from "../app-registry";
+import {
+  createTenant,
+  listTenantActivity,
+  listTenants,
+  restoreTenant as restoreTenantRecord,
+  suspendTenant as suspendTenantRecord,
+  updateTenant
+} from "./tenant.services";
+import {
+  defaultLandingApp,
+  normalizeModuleKeys,
+  platformAppRegistry,
+  type PlatformAppId
+} from "../../app/app-registry";
 
 type Tenant = {
-  corporateId: string | null
-  dbHost: string
-  dbName: string
-  dbPort: number
-  dbSecretRef: string
-  dbType: string
-  dbUser: string
-  enabledModuleKeys: string[]
-  defaultLandingApp: PlatformAppId
-  id: number
-  mobile: string | null
-  payloadSettings: Record<string, unknown>
-  primaryDomain: string
-  slug: string
-  tenantCode: string
-  tenantName: string
-  uuid: string
-  status: "active" | "inactive" | "provisioning" | "suspended" | string
-}
+  corporateId: string | null;
+  dbHost: string;
+  dbName: string;
+  dbPort: number;
+  dbSecretRef: string;
+  dbType: string;
+  dbUser: string;
+  enabledModuleKeys: string[];
+  defaultLandingApp: PlatformAppId;
+  id: number;
+  mobile: string | null;
+  payloadSettings: Record<string, unknown>;
+  primaryDomain: string;
+  slug: string;
+  tenantCode: string;
+  tenantName: string;
+  uuid: string;
+  status: "active" | "inactive" | "provisioning" | "suspended" | string;
+};
 
 type TenantView =
   | { mode: "list" }
   | { mode: "show"; tenant: Tenant }
-  | { mode: "upsert"; tenant: Tenant | null; returnTo: "list" | "show" }
+  | { mode: "upsert"; tenant: Tenant | null; returnTo: "list" | "show" };
 
 type TenantSavePayload = {
-  corporateId: string | null
-  dbHost: string
-  dbName: string
-  dbPort: number
-  dbSecretRef: string
-  dbType: string
-  dbUser: string
-  enabledModuleKeys: string[]
-  defaultLandingApp: PlatformAppId
-  mobile: string | null
-  payloadSettings: Record<string, unknown>
-  primaryDomain: string
-  slug: string
-  status: string
-  tenantCode: string
-  tenantName: string
-}
+  corporateId: string | null;
+  dbHost: string;
+  dbName: string;
+  dbPort: number;
+  dbSecretRef: string;
+  dbType: string;
+  dbUser: string;
+  enabledModuleKeys: string[];
+  defaultLandingApp: PlatformAppId;
+  mobile: string | null;
+  payloadSettings: Record<string, unknown>;
+  primaryDomain: string;
+  slug: string;
+  status: string;
+  tenantCode: string;
+  tenantName: string;
+};
 
 type AuditEventDTO = {
-  actor_email?: string | null
-  created_at?: string
-  event_name: string
-  id: number | string
-}
+  actor_email?: string | null;
+  created_at?: string;
+  event_name: string;
+  id: number | string;
+};
 
 const filterOptions = [
   { id: "all", label: "All tenants" },
@@ -80,7 +113,7 @@ const filterOptions = [
   { id: "inactive", label: "Inactive" },
   { id: "provisioning", label: "Provisioning" },
   { id: "suspended", label: "Suspended" }
-]
+];
 
 const columnOptions = [
   { id: "tenant", label: "Tenant" },
@@ -92,15 +125,15 @@ const columnOptions = [
   { id: "database", label: "Database" },
   { id: "companies", label: "Companies" },
   { id: "status", label: "Status" }
-]
+];
 
 export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
-  const queryClient = useQueryClient()
-  const [view, setView] = useState<TenantView>({ mode: "list" })
-  const [searchValue, setSearchValue] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [rowsPerPage, setRowsPerPage] = useState(100)
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<TenantView>({ mode: "list" });
+  const [searchValue, setSearchValue] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     companies: true,
     corporateId: true,
@@ -111,70 +144,70 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
     status: true,
     tenant: true,
     uuid: true
-  })
+  });
 
   const tenantsQuery = useQuery<Tenant[]>({
     queryKey: ["admin", "tenants"],
     queryFn: listTenants
-  })
+  });
 
   const createMutation = useMutation({
     mutationFn: (tenant: TenantSavePayload) => createTenant(toTenantApiPayload(tenant)),
     onSuccess: async (tenant) => {
-      await queryClient.invalidateQueries({ queryKey: ["admin", "tenants"] })
+      await queryClient.invalidateQueries({ queryKey: ["admin", "tenants"] });
       toast.success("Tenant saved", {
         description: `${tenant.tenantName} is ready in the tenant list.`
-      })
-      setView({ mode: "show", tenant })
+      });
+      setView({ mode: "show", tenant });
     },
     onError: (error) => showTenantError("Tenant save failed", error)
-  })
+  });
 
   const updateMutation = useMutation({
     mutationFn: (tenant: TenantSavePayload & { id: number }) =>
       updateTenant({ ...toTenantApiPayload(tenant), id: tenant.id }),
     onSuccess: async (tenant) => {
-      await queryClient.invalidateQueries({ queryKey: ["admin", "tenants"] })
+      await queryClient.invalidateQueries({ queryKey: ["admin", "tenants"] });
       toast.success("Tenant updated", {
         description: `${tenant.tenantName} was updated successfully.`
-      })
-      setView({ mode: "show", tenant })
+      });
+      setView({ mode: "show", tenant });
     },
     onError: (error) => showTenantError("Tenant update failed", error)
-  })
+  });
 
   const suspendMutation = useMutation({
     mutationFn: suspendTenantRecord,
     onSuccess: async (tenant) => {
-      await queryClient.invalidateQueries({ queryKey: ["admin", "tenants"] })
+      await queryClient.invalidateQueries({ queryKey: ["admin", "tenants"] });
       toast.warning("Tenant suspended", {
         description: `${tenant.tenantName} is no longer active.`
-      })
-      setView((current) => (current.mode === "show" ? { mode: "show", tenant } : current))
+      });
+      setView((current) => (current.mode === "show" ? { mode: "show", tenant } : current));
     },
     onError: (error) => showTenantError("Tenant suspend failed", error)
-  })
+  });
 
   const restoreMutation = useMutation({
     mutationFn: restoreTenantRecord,
     onSuccess: async (tenant) => {
-      await queryClient.invalidateQueries({ queryKey: ["admin", "tenants"] })
+      await queryClient.invalidateQueries({ queryKey: ["admin", "tenants"] });
       toast.info("Tenant restored", {
         description: `${tenant.tenantName} is active again.`
-      })
-      setView((current) => (current.mode === "show" ? { mode: "show", tenant } : current))
+      });
+      setView((current) => (current.mode === "show" ? { mode: "show", tenant } : current));
     },
     onError: (error) => showTenantError("Tenant restore failed", error)
-  })
+  });
   const tenantActivityQuery = useQuery<AuditEventDTO[]>({
     enabled: view.mode === "show",
     queryKey: ["admin", "activity", "tenant", view.mode === "show" ? String(view.tenant.id) : ""],
     queryFn: () => listTenantActivity(view.mode === "show" ? view.tenant.id : "")
-  })
+  });
 
-  const tenants = tenantsQuery.data ?? []
+  const tenants = tenantsQuery.data ?? [];
   const filteredTenants = useMemo(() => {
-    const term = searchValue.trim().toLowerCase()
+    const term = searchValue.trim().toLowerCase();
     return tenants.filter((tenant) => {
       const matchesSearch =
         !term ||
@@ -188,37 +221,40 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
           tenant.slug,
           tenant.dbName,
           tenant.status
-        ].some((value) => value.toLowerCase().includes(term))
-      const matchesStatus = statusFilter === "all" || tenant.status === statusFilter
-      return matchesSearch && matchesStatus
-    })
-  }, [searchValue, statusFilter, tenants])
+        ].some((value) => value.toLowerCase().includes(term));
+      const matchesStatus = statusFilter === "all" || tenant.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [searchValue, statusFilter, tenants]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredTenants.length / rowsPerPage))
-  const pageTenants = filteredTenants.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
+  const totalPages = Math.max(1, Math.ceil(filteredTenants.length / rowsPerPage));
+  const pageTenants = filteredTenants.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
 
   function saveTenant(input: TenantFormState) {
     if (input.id) {
       updateMutation.mutate({
         ...toTenantSavePayload(input),
-        id: input.id,
-      })
-      return
+        id: input.id
+      });
+      return;
     }
-    createMutation.mutate(toTenantSavePayload(input))
+    createMutation.mutate(toTenantSavePayload(input));
   }
 
   function suspendTenant(tenant: Tenant) {
-    suspendMutation.mutate(tenant.id)
+    suspendMutation.mutate(tenant.id);
   }
 
   function restoreTenant(tenant: Tenant) {
-    restoreMutation.mutate(tenant.id)
+    restoreMutation.mutate(tenant.id);
   }
 
   function tenantSaveErrorMessage() {
-    const error = createMutation.error ?? updateMutation.error
-    return error instanceof Error ? error.message : ""
+    const error = createMutation.error ?? updateMutation.error;
+    return error instanceof Error ? error.message : "";
   }
 
   if (view.mode === "show") {
@@ -232,7 +268,7 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
         activity={tenantActivityQuery.data ?? []}
         activityLoading={tenantActivityQuery.isFetching}
       />
-    )
+    );
   }
 
   if (view.mode === "upsert") {
@@ -241,10 +277,16 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
         errorMessage={tenantSaveErrorMessage()}
         loading={createMutation.isPending || updateMutation.isPending}
         tenant={view.tenant}
-        onBack={() => setView(view.returnTo === "show" && view.tenant ? { mode: "show", tenant: view.tenant } : { mode: "list" })}
+        onBack={() =>
+          setView(
+            view.returnTo === "show" && view.tenant
+              ? { mode: "show", tenant: view.tenant }
+              : { mode: "list" }
+          )
+        }
         onSubmit={saveTenant}
       />
-    )
+    );
   }
 
   return (
@@ -264,7 +306,11 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
             <RefreshCw className={cn("size-4", tenantsQuery.isFetching && "animate-spin")} />
             Refresh
           </Button>
-          <Button type="button" className="h-9 rounded-md" onClick={() => setView({ mode: "upsert", tenant: null, returnTo: "list" })}>
+          <Button
+            type="button"
+            className="h-9 rounded-md"
+            onClick={() => setView({ mode: "upsert", tenant: null, returnTo: "list" })}
+          >
             <Plus className="size-4" />
             New tenant
           </Button>
@@ -275,19 +321,22 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
         columnOptions={columnOptions.map((column) => ({
           ...column,
           checked: visibleColumns[column.id] ?? true,
-          onCheckedChange: (checked) => setVisibleColumns((current) => ({ ...current, [column.id]: checked }))
+          onCheckedChange: (checked) =>
+            setVisibleColumns((current) => ({ ...current, [column.id]: checked }))
         }))}
         filterOptions={filterOptions}
         filterValue={statusFilter}
         onFilterValueChange={(value) => {
-          setStatusFilter(value)
-          setCurrentPage(1)
+          setStatusFilter(value);
+          setCurrentPage(1);
         }}
         onSearchValueChange={(value) => {
-          setSearchValue(value)
-          setCurrentPage(1)
+          setSearchValue(value);
+          setCurrentPage(1);
         }}
-        onShowAllColumns={() => setVisibleColumns(Object.fromEntries(columnOptions.map((column) => [column.id, true])))}
+        onShowAllColumns={() =>
+          setVisibleColumns(Object.fromEntries(columnOptions.map((column) => [column.id, true])))
+        }
         searchPlaceholder="Search tenant, corporate ID, domain, mobile, slug, database, or status"
         searchValue={searchValue}
       />
@@ -297,25 +346,69 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
             <thead className="bg-muted/50">
               <tr>
                 <TenantHeader>#</TenantHeader>
-                {visibleColumns.tenant ? <TenantHeader>Tenant <span className="text-muted-foreground">↕</span></TenantHeader> : null}
-                {visibleColumns.uuid ? <TenantHeader>UUID <span className="text-muted-foreground">↕</span></TenantHeader> : null}
-                {visibleColumns.corporateId ? <TenantHeader>Corporate ID <span className="text-muted-foreground">↕</span></TenantHeader> : null}
-                {visibleColumns.mobile ? <TenantHeader>Mobile <span className="text-muted-foreground">↕</span></TenantHeader> : null}
-                {visibleColumns.domain ? <TenantHeader>Domain <span className="text-muted-foreground">↕</span></TenantHeader> : null}
-                {visibleColumns.slug ? <TenantHeader>Slug <span className="text-muted-foreground">↕</span></TenantHeader> : null}
-                {visibleColumns.database ? <TenantHeader>Database <span className="text-muted-foreground">↕</span></TenantHeader> : null}
-                {visibleColumns.companies ? <TenantHeader>Companies <span className="text-muted-foreground">↕</span></TenantHeader> : null}
-                {visibleColumns.status ? <TenantHeader>Status <span className="text-muted-foreground">↕</span></TenantHeader> : null}
+                {visibleColumns.tenant ? (
+                  <TenantHeader>
+                    Tenant <span className="text-muted-foreground">↕</span>
+                  </TenantHeader>
+                ) : null}
+                {visibleColumns.uuid ? (
+                  <TenantHeader>
+                    UUID <span className="text-muted-foreground">↕</span>
+                  </TenantHeader>
+                ) : null}
+                {visibleColumns.corporateId ? (
+                  <TenantHeader>
+                    Corporate ID <span className="text-muted-foreground">↕</span>
+                  </TenantHeader>
+                ) : null}
+                {visibleColumns.mobile ? (
+                  <TenantHeader>
+                    Mobile <span className="text-muted-foreground">↕</span>
+                  </TenantHeader>
+                ) : null}
+                {visibleColumns.domain ? (
+                  <TenantHeader>
+                    Domain <span className="text-muted-foreground">↕</span>
+                  </TenantHeader>
+                ) : null}
+                {visibleColumns.slug ? (
+                  <TenantHeader>
+                    Slug <span className="text-muted-foreground">↕</span>
+                  </TenantHeader>
+                ) : null}
+                {visibleColumns.database ? (
+                  <TenantHeader>
+                    Database <span className="text-muted-foreground">↕</span>
+                  </TenantHeader>
+                ) : null}
+                {visibleColumns.companies ? (
+                  <TenantHeader>
+                    Companies <span className="text-muted-foreground">↕</span>
+                  </TenantHeader>
+                ) : null}
+                {visibleColumns.status ? (
+                  <TenantHeader>
+                    Status <span className="text-muted-foreground">↕</span>
+                  </TenantHeader>
+                ) : null}
                 <TenantHeader className="text-right">Action</TenantHeader>
               </tr>
             </thead>
             <tbody>
               {pageTenants.map((tenant, index) => {
-                const summary = toTenantSummary(tenant)
-                const suspended = tenant.status === "suspended" || tenant.status === "inactive"
+                const summary = toTenantSummary(tenant);
+                const suspended = tenant.status === "suspended" || tenant.status === "inactive";
                 return (
-                  <tr key={tenant.id} className={cn("border-b border-border/70 last:border-b-0", suspended && "bg-muted/20 text-muted-foreground")}>
-                    <td className="px-4 py-2.5 text-muted-foreground">{(currentPage - 1) * rowsPerPage + index + 1}</td>
+                  <tr
+                    key={tenant.id}
+                    className={cn(
+                      "border-b border-border/70 last:border-b-0",
+                      suspended && "bg-muted/20 text-muted-foreground"
+                    )}
+                  >
+                    <td className="px-4 py-2.5 text-muted-foreground">
+                      {(currentPage - 1) * rowsPerPage + index + 1}
+                    </td>
                     {visibleColumns.tenant ? (
                       <td className="px-4 py-2.5">
                         <button
@@ -327,16 +420,45 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
                         </button>
                       </td>
                     ) : null}
-                    {visibleColumns.uuid ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.uuid}</td> : null}
-                    {visibleColumns.corporateId ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.corporateId ?? "-"}</td> : null}
-                    {visibleColumns.mobile ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.mobile ?? "-"}</td> : null}
-                    {visibleColumns.domain ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.primaryDomain || "-"}</td> : null}
-                    {visibleColumns.slug ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.slug}</td> : null}
-                    {visibleColumns.database ? <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{tenant.dbName}</td> : null}
-                    {visibleColumns.companies ? <td className="px-4 py-2.5 tabular-nums">{summary.companyCount}</td> : null}
+                    {visibleColumns.uuid ? (
+                      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                        {tenant.uuid}
+                      </td>
+                    ) : null}
+                    {visibleColumns.corporateId ? (
+                      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                        {tenant.corporateId ?? "-"}
+                      </td>
+                    ) : null}
+                    {visibleColumns.mobile ? (
+                      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                        {tenant.mobile ?? "-"}
+                      </td>
+                    ) : null}
+                    {visibleColumns.domain ? (
+                      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                        {tenant.primaryDomain || "-"}
+                      </td>
+                    ) : null}
+                    {visibleColumns.slug ? (
+                      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                        {tenant.slug}
+                      </td>
+                    ) : null}
+                    {visibleColumns.database ? (
+                      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                        {tenant.dbName}
+                      </td>
+                    ) : null}
+                    {visibleColumns.companies ? (
+                      <td className="px-4 py-2.5 tabular-nums">{summary.companyCount}</td>
+                    ) : null}
                     {visibleColumns.status ? (
                       <td className="px-4 py-2.5">
-                        <WorkspaceStatusBadge label={tenant.status} tone={statusTone(tenant.status)} />
+                        <WorkspaceStatusBadge
+                          label={tenant.status}
+                          tone={statusTone(tenant.status)}
+                        />
                       </td>
                     ) : null}
                     <td className="px-4 py-1.5 text-right">
@@ -352,13 +474,17 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
                       />
                     </td>
                   </tr>
-                )
+                );
               })}
             </tbody>
           </table>
         </div>
-        {pageTenants.length === 0 && tenantsQuery.isFetching ? <WorkspaceTableSkeletonRows columns={8} /> : null}
-        {pageTenants.length === 0 && !tenantsQuery.isFetching ? <WorkspaceTableEmptyState>No tenants found.</WorkspaceTableEmptyState> : null}
+        {pageTenants.length === 0 && tenantsQuery.isFetching ? (
+          <WorkspaceTableSkeletonRows columns={8} />
+        ) : null}
+        {pageTenants.length === 0 && !tenantsQuery.isFetching ? (
+          <WorkspaceTableEmptyState>No tenants found.</WorkspaceTableEmptyState>
+        ) : null}
       </WorkspaceTablePanel>
       <WorkspacePagination
         page={currentPage}
@@ -371,12 +497,12 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
         onPageChange={setCurrentPage}
         onPreviousPage={() => setCurrentPage((page) => Math.max(1, page - 1))}
         onRowsPerPageChange={(value) => {
-          setRowsPerPage(value)
-          setCurrentPage(1)
+          setRowsPerPage(value);
+          setCurrentPage(1);
         }}
       />
     </WorkspacePage>
-  )
+  );
 }
 
 function TenantShowPage({
@@ -388,16 +514,16 @@ function TenantShowPage({
   onRestore,
   onSuspend
 }: {
-  activity: AuditEventDTO[]
-  activityLoading: boolean
-  tenant: Tenant
-  onBack: () => void
-  onEdit: () => void
-  onRestore: () => void
-  onSuspend: () => void
+  activity: AuditEventDTO[];
+  activityLoading: boolean;
+  tenant: Tenant;
+  onBack: () => void;
+  onEdit: () => void;
+  onRestore: () => void;
+  onSuspend: () => void;
 }) {
-  const summary = toTenantSummary(tenant)
-  const suspended = tenant.status === "suspended" || tenant.status === "inactive"
+  const summary = toTenantSummary(tenant);
+  const suspended = tenant.status === "suspended" || tenant.status === "inactive";
 
   return (
     <WorkspacePage
@@ -413,7 +539,12 @@ function TenantShowPage({
             <Pencil className="size-4" />
             Edit
           </Button>
-          <Button type="button" variant="outline" className="h-9 rounded-md" onClick={suspended ? onRestore : onSuspend}>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 rounded-md"
+            onClick={suspended ? onRestore : onSuspend}
+          >
             {suspended ? "Restore" : "Suspend"}
           </Button>
         </div>
@@ -425,13 +556,50 @@ function TenantShowPage({
             <WorkspaceDetailTable
               rows={[
                 ["Tenant", tenant.tenantName],
-                ["UUID", <span key="uuid" className="font-mono text-xs">{tenant.uuid}</span>],
-                ["Code", <span key="code" className="font-mono text-xs">{tenant.tenantCode}</span>],
-                ["Corporate ID", <span key="corp" className="font-mono text-xs">{tenant.corporateId ?? "-"}</span>],
-                ["Mobile", <span key="mobile" className="font-mono text-xs">{tenant.mobile ?? "-"}</span>],
-                ["Primary domain", <span key="domain" className="font-mono text-xs">{tenant.primaryDomain || "-"}</span>],
-                ["Slug", <span key="slug" className="font-mono text-xs">{tenant.slug}</span>],
-                ["Status", <WorkspaceStatusBadge key="status" label={tenant.status} tone={statusTone(tenant.status)} />]
+                [
+                  "UUID",
+                  <span key="uuid" className="font-mono text-xs">
+                    {tenant.uuid}
+                  </span>
+                ],
+                [
+                  "Code",
+                  <span key="code" className="font-mono text-xs">
+                    {tenant.tenantCode}
+                  </span>
+                ],
+                [
+                  "Corporate ID",
+                  <span key="corp" className="font-mono text-xs">
+                    {tenant.corporateId ?? "-"}
+                  </span>
+                ],
+                [
+                  "Mobile",
+                  <span key="mobile" className="font-mono text-xs">
+                    {tenant.mobile ?? "-"}
+                  </span>
+                ],
+                [
+                  "Primary domain",
+                  <span key="domain" className="font-mono text-xs">
+                    {tenant.primaryDomain || "-"}
+                  </span>
+                ],
+                [
+                  "Slug",
+                  <span key="slug" className="font-mono text-xs">
+                    {tenant.slug}
+                  </span>
+                ],
+                [
+                  "Status",
+                  <WorkspaceStatusBadge
+                    key="status"
+                    label={tenant.status}
+                    tone={statusTone(tenant.status)}
+                  />
+                ]
               ]}
             />
           </WorkspaceShowCard>
@@ -443,9 +611,19 @@ function TenantShowPage({
                 ["Type", tenant.dbType],
                 ["Host", tenant.dbHost],
                 ["Port", tenant.dbPort],
-                ["Database", <span key="db" className="font-mono text-xs">{tenant.dbName}</span>],
+                [
+                  "Database",
+                  <span key="db" className="font-mono text-xs">
+                    {tenant.dbName}
+                  </span>
+                ],
                 ["User", tenant.dbUser],
-                ["Secret", <span key="secret" className="font-mono text-xs">{tenant.dbSecretRef}</span>],
+                [
+                  "Secret",
+                  <span key="secret" className="font-mono text-xs">
+                    {tenant.dbSecretRef}
+                  </span>
+                ],
                 ["Companies", summary.companyCount],
                 ["Active", summary.activeCompanyCount]
               ]}
@@ -455,19 +633,25 @@ function TenantShowPage({
         </div>
       </WorkspaceShowLayout>
     </WorkspacePage>
-  )
+  );
 }
 
 function TenantActivityCard({ events, loading }: { events: AuditEventDTO[]; loading: boolean }) {
   return (
     <WorkspaceShowCard title="Activity">
       <div className="divide-y divide-border/60">
-        {loading ? <p className="px-4 py-3 text-sm text-muted-foreground">Loading activity...</p> : null}
-        {!loading && events.length === 0 ? <p className="px-4 py-3 text-sm text-muted-foreground">No activity yet.</p> : null}
+        {loading ? (
+          <p className="px-4 py-3 text-sm text-muted-foreground">Loading activity...</p>
+        ) : null}
+        {!loading && events.length === 0 ? (
+          <p className="px-4 py-3 text-sm text-muted-foreground">No activity yet.</p>
+        ) : null}
         {events.slice(0, 6).map((event) => (
           <div key={String(event.id)} className="px-4 py-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-foreground">{event.event_name.replace(/[._-]+/g, " ")}</p>
+              <p className="text-sm font-medium text-foreground">
+                {event.event_name.replace(/[._-]+/g, " ")}
+              </p>
               <span className="text-xs text-muted-foreground">{formatDate(event.created_at)}</span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">{event.actor_email || "system"}</p>
@@ -475,39 +659,39 @@ function TenantActivityCard({ events, loading }: { events: AuditEventDTO[]; load
         ))}
       </div>
     </WorkspaceShowCard>
-  )
+  );
 }
 
 type TenantFormState = {
-  corporateId: string
-  dbHost: string
-  dbName: string
-  dbPort: string
-  dbSecretRef: string
-  dbType: string
-  dbUser: string
-  defaultLandingApp: PlatformAppId
-  disabledModuleKeys: string[]
-  enabledModuleKeys: string[]
-  id?: number
-  mobile: string
-  primaryDomain: string
-  slug: string
-  tenantCode: string
-  tenantName: string
-  status: string
-}
+  corporateId: string;
+  dbHost: string;
+  dbName: string;
+  dbPort: string;
+  dbSecretRef: string;
+  dbType: string;
+  dbUser: string;
+  defaultLandingApp: PlatformAppId;
+  disabledModuleKeys: string[];
+  enabledModuleKeys: string[];
+  id?: number;
+  mobile: string;
+  primaryDomain: string;
+  slug: string;
+  tenantCode: string;
+  tenantName: string;
+  status: string;
+};
 
 type TenantAppAccess = {
-  appId: PlatformAppId
-  alwaysEnabled: boolean
-  color: string
-  description: string
-  enabled: boolean
-  icon: ReactNode
-  moduleKey: string
-  name: string
-}
+  appId: PlatformAppId;
+  alwaysEnabled: boolean;
+  color: string;
+  description: string;
+  enabled: boolean;
+  icon: ReactNode;
+  moduleKey: string;
+  name: string;
+};
 
 function TenantUpsertPage({
   errorMessage,
@@ -516,17 +700,27 @@ function TenantUpsertPage({
   onBack,
   onSubmit
 }: {
-  errorMessage?: string
-  loading: boolean
-  tenant: Tenant | null
-  onBack: () => void
-  onSubmit: (tenant: TenantFormState) => void
+  errorMessage?: string;
+  loading: boolean;
+  tenant: Tenant | null;
+  onBack: () => void;
+  onSubmit: (tenant: TenantFormState) => void;
 }) {
-  const isEdit = tenant !== null
-  const appsQuery = usePlatformAppsQuery()
-  const availableApps = useMemo(() => tenantAppAccessFromRegistry(appsQuery.data), [appsQuery.data])
-  const initialEnabledKeys = normalizeModuleKeys(tenant?.enabledModuleKeys ?? availableApps.filter((app) => app.enabled).map((app) => app.moduleKey))
-  const initialDisabledKeys = disabledModuleKeysFromPayload(tenant?.payloadSettings, availableApps, initialEnabledKeys)
+  const isEdit = tenant !== null;
+  const appsQuery = usePlatformAppsQuery();
+  const availableApps = useMemo(
+    () => tenantAppAccessFromRegistry(appsQuery.data),
+    [appsQuery.data]
+  );
+  const initialEnabledKeys = normalizeModuleKeys(
+    tenant?.enabledModuleKeys ??
+      availableApps.filter((app) => app.enabled).map((app) => app.moduleKey)
+  );
+  const initialDisabledKeys = disabledModuleKeysFromPayload(
+    tenant?.payloadSettings,
+    availableApps,
+    initialEnabledKeys
+  );
   const [form, setForm] = useState<TenantFormState>({
     corporateId: tenant?.corporateId ?? toCorporateId(tenant?.tenantCode ?? ""),
     dbHost: tenant?.dbHost ?? "localhost",
@@ -535,28 +729,37 @@ function TenantUpsertPage({
     dbSecretRef: tenant?.dbSecretRef ?? "DB_PASSWORD",
     dbType: tenant?.dbType ?? "mariadb",
     dbUser: tenant?.dbUser ?? "root",
-    defaultLandingApp: defaultLandingApp(tenant?.defaultLandingApp ?? landingAppFromPayload(tenant?.payloadSettings), tenant?.enabledModuleKeys ?? []),
+    defaultLandingApp: defaultLandingApp(
+      tenant?.defaultLandingApp ?? landingAppFromPayload(tenant?.payloadSettings),
+      tenant?.enabledModuleKeys ?? []
+    ),
     disabledModuleKeys: initialDisabledKeys,
     enabledModuleKeys: initialEnabledKeys,
     ...(tenant ? { id: tenant.id } : {}),
     mobile: tenant?.mobile ?? "",
-    primaryDomain: tenant?.primaryDomain ?? defaultTenantDomain(tenant?.slug ?? tenant?.tenantCode ?? ""),
+    primaryDomain:
+      tenant?.primaryDomain ?? defaultTenantDomain(tenant?.slug ?? tenant?.tenantCode ?? ""),
     slug: tenant?.slug ?? toSlug(tenant?.tenantCode ?? ""),
     status: tenant?.status ?? "active",
     tenantCode: tenant?.tenantCode ?? "",
     tenantName: tenant?.tenantName ?? ""
-  })
-  const [activeTab, setActiveTab] = useState("details")
-  const [localBanner, setLocalBanner] = useState("")
+  });
+  const [activeTab, setActiveTab] = useState("details");
+  const [localBanner, setLocalBanner] = useState("");
   const [appAccess, setAppAccess] = useState(() =>
     availableApps.map((app) => ({
       ...app,
-      enabled: app.alwaysEnabled || (tenant ? initialEnabledKeys.includes(app.moduleKey) && !initialDisabledKeys.includes(app.moduleKey) : app.enabled)
+      enabled:
+        app.alwaysEnabled ||
+        (tenant
+          ? initialEnabledKeys.includes(app.moduleKey) &&
+            !initialDisabledKeys.includes(app.moduleKey)
+          : app.enabled)
     }))
-  )
-  const [corporateIdTouched, setCorporateIdTouched] = useState(false)
-  const [primaryDomainTouched, setPrimaryDomainTouched] = useState(Boolean(tenant?.primaryDomain))
-  const enabledAppCount = appAccess.filter((app) => app.enabled).length
+  );
+  const [corporateIdTouched, setCorporateIdTouched] = useState(false);
+  const [primaryDomainTouched, setPrimaryDomainTouched] = useState(Boolean(tenant?.primaryDomain));
+  const enabledAppCount = appAccess.filter((app) => app.enabled).length;
 
   const tabs: WorkspaceAnimatedTab[] = [
     {
@@ -566,7 +769,11 @@ function TenantUpsertPage({
         <WorkspaceFormPanel
           footer={
             <>
-              <Button type="button" className="rounded-md bg-foreground text-background hover:bg-foreground/90" onClick={() => setActiveTab("database")}>
+              <Button
+                type="button"
+                className="rounded-md bg-foreground text-background hover:bg-foreground/90"
+                onClick={() => setActiveTab("database")}
+              >
                 Next
               </Button>
               <Button type="button" variant="outline" className="rounded-md" onClick={onBack}>
@@ -582,8 +789,8 @@ function TenantUpsertPage({
                 className="h-11 rounded-md"
                 value={form.tenantName}
                 onChange={(event) => {
-                  setLocalBanner("")
-                  setForm((current) => ({ ...current, tenantName: event.target.value }))
+                  setLocalBanner("");
+                  setForm((current) => ({ ...current, tenantName: event.target.value }));
                 }}
                 required
               />
@@ -594,16 +801,20 @@ function TenantUpsertPage({
                   className="h-11 rounded-md font-mono uppercase"
                   value={form.tenantCode}
                   onChange={(event) => {
-                    setLocalBanner("")
-                    const tenantCode = event.target.value
+                    setLocalBanner("");
+                    const tenantCode = event.target.value;
                     setForm((current) => ({
                       ...current,
-                      corporateId: corporateIdTouched ? current.corporateId : toCorporateId(tenantCode),
+                      corporateId: corporateIdTouched
+                        ? current.corporateId
+                        : toCorporateId(tenantCode),
                       dbName: toDatabaseName(tenantCode),
-                      primaryDomain: primaryDomainTouched ? current.primaryDomain : defaultTenantDomain(tenantCode),
+                      primaryDomain: primaryDomainTouched
+                        ? current.primaryDomain
+                        : defaultTenantDomain(tenantCode),
                       slug: toSlug(tenantCode),
                       tenantCode
-                    }))
+                    }));
                   }}
                   required
                 />
@@ -612,9 +823,9 @@ function TenantUpsertPage({
                   variant="outline"
                   className="h-11 rounded-md px-4"
                   onClick={() => {
-                    const tenantCode = toSlug(form.tenantName || form.tenantCode)
-                    setCorporateIdTouched(false)
-                    setPrimaryDomainTouched(false)
+                    const tenantCode = toSlug(form.tenantName || form.tenantCode);
+                    setCorporateIdTouched(false);
+                    setPrimaryDomainTouched(false);
                     setForm((current) => ({
                       ...current,
                       corporateId: toCorporateId(tenantCode),
@@ -622,7 +833,7 @@ function TenantUpsertPage({
                       primaryDomain: defaultTenantDomain(tenantCode),
                       slug: toSlug(tenantCode),
                       tenantCode
-                    }))
+                    }));
                   }}
                 >
                   Auto
@@ -634,8 +845,8 @@ function TenantUpsertPage({
                 className="h-11 rounded-md font-mono uppercase"
                 value={form.corporateId}
                 onChange={(event) => {
-                  setCorporateIdTouched(true)
-                  setForm((current) => ({ ...current, corporateId: event.target.value }))
+                  setCorporateIdTouched(true);
+                  setForm((current) => ({ ...current, corporateId: event.target.value }));
                 }}
               />
             </WorkspaceFormField>
@@ -643,7 +854,9 @@ function TenantUpsertPage({
               <Input
                 className="h-11 rounded-md"
                 value={form.mobile}
-                onChange={(event) => setForm((current) => ({ ...current, mobile: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, mobile: event.target.value }))
+                }
               />
             </WorkspaceFormField>
             <WorkspaceFormField label="Slug">
@@ -651,12 +864,14 @@ function TenantUpsertPage({
                 className="h-11 rounded-md"
                 value={form.slug}
                 onChange={(event) => {
-                  const slug = event.target.value
+                  const slug = event.target.value;
                   setForm((current) => ({
                     ...current,
-                    primaryDomain: primaryDomainTouched ? current.primaryDomain : defaultTenantDomain(slug),
+                    primaryDomain: primaryDomainTouched
+                      ? current.primaryDomain
+                      : defaultTenantDomain(slug),
                     slug
-                  }))
+                  }));
                 }}
               />
             </WorkspaceFormField>
@@ -672,11 +887,15 @@ function TenantUpsertPage({
                     <CheckCircle2 className="size-4" />
                     Active
                   </div>
-                  <p className="mt-1 text-sm">Active tenants can be selected for workspace access.</p>
+                  <p className="mt-1 text-sm">
+                    Active tenants can be selected for workspace access.
+                  </p>
                 </div>
                 <Switch
                   checked={form.status === "active"}
-                  onCheckedChange={(checked) => setForm((current) => ({ ...current, status: checked ? "active" : "inactive" }))}
+                  onCheckedChange={(checked) =>
+                    setForm((current) => ({ ...current, status: checked ? "active" : "inactive" }))
+                  }
                 />
               </div>
             </div>
@@ -691,7 +910,11 @@ function TenantUpsertPage({
         <WorkspaceFormPanel
           footer={
             <>
-              <Button type="button" className="rounded-md bg-foreground text-background hover:bg-foreground/90" onClick={() => setActiveTab("settings")}>
+              <Button
+                type="button"
+                className="rounded-md bg-foreground text-background hover:bg-foreground/90"
+                onClick={() => setActiveTab("settings")}
+              >
                 Next
               </Button>
               <Button type="button" variant="outline" className="rounded-md" onClick={onBack}>
@@ -706,42 +929,54 @@ function TenantUpsertPage({
               <Input
                 className="h-11 rounded-md"
                 value={form.dbType}
-                onChange={(event) => setForm((current) => ({ ...current, dbType: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, dbType: event.target.value }))
+                }
               />
             </WorkspaceFormField>
             <WorkspaceFormField label="Host">
               <Input
                 className="h-11 rounded-md"
                 value={form.dbHost}
-                onChange={(event) => setForm((current) => ({ ...current, dbHost: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, dbHost: event.target.value }))
+                }
               />
             </WorkspaceFormField>
             <WorkspaceFormField label="Port">
               <Input
                 className="h-11 rounded-md"
                 value={form.dbPort}
-                onChange={(event) => setForm((current) => ({ ...current, dbPort: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, dbPort: event.target.value }))
+                }
               />
             </WorkspaceFormField>
             <WorkspaceFormField label="Database name">
               <Input
                 className="h-11 rounded-md font-mono"
                 value={form.dbName}
-                onChange={(event) => setForm((current) => ({ ...current, dbName: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, dbName: event.target.value }))
+                }
               />
             </WorkspaceFormField>
             <WorkspaceFormField label="User">
               <Input
                 className="h-11 rounded-md"
                 value={form.dbUser}
-                onChange={(event) => setForm((current) => ({ ...current, dbUser: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, dbUser: event.target.value }))
+                }
               />
             </WorkspaceFormField>
             <WorkspaceFormField label="Secret reference">
               <Input
                 className="h-11 rounded-md font-mono"
                 value={form.dbSecretRef}
-                onChange={(event) => setForm((current) => ({ ...current, dbSecretRef: event.target.value }))}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, dbSecretRef: event.target.value }))
+                }
               />
             </WorkspaceFormField>
           </WorkspaceFormGrid>
@@ -755,7 +990,11 @@ function TenantUpsertPage({
         <WorkspaceFormPanel
           footer={
             <>
-              <Button type="submit" disabled={loading} className="rounded-md bg-foreground text-background hover:bg-foreground/90">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="rounded-md bg-foreground text-background hover:bg-foreground/90"
+              >
                 <Save className="size-4" />
                 {loading ? "Saving..." : isEdit ? "Update tenant" : "Save"}
               </Button>
@@ -770,9 +1009,13 @@ function TenantUpsertPage({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold text-foreground">Tenant app access</h2>
-                <p className="text-sm text-muted-foreground">Choose the app areas available to this tenant workspace.</p>
+                <p className="text-sm text-muted-foreground">
+                  Choose the app areas available to this tenant workspace.
+                </p>
               </div>
-              <span className="rounded-md border border-border/70 bg-background px-3 py-1 text-xs font-semibold">{enabledAppCount} enabled</span>
+              <span className="rounded-md border border-border/70 bg-background px-3 py-1 text-xs font-semibold">
+                {enabledAppCount} enabled
+              </span>
             </div>
           </div>
           <div className="mt-4 rounded-md border border-border/70 p-4">
@@ -780,17 +1023,24 @@ function TenantUpsertPage({
               <select
                 className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={form.defaultLandingApp}
-                onChange={(event) => setForm((current) => ({ ...current, defaultLandingApp: event.target.value as PlatformAppId }))}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    defaultLandingApp: event.target.value as PlatformAppId
+                  }))
+                }
               >
                 {appAccess
                   .filter((app) => app.enabled)
                   .map((app) => {
-                    const registry = platformAppRegistry.find((item) => item.moduleKey === app.moduleKey)
+                    const registry = platformAppRegistry.find(
+                      (item) => item.moduleKey === app.moduleKey
+                    );
                     return (
                       <option key={app.moduleKey} value={registry?.id ?? "application"}>
                         {app.name}
                       </option>
-                    )
+                    );
                   })}
               </select>
             </WorkspaceFormField>
@@ -802,20 +1052,28 @@ function TenantUpsertPage({
                 app={app}
                 onToggle={(enabled) =>
                   setAppAccess((current) => {
-                    const next = current.map((item, itemIndex) => (itemIndex === index ? { ...item, enabled } : item))
-                    const enabledKeys = normalizeModuleKeys(next.filter((item) => item.enabled).map((item) => item.moduleKey))
-                    const disabledKeys = next.filter((item) => !item.enabled && !item.alwaysEnabled).map((item) => item.moduleKey)
+                    const next = current.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, enabled } : item
+                    );
+                    const enabledKeys = normalizeModuleKeys(
+                      next.filter((item) => item.enabled).map((item) => item.moduleKey)
+                    );
+                    const disabledKeys = next
+                      .filter((item) => !item.enabled && !item.alwaysEnabled)
+                      .map((item) => item.moduleKey);
                     const enabledIds = next
                       .filter((item) => item.enabled)
                       .map((item) => item.appId)
-                      .filter(Boolean)
+                      .filter(Boolean);
                     setForm((currentForm) => ({
                       ...currentForm,
                       disabledModuleKeys: disabledKeys,
                       enabledModuleKeys: enabledKeys,
-                      defaultLandingApp: enabledIds.includes(currentForm.defaultLandingApp) ? currentForm.defaultLandingApp : "application"
-                    }))
-                    return next
+                      defaultLandingApp: enabledIds.includes(currentForm.defaultLandingApp)
+                        ? currentForm.defaultLandingApp
+                        : "application"
+                    }));
+                    return next;
                   })
                 }
               />
@@ -824,7 +1082,7 @@ function TenantUpsertPage({
         </WorkspaceFormPanel>
       )
     }
-  ]
+  ];
 
   return (
     <WorkspaceUpsertPage
@@ -840,49 +1098,53 @@ function TenantUpsertPage({
       <form
         noValidate
         onSubmit={(event) => {
-          event.preventDefault()
+          event.preventDefault();
           if (activeTab === "details") {
             if (!form.tenantName.trim()) {
-              setLocalBanner("Tenant name is required.")
-              return
+              setLocalBanner("Tenant name is required.");
+              return;
             }
             if (!form.tenantCode.trim()) {
-              setLocalBanner("Tenant code is required.")
-              return
+              setLocalBanner("Tenant code is required.");
+              return;
             }
             if (!form.primaryDomain.trim()) {
-              setLocalBanner("Primary domain is required.")
-              return
+              setLocalBanner("Primary domain is required.");
+              return;
             }
-            setLocalBanner("")
-            setActiveTab("database")
-            return
+            setLocalBanner("");
+            setActiveTab("database");
+            return;
           }
           if (activeTab === "database") {
-            setActiveTab("settings")
-            return
+            setActiveTab("settings");
+            return;
           }
           if (!form.tenantName.trim()) {
-            setActiveTab("details")
-            setLocalBanner("Tenant name is required.")
-            return
+            setActiveTab("details");
+            setLocalBanner("Tenant name is required.");
+            return;
           }
           if (!form.tenantCode.trim()) {
-            setActiveTab("details")
-            setLocalBanner("Tenant code is required.")
-            return
+            setActiveTab("details");
+            setLocalBanner("Tenant code is required.");
+            return;
           }
           if (!form.primaryDomain.trim()) {
-            setActiveTab("details")
-            setLocalBanner("Primary domain is required.")
-            return
+            setActiveTab("details");
+            setLocalBanner("Primary domain is required.");
+            return;
           }
-          setLocalBanner("")
+          setLocalBanner("");
           onSubmit({
             ...form,
-            disabledModuleKeys: appAccess.filter((app) => !app.enabled && !app.alwaysEnabled).map((app) => app.moduleKey),
-            enabledModuleKeys: normalizeModuleKeys(appAccess.filter((app) => app.enabled).map((app) => app.moduleKey))
-          })
+            disabledModuleKeys: appAccess
+              .filter((app) => !app.enabled && !app.alwaysEnabled)
+              .map((app) => app.moduleKey),
+            enabledModuleKeys: normalizeModuleKeys(
+              appAccess.filter((app) => app.enabled).map((app) => app.moduleKey)
+            )
+          });
         }}
       >
         <div className="rounded-md border border-border/70 bg-card/95 p-5 shadow-sm">
@@ -895,21 +1157,39 @@ function TenantUpsertPage({
         </div>
       </form>
     </WorkspaceUpsertPage>
-  )
+  );
 }
 
-function TenantAppCard({ app, onToggle }: { app: TenantAppAccess; onToggle: (enabled: boolean) => void }) {
-  const locked = app.alwaysEnabled || app.moduleKey === "platform.application"
+function TenantAppCard({
+  app,
+  onToggle
+}: {
+  app: TenantAppAccess;
+  onToggle: (enabled: boolean) => void;
+}) {
+  const locked = app.alwaysEnabled || app.moduleKey === "platform.application";
   return (
-    <div className={cn("flex min-h-32 gap-3 rounded-md border border-border/70 p-4", app.enabled ? "bg-muted/40" : "bg-background")}>
-      <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-md text-white", app.color)}>{app.icon}</div>
+    <div
+      className={cn(
+        "flex min-h-32 gap-3 rounded-md border border-border/70 p-4",
+        app.enabled ? "bg-muted/40" : "bg-background"
+      )}
+    >
+      <div
+        className={cn(
+          "flex size-10 shrink-0 items-center justify-center rounded-md text-white",
+          app.color
+        )}
+      >
+        {app.icon}
+      </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-sm font-semibold text-foreground">{app.name}</h3>
           <span
             className={cn(
               "rounded-md px-2 py-0.5 text-[11px]",
-              app.enabled ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground",
+              app.enabled ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
             )}
           >
             {app.enabled ? "Enabled" : "Disabled"}
@@ -919,23 +1199,21 @@ function TenantAppCard({ app, onToggle }: { app: TenantAppAccess; onToggle: (ena
       </div>
       <Switch checked={app.enabled} disabled={locked} onCheckedChange={onToggle} className="mt-1" />
     </div>
-  )
+  );
 }
 
 function TenantHeader({ children, className }: { children: ReactNode; className?: string }) {
-  const label = Array.isArray(children) ? children[0] : children
+  const label = Array.isArray(children) ? children[0] : children;
 
-  return (
-    <WorkspaceTableHeaderCell className={className}>
-      {label}
-    </WorkspaceTableHeaderCell>
-  )
+  return <WorkspaceTableHeaderCell className={className}>{label}</WorkspaceTableHeaderCell>;
 }
 
 function toTenantSavePayload(form: TenantFormState): TenantSavePayload {
-  const enabledModuleKeys = normalizeModuleKeys(form.enabledModuleKeys)
-  const landingApp = defaultLandingApp(form.defaultLandingApp, enabledModuleKeys)
-  const disabledModuleKeys = form.disabledModuleKeys.filter((key) => key !== "platform.application")
+  const enabledModuleKeys = normalizeModuleKeys(form.enabledModuleKeys);
+  const landingApp = defaultLandingApp(form.defaultLandingApp, enabledModuleKeys);
+  const disabledModuleKeys = form.disabledModuleKeys.filter(
+    (key) => key !== "platform.application"
+  );
 
   return {
     corporateId: form.corporateId.trim() || null,
@@ -952,64 +1230,87 @@ function toTenantSavePayload(form: TenantFormState): TenantSavePayload {
       apps: { disabled: disabledModuleKeys, enabled: enabledModuleKeys },
       landing: { app: landingApp, mode: "tenant" }
     },
-    primaryDomain: normalizeTenantDomain(form.primaryDomain) || defaultTenantDomain(form.slug || form.tenantCode),
+    primaryDomain:
+      normalizeTenantDomain(form.primaryDomain) ||
+      defaultTenantDomain(form.slug || form.tenantCode),
     slug: form.slug.trim() || toSlug(form.tenantCode),
     status: form.status,
     tenantCode: form.tenantCode.trim(),
     tenantName: form.tenantName.trim()
-  }
+  };
 }
 
 function toTenantApiPayload(tenant: TenantSavePayload) {
-  return tenant
+  return tenant;
 }
 
 function landingAppFromPayload(payloadSettings: Record<string, unknown> | undefined): unknown {
-  const landing = payloadSettings?.landing
-  return typeof landing === "object" && landing !== null && "app" in landing ? landing.app : undefined
+  const landing = payloadSettings?.landing;
+  return typeof landing === "object" && landing !== null && "app" in landing
+    ? landing.app
+    : undefined;
 }
 
 function toTenantSummary(tenant: Tenant) {
-  const active = tenant.status === "active"
+  const active = tenant.status === "active";
   return {
     activeCompanyCount: active ? 1 : 0,
     companyCount: 1,
     corporateId: tenant.corporateId ?? toCorporateId(tenant.tenantCode),
     database: tenant.dbName
-  }
+  };
 }
 
 function toCorporateId(value: string) {
-  return value.trim().toUpperCase()
+  return value.trim().toUpperCase();
 }
 
 function toDatabaseName(value: string) {
-  const code = value.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "")
-  return code ? `${code}_db` : ""
+  const code = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return code ? `${code}_db` : "";
 }
 
 function toSlug(value: string) {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function tenantAppAccessFromRegistry(apps: PlatformApp[] | undefined): TenantAppAccess[] {
-  const source = apps?.length ? apps : platformAppRegistry.map((app, index) => ({
-    alwaysEnabled: app.alwaysEnabled,
-    appId: app.id,
-    defaultLanding: app.defaultLanding,
-    description: app.description,
-    id: index,
-    label: app.label,
-    moduleKey: app.moduleKey,
-    stack: app.stack,
-    uuid: app.moduleKey
-  }))
+  const source = apps?.length
+    ? apps
+    : platformAppRegistry.map((app, index) => ({
+        alwaysEnabled: app.alwaysEnabled,
+        appId: app.id,
+        defaultLanding: app.defaultLanding,
+        description: app.description,
+        id: index,
+        label: app.label,
+        moduleKey: app.moduleKey,
+        stack: app.stack,
+        uuid: app.moduleKey
+      }));
 
   return source
-    .filter((app) => app.appId === "application" || app.appId === "billing" || app.appId === "accounts" || app.appId === "task-manager")
+    .filter(
+      (app) =>
+        app.appId === "application" ||
+        app.appId === "billing" ||
+        app.appId === "accounts" ||
+        app.appId === "task-manager"
+    )
     .map((app) => {
-      const local = platformAppRegistry.find((item) => item.id === app.appId || item.moduleKey === app.moduleKey) ?? platformAppRegistry[0]!
-      const Icon = local.icon
+      const local =
+        platformAppRegistry.find(
+          (item) => item.id === app.appId || item.moduleKey === app.moduleKey
+        ) ?? platformAppRegistry[0]!;
+      const Icon = local.icon;
       return {
         alwaysEnabled: app.alwaysEnabled || app.moduleKey === "platform.application",
         appId: app.appId as PlatformAppId,
@@ -1019,38 +1320,45 @@ function tenantAppAccessFromRegistry(apps: PlatformApp[] | undefined): TenantApp
         icon: <Icon className="size-5" />,
         moduleKey: app.moduleKey,
         name: app.label || local.label
-      }
-    })
+      };
+    });
 }
 
-function disabledModuleKeysFromPayload(payloadSettings: Record<string, unknown> | undefined, apps: TenantAppAccess[], enabledModuleKeys: string[]) {
-  const disabled = isStringArraySetting(payloadSettings?.apps, "disabled")
-  if (disabled.length > 0) return disabled.filter((key) => key !== "platform.application")
-  return apps.filter((app) => !app.alwaysEnabled && !enabledModuleKeys.includes(app.moduleKey)).map((app) => app.moduleKey)
+function disabledModuleKeysFromPayload(
+  payloadSettings: Record<string, unknown> | undefined,
+  apps: TenantAppAccess[],
+  enabledModuleKeys: string[]
+) {
+  const disabled = isStringArraySetting(payloadSettings?.apps, "disabled");
+  if (disabled.length > 0) return disabled.filter((key) => key !== "platform.application");
+  return apps
+    .filter((app) => !app.alwaysEnabled && !enabledModuleKeys.includes(app.moduleKey))
+    .map((app) => app.moduleKey);
 }
 
 function isStringArraySetting(value: unknown, key: string) {
-  if (!value || typeof value !== "object" || Array.isArray(value) || !(key in value)) return []
-  const entry = (value as Record<string, unknown>)[key]
-  return Array.isArray(entry) ? entry.filter((item): item is string => typeof item === "string") : []
+  if (!value || typeof value !== "object" || Array.isArray(value) || !(key in value)) return [];
+  const entry = (value as Record<string, unknown>)[key];
+  return Array.isArray(entry)
+    ? entry.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function statusTone(status: string) {
-  if (status === "active") return "success"
-  if (status === "provisioning") return "info"
-  if (status === "suspended" || status === "inactive") return "danger"
-  return "neutral"
+  if (status === "active") return "success";
+  if (status === "provisioning") return "info";
+  if (status === "suspended" || status === "inactive") return "danger";
+  return "neutral";
 }
 
 function formatDate(value: string | undefined) {
-  if (!value) return "Today"
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? "Today" : date.toLocaleDateString()
+  if (!value) return "Today";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Today" : date.toLocaleDateString();
 }
 
 function showTenantError(title: string, error: unknown) {
   toast.error(title, {
     description: error instanceof Error ? error.message : "Please try again."
-  })
+  });
 }
-

@@ -10,7 +10,9 @@ export function TenantAccessWorkspace() {
       title="Tenant Access"
       description="Review each tenant subscription, manual grants, and final enabled modules."
       technicalName="page.tenant-access.summary"
-      actions={<TenantAccessForm loading={query.isLoading} onRefresh={() => void query.refetch()} />}
+      actions={
+        <TenantAccessForm loading={query.isLoading} onRefresh={() => void query.refetch()} />
+      }
     >
       <TenantAccessList records={query.data ?? []} />
     </WorkspacePage>

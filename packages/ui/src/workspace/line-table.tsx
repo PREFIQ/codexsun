@@ -1,25 +1,25 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
-import { Pencil, Plus, Trash2 } from "lucide-react"
-import { Button } from "../components/button"
-import { cn } from "../lib/utils"
+import type { ReactNode } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Button } from "../components/button";
+import { cn } from "../lib/utils";
 
 export function WorkspaceLineTableHeader({
   children,
   className,
-  label,
+  label
 }: {
-  children?: ReactNode
-  className?: string
-  label: string
+  children?: ReactNode;
+  className?: string;
+  label: string;
 }) {
   return (
     <div className={cn("mb-3 flex items-center justify-between gap-4", className)}>
       <h3 className="text-sm font-semibold text-foreground">{label}</h3>
       {children}
     </div>
-  )
+  );
 }
 
 export function WorkspaceLineTable<T>({
@@ -31,21 +31,21 @@ export function WorkspaceLineTable<T>({
   onAdd,
   onDelete,
   onEdit,
-  rowKey,
+  rowKey
 }: {
-  className?: string
+  className?: string;
   columns: Array<{
-    header: string
-    width?: string
-    render(row: T, index: number): ReactNode
-  }>
-  data: T[]
-  emptyLabel?: string
-  minWidth?: string
-  onAdd?: () => void
-  onDelete?: (row: T, index: number) => void
-  onEdit?: (row: T, index: number) => void
-  rowKey: (row: T, index: number) => string
+    header: string;
+    width?: string;
+    render(row: T, index: number): ReactNode;
+  }>;
+  data: T[];
+  emptyLabel?: string;
+  minWidth?: string;
+  onAdd?: () => void;
+  onDelete?: (row: T, index: number) => void;
+  onEdit?: (row: T, index: number) => void;
+  rowKey: (row: T, index: number) => string;
 }) {
   return (
     <div className={cn("overflow-hidden rounded-md border border-border/70", className)}>
@@ -53,7 +53,9 @@ export function WorkspaceLineTable<T>({
         <table className="w-full border-collapse text-xs" style={{ minWidth }}>
           <thead className="bg-muted/45 text-muted-foreground">
             <tr>
-              <th className="w-8 border-b border-border/70 px-2 py-2 text-center text-xs font-semibold uppercase">#</th>
+              <th className="w-8 border-b border-border/70 px-2 py-2 text-center text-xs font-semibold uppercase">
+                #
+              </th>
               {columns.map((col) => (
                 <th
                   key={col.header}
@@ -69,7 +71,9 @@ export function WorkspaceLineTable<T>({
           <tbody>
             {data.map((row, index) => (
               <tr key={rowKey(row, index)} className="border-b border-border/60 last:border-b-0">
-                <td className="border-r border-border/70 px-2 py-1.5 text-center text-muted-foreground">{index + 1}</td>
+                <td className="border-r border-border/70 px-2 py-1.5 text-center text-muted-foreground">
+                  {index + 1}
+                </td>
                 {columns.map((col) => (
                   <td key={col.header} className="px-3 py-1.5">
                     {col.render(row, index)}
@@ -78,12 +82,24 @@ export function WorkspaceLineTable<T>({
                 <td className="px-2 py-1.5 text-center">
                   <div className="flex items-center justify-center gap-0.5">
                     {onEdit ? (
-                      <Button type="button" size="icon" variant="ghost" className="size-7 rounded-md" onClick={() => onEdit(row, index)}>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="size-7 rounded-md"
+                        onClick={() => onEdit(row, index)}
+                      >
                         <Pencil className="size-3.5" />
                       </Button>
                     ) : null}
                     {onDelete ? (
-                      <Button type="button" size="icon" variant="ghost" className="size-7 rounded-md text-destructive hover:text-destructive" onClick={() => onDelete(row, index)}>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="size-7 rounded-md text-destructive hover:text-destructive"
+                        onClick={() => onDelete(row, index)}
+                      >
                         <Trash2 className="size-3.5" />
                       </Button>
                     ) : null}
@@ -99,12 +115,18 @@ export function WorkspaceLineTable<T>({
       ) : null}
       {onAdd ? (
         <div className="border-t border-border/70 px-3 py-2">
-          <Button type="button" variant="ghost" size="sm" className="h-8 gap-1 rounded-md text-xs" onClick={onAdd}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1 rounded-md text-xs"
+            onClick={onAdd}
+          >
             <Plus className="size-3.5" />
             Add row
           </Button>
         </div>
       ) : null}
     </div>
-  )
+  );
 }

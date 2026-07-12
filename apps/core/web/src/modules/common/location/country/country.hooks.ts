@@ -1,7 +1,5 @@
-import { countryDefinition } from "../shared/location.definitions";
-import { useCreateLocationRecord, useLocationRecords, useUpdateLocationRecord } from "../shared/location.hooks";
-
-export const useCountries = () => useLocationRecords(countryDefinition);
-export const useCreateCountry = () => useCreateLocationRecord(countryDefinition);
-export const useUpdateCountry = () => useUpdateLocationRecord(countryDefinition);
-
+import { useQuery } from "@tanstack/react-query";
+import { listCountryRecords } from "./country.services";
+export function useCountryQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listCountryRecords(path), queryKey: ["core", "location", key] });
+}

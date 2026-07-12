@@ -1,11 +1,10 @@
 export type DistrictStatus = "active" | "inactive";
 
 export type District = {
-  id: string;
-  uuid: string;
-  stateId: string;
+  id: number;
+  stateId: number;
   stateName: string;
-  countryId: string;
+  countryId: number;
   countryName: string;
   name: string;
   sortOrder: number;
@@ -13,7 +12,7 @@ export type District = {
 };
 
 export type DistrictSavePayload = {
-  stateId: string;
+  stateId: number;
   name: string;
   sortOrder: number;
   status: DistrictStatus;

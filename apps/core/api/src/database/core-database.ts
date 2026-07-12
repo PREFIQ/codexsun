@@ -19,7 +19,8 @@ export function resolveCoreDatabaseName(value: unknown) {
   const requested = typeof value === "string" ? value.trim() : "";
   if (!requested) throw new Error("x-tenant-db is required for Core database access.");
   if (!/^[a-zA-Z0-9_]+$/.test(requested)) throw new Error("Invalid tenant database name.");
-  if (requested === env.DB_MASTER_NAME) throw new Error("Core tables cannot use the Platform master database.");
+  if (requested === env.DB_MASTER_NAME)
+    throw new Error("Core tables cannot use the Platform master database.");
   return requested;
 }
 
@@ -72,11 +73,13 @@ export async function bootstrapCoreDatabase(databaseName: string) {
 }
 
 async function flattenLegacyCoreTableNames(database: Kysely<CoreDatabase>) {
-  await sql.raw(
-    "CREATE TABLE IF NOT EXISTS schema_migrations (" +
-    "id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(160) NOT NULL UNIQUE, " +
-    "applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)"
-  ).execute(database);
+  await sql
+    .raw(
+      "CREATE TABLE IF NOT EXISTS schema_migrations (" +
+        "id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(160) NOT NULL UNIQUE, " +
+        "applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+    )
+    .execute(database);
   const result = await sql<{ table_name: string }>`
     SELECT TABLE_NAME AS table_name
     FROM information_schema.TABLES
@@ -100,7 +103,9 @@ async function flattenLegacyCoreTableNames(database: Kysely<CoreDatabase>) {
     await sql.raw(`RENAME TABLE \`${legacyName}\` TO \`${currentName}\``).execute(database);
   }
 
-  await sql`INSERT IGNORE INTO schema_migrations (name) VALUES ('003_flatten_core_table_names')`.execute(database);
+  await sql`INSERT IGNORE INTO schema_migrations (name) VALUES ('003_flatten_core_table_names')`.execute(
+    database
+  );
 }
 
 export async function bootstrapRegisteredCoreDatabases() {
@@ -124,7 +129,9 @@ async function ensureDatabase(databaseName: string) {
     user: env.DB_USER
   });
   try {
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${databaseName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    await connection.query(
+      `CREATE DATABASE IF NOT EXISTS \`${databaseName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    );
   } finally {
     await connection.end();
   }
@@ -140,8 +147,12 @@ async function registeredTenantDatabaseNames() {
     user: env.DB_USER
   });
   try {
-    const [rows] = await connection.query("SELECT db_name FROM tenants WHERE db_name IS NOT NULL AND status <> 'deleted'");
-    return (rows as Array<{ db_name: string }>).map(({ db_name }) => resolveCoreDatabaseName(db_name));
+    const [rows] = await connection.query(
+      "SELECT db_name FROM tenants WHERE db_name IS NOT NULL AND status <> 'deleted'"
+    );
+    return (rows as Array<{ db_name: string }>).map(({ db_name }) =>
+      resolveCoreDatabaseName(db_name)
+    );
   } finally {
     await connection.end();
   }

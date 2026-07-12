@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getPlatformRegistryResult, savePlatformRegistryGroup, savePlatformRegistryModule, savePlatformRegistryPlatform, setPlatformRegistryActive } from "./platform-registry.services";
+import {
+  getPlatformRegistryResult,
+  savePlatformRegistryGroup,
+  savePlatformRegistryModule,
+  savePlatformRegistryPlatform,
+  setPlatformRegistryActive
+} from "./platform-registry.services";
 
 const queryKey = ["admin", "project-manager", "registry"] as const;
 
@@ -14,6 +20,17 @@ export function usePlatformRegistryMutations() {
     saveGroup: useMutation({ mutationFn: savePlatformRegistryGroup, onSuccess: done }),
     saveModule: useMutation({ mutationFn: savePlatformRegistryModule, onSuccess: done }),
     savePlatform: useMutation({ mutationFn: savePlatformRegistryPlatform, onSuccess: done }),
-    setActive: useMutation({ mutationFn: ({ active, id, kind }: { active: boolean; id: string; kind: "groups" | "modules" | "platforms" }) => setPlatformRegistryActive(kind, id, active), onSuccess: done })
+    setActive: useMutation({
+      mutationFn: ({
+        active,
+        id,
+        kind
+      }: {
+        active: boolean;
+        id: string;
+        kind: "groups" | "modules" | "platforms";
+      }) => setPlatformRegistryActive(kind, id, active),
+      onSuccess: done
+    })
   };
 }

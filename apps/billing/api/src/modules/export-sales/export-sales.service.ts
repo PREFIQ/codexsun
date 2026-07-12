@@ -1,9 +1,17 @@
 import { env } from "../../env.js";
 import { AppError } from "@codexsun/framework/errors";
 import { ExportSalesRepository } from "./export-sales.repository.js";
-import type { ExportSale, ExportSaleLineItem, ExportSaleLineItemInput, ExportSaleSavePayload } from "./export-sales.types.js";
+import type {
+  ExportSale,
+  ExportSaleLineItem,
+  ExportSaleLineItemInput,
+  ExportSaleSavePayload
+} from "./export-sales.types.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
-import { formatBillingDocumentNumber, nextBillingDocumentNumber } from "../settings/settings.types.js";
+import {
+  formatBillingDocumentNumber,
+  nextBillingDocumentNumber
+} from "../settings/settings.types.js";
 
 export class ExportSalesService {
   constructor(
@@ -24,11 +32,20 @@ export class ExportSalesService {
     const numbering = billingSettings.numbering.exportSales;
     const generatedNumber = formatBillingDocumentNumber(numbering);
     const enteredNumber = input.invoiceNumber.trim();
-    const generated = numbering.automatic && (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
+    const generated =
+      numbering.automatic &&
+      (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
     const normalizedInput = enteredNumber ? input : { ...input, invoiceNumber: generatedNumber };
-    const duplicate = await this.repository.findByInvoiceNumber(databaseName, normalizedInput.invoiceNumber.trim().toUpperCase());
-    if (duplicate) throw AppError.conflict("Export sales invoice number already exists. Enter a unique number.");
-    const sale = await this.repository.create(databaseName, normalizeExportSaleInput(normalizedInput));
+    const duplicate = await this.repository.findByInvoiceNumber(
+      databaseName,
+      normalizedInput.invoiceNumber.trim().toUpperCase()
+    );
+    if (duplicate)
+      throw AppError.conflict("Export sales invoice number already exists. Enter a unique number.");
+    const sale = await this.repository.create(
+      databaseName,
+      normalizeExportSaleInput(normalizedInput)
+    );
     const nextNumber = nextBillingDocumentNumber(numbering, normalizedInput.invoiceNumber);
     if (numbering.automatic && (generated || nextNumber > numbering.nextNumber)) {
       await this.settings.saveBillingSettings(databaseName, {
@@ -44,8 +61,12 @@ export class ExportSalesService {
   }
 
   async updateExportSale(databaseName: string, id: string, input: ExportSaleSavePayload) {
-    const duplicate = await this.repository.findByInvoiceNumber(databaseName, input.invoiceNumber.trim().toUpperCase());
-    if (duplicate && duplicate.id !== id) throw AppError.conflict("Export sales invoice number already exists. Enter a unique number.");
+    const duplicate = await this.repository.findByInvoiceNumber(
+      databaseName,
+      input.invoiceNumber.trim().toUpperCase()
+    );
+    if (duplicate && duplicate.id !== id)
+      throw AppError.conflict("Export sales invoice number already exists. Enter a unique number.");
     const sale = await this.repository.update(databaseName, id, normalizeExportSaleInput(input));
     if (sale) await postExportSaleToAccounts(databaseName, sale, "update");
     return sale;
@@ -64,14 +85,16 @@ export class ExportSalesService {
   async revokeExportSale(databaseName: string, id: string) {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
-    if (current.status !== "confirmed") throw AppError.conflict("Only confirmed export sales can be revoked.");
+    if (current.status !== "confirmed")
+      throw AppError.conflict("Only confirmed export sales can be revoked.");
     return this.repository.revoke(databaseName, id);
   }
 
   async deleteExportSale(databaseName: string, id: string) {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
-    if (current.status !== "draft") throw AppError.conflict("Only draft export sales can be deleted.");
+    if (current.status !== "draft")
+      throw AppError.conflict("Only draft export sales can be deleted.");
     return this.repository.delete(databaseName, id);
   }
 }
@@ -108,7 +131,7 @@ export function normalizeExportSaleInput(input: ExportSaleSavePayload): ExportSa
     shippingAddress: input.shippingAddress.trim(),
     status: input.status,
     taxType: input.taxType?.trim() || "IGST",
-    workOrderNo: input.workOrderNo?.trim() ?? "",
+    workOrderNo: input.workOrderNo?.trim() ?? ""
   };
 }
 
@@ -126,20 +149,22 @@ function normalizeExportSaleLineItem(item: ExportSaleLineItemInput): ExportSaleL
     rate: roundMoney(Number(item.rate) || 0),
     size: item.size?.trim() ?? "",
     taxRate: roundMoney(Number(item.taxRate) || 0),
-    unit: item.unit.trim().toUpperCase() || "NOS",
+    unit: item.unit.trim().toUpperCase() || "NOS"
   };
 }
 
-export function buildExportSaleTotals(input: ExportSaleSavePayload): Pick<ExportSale, "amount" | "items" | "subtotal" | "taxAmount"> {
+export function buildExportSaleTotals(
+  input: ExportSaleSavePayload
+): Pick<ExportSale, "amount" | "items" | "subtotal" | "taxAmount"> {
   const items: ExportSaleLineItem[] = input.items.map((item, index) => {
     const taxableAmount = roundMoney(item.quantity * item.rate);
-    const taxAmount = roundMoney(taxableAmount * item.taxRate / 100);
+    const taxAmount = roundMoney((taxableAmount * item.taxRate) / 100);
     return {
       ...item,
       id: `item-${index + 1}`,
       lineTotal: roundMoney(taxableAmount + taxAmount),
       taxableAmount,
-      taxAmount,
+      taxAmount
     };
   });
 
@@ -151,7 +176,7 @@ export function buildExportSaleTotals(input: ExportSaleSavePayload): Pick<Export
     amount,
     items,
     subtotal,
-    taxAmount,
+    taxAmount
   };
 }
 
@@ -159,35 +184,43 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-async function postExportSaleToAccounts(databaseName: string, sale: ExportSale, operation: "create" | "update" | "cancel") {
+async function postExportSaleToAccounts(
+  databaseName: string,
+  sale: ExportSale,
+  operation: "create" | "update" | "cancel"
+) {
   try {
     const response = await fetch(`${env.ACCOUNTS_API_URL}/accounts/postings/billing`, {
-    body: JSON.stringify({
-      documentDate: sale.issuedOn,
-      operation,
-      partyLedgerName: sale.customerName,
-      placeOfSupply: sale.taxType,
-      roundOff: sale.roundOff,
-      sourceApp: "billing",
-      sourceDocumentId: sale.id,
-      sourceDocumentNo: sale.invoiceNumber,
-      sourceModule: "export-sales",
-      taxableAmount: sale.subtotal,
-      taxAmount: sale.taxAmount,
-      totalAmount: sale.amount
-    }),
-    headers: {
-      "Content-Type": "application/json",
-      "x-tenant-db": databaseName
-    },
-    method: "POST"
-  });
+      body: JSON.stringify({
+        documentDate: sale.issuedOn,
+        operation,
+        partyLedgerName: sale.customerName,
+        placeOfSupply: sale.taxType,
+        roundOff: sale.roundOff,
+        sourceApp: "billing",
+        sourceDocumentId: sale.id,
+        sourceDocumentNo: sale.invoiceNumber,
+        sourceModule: "export-sales",
+        taxableAmount: sale.subtotal,
+        taxAmount: sale.taxAmount,
+        totalAmount: sale.amount
+      }),
+      headers: {
+        "Content-Type": "application/json",
+        "x-tenant-db": databaseName
+      },
+      method: "POST"
+    });
 
     if (!response.ok) {
       const message = await response.text().catch(() => "");
-      console.warn(`[export-sales] Accounts posting deferred for ${sale.invoiceNumber}: ${message || response.statusText}`);
+      console.warn(
+        `[export-sales] Accounts posting deferred for ${sale.invoiceNumber}: ${message || response.statusText}`
+      );
     }
   } catch (error) {
-    console.warn(`[export-sales] Accounts posting deferred for ${sale.invoiceNumber}: ${error instanceof Error ? error.message : String(error)}`);
+    console.warn(
+      `[export-sales] Accounts posting deferred for ${sale.invoiceNumber}: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }

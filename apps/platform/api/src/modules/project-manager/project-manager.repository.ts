@@ -1,4 +1,9 @@
-import type { ProjectManagerKind, ProjectManagerRecord, ProjectManagerRegistryResult, ProjectManagerResult } from "./project-manager.types.js";
+import type {
+  ProjectManagerKind,
+  ProjectManagerRecord,
+  ProjectManagerRegistryResult,
+  ProjectManagerResult
+} from "./project-manager.types.js";
 
 export class ProjectManagerRepository {
   summarize(records: ProjectManagerRecord[]): ProjectManagerResult["summary"] {
@@ -14,10 +19,23 @@ export class ProjectManagerRepository {
   }
 
   groupByKind(records: ProjectManagerRecord[]) {
-    return records.reduce<Record<ProjectManagerKind, ProjectManagerRecord[]>>((groups, record) => {
-      groups[record.kind].push(record);
-      return groups;
-    }, { activity: [], discussion: [], issue: [], kanban: [], release: [], review: [], task: [], timeline: [], todo: [] });
+    return records.reduce<Record<ProjectManagerKind, ProjectManagerRecord[]>>(
+      (groups, record) => {
+        groups[record.kind].push(record);
+        return groups;
+      },
+      {
+        activity: [],
+        discussion: [],
+        issue: [],
+        kanban: [],
+        release: [],
+        review: [],
+        task: [],
+        timeline: [],
+        todo: []
+      }
+    );
   }
 
   countRegistry(registry: ProjectManagerRegistryResult) {

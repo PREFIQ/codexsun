@@ -7,8 +7,18 @@ import type { AccountsSettings } from "./settings.types.js";
 const service = new AccountsSettingsService();
 
 export async function registerAccountsSettingsRoutes(app: FastifyInstance) {
-  app.get("/accounts/settings", async (request) => ok(await service.get(databaseName(request.headers["x-tenant-db"])), { requestId: request.id }));
-  app.put("/accounts/settings", async (request) => ok(await service.save(databaseName(request.headers["x-tenant-db"]), request.body as AccountsSettings), { requestId: request.id }));
+  app.get("/accounts/settings", async (request) =>
+    ok(await service.get(databaseName(request.headers["x-tenant-db"])), { requestId: request.id })
+  );
+  app.put("/accounts/settings", async (request) =>
+    ok(
+      await service.save(
+        databaseName(request.headers["x-tenant-db"]),
+        request.body as AccountsSettings
+      ),
+      { requestId: request.id }
+    )
+  );
 }
 
 function databaseName(value: string | string[] | undefined) {

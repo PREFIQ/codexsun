@@ -1,2 +1,2 @@
-export * from "./currencies.definition";
+export * from "./currencies.types";
 export * from "./currencies.workspace";

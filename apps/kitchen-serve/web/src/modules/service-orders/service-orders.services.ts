@@ -12,28 +12,32 @@ async function ensureTenantContext() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: "{}"
-  }).then(async (response) => {
-    const envelope = (await response.json().catch(() => null)) as {
-      data?: { accessToken: string; tenantDbName: string; tenantId: string };
-      error?: { message?: string };
-    } | null;
-    if (!response.ok || !envelope?.data) {
-      throw new Error(envelope?.error?.message ?? "Could not start the development tenant session.");
-    }
-    localStorage.setItem("codexsun_session_tenant", envelope.data.accessToken);
-    localStorage.setItem("codexsun_tenant_id", envelope.data.tenantId);
-    localStorage.setItem("codexsun_tenant_db_name", envelope.data.tenantDbName);
-  }).catch((error) => {
-    tenantBootstrap = null;
-    if (error instanceof TypeError) {
-      // KitchenServe can run by itself during local UI/API development. The API
-      // validates the database name and keeps every query tenant-scoped.
-      localStorage.setItem("codexsun_tenant_id", "kitchen-serve-development");
-      localStorage.setItem("codexsun_tenant_db_name", "cxsun_master_db");
-      return;
-    }
-    throw error;
-  });
+  })
+    .then(async (response) => {
+      const envelope = (await response.json().catch(() => null)) as {
+        data?: { accessToken: string; tenantDbName: string; tenantId: string };
+        error?: { message?: string };
+      } | null;
+      if (!response.ok || !envelope?.data) {
+        throw new Error(
+          envelope?.error?.message ?? "Could not start the development tenant session."
+        );
+      }
+      localStorage.setItem("codexsun_session_tenant", envelope.data.accessToken);
+      localStorage.setItem("codexsun_tenant_id", envelope.data.tenantId);
+      localStorage.setItem("codexsun_tenant_db_name", envelope.data.tenantDbName);
+    })
+    .catch((error) => {
+      tenantBootstrap = null;
+      if (error instanceof TypeError) {
+        // KitchenServe can run by itself during local UI/API development. The API
+        // validates the database name and keeps every query tenant-scoped.
+        localStorage.setItem("codexsun_tenant_id", "kitchen-serve-development");
+        localStorage.setItem("codexsun_tenant_db_name", "cxsun_master_db");
+        return;
+      }
+      throw error;
+    });
   await tenantBootstrap;
 }
 
@@ -53,7 +57,9 @@ async function request<T>(path: string, init?: RequestInit) {
       headers: { ...context(), ...(init?.headers ?? {}) }
     });
   } catch {
-    throw new Error("KitchenServe service is unavailable. Start the KitchenServe stack and try again.");
+    throw new Error(
+      "KitchenServe service is unavailable. Start the KitchenServe stack and try again."
+    );
   }
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {

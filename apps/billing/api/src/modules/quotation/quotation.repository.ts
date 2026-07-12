@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type { Kysely } from "kysely";
 import { getBillingDatabase } from "../../database/billing-database.js";
-import type { Quotation, QuotationLineItem, QuotationSavePayload, QuotationStatus, QuotationTaxType } from "./quotation.types.js";
+import type {
+  Quotation,
+  QuotationLineItem,
+  QuotationSavePayload,
+  QuotationStatus,
+  QuotationTaxType
+} from "./quotation.types.js";
 
 type BillingQuotationRow = {
   amount: number;
@@ -32,7 +38,9 @@ type BillingQuotationDatabase = {
 
 export class QuotationRepository {
   async list(databaseName: string) {
-    const rows = await (await database(databaseName))
+    const rows = await (
+      await database(databaseName)
+    )
       .selectFrom("billing_quotations")
       .selectAll()
       .orderBy("date", "desc")
@@ -42,7 +50,9 @@ export class QuotationRepository {
   }
 
   async get(databaseName: string, id: string) {
-    const row = await (await database(databaseName))
+    const row = await (
+      await database(databaseName)
+    )
       .selectFrom("billing_quotations")
       .selectAll()
       .where("id", "=", id)
@@ -51,7 +61,9 @@ export class QuotationRepository {
   }
 
   async findByNumber(databaseName: string, quotationNumber: string) {
-    const row = await (await database(databaseName))
+    const row = await (
+      await database(databaseName)
+    )
       .selectFrom("billing_quotations")
       .selectAll()
       .where("quotation_number", "=", quotationNumber)
@@ -61,22 +73,38 @@ export class QuotationRepository {
 
   async create(databaseName: string, input: QuotationSavePayload) {
     const record = createQuotationRecord(input);
-    await (await database(databaseName)).insertInto("billing_quotations").values(toRow(record)).execute();
+    await (
+      await database(databaseName)
+    )
+      .insertInto("billing_quotations")
+      .values(toRow(record))
+      .execute();
     return record;
   }
 
   async update(databaseName: string, id: string, input: QuotationSavePayload) {
     const db = await database(databaseName);
-    const existing = await db.selectFrom("billing_quotations").select(["id", "created_at"]).where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_quotations")
+      .select(["id", "created_at"])
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
-    const record = createQuotationRecord(input, { createdAt: existing.created_at ?? new Date().toISOString(), id });
+    const record = createQuotationRecord(input, {
+      createdAt: existing.created_at ?? new Date().toISOString(),
+      id
+    });
     await db.updateTable("billing_quotations").set(toRow(record)).where("id", "=", id).execute();
     return record;
   }
 
   async delete(databaseName: string, id: string) {
     const db = await database(databaseName);
-    const existing = await db.selectFrom("billing_quotations").selectAll().where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_quotations")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
     await db.deleteFrom("billing_quotations").where("id", "=", id).execute();
     return toQuotation(existing);
@@ -84,24 +112,45 @@ export class QuotationRepository {
 
   async setStatus(databaseName: string, id: string, status: QuotationStatus) {
     const db = await database(databaseName);
-    const existing = await db.selectFrom("billing_quotations").selectAll().where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_quotations")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
     const updatedAt = new Date().toISOString();
-    await db.updateTable("billing_quotations").set({ status, updated_at: updatedAt }).where("id", "=", id).execute();
+    await db
+      .updateTable("billing_quotations")
+      .set({ status, updated_at: updatedAt })
+      .where("id", "=", id)
+      .execute();
     return { ...toQuotation(existing), status, updatedAt };
   }
 
   async setGeneratedSalesInvoice(databaseName: string, id: string, invoiceNumber: string) {
     const db = await database(databaseName);
-    const existing = await db.selectFrom("billing_quotations").selectAll().where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_quotations")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
     const updatedAt = new Date().toISOString();
-    await db.updateTable("billing_quotations").set({
-      generated_sales_invoice_no: invoiceNumber,
-      status: "confirmed",
-      updated_at: updatedAt,
-    }).where("id", "=", id).execute();
-    return { ...toQuotation(existing), generatedSalesInvoiceNo: invoiceNumber, status: "confirmed" as const, updatedAt };
+    await db
+      .updateTable("billing_quotations")
+      .set({
+        generated_sales_invoice_no: invoiceNumber,
+        status: "confirmed",
+        updated_at: updatedAt
+      })
+      .where("id", "=", id)
+      .execute();
+    return {
+      ...toQuotation(existing),
+      generatedSalesInvoiceNo: invoiceNumber,
+      status: "confirmed" as const,
+      updatedAt
+    };
   }
 }
 
@@ -131,7 +180,7 @@ function toQuotation(row: BillingQuotationRow): Quotation {
     taxType: row.tax_type,
     terms: row.terms ?? "",
     updatedAt: row.updated_at ?? row.created_at ?? "",
-    workOrderNo: row.work_order_no ?? "",
+    workOrderNo: row.work_order_no ?? ""
   };
 }
 
@@ -156,11 +205,14 @@ function toRow(quotation: Quotation): BillingQuotationRow {
     tax_type: quotation.taxType,
     terms: quotation.terms,
     updated_at: quotation.updatedAt,
-    work_order_no: quotation.workOrderNo,
+    work_order_no: quotation.workOrderNo
   };
 }
 
-function createQuotationRecord(input: QuotationSavePayload, current?: Partial<Pick<Quotation, "createdAt" | "id">>) {
+function createQuotationRecord(
+  input: QuotationSavePayload,
+  current?: Partial<Pick<Quotation, "createdAt" | "id">>
+) {
   const now = new Date().toISOString();
   const totals = buildTotals(input);
   return {
@@ -183,7 +235,7 @@ function createQuotationRecord(input: QuotationSavePayload, current?: Partial<Pi
     taxType: input.taxType,
     terms: input.terms,
     updatedAt: now,
-    workOrderNo: input.workOrderNo,
+    workOrderNo: input.workOrderNo
   } satisfies Quotation;
 }
 
@@ -201,7 +253,7 @@ function buildTotals(input: QuotationSavePayload) {
       lineTotal: roundMoney(taxableAmount + taxAmount),
       sgstAmount: isSplitTax ? splitTaxAmount : 0,
       taxableAmount,
-      taxAmount,
+      taxAmount
     };
   });
   const subtotal = roundMoney(items.reduce((sum, item) => sum + item.taxableAmount, 0));

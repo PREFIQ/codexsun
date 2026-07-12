@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { sql } from "kysely";
 import { getCoreDatabase } from "../../../../database/core-database.js";
 import type {
@@ -8,63 +7,60 @@ import type {
 } from "./currencies.types.js";
 
 type CurrenciesRow = {
-  id: string;
-  uuid: string;
+  id: number;
   name: string;
   symbol: string;
-  is_active: number | boolean;
+  status: string;
   sort_order: number;
 };
 
 export class CurrenciesRepository {
   async list(filters: CurrenciesListFilters = {}) {
     const rows =
-      await sql<CurrenciesRow>`SELECT id, uuid, name, symbol, is_active, sort_order FROM currencies
+      await sql<CurrenciesRow>`SELECT id, name, symbol, status, sort_order FROM currencies
       WHERE (${filters.search ?? ""} = '' OR LOWER(name) LIKE ${like(filters.search)} OR LOWER(symbol) LIKE ${like(filters.search)})
       ORDER BY sort_order, id`.execute(getCoreDatabase());
     return rows.rows.map(toCurrencies);
   }
 
-  async find(id: string) {
+  async find(id: string | number) {
     const rows =
-      await sql<CurrenciesRow>`SELECT id, uuid, name, symbol, is_active, sort_order FROM currencies
-      WHERE id=${id} LIMIT 1`.execute(getCoreDatabase());
+      await sql<CurrenciesRow>`SELECT id, name, symbol, status, sort_order FROM currencies
+      WHERE id=${Number(id)} LIMIT 1`.execute(getCoreDatabase());
     return rows.rows[0] ? toCurrencies(rows.rows[0]) : null;
   }
 
   async create(input: CurrenciesSavePayload) {
-    const id = `currencies-${randomUUID()}`;
-    const uuid = randomUUID().replaceAll("-", "").slice(0, 8);
-    await sql`INSERT INTO currencies (id, uuid, name, symbol, is_active, sort_order) VALUES
-      (${id}, ${uuid}, ${normalizeString(input.name)}, ${normalizeString(input.symbol)}, ${input.isActive === false ? 0 : 1}, ${numberValue(input.sortOrder, 1000)})`.execute(
+    const result = await sql`INSERT INTO currencies (name, symbol, status, sort_order) VALUES
+      (${normalizeString(input.name)}, ${normalizeString(input.symbol)}, ${input.isActive === false ? "inactive" : "active"}, ${numberValue(input.sortOrder, 1000)})`.execute(
       getCoreDatabase()
     );
-    return (await this.find(id))!;
+    return (await this.find(String(result.insertId)))!;
   }
 
-  async update(id: string, input: CurrenciesSavePayload) {
+  async update(id: string | number, input: CurrenciesSavePayload) {
     const existing = await this.find(id);
     if (!existing || !canMutate(existing)) return null;
-    await sql`UPDATE currencies SET name=${normalizeString(input.name)}, symbol=${normalizeString(input.symbol)}, is_active=${input.isActive === false ? 0 : 1},
-      sort_order=${numberValue(input.sortOrder, 1000)}, updated_at=CURRENT_TIMESTAMP WHERE id=${id}`.execute(
-      getCoreDatabase()
-    );
-    return this.find(id);
-  }
-
-  async setActive(id: string, isActive: boolean) {
-    const existing = await this.find(id);
-    if (!existing || !canMutate(existing)) return null;
-    await sql`UPDATE currencies SET is_active=${isActive ? 1 : 0}, updated_at=CURRENT_TIMESTAMP WHERE id=${id}`.execute(
+    await sql`UPDATE currencies SET name=${normalizeString(input.name)}, symbol=${normalizeString(input.symbol)}, status=${input.isActive === false ? "inactive" : "active"},
+      sort_order=${numberValue(input.sortOrder, 1000)}, updated_at=CURRENT_TIMESTAMP WHERE id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return this.find(id);
   }
 
-  async forceDelete(id: string) {
+  async setActive(id: string | number, isActive: boolean) {
     const existing = await this.find(id);
     if (!existing || !canMutate(existing)) return null;
-    await sql`DELETE FROM currencies WHERE id=${id}`.execute(getCoreDatabase());
+    await sql`UPDATE currencies SET status=${isActive ? "active" : "inactive"}, updated_at=CURRENT_TIMESTAMP WHERE id=${Number(id)}`.execute(
+      getCoreDatabase()
+    );
+    return this.find(id);
+  }
+
+  async forceDelete(id: string | number) {
+    const existing = await this.find(id);
+    if (!existing || !canMutate(existing)) return null;
+    await sql`DELETE FROM currencies WHERE id=${Number(id)}`.execute(getCoreDatabase());
     return existing;
   }
 }
@@ -77,11 +73,10 @@ function canMutate(record: CurrenciesRecord) {
 
 function toCurrencies(row: CurrenciesRow): CurrenciesRecord {
   return {
-    id: row.id,
-    uuid: row.uuid,
+    id: Number(row.id),
     name: row.name,
     symbol: row.symbol,
-    isActive: Boolean(row.is_active),
+    isActive: row.status === "active",
     sortOrder: Number(row.sort_order)
   };
 }

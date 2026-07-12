@@ -1,2 +1,5 @@
-import { commonMasterSchema } from "../../../common-master/common-master.schema";
-export const contactGroupsSchema = commonMasterSchema;
+import { z } from "zod";
+export const contactgroupsSchema = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.boolean(), z.null()])
+);

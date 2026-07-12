@@ -1,12 +1,26 @@
 import { randomBytes } from "node:crypto";
 import { getPlatformDatabase } from "../../database/platform-database.js";
-import type { PlatformAppDefinition, PlatformAppId, PlatformAppSavePayload } from "./app-registry.types.js";
+import type {
+  PlatformAppDefinition,
+  PlatformAppId,
+  PlatformAppSavePayload
+} from "./app-registry.types.js";
 
 export class AppRegistryRepository {
   async list() {
     const rows = await getPlatformDatabase()
       .selectFrom("platform_apps")
-      .select(["id", "uuid", "app_id", "label", "module_key", "stack", "always_enabled", "default_landing", "description"])
+      .select([
+        "id",
+        "uuid",
+        "app_id",
+        "label",
+        "module_key",
+        "stack",
+        "always_enabled",
+        "default_landing",
+        "description"
+      ])
       .orderBy("default_landing", "desc")
       .orderBy("label", "asc")
       .execute();
@@ -15,17 +29,28 @@ export class AppRegistryRepository {
   }
 
   async create(input: PlatformAppSavePayload) {
-    const result = await getPlatformDatabase().insertInto("platform_apps").values({ ...toRow(input), uuid: randomBytes(4).toString("hex") }).executeTakeFirst();
+    const result = await getPlatformDatabase()
+      .insertInto("platform_apps")
+      .values({ ...toRow(input), uuid: randomBytes(4).toString("hex") })
+      .executeTakeFirst();
     return this.find(Number(result.insertId));
   }
 
   async update(id: number, input: PlatformAppSavePayload) {
-    await getPlatformDatabase().updateTable("platform_apps").set(toRow(input)).where("id", "=", id).execute();
+    await getPlatformDatabase()
+      .updateTable("platform_apps")
+      .set(toRow(input))
+      .where("id", "=", id)
+      .execute();
     return this.find(id);
   }
 
   private async find(id: number) {
-    const row = await getPlatformDatabase().selectFrom("platform_apps").selectAll().where("id", "=", id).executeTakeFirst();
+    const row = await getPlatformDatabase()
+      .selectFrom("platform_apps")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
     return row ? toAppDefinition(row) : null;
   }
 }

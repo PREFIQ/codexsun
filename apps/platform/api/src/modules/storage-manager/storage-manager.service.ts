@@ -1,5 +1,11 @@
 import { StorageManagerRepository } from "./storage-manager.repository.js";
-import type { CompanyLogoUploadPayload, StorageDownloadInput, StorageFolderPayload, StorageListInput, StorageUploadPayload } from "./storage-manager.types.js";
+import type {
+  CompanyLogoUploadPayload,
+  StorageDownloadInput,
+  StorageFolderPayload,
+  StorageListInput,
+  StorageUploadPayload
+} from "./storage-manager.types.js";
 
 export class StorageManagerService {
   constructor(private readonly repository = new StorageManagerRepository()) {}

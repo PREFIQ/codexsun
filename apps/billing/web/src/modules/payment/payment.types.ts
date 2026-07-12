@@ -1,5 +1,49 @@
 export type PaymentStatus = "draft" | "posted" | "cancelled";
-export type PaymentAllocation = { documentNo: string; documentDate: string; documentTotal: number; previousBalance: number; allocatedAmount: number };
-export type Payment = { id: string; paymentNumber: string; paymentDate: string; partyName: string; partyId: string; partyType: string; paymentMode: string; bankAccount: string; referenceNo: string; referenceDate: string; amount: number; tdsAmount: number; discountAmount: number; roundOff: number; totalAmount: number; allocatedAmount: number; unallocatedAmount: number; status: PaymentStatus; notes: string; allocations: PaymentAllocation[]; createdAt: string; updatedAt: string };
-export type PaymentInput = Partial<Payment> & { paymentDate: string; partyName: string; amount: number; allocations?: PaymentAllocation[] };
-export const emptyPayment = (): PaymentInput => ({ paymentDate: new Date().toISOString().slice(0, 10), partyName: "", amount: 0, paymentMode: "cash", status: "draft", tdsAmount: 0, discountAmount: 0, roundOff: 0, allocations: [] });
+export type PaymentAllocation = {
+  documentNo: string;
+  documentDate: string;
+  documentTotal: number;
+  previousBalance: number;
+  allocatedAmount: number;
+};
+export type Payment = {
+  id: string;
+  paymentNumber: string;
+  paymentDate: string;
+  partyName: string;
+  partyId: string;
+  partyType: string;
+  paymentMode: string;
+  bankAccount: string;
+  referenceNo: string;
+  referenceDate: string;
+  amount: number;
+  tdsAmount: number;
+  discountAmount: number;
+  roundOff: number;
+  totalAmount: number;
+  allocatedAmount: number;
+  unallocatedAmount: number;
+  status: PaymentStatus;
+  notes: string;
+  allocations: PaymentAllocation[];
+  createdAt: string;
+  updatedAt: string;
+};
+export type PaymentInput = Partial<Payment> & {
+  paymentDate: string;
+  partyName: string;
+  amount: number;
+  allocations?: PaymentAllocation[];
+};
+export const emptyPayment = (): PaymentInput => ({
+  paymentDate: new Date().toISOString().slice(0, 10),
+  partyName: "",
+  amount: 0,
+  paymentMode: "cash",
+  status: "draft",
+  tdsAmount: 0,
+  discountAmount: 0,
+  roundOff: 0,
+  allocations: []
+});

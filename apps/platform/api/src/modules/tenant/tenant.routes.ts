@@ -20,10 +20,14 @@ function notFound(requestId: string) {
 }
 
 export async function registerTenantRoutes(app: FastifyInstance) {
-  app.get("/admin/tenants", async (request) => ok(await tenantService.listTenants(), { requestId: request.id }));
+  app.get("/admin/tenants", async (request) =>
+    ok(await tenantService.listTenants(), { requestId: request.id })
+  );
 
   app.post("/admin/tenants", async (request) =>
-    ok(await tenantService.createTenant(request.body as TenantSavePayload), { requestId: request.id })
+    ok(await tenantService.createTenant(request.body as TenantSavePayload), {
+      requestId: request.id
+    })
   );
 
   app.put("/admin/tenants/:id", async (request, reply) => {

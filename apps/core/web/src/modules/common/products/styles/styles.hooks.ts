@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { stylesDefinition } from "./styles.definition";
-export function useStylesQuery() { return useCommonMasterQuery(stylesDefinition.key, stylesDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listStyles } from "./styles.services";
+export function useStylesQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listStyles(path), queryKey: ["core", "common", key] });
+}

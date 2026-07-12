@@ -66,26 +66,26 @@ const superMenuItems: SidemenuItem[] = [
 
 function superWorkspaceItems(activeWorkspace: "platform" | "task-manager") {
   return [
-  {
-    title: "Platform",
-    description: "Master database, tenants, domains, and controls.",
-    icon: ShieldCheckIcon,
-    active: activeWorkspace === "platform",
-    url: "/sa"
-  },
-  {
-    title: "Task Manager",
-    description: "Super Admin Todo planning and operational follow-up.",
-    icon: ListChecksIcon,
-    active: activeWorkspace === "task-manager",
-    url: "/sa/task-manager"
-  },
-  {
-    title: "Data Bridge",
-    description: "Schema comparison and controlled data migration.",
-    icon: DatabaseZapIcon,
-    url: "/data-bridge"
-  }
+    {
+      title: "Platform",
+      description: "Master database, tenants, domains, and controls.",
+      icon: ShieldCheckIcon,
+      active: activeWorkspace === "platform",
+      url: "/sa"
+    },
+    {
+      title: "Task Manager",
+      description: "Super Admin Todo planning and operational follow-up.",
+      icon: ListChecksIcon,
+      active: activeWorkspace === "task-manager",
+      url: "/sa/task-manager"
+    },
+    {
+      title: "Data Bridge",
+      description: "Schema comparison and controlled data migration.",
+      icon: DatabaseZapIcon,
+      url: "/data-bridge"
+    }
   ];
 }
 

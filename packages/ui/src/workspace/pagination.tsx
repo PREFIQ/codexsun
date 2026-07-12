@@ -1,10 +1,16 @@
-"use client"
+"use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from "../components/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/select"
-import { cn } from "../lib/utils"
-import { buildPaginationItems } from "./utils"
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "../components/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "../components/select";
+import { cn } from "../lib/utils";
+import { buildPaginationItems } from "./utils";
 
 export function WorkspacePagination({
   className,
@@ -18,28 +24,28 @@ export function WorkspacePagination({
   showingLabel,
   singularLabel,
   totalCount,
-  totalPages,
+  totalPages
 }: {
-  className?: string
-  onNextPage?: () => void
-  onPageChange?: (page: number) => void
-  onPreviousPage?: () => void
-  onRowsPerPageChange?: (value: number) => void
-  page: number
-  rowsPerPage: number
-  rowsPerPageOptions?: readonly number[]
-  showingLabel: string
-  singularLabel: string
-  totalCount: number
-  totalPages: number
+  className?: string;
+  onNextPage?: () => void;
+  onPageChange?: (page: number) => void;
+  onPreviousPage?: () => void;
+  onRowsPerPageChange?: (value: number) => void;
+  page: number;
+  rowsPerPage: number;
+  rowsPerPageOptions?: readonly number[];
+  showingLabel: string;
+  singularLabel: string;
+  totalCount: number;
+  totalPages: number;
 }) {
-  const pageItems = buildPaginationItems(page, totalPages)
+  const pageItems = buildPaginationItems(page, totalPages);
 
   return (
     <div
       className={cn(
         "flex flex-col gap-2.5 rounded-md border border-border/70 bg-card/95 px-4 py-2 text-sm text-muted-foreground shadow-sm lg:flex-row lg:items-center lg:justify-between",
-        className,
+        className
       )}
     >
       <div className="flex min-w-0 flex-wrap items-center gap-3">
@@ -92,7 +98,7 @@ export function WorkspacePagination({
                     "h-8 min-w-8 rounded-md px-0",
                     item === page
                       ? "bg-primary text-primary-foreground hover:bg-primary/95"
-                      : "text-muted-foreground",
+                      : "text-muted-foreground"
                   )}
                   onClick={() => onPageChange?.(item)}
                   size="sm"
@@ -101,7 +107,7 @@ export function WorkspacePagination({
                 >
                   {item}
                 </Button>
-              ),
+              )
             )}
           </div>
           <Button
@@ -118,5 +124,5 @@ export function WorkspacePagination({
         </div>
       </div>
     </div>
-  )
+  );
 }

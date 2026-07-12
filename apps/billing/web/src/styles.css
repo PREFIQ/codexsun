@@ -24,7 +24,9 @@ body {
     overflow: visible !important;
   }
 
-  body:has(.billing-document-print-page) *:has(.billing-document-print-page) > *:not(.billing-document-print-page):not(:has(.billing-document-print-page)) {
+  body:has(.billing-document-print-page)
+    *:has(.billing-document-print-page)
+    > *:not(.billing-document-print-page):not(:has(.billing-document-print-page)) {
     display: none !important;
   }
 

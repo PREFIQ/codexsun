@@ -102,4 +102,3 @@ Each module should be organized conceptually into:
 - AI tools with unrestricted database access.
 - Offline sync without conflict planning.
 - Feature flags that bypass permission checks.
-

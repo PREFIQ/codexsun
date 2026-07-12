@@ -7,5 +7,8 @@ export const platformActivitySchema = z.object({
 });
 
 export function activityLabel(value: string) {
-  return value.split(".").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+  return value
+    .split(".")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

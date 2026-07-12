@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { sql } from "kysely";
 import { getCoreDatabase } from "../../../../database/core-database.js";
 import type {
@@ -8,63 +7,60 @@ import type {
 } from "./sales-types.types.js";
 
 type SalesTypesRow = {
-  id: string;
-  uuid: string;
+  id: number;
   name: string;
   description: string | null;
-  is_active: number | boolean;
+  status: string;
   sort_order: number;
 };
 
 export class SalesTypesRepository {
   async list(filters: SalesTypesListFilters = {}) {
     const rows =
-      await sql<SalesTypesRow>`SELECT id, uuid, name, description, is_active, sort_order FROM sales_types
+      await sql<SalesTypesRow>`SELECT id, name, description, status, sort_order FROM sales_types
       WHERE (${filters.search ?? ""} = '' OR LOWER(name) LIKE ${like(filters.search)} OR LOWER(description) LIKE ${like(filters.search)})
       ORDER BY sort_order, id`.execute(getCoreDatabase());
     return rows.rows.map(toSalesTypes);
   }
 
-  async find(id: string) {
+  async find(id: string | number) {
     const rows =
-      await sql<SalesTypesRow>`SELECT id, uuid, name, description, is_active, sort_order FROM sales_types
-      WHERE id=${id} LIMIT 1`.execute(getCoreDatabase());
+      await sql<SalesTypesRow>`SELECT id, name, description, status, sort_order FROM sales_types
+      WHERE id=${Number(id)} LIMIT 1`.execute(getCoreDatabase());
     return rows.rows[0] ? toSalesTypes(rows.rows[0]) : null;
   }
 
   async create(input: SalesTypesSavePayload) {
-    const id = `salesTypes-${randomUUID()}`;
-    const uuid = randomUUID().replaceAll("-", "").slice(0, 8);
-    await sql`INSERT INTO sales_types (id, uuid, name, description, is_active, sort_order) VALUES
-      (${id}, ${uuid}, ${normalizeString(input.name)}, ${normalizeString(input.description)}, ${input.isActive === false ? 0 : 1}, ${numberValue(input.sortOrder, 1000)})`.execute(
+    const result = await sql`INSERT INTO sales_types (name, description, status, sort_order) VALUES
+      (${normalizeString(input.name)}, ${normalizeString(input.description)}, ${input.isActive === false ? "inactive" : "active"}, ${numberValue(input.sortOrder, 1000)})`.execute(
       getCoreDatabase()
     );
-    return (await this.find(id))!;
+    return (await this.find(String(result.insertId)))!;
   }
 
-  async update(id: string, input: SalesTypesSavePayload) {
+  async update(id: string | number, input: SalesTypesSavePayload) {
     const existing = await this.find(id);
     if (!existing || !canMutate(existing)) return null;
-    await sql`UPDATE sales_types SET name=${normalizeString(input.name)}, description=${normalizeString(input.description)}, is_active=${input.isActive === false ? 0 : 1},
-      sort_order=${numberValue(input.sortOrder, 1000)}, updated_at=CURRENT_TIMESTAMP WHERE id=${id}`.execute(
-      getCoreDatabase()
-    );
-    return this.find(id);
-  }
-
-  async setActive(id: string, isActive: boolean) {
-    const existing = await this.find(id);
-    if (!existing || !canMutate(existing)) return null;
-    await sql`UPDATE sales_types SET is_active=${isActive ? 1 : 0}, updated_at=CURRENT_TIMESTAMP WHERE id=${id}`.execute(
+    await sql`UPDATE sales_types SET name=${normalizeString(input.name)}, description=${normalizeString(input.description)}, status=${input.isActive === false ? "inactive" : "active"},
+      sort_order=${numberValue(input.sortOrder, 1000)}, updated_at=CURRENT_TIMESTAMP WHERE id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return this.find(id);
   }
 
-  async forceDelete(id: string) {
+  async setActive(id: string | number, isActive: boolean) {
     const existing = await this.find(id);
     if (!existing || !canMutate(existing)) return null;
-    await sql`DELETE FROM sales_types WHERE id=${id}`.execute(getCoreDatabase());
+    await sql`UPDATE sales_types SET status=${isActive ? "active" : "inactive"}, updated_at=CURRENT_TIMESTAMP WHERE id=${Number(id)}`.execute(
+      getCoreDatabase()
+    );
+    return this.find(id);
+  }
+
+  async forceDelete(id: string | number) {
+    const existing = await this.find(id);
+    if (!existing || !canMutate(existing)) return null;
+    await sql`DELETE FROM sales_types WHERE id=${Number(id)}`.execute(getCoreDatabase());
     return existing;
   }
 }
@@ -77,11 +73,10 @@ function canMutate(record: SalesTypesRecord) {
 
 function toSalesTypes(row: SalesTypesRow): SalesTypesRecord {
   return {
-    id: row.id,
-    uuid: row.uuid,
+    id: Number(row.id),
     name: row.name,
     description: row.description,
-    isActive: Boolean(row.is_active),
+    isActive: row.status === "active",
     sortOrder: Number(row.sort_order)
   };
 }

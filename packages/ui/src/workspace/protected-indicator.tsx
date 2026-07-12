@@ -1,9 +1,13 @@
-"use client"
+"use client";
 
-import { ShieldCheck } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../components/tooltip"
+import { ShieldCheck } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../components/tooltip";
 
-export function WorkspaceProtectedIndicator({ label = "Protected and locked" }: { label?: string }) {
+export function WorkspaceProtectedIndicator({
+  label = "Protected and locked"
+}: {
+  label?: string;
+}) {
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
@@ -20,5 +24,5 @@ export function WorkspaceProtectedIndicator({ label = "Protected and locked" }: 
         <TooltipContent side="left">{label}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
-  )
+  );
 }

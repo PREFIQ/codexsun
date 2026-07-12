@@ -9,13 +9,27 @@ import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceDetailTable, WorkspaceShowCard } from "@codexsun/ui/workspace/show";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
-import { WorkspaceTableEmptyState, WorkspaceTableHeaderCell, WorkspaceTablePanel, WorkspaceTableSkeletonRows } from "@codexsun/ui/workspace/table";
-import { WorkspaceFormBanner, WorkspaceFormField, WorkspaceFormFooter, WorkspaceFormGrid, WorkspaceFormPanel, WorkspaceUpsertPage } from "@codexsun/ui/workspace/upsert";
+import {
+  WorkspaceTableEmptyState,
+  WorkspaceTableHeaderCell,
+  WorkspaceTablePanel,
+  WorkspaceTableSkeletonRows
+} from "@codexsun/ui/workspace/table";
+import {
+  WorkspaceFormBanner,
+  WorkspaceFormField,
+  WorkspaceFormFooter,
+  WorkspaceFormGrid,
+  WorkspaceFormPanel,
+  WorkspaceUpsertPage
+} from "@codexsun/ui/workspace/upsert";
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 
 export type RegistryRecord = { id: number; status?: string; uuid: string };
 export type RegistryField<T> = {
-  createFromSearch?: (value: string) => Promise<{ label: string; value: string }> | { label: string; value: string };
+  createFromSearch?: (
+    value: string
+  ) => Promise<{ label: string; value: string }> | { label: string; value: string };
   format?: (value: unknown, record: T) => ReactNode;
   key: keyof T & string;
   label: string;
@@ -60,10 +74,20 @@ export function RegistryWorkspace<T extends RegistryRecord>({
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
-  const [view, setView] = useState<{ mode: "list" } | { mode: "show"; record: T } | { mode: "form"; record: T | null }>({ mode: "list" });
+  const [view, setView] = useState<
+    { mode: "list" } | { mode: "show"; record: T } | { mode: "form"; record: T | null }
+  >({ mode: "list" });
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return term ? records.filter((record) => fields.some((field) => String(record[field.key] ?? "").toLowerCase().includes(term))) : records;
+    return term
+      ? records.filter((record) =>
+          fields.some((field) =>
+            String(record[field.key] ?? "")
+              .toLowerCase()
+              .includes(term)
+          )
+        )
+      : records;
   }, [fields, records, search]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
   const pageRecords = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -73,10 +97,31 @@ export function RegistryWorkspace<T extends RegistryRecord>({
       <WorkspacePage
         title={String(view.record[fields[0]?.key ?? "uuid"])}
         description={`Review ${singular} details and status.`}
-        actions={<div className="flex gap-2"><Button variant="outline" onClick={() => setView({ mode: "list" })}><ArrowLeft className="size-4" />Back</Button><Button onClick={() => setView({ mode: "form", record: view.record })}><Pencil className="size-4" />Edit</Button></div>}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setView({ mode: "list" })}>
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
+            <Button onClick={() => setView({ mode: "form", record: view.record })}>
+              <Pencil className="size-4" />
+              Edit
+            </Button>
+          </div>
+        }
       >
         <WorkspaceShowCard title={`${singular} details`}>
-          <WorkspaceDetailTable rows={[["UUID", view.record.uuid], ...fields.map((field): [string, ReactNode] => [field.label, field.format ? field.format(view.record[field.key], view.record) : String(view.record[field.key] ?? "-")])]} />
+          <WorkspaceDetailTable
+            rows={[
+              ["UUID", view.record.uuid],
+              ...fields.map((field): [string, ReactNode] => [
+                field.label,
+                field.format
+                  ? field.format(view.record[field.key], view.record)
+                  : String(view.record[field.key] ?? "-")
+              ])
+            ]}
+          />
         </WorkspaceShowCard>
       </WorkspacePage>
     );
@@ -90,39 +135,254 @@ export function RegistryWorkspace<T extends RegistryRecord>({
         initialValue={(view.record ?? initialValue) as Omit<T, "id" | "uuid">}
         loading={saving}
         title={view.record ? `Edit ${singular}` : createLabel}
-        onBack={() => setView(view.record ? { mode: "show", record: view.record } : { mode: "list" })}
-        onSubmit={(value) => view.record ? onUpdate(view.record.id, value) : onCreate(value)}
+        onBack={() =>
+          setView(view.record ? { mode: "show", record: view.record } : { mode: "list" })
+        }
+        onSubmit={(value) => (view.record ? onUpdate(view.record.id, value) : onCreate(value))}
       />
     );
   }
 
   return (
-    <WorkspacePage title={title} description={description} technicalName={technicalName} actions={<div className="flex gap-2"><Button variant="outline" onClick={onRefresh}><RefreshCw className="size-4" />Refresh</Button><Button onClick={() => setView({ mode: "form", record: null })}><Plus className="size-4" />{createLabel}</Button></div>}>
-      <WorkspaceFilters searchValue={search} searchPlaceholder={`Search ${title.toLowerCase()}`} onSearchValueChange={(value) => { setSearch(value); setPage(1); }} />
-      <RegistryList fields={fields} loading={loading} records={pageRecords} onEdit={(record) => setView({ mode: "form", record })} onView={(record) => setView({ mode: "show", record })} />
-      <WorkspacePagination page={page} rowsPerPage={rowsPerPage} showingLabel={buildShowingLabel(page, rowsPerPage, filtered.length)} singularLabel={title.toLowerCase()} totalCount={filtered.length} totalPages={totalPages} onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))} onPageChange={setPage} onPreviousPage={() => setPage((value) => Math.max(1, value - 1))} onRowsPerPageChange={(value) => { setRowsPerPage(value); setPage(1); }} />
+    <WorkspacePage
+      title={title}
+      description={description}
+      technicalName={technicalName}
+      actions={
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onRefresh}>
+            <RefreshCw className="size-4" />
+            Refresh
+          </Button>
+          <Button onClick={() => setView({ mode: "form", record: null })}>
+            <Plus className="size-4" />
+            {createLabel}
+          </Button>
+        </div>
+      }
+    >
+      <WorkspaceFilters
+        searchValue={search}
+        searchPlaceholder={`Search ${title.toLowerCase()}`}
+        onSearchValueChange={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+      />
+      <RegistryList
+        fields={fields}
+        loading={loading}
+        records={pageRecords}
+        onEdit={(record) => setView({ mode: "form", record })}
+        onView={(record) => setView({ mode: "show", record })}
+      />
+      <WorkspacePagination
+        page={page}
+        rowsPerPage={rowsPerPage}
+        showingLabel={buildShowingLabel(page, rowsPerPage, filtered.length)}
+        singularLabel={title.toLowerCase()}
+        totalCount={filtered.length}
+        totalPages={totalPages}
+        onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
+        onPageChange={setPage}
+        onPreviousPage={() => setPage((value) => Math.max(1, value - 1))}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(1);
+        }}
+      />
     </WorkspacePage>
   );
 }
 
-export function RegistryList<T extends RegistryRecord>({ fields, loading, onEdit, onView, records }: { fields: RegistryField<T>[]; loading: boolean; onEdit: (record: T) => void; onView: (record: T) => void; records: T[] }) {
+export function RegistryList<T extends RegistryRecord>({
+  fields,
+  loading,
+  onEdit,
+  onView,
+  records
+}: {
+  fields: RegistryField<T>[];
+  loading: boolean;
+  onEdit: (record: T) => void;
+  onView: (record: T) => void;
+  records: T[];
+}) {
   const columns = fields.filter((field) => field.list !== false);
-  return <WorkspaceTablePanel><div className="overflow-x-auto"><table className="w-full min-w-[760px] border-collapse text-sm"><thead className="bg-muted/50"><tr><WorkspaceTableHeaderCell>#</WorkspaceTableHeaderCell>{columns.map((field) => <WorkspaceTableHeaderCell key={field.key}>{field.label}</WorkspaceTableHeaderCell>)}<WorkspaceTableHeaderCell className="text-right">Action</WorkspaceTableHeaderCell></tr></thead><tbody>{records.map((record, index) => <tr className="border-b border-border/70 last:border-0" key={record.id}><td className="px-4 py-2.5 text-muted-foreground">{index + 1}</td>{columns.map((field) => <td className="px-4 py-2.5" key={field.key}>{field.key === "status" ? <WorkspaceStatusBadge label={String(record[field.key])} tone={record[field.key] === "active" ? "success" : "neutral"} /> : field.format ? field.format(record[field.key], record) : String(record[field.key] ?? "-")}</td>)}<td className="px-4 py-1.5 text-right"><WorkspaceRowActions title={String(record[fields[0]?.key ?? "uuid"])} onEdit={() => onEdit(record)} onView={() => onView(record)} /></td></tr>)}</tbody></table></div>{records.length === 0 && loading ? <WorkspaceTableSkeletonRows columns={columns.length + 2} /> : null}{records.length === 0 && !loading ? <WorkspaceTableEmptyState>No records found.</WorkspaceTableEmptyState> : null}</WorkspaceTablePanel>;
+  return (
+    <WorkspaceTablePanel>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] border-collapse text-sm">
+          <thead className="bg-muted/50">
+            <tr>
+              <WorkspaceTableHeaderCell>#</WorkspaceTableHeaderCell>
+              {columns.map((field) => (
+                <WorkspaceTableHeaderCell key={field.key}>{field.label}</WorkspaceTableHeaderCell>
+              ))}
+              <WorkspaceTableHeaderCell className="text-right">Action</WorkspaceTableHeaderCell>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record, index) => (
+              <tr className="border-b border-border/70 last:border-0" key={record.id}>
+                <td className="px-4 py-2.5 text-muted-foreground">{index + 1}</td>
+                {columns.map((field) => (
+                  <td className="px-4 py-2.5" key={field.key}>
+                    {field.key === "status" ? (
+                      <WorkspaceStatusBadge
+                        label={String(record[field.key])}
+                        tone={record[field.key] === "active" ? "success" : "neutral"}
+                      />
+                    ) : field.format ? (
+                      field.format(record[field.key], record)
+                    ) : (
+                      String(record[field.key] ?? "-")
+                    )}
+                  </td>
+                ))}
+                <td className="px-4 py-1.5 text-right">
+                  <WorkspaceRowActions
+                    title={String(record[fields[0]?.key ?? "uuid"])}
+                    onEdit={() => onEdit(record)}
+                    onView={() => onView(record)}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {records.length === 0 && loading ? (
+        <WorkspaceTableSkeletonRows columns={columns.length + 2} />
+      ) : null}
+      {records.length === 0 && !loading ? (
+        <WorkspaceTableEmptyState>No records found.</WorkspaceTableEmptyState>
+      ) : null}
+    </WorkspaceTablePanel>
+  );
 }
 
-export function RegistryForm<T extends RegistryRecord>({ error, fields, initialValue, loading, onBack, onSubmit, title }: { error?: string | undefined; fields: RegistryField<T>[]; initialValue: Omit<T, "id" | "uuid">; loading: boolean; onBack: () => void; onSubmit: (value: Omit<T, "id" | "uuid">) => void; title: string }) {
+export function RegistryForm<T extends RegistryRecord>({
+  error,
+  fields,
+  initialValue,
+  loading,
+  onBack,
+  onSubmit,
+  title
+}: {
+  error?: string | undefined;
+  fields: RegistryField<T>[];
+  initialValue: Omit<T, "id" | "uuid">;
+  loading: boolean;
+  onBack: () => void;
+  onSubmit: (value: Omit<T, "id" | "uuid">) => void;
+  title: string;
+}) {
   const [value, setValue] = useState(initialValue);
   const values = value as Record<string, unknown>;
-  return <WorkspaceUpsertPage title={title} description="Complete the required details and save." onBack={onBack}><form noValidate onSubmit={(event) => { event.preventDefault(); onSubmit(value); }}><WorkspaceFormPanel title="Details" footer={<WorkspaceFormFooter onCancel={onBack} primaryLabel="Save" primaryLoading={loading} primaryProps={{ children: <><Save className="size-4" />Save</> }} />}>{error ? <WorkspaceFormBanner title="Unable to save">{error}</WorkspaceFormBanner> : null}<WorkspaceFormGrid>{fields.map((field) => <WorkspaceFormField key={field.key} label={field.label} {...(field.required ? { required: true } : {})}>{field.type === "select" ? <WorkspaceSelect value={String(values[field.key] ?? "")} options={field.options ?? []} onValueChange={(next) => setValue((current) => ({ ...current, [field.key]: field.parse ? field.parse(next) : next }))} placeholder={`Select ${field.label.toLowerCase()}`} /> : field.type === "reference" ? <RegistryReferenceField field={field} value={values[field.key]} onChange={(next) => setValue((current) => ({ ...current, [field.key]: field.parse ? field.parse(next) : next }))} /> : <Input required={field.required} type={field.type === "number" ? "number" : "text"} value={String(values[field.key] ?? "")} onChange={(event) => setValue((current) => ({ ...current, [field.key]: field.type === "number" ? Number(event.target.value) : event.target.value }))} />}</WorkspaceFormField>)}</WorkspaceFormGrid></WorkspaceFormPanel></form></WorkspaceUpsertPage>;
+  return (
+    <WorkspaceUpsertPage
+      title={title}
+      description="Complete the required details and save."
+      onBack={onBack}
+    >
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit(value);
+        }}
+      >
+        <WorkspaceFormPanel
+          title="Details"
+          footer={
+            <WorkspaceFormFooter
+              onCancel={onBack}
+              primaryLabel="Save"
+              primaryLoading={loading}
+              primaryProps={{
+                children: (
+                  <>
+                    <Save className="size-4" />
+                    Save
+                  </>
+                )
+              }}
+            />
+          }
+        >
+          {error ? <WorkspaceFormBanner title="Unable to save">{error}</WorkspaceFormBanner> : null}
+          <WorkspaceFormGrid>
+            {fields.map((field) => (
+              <WorkspaceFormField
+                key={field.key}
+                label={field.label}
+                {...(field.required ? { required: true } : {})}
+              >
+                {field.type === "select" ? (
+                  <WorkspaceSelect
+                    value={String(values[field.key] ?? "")}
+                    options={field.options ?? []}
+                    onValueChange={(next) =>
+                      setValue((current) => ({
+                        ...current,
+                        [field.key]: field.parse ? field.parse(next) : next
+                      }))
+                    }
+                    placeholder={`Select ${field.label.toLowerCase()}`}
+                  />
+                ) : field.type === "reference" ? (
+                  <RegistryReferenceField
+                    field={field}
+                    value={values[field.key]}
+                    onChange={(next) =>
+                      setValue((current) => ({
+                        ...current,
+                        [field.key]: field.parse ? field.parse(next) : next
+                      }))
+                    }
+                  />
+                ) : (
+                  <Input
+                    required={field.required}
+                    type={field.type === "number" ? "number" : "text"}
+                    value={String(values[field.key] ?? "")}
+                    onChange={(event) =>
+                      setValue((current) => ({
+                        ...current,
+                        [field.key]:
+                          field.type === "number" ? Number(event.target.value) : event.target.value
+                      }))
+                    }
+                  />
+                )}
+              </WorkspaceFormField>
+            ))}
+          </WorkspaceFormGrid>
+        </WorkspaceFormPanel>
+      </form>
+    </WorkspaceUpsertPage>
+  );
 }
 
-function RegistryReferenceField<T extends RegistryRecord>({ field, onChange, value }: { field: RegistryField<T>; onChange: (value: string) => void; value: unknown }) {
+function RegistryReferenceField<T extends RegistryRecord>({
+  field,
+  onChange,
+  value
+}: {
+  field: RegistryField<T>;
+  onChange: (value: string) => void;
+  value: unknown;
+}) {
   const listId = useId();
   const options = field.options ?? [];
   const selected = options.find((option) => option.value === String(value ?? ""));
   const [search, setSearch] = useState(selected?.label ?? "");
   const [creating, setCreating] = useState(false);
-  const exactMatch = options.some((option) => option.label.toLowerCase() === search.trim().toLowerCase());
+  const exactMatch = options.some(
+    (option) => option.label.toLowerCase() === search.trim().toLowerCase()
+  );
   const canCreate = Boolean(field.createFromSearch && search.trim() && !exactMatch);
 
   useEffect(() => {
@@ -151,7 +411,9 @@ function RegistryReferenceField<T extends RegistryRecord>({ field, onChange, val
           onChange={(event) => {
             const next = event.target.value;
             setSearch(next);
-            const option = options.find((item) => item.label.toLowerCase() === next.trim().toLowerCase());
+            const option = options.find(
+              (item) => item.label.toLowerCase() === next.trim().toLowerCase()
+            );
             if (option) onChange(option.value);
           }}
         />
@@ -162,8 +424,14 @@ function RegistryReferenceField<T extends RegistryRecord>({ field, onChange, val
         </datalist>
       </div>
       {canCreate ? (
-        <Button type="button" variant="outline" disabled={creating} onClick={() => void createReference()}>
-          <Plus className="size-4" />Create
+        <Button
+          type="button"
+          variant="outline"
+          disabled={creating}
+          onClick={() => void createReference()}
+        >
+          <Plus className="size-4" />
+          Create
         </Button>
       ) : null}
     </div>

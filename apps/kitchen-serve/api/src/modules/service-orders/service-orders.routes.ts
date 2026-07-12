@@ -22,12 +22,10 @@ export async function registerServiceOrdersRoutes(app: FastifyInstance) {
     const { status } = request.body as { status: ServiceOrderStatus };
     const order = await service.transition(ctx.db, ctx.tenantId, id, status);
     if (!order)
-      return reply
-        .code(404)
-        .send({
-          success: false,
-          error: { code: "ORDER_NOT_FOUND", message: "Order was not found." }
-        });
+      return reply.code(404).send({
+        success: false,
+        error: { code: "ORDER_NOT_FOUND", message: "Order was not found." }
+      });
     return ok(order, { requestId: request.id });
   });
   app.get("/kitchen-serve/bill-waiting", async (request) => {

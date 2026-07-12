@@ -3,12 +3,21 @@ import { env } from "../../env.js";
 import type { Sale, SaleEinvoiceDetails, SaleEwayDetails } from "./sales.types.js";
 
 type WhiteBooksResponse = Record<string, unknown>;
-type ComplianceResult = { einvoice?: Partial<SaleEinvoiceDetails>; eway?: Partial<SaleEwayDetails>; response: unknown };
+type ComplianceResult = {
+  einvoice?: Partial<SaleEinvoiceDetails>;
+  eway?: Partial<SaleEwayDetails>;
+  response: unknown;
+};
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
 export async function generateSaleEinvoice(sale: Sale): Promise<ComplianceResult> {
-  const response = await callWhiteBooks("/einvoice/type/GENERATE/version/V1_03", "POST", buildEinvoicePayload(sale), await authToken());
+  const response = await callWhiteBooks(
+    "/einvoice/type/GENERATE/version/V1_03",
+    "POST",
+    buildEinvoicePayload(sale),
+    await authToken()
+  );
   assertProviderSuccess(response);
   const data = responseData(response);
   return {
@@ -17,34 +26,39 @@ export async function generateSaleEinvoice(sale: Sale): Promise<ComplianceResult
       ackNo: text(data.AckNo ?? data.ackNo),
       irn: text(data.Irn ?? data.IRN ?? data.irn),
       signedQr: text(data.SignedQRCode ?? data.signedQr),
-      status: "generated",
+      status: "generated"
     },
-    response,
+    response
   };
 }
 
 export async function generateSaleEway(sale: Sale): Promise<ComplianceResult> {
   const irn = sale.einvoice.irn;
   if (!irn) throw AppError.validation("Generate the e-invoice before generating the E-way bill.");
-  const response = await callWhiteBooks("/einvoice/type/GENERATE_EWAYBILL/version/V1_03", "POST", {
-    Distance: 0,
-    Irn: irn,
-    TransDocDt: sale.eway.billDate || sale.issuedOn,
-    TransDocNo: sale.eway.billNo || sale.invoiceNumber,
-    TransMode: "1",
-    TransType: "Regular",
-    TransId: sale.eway.transportGst || undefined,
-    VehNo: sale.eway.vehicleNo || undefined,
-  }, await authToken());
+  const response = await callWhiteBooks(
+    "/einvoice/type/GENERATE_EWAYBILL/version/V1_03",
+    "POST",
+    {
+      Distance: 0,
+      Irn: irn,
+      TransDocDt: sale.eway.billDate || sale.issuedOn,
+      TransDocNo: sale.eway.billNo || sale.invoiceNumber,
+      TransMode: "1",
+      TransType: "Regular",
+      TransId: sale.eway.transportGst || undefined,
+      VehNo: sale.eway.vehicleNo || undefined
+    },
+    await authToken()
+  );
   assertProviderSuccess(response);
   const data = responseData(response);
   return {
     eway: {
       billDate: text(data.EwbDt ?? data.ewayBillDate ?? sale.eway.billDate),
       billNo: text(data.EwbNo ?? data.ewayBillNo),
-      status: "generated",
+      status: "generated"
     },
-    response,
+    response
   };
 }
 
@@ -59,7 +73,12 @@ async function authToken() {
   return token;
 }
 
-async function callWhiteBooks(endpoint: string, method: "GET" | "POST", payload?: unknown, token?: string) {
+async function callWhiteBooks(
+  endpoint: string,
+  method: "GET" | "POST",
+  payload?: unknown,
+  token?: string
+) {
   const config = providerConfig();
   const url = new URL(endpoint, `${config.baseUrl}/`);
   url.searchParams.set("email", config.email);
@@ -73,9 +92,9 @@ async function callWhiteBooks(endpoint: string, method: "GET" | "POST", payload?
       gstin: config.gstin,
       ip_address: config.ipAddress,
       ...(token ? { "auth-token": token } : { password: config.password }),
-      username: config.username,
+      username: config.username
     },
-    method,
+    method
   });
   const textBody = await response.text();
   const parsed = textBody ? parseJson(textBody) : {};
@@ -85,10 +104,17 @@ async function callWhiteBooks(endpoint: string, method: "GET" | "POST", payload?
 
 function providerConfig() {
   const missing = [
-    ["GSP_EMAIL", env.GSP_EMAIL], ["GSP_USERNAME", env.GSP_USERNAME], ["GSP_PASSWORD", env.GSP_PASSWORD],
-    ["GSP_CLIENT_ID", env.GSP_CLIENT_ID], ["GSP_CLIENT_SECRET", env.GSP_CLIENT_SECRET], ["GSP_GSTIN", env.GSP_GSTIN],
-  ].filter(([, value]) => !value).map(([key]) => key);
-  if (missing.length) throw AppError.validation(`WhiteBooks configuration is missing: ${missing.join(", ")}.`);
+    ["GSP_EMAIL", env.GSP_EMAIL],
+    ["GSP_USERNAME", env.GSP_USERNAME],
+    ["GSP_PASSWORD", env.GSP_PASSWORD],
+    ["GSP_CLIENT_ID", env.GSP_CLIENT_ID],
+    ["GSP_CLIENT_SECRET", env.GSP_CLIENT_SECRET],
+    ["GSP_GSTIN", env.GSP_GSTIN]
+  ]
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+  if (missing.length)
+    throw AppError.validation(`WhiteBooks configuration is missing: ${missing.join(", ")}.`);
   return {
     baseUrl: env.GSP_ENVIRONMENT === "production" ? env.GSP_BASE_URL : env.GSP_SANDBOX_BASE_URL,
     clientId: env.GSP_CLIENT_ID,
@@ -97,7 +123,7 @@ function providerConfig() {
     gstin: env.GSP_GSTIN,
     ipAddress: env.GSP_IP_ADDRESS,
     password: env.GSP_PASSWORD,
-    username: env.GSP_USERNAME,
+    username: env.GSP_USERNAME
   };
 }
 
@@ -106,24 +132,41 @@ function buildEinvoicePayload(sale: Sale) {
   return {
     BuyerDtls: { Gstin: "URP", LglNm: sale.customerName, Pos: sellerGstin.slice(0, 2) || "33" },
     DocDtls: { Dt: sale.issuedOn, No: sale.invoiceNumber, Typ: "INV" },
-    ItemList: sale.items.map((item, index) => ({ AssAmt: item.taxableAmount, HsnCd: item.hsnCode || "9999", Qty: item.quantity, SlNo: String(index + 1), TotAmt: item.taxableAmount, Unit: item.unit || "NOS", UnitPrice: item.rate })),
+    ItemList: sale.items.map((item, index) => ({
+      AssAmt: item.taxableAmount,
+      HsnCd: item.hsnCode || "9999",
+      Qty: item.quantity,
+      SlNo: String(index + 1),
+      TotAmt: item.taxableAmount,
+      Unit: item.unit || "NOS",
+      UnitPrice: item.rate
+    })),
     SellerDtls: { Gstin: sellerGstin },
     TranDtls: { TaxSch: "GST", SupTyp: "B2C" },
-    ValDtls: { AssVal: sale.subtotal, IgstVal: sale.taxType === "igst" ? sale.taxAmount : 0, TotInvVal: sale.amount },
+    ValDtls: {
+      AssVal: sale.subtotal,
+      IgstVal: sale.taxType === "igst" ? sale.taxAmount : 0,
+      TotInvVal: sale.amount
+    }
   };
 }
 
 function responseData(value: unknown): WhiteBooksResponse {
   if (!value || typeof value !== "object") return {};
   const record = value as WhiteBooksResponse;
-  return record.data && typeof record.data === "object" ? record.data as WhiteBooksResponse : record;
+  return record.data && typeof record.data === "object"
+    ? (record.data as WhiteBooksResponse)
+    : record;
 }
 
 function assertProviderSuccess(value: unknown) {
   const record = responseData(value);
   const status = text(record.status_cd ?? record.status ?? record.Status);
   if (status && !["1", "success", "succeeded", "sucess"].includes(status.toLowerCase())) {
-    throw new Error(text(record.ErrorDetails ?? record.error ?? record.message) || "WhiteBooks rejected the request.");
+    throw new Error(
+      text(record.ErrorDetails ?? record.error ?? record.message) ||
+        "WhiteBooks rejected the request."
+    );
   }
 }
 
@@ -132,5 +175,9 @@ function text(value: unknown) {
 }
 
 function parseJson(value: string): unknown {
-  try { return JSON.parse(value) as unknown; } catch { return { message: value }; }
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return { message: value };
+  }
 }

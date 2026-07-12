@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { transportsDefinition } from "./transports.definition";
-export function useTransportsQuery() { return useCommonMasterQuery(transportsDefinition.key, transportsDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listTransports } from "./transports.services";
+export function useTransportsQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listTransports(path), queryKey: ["core", "common", key] });
+}

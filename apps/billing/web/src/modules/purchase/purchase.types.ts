@@ -94,10 +94,22 @@ export function createEmptyPurchase(): PurchaseSavePayload {
     supplierBillNo: "",
     taxType: "cgst-sgst",
     terms: "",
-    workOrderNo: "",
+    workOrderNo: ""
   };
 }
 
 export function createEmptyPurchaseItem(): PurchaseLineItemInput {
-  return { colour: "", dcNo: "", description: "", hsnCode: "", poNo: "", productName: "", quantity: 1, rate: 0, size: "", taxRate: 18, unit: "Nos" };
+  return {
+    colour: "",
+    dcNo: "",
+    description: "",
+    hsnCode: "",
+    poNo: "",
+    productName: "",
+    quantity: 1,
+    rate: 0,
+    size: "",
+    taxRate: 18,
+    unit: "Nos"
+  };
 }

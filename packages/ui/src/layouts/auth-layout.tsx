@@ -14,7 +14,11 @@ type AuthLayoutProps = {
 export function AuthLayout({ children, description, surface, title }: AuthLayoutProps) {
   const resolvedSurface = surface ?? surfaceFromTitle(title);
   const isTenant = resolvedSurface === "tenant";
-  const nextDescription = description ?? (isTenant ? "Access your workspace with your registered credentials." : "Use your admin email and password for this desk.");
+  const nextDescription =
+    description ??
+    (isTenant
+      ? "Access your workspace with your registered credentials."
+      : "Use your admin email and password for this desk.");
 
   return (
     <main className="auth-page">

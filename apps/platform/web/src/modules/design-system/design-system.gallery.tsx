@@ -15,14 +15,28 @@ import {
   setDesignSystemComponentDefault,
   type DesignSystemVariantId
 } from "@codexsun/ui";
-import { CheckIcon, CopyIcon, Layers3Icon, SearchIcon, StarIcon, SwatchBookIcon } from "lucide-react";
-import { catalogItems, categoryIcons, type CatalogItem, type CatalogVariant } from "./design-system.catalog";
+import {
+  CheckIcon,
+  CopyIcon,
+  Layers3Icon,
+  SearchIcon,
+  StarIcon,
+  SwatchBookIcon
+} from "lucide-react";
+import {
+  catalogItems,
+  categoryIcons,
+  type CatalogItem,
+  type CatalogVariant
+} from "./design-system.catalog";
 
 export function DesignSystemGallery() {
   const [selectedId, setSelectedId] = useState(catalogItems[0]?.id ?? "");
   const [search, setSearch] = useState("");
   const [theme, setTheme] = useState<DesignSystemVariantId>(currentTheme());
-  const [componentDefaults, setComponentDefaults] = useState(() => getDesignSystemComponentDefaults());
+  const [componentDefaults, setComponentDefaults] = useState(() =>
+    getDesignSystemComponentDefaults()
+  );
 
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -30,11 +44,14 @@ export function DesignSystemGallery() {
       return catalogItems;
     }
     return catalogItems.filter((item) =>
-      [item.name, item.category, item.description].some((value) => value.toLowerCase().includes(query))
+      [item.name, item.category, item.description].some((value) =>
+        value.toLowerCase().includes(query)
+      )
     );
   }, [search]);
 
-  const selectedItem = catalogItems.find((item) => item.id === selectedId) ?? filteredItems[0] ?? catalogItems[0];
+  const selectedItem =
+    catalogItems.find((item) => item.id === selectedId) ?? filteredItems[0] ?? catalogItems[0];
 
   function chooseTheme(nextTheme: DesignSystemVariantId) {
     setTheme(nextTheme);
@@ -55,11 +72,15 @@ export function DesignSystemGallery() {
             <p className="text-sm font-semibold uppercase text-muted-foreground">Design System</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-normal">Component Defaults</h1>
             <p className="mt-3 max-w-3xl text-sm text-muted-foreground">
-              Internal reference for CODEXSUN components, variant options, and app-wide default selections.
+              Internal reference for CODEXSUN components, variant options, and app-wide default
+              selections.
             </p>
           </div>
           <div className="flex min-w-[260px] flex-wrap items-center gap-2">
-            <Select value={theme} onValueChange={(value) => chooseTheme(value as DesignSystemVariantId)}>
+            <Select
+              value={theme}
+              onValueChange={(value) => chooseTheme(value as DesignSystemVariantId)}
+            >
               <SelectTrigger className="w-[210px]">
                 <SelectValue placeholder="Theme" />
               </SelectTrigger>
@@ -81,7 +102,12 @@ export function DesignSystemGallery() {
           <div className="border-b p-3">
             <div className="relative">
               <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search components..." className="pl-9" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search components..."
+                className="pl-9"
+              />
             </div>
           </div>
           <nav className="sidebar-scroll max-h-[calc(100svh-8.5rem)] overflow-auto p-2">
@@ -183,7 +209,9 @@ function VariantCard({
     <article className="overflow-hidden rounded-md border bg-card shadow-sm">
       <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
         <div className="min-w-0 text-sm font-semibold">
-          <span className="font-mono text-xs text-muted-foreground">{String(index + 1).padStart(2, "0")}.</span>{" "}
+          <span className="font-mono text-xs text-muted-foreground">
+            {String(index + 1).padStart(2, "0")}.
+          </span>{" "}
           {variant.name}
         </div>
         <div className="flex items-center gap-1">
@@ -193,12 +221,22 @@ function VariantCard({
             size="icon"
             aria-label={`Set ${variant.name} as default`}
             title={`Set ${variant.name} as default`}
-            className={isDefault ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 hover:text-white" : ""}
+            className={
+              isDefault
+                ? "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 hover:text-white"
+                : ""
+            }
             onClick={() => onChooseDefault(componentId, variant.id)}
           >
             {isDefault ? <CheckIcon /> : <StarIcon />}
           </Button>
-          <Button type="button" variant="ghost" size="icon" aria-label="Copy variant name" onClick={() => navigator.clipboard?.writeText(variant.name)}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Copy variant name"
+            onClick={() => navigator.clipboard?.writeText(variant.name)}
+          >
             <CopyIcon />
           </Button>
         </div>
@@ -218,11 +256,15 @@ function variantNote(componentId: string, variant: CatalogVariant, isDefault: bo
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-  const state = isDefault ? " This is the current live default." : " Use the tick button to make this the default.";
+  const state = isDefault
+    ? " This is the current live default."
+    : " Use the tick button to make this the default.";
   return `${variant.name} is a ${componentName} option that changes this control's visual treatment or layout.${state}`;
 }
 
 function currentTheme(): DesignSystemVariantId {
   const stored = window.localStorage.getItem(DESIGN_SYSTEM_DEFAULT_STORAGE_KEY);
-  return designSystemVariants.some((variant) => variant.id === stored) ? (stored as DesignSystemVariantId) : "default";
+  return designSystemVariants.some((variant) => variant.id === stored)
+    ? (stored as DesignSystemVariantId)
+    : "default";
 }

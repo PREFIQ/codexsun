@@ -67,9 +67,10 @@ export function createDatabasePool(config: DatabaseConfig & DatabaseTarget): Com
         await pool.end();
       },
       async execute<TResult = unknown>(sql: string, values?: unknown[]) {
-        const result = values === undefined
-          ? await pool.execute(sql)
-          : await pool.execute(sql, values as never[]);
+        const result =
+          values === undefined
+            ? await pool.execute(sql)
+            : await pool.execute(sql, values as never[]);
         return result as unknown as [TResult, unknown];
       }
     };

@@ -7,7 +7,9 @@ import { defineConfig } from "vite";
 import { requireEnvNumber } from "@codexsun/framework/env";
 
 const configDir = fileURLToPath(new URL(".", import.meta.url));
-const rootPackage = JSON.parse(readFileSync(resolve(configDir, "../../../package.json"), "utf8")) as { version: string };
+const rootPackage = JSON.parse(
+  readFileSync(resolve(configDir, "../../../package.json"), "utf8")
+) as { version: string };
 
 export default defineConfig(() => ({
   build: {
@@ -18,12 +20,24 @@ export default defineConfig(() => ({
       output: {
         manualChunks(id) {
           const normalizedId = id.replace(/\\/g, "/");
-          if (normalizedId.includes("node_modules/react") || normalizedId.includes("node_modules/react-dom")) return "react";
+          if (
+            normalizedId.includes("node_modules/react") ||
+            normalizedId.includes("node_modules/react-dom")
+          )
+            return "react";
           if (normalizedId.includes("node_modules/lucide-react")) return "icons";
           if (normalizedId.includes("node_modules/@tanstack")) return "tanstack";
           if (normalizedId.includes("node_modules/@dnd-kit")) return "dnd";
-          if (normalizedId.includes("node_modules/framer-motion") || normalizedId.includes("node_modules/motion-")) return "motion";
-          if (normalizedId.includes("node_modules/recharts") || normalizedId.includes("node_modules/d3-")) return "charts";
+          if (
+            normalizedId.includes("node_modules/framer-motion") ||
+            normalizedId.includes("node_modules/motion-")
+          )
+            return "motion";
+          if (
+            normalizedId.includes("node_modules/recharts") ||
+            normalizedId.includes("node_modules/d3-")
+          )
+            return "charts";
           if (normalizedId.includes("/packages/ui/src/workspace/")) return "ui-workspace";
           if (normalizedId.includes("/packages/ui/src/design-system/")) return "ui-design-system";
           if (normalizedId.includes("/packages/ui/src/blocks/")) return "ui-blocks";
@@ -43,7 +57,8 @@ export default defineConfig(() => ({
             normalizedId.includes("/packages/ui/src/components/toaster") ||
             normalizedId.includes("/packages/ui/src/components/sonner") ||
             normalizedId.includes("/packages/ui/src/components/tooltip")
-          ) return "ui-overlays";
+          )
+            return "ui-overlays";
           if (
             normalizedId.includes("/packages/ui/src/components/calendar") ||
             normalizedId.includes("/packages/ui/src/components/carousel") ||
@@ -54,8 +69,13 @@ export default defineConfig(() => ({
             normalizedId.includes("/packages/ui/src/components/scroll-area") ||
             normalizedId.includes("/packages/ui/src/components/skeleton") ||
             normalizedId.includes("/packages/ui/src/components/table")
-          ) return "ui-data";
-          if (normalizedId.includes("/packages/ui/src/components/") || normalizedId.includes("/packages/ui/src/lib/")) return "codexsun-ui";
+          )
+            return "ui-data";
+          if (
+            normalizedId.includes("/packages/ui/src/components/") ||
+            normalizedId.includes("/packages/ui/src/lib/")
+          )
+            return "codexsun-ui";
         }
       }
     }

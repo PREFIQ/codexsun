@@ -12,5 +12,12 @@ export function createSalesEvent(
   payload: { saleId: string; tenantId: string },
   correlationId: string
 ) {
-  return { correlationId, name, occurredAt: new Date().toISOString(), payload, tenantId: payload.tenantId, version: 1 } as const;
+  return {
+    correlationId,
+    name,
+    occurredAt: new Date().toISOString(),
+    payload,
+    tenantId: payload.tenantId,
+    version: 1
+  } as const;
 }

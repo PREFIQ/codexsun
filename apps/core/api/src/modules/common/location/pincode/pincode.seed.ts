@@ -18,10 +18,9 @@ export async function seedPincodeModule() {
     const cityId = cityIds.get(pincode.cityName);
     if (!cityId)
       throw new Error(`City seed must exist before pincode seed is applied: ${pincode.cityName}`);
-    const uuid = `p${String(pincode.sortOrder).padStart(7, "0")}`;
     const name = pincode.code === "-" ? "-" : `${pincode.code} - ${pincode.areaName}`;
-    await sql`INSERT INTO pincodes (uuid, city_id, name, sort_order, status)
-      VALUES (${uuid}, ${cityId}, ${name}, ${pincode.sortOrder}, ${pincode.status})
+    await sql`INSERT INTO pincodes (city_id, name, sort_order, status)
+      VALUES (${cityId}, ${name}, ${pincode.sortOrder}, ${pincode.status})
       ON DUPLICATE KEY UPDATE city_id=VALUES(city_id), name=VALUES(name), sort_order=VALUES(sort_order), status=VALUES(status)`.execute(
       getCoreDatabase()
     );

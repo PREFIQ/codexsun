@@ -1,4 +1,10 @@
-export { contactDefinition } from "./contact.definition.js";
-export { ContactRepository } from "./contact.repository.js";
-export { ContactService } from "./contact.service.js";
-export type { ContactRecord, ContactSaveInput } from "./contact.types.js";
+export { contactModule } from "./contact.module.js";
+export { migrateContactModule } from "./contact.migration.js";
+export { seedContactModule } from "./contact.seed.js";
+export type {
+  ContactChild,
+  ContactListFilters,
+  ContactRecord,
+  ContactSaveInput,
+  ContactStatus
+} from "./contact.types.js";

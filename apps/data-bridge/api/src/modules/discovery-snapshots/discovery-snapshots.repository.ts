@@ -125,18 +125,25 @@ export class DiscoverySnapshotsRepository {
       tables: selected
     };
     const preparedAt = new Date().toISOString();
-    await dataBridgeJsonStore.update("discoverySnapshots", id, { mappingInput, preparedAt } as never);
+    await dataBridgeJsonStore.update("discoverySnapshots", id, {
+      mappingInput,
+      preparedAt
+    } as never);
     const mappings = selected.flatMap((entry) =>
       entry.source && entry.target
-        ? [{
-            sourceTable: entry.source.name,
-            targetTable: entry.target.name,
-            group: entry.group,
-            fields: entry.source.columns.map((column) => ({
-              sourceColumn: column.name,
-              targetColumn: entry.target?.columns.find((targetColumn) => targetColumn.name === column.name)?.name ?? "",
-            }))
-          }]
+        ? [
+            {
+              sourceTable: entry.source.name,
+              targetTable: entry.target.name,
+              group: entry.group,
+              fields: entry.source.columns.map((column) => ({
+                sourceColumn: column.name,
+                targetColumn:
+                  entry.target?.columns.find((targetColumn) => targetColumn.name === column.name)
+                    ?.name ?? ""
+              }))
+            }
+          ]
         : []
     );
     const plans = await dataBridgeJsonStore.list("mappingPlans");

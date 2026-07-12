@@ -1,1 +1,0 @@
-import { describe, expect, it } from "vitest"; import { industryNeedsSync } from "./industry.sync.js"; describe("industry module", () => { it("detects changes", () => expect(industryNeedsSync(1, 2)).toBe(true)); });

@@ -55,7 +55,9 @@ function isWorkspaceRoot(path: string) {
   }
 
   try {
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { workspaces?: unknown };
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+      workspaces?: unknown;
+    };
     return Array.isArray(packageJson.workspaces);
   } catch {
     return false;

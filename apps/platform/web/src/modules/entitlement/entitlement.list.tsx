@@ -14,7 +14,12 @@ export function entitlementFields(
   return [
     { key: "appLabel", label: "App", list: true },
     { key: "moduleKey", label: "Module key", required: true },
-    { key: "scope", label: "Scope", type: "select", options: ["tenant", "plan"].map((value) => ({ label: value, value })) },
+    {
+      key: "scope",
+      label: "Scope",
+      type: "select",
+      options: ["tenant", "plan"].map((value) => ({ label: value, value }))
+    },
     { key: "tenantName", label: "Tenant", list: true },
     { key: "planName", label: "Plan", list: true },
     {
@@ -23,7 +28,10 @@ export function entitlementFields(
       list: false,
       parse: (value) => Number(value) || null,
       type: "reference",
-      options: [{ label: "None", value: "0" }, ...tenants.map((item) => ({ label: item.tenantName, value: String(item.id) }))]
+      options: [
+        { label: "None", value: "0" },
+        ...tenants.map((item) => ({ label: item.tenantName, value: String(item.id) }))
+      ]
     },
     {
       key: "planId",
@@ -32,7 +40,10 @@ export function entitlementFields(
       parse: (value) => Number(value) || null,
       ...(createPlan ? { createFromSearch: createPlan } : {}),
       type: "reference",
-      options: [{ label: "None", value: "0" }, ...plans.map((item) => ({ label: item.name, value: String(item.id) }))]
+      options: [
+        { label: "None", value: "0" },
+        ...plans.map((item) => ({ label: item.name, value: String(item.id) }))
+      ]
     },
     {
       key: "appId",
@@ -46,8 +57,18 @@ export function entitlementFields(
     },
     { key: "startsOn", label: "Starts on", required: true },
     { key: "endsOn", label: "Ends on", list: false },
-    { key: "source", label: "Source", type: "select", options: ["manual", "seed", "subscription"].map((value) => ({ label: value, value })) },
-    { key: "status", label: "Status", type: "select", options: ["active", "inactive"].map((value) => ({ label: value, value })) }
+    {
+      key: "source",
+      label: "Source",
+      type: "select",
+      options: ["manual", "seed", "subscription"].map((value) => ({ label: value, value }))
+    },
+    {
+      key: "status",
+      label: "Status",
+      type: "select",
+      options: ["active", "inactive"].map((value) => ({ label: value, value }))
+    }
   ];
 }
 

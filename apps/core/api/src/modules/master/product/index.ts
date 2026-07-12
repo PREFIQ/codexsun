@@ -1,4 +1,9 @@
-export { productDefinition } from "./product.definition.js";
-export { ProductRepository } from "./product.repository.js";
-export { ProductService } from "./product.service.js";
-export type { ProductRecord, ProductSaveInput } from "./product.types.js";
+export { productModule } from "./product.module.js";
+export { migrateProductModule } from "./product.migration.js";
+export { seedProductModule } from "./product.seed.js";
+export type {
+  ProductListFilters,
+  ProductRecord,
+  ProductSaveInput,
+  ProductStatus
+} from "./product.types.js";

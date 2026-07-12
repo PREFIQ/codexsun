@@ -121,12 +121,21 @@ export function createEmptySale(): SaleSavePayload {
     status: "draft",
     taxType: "cgst-sgst",
     terms: "",
-    workOrderNo: "",
+    workOrderNo: ""
   };
 }
 
 export function createEmptySaleEway(): SaleEwayDetails {
-  return { billDate: "", billNo: "", notes: "", part: "Part B", status: "not-generated", transport: "", transportGst: "", vehicleNo: "" };
+  return {
+    billDate: "",
+    billNo: "",
+    notes: "",
+    part: "Part B",
+    status: "not-generated",
+    transport: "",
+    transportGst: "",
+    vehicleNo: ""
+  };
 }
 
 export function createEmptySaleEinvoice(): SaleEinvoiceDetails {
@@ -134,5 +143,17 @@ export function createEmptySaleEinvoice(): SaleEinvoiceDetails {
 }
 
 export function createEmptySaleItem(): SaleLineItemInput {
-  return { colour: "", dcNo: "", description: "", hsnCode: "", poNo: "", productName: "", quantity: 1, rate: 0, size: "", taxRate: 18, unit: "Nos" };
+  return {
+    colour: "",
+    dcNo: "",
+    description: "",
+    hsnCode: "",
+    poNo: "",
+    productName: "",
+    quantity: 1,
+    rate: 0,
+    size: "",
+    taxRate: 18,
+    unit: "Nos"
+  };
 }

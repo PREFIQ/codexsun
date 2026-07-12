@@ -12,12 +12,47 @@ export type PurchasePrintCopy = "duplicate" | "office-copy" | "original";
 export function PurchasePrintRoutePage() {
   const purchaseId = new URLSearchParams(window.location.search).get("id");
   const purchaseQuery = usePurchaseRecord(purchaseId, true);
-  return <WorkspacePage className="billing-document-print-page" title={purchaseQuery.data ? `${purchaseQuery.data.invoiceNumber} print` : "Purchase print"} description="Printable purchase document." actions={<div className="flex gap-2 print:hidden"><Button type="button" variant="outline" onClick={() => window.history.back()}><ArrowLeft className="size-4" />Back</Button><Button type="button" variant="outline" onClick={() => void purchaseQuery.refetch()}><RefreshCw className={purchaseQuery.isFetching ? "size-4 animate-spin" : "size-4"} />Refresh</Button><Button type="button" onClick={() => window.print()}><Printer className="size-4" />Print</Button></div>}><div className="print:hidden"><PageTitle title="Purchase Print" /></div>{purchaseQuery.data ? <PurchasePrintDocument copy="original" purchase={purchaseQuery.data} /> : <div className="px-4 py-8 text-sm text-muted-foreground">{purchaseQuery.isLoading ? "Loading purchase print view..." : "Purchase print record was not found."}</div>}</WorkspacePage>;
+  return (
+    <WorkspacePage
+      className="billing-document-print-page"
+      title={purchaseQuery.data ? `${purchaseQuery.data.invoiceNumber} print` : "Purchase print"}
+      description="Printable purchase document."
+      actions={
+        <div className="flex gap-2 print:hidden">
+          <Button type="button" variant="outline" onClick={() => window.history.back()}>
+            <ArrowLeft className="size-4" />
+            Back
+          </Button>
+          <Button type="button" variant="outline" onClick={() => void purchaseQuery.refetch()}>
+            <RefreshCw className={purchaseQuery.isFetching ? "size-4 animate-spin" : "size-4"} />
+            Refresh
+          </Button>
+          <Button type="button" onClick={() => window.print()}>
+            <Printer className="size-4" />
+            Print
+          </Button>
+        </div>
+      }
+    >
+      <div className="print:hidden">
+        <PageTitle title="Purchase Print" />
+      </div>
+      {purchaseQuery.data ? (
+        <PurchasePrintDocument copy="original" purchase={purchaseQuery.data} />
+      ) : (
+        <div className="px-4 py-8 text-sm text-muted-foreground">
+          {purchaseQuery.isLoading
+            ? "Loading purchase print view..."
+            : "Purchase print record was not found."}
+        </div>
+      )}
+    </WorkspacePage>
+  );
 }
 
 export function PurchasePrintDocument({
   copy,
-  purchase,
+  purchase
 }: {
   copy: PurchasePrintCopy;
   purchase: Purchase;
@@ -42,7 +77,19 @@ export function PurchasePrintDocument({
   );
 }
 
-const purchasePrintHeadings = ["S.no", "Particulars", "HSN", "PO", "DC", "Qty", "Rate", "Taxable", "GST %", "GST TAX", "Total"];
+const purchasePrintHeadings = [
+  "S.no",
+  "Particulars",
+  "HSN",
+  "PO",
+  "DC",
+  "Qty",
+  "Rate",
+  "Taxable",
+  "GST %",
+  "GST TAX",
+  "Total"
+];
 
 function PurchasePrintPage({
   copy,
@@ -51,7 +98,7 @@ function PurchasePrintPage({
   isMultiPage,
   pageIndex,
   pageCount,
-  purchase,
+  purchase
 }: {
   copy: PurchasePrintCopy;
   items: Array<{ item: Purchase["items"][number]; index: number }>;
@@ -65,13 +112,18 @@ function PurchasePrintPage({
   const blankRows = isLastPage ? Math.max(0, 12 - items.length) : 0;
 
   return (
-    <article className={`bg-white px-3 py-3 text-[10px] text-black ${pageIndex > 0 ? "break-before-page" : ""}`}>
+    <article
+      className={`bg-white px-3 py-3 text-[10px] text-black ${pageIndex > 0 ? "break-before-page" : ""}`}
+    >
       <div className="border border-slate-300">
         <header className="border-b border-slate-300 px-3 py-2">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center">
             <span />
             <h1 className="text-center text-[11px] font-semibold tracking-wide">PURCHASE</h1>
-            <span className="text-right text-[9px]">{printCopyLabel(copy)}{isMultiPage ? ` - Page ${pageIndex + 1} of ${pageCount}` : ""}</span>
+            <span className="text-right text-[9px]">
+              {printCopyLabel(copy)}
+              {isMultiPage ? ` - Page ${pageIndex + 1} of ${pageCount}` : ""}
+            </span>
           </div>
         </header>
 
@@ -102,9 +154,14 @@ function PurchasePrintPage({
           <div className="px-2 py-2">
             <div className="font-medium">Supplier (Bill to)</div>
             <div className="mt-1 font-semibold">M/s. {purchase.customerName}</div>
-            <div className="mt-1 whitespace-pre-wrap">{purchase.billingAddress || "Address not set"}</div>
+            <div className="mt-1 whitespace-pre-wrap">
+              {purchase.billingAddress || "Address not set"}
+            </div>
             <div className="mt-1 grid grid-cols-[7rem_1fr] gap-x-2">
-              <span>GSTIN/UIN</span><span>:</span><span>State Name</span><span>:</span>
+              <span>GSTIN/UIN</span>
+              <span>:</span>
+              <span>State Name</span>
+              <span>:</span>
             </div>
           </div>
           <div className="space-y-1 border-t border-slate-300 px-2 py-2 sm:border-l sm:border-slate-300 sm:border-t-0">
@@ -118,16 +175,45 @@ function PurchasePrintPage({
           <table className="w-full border-collapse text-[10px]">
             <thead>
               <tr className="border-b border-slate-300">
-                {purchasePrintHeadings.map((heading) => <th key={heading} className="border-r border-slate-300 px-2 py-2 text-center font-semibold last:border-r-0">{heading}</th>)}
+                {purchasePrintHeadings.map((heading) => (
+                  <th
+                    key={heading}
+                    className="border-r border-slate-300 px-2 py-2 text-center font-semibold last:border-r-0"
+                  >
+                    {heading}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {pageIndex > 0 ? <tr><td className="border-b border-slate-300 px-2 py-1 text-left font-semibold" colSpan={purchasePrintHeadings.length}>Carry forward from previous page</td></tr> : null}
+              {pageIndex > 0 ? (
+                <tr>
+                  <td
+                    className="border-b border-slate-300 px-2 py-1 text-left font-semibold"
+                    colSpan={purchasePrintHeadings.length}
+                  >
+                    Carry forward from previous page
+                  </td>
+                </tr>
+              ) : null}
               {items.map(({ item, index }) => (
                 <PurchasePrintItemRow key={item.id} item={item} index={index} />
               ))}
-              {Array.from({ length: blankRows }).map((_, index) => <PurchasePrintBlankRow key={`blank-${pageIndex}-${index}`} />)}
-              {isLastPage ? <PurchasePrintTotalRow purchase={purchase} /> : <tr><td className="border-t border-slate-300 px-2 py-2 text-right font-semibold" colSpan={purchasePrintHeadings.length}>To be continued...</td></tr>}
+              {Array.from({ length: blankRows }).map((_, index) => (
+                <PurchasePrintBlankRow key={`blank-${pageIndex}-${index}`} />
+              ))}
+              {isLastPage ? (
+                <PurchasePrintTotalRow purchase={purchase} />
+              ) : (
+                <tr>
+                  <td
+                    className="border-t border-slate-300 px-2 py-2 text-right font-semibold"
+                    colSpan={purchasePrintHeadings.length}
+                  >
+                    To be continued...
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </section>
@@ -137,23 +223,46 @@ function PurchasePrintPage({
             <section className="grid grid-cols-[1fr_12rem] border-t border-slate-300">
               <div className="border-r border-slate-300 px-2 py-2 text-[9px] leading-4">
                 <div className="font-medium">E&amp;OE</div>
-                <div className="mt-1">We hereby certify that our registration under the GST Act 2017 is in force on the date on which sale of goods specified in this invoice is made by us and the sale is effected in the regular course of business.</div>
-                <div className="mt-1 font-semibold">* Goods once sold will not be taken back unless agreed in writing.</div>
-                <div className="mt-5"><div className="font-medium">Amount (in words)</div><div className="mt-1">{amountInWords(purchase.amount)}</div></div>
+                <div className="mt-1">
+                  We hereby certify that our registration under the GST Act 2017 is in force on the
+                  date on which sale of goods specified in this invoice is made by us and the sale
+                  is effected in the regular course of business.
+                </div>
+                <div className="mt-1 font-semibold">
+                  * Goods once sold will not be taken back unless agreed in writing.
+                </div>
+                <div className="mt-5">
+                  <div className="font-medium">Amount (in words)</div>
+                  <div className="mt-1">{amountInWords(purchase.amount)}</div>
+                </div>
               </div>
               <div className="text-[9px]">
                 <PrintTotal label="Taxable Value" value={money(purchase.subtotal)} />
-                {splitTax ? <><PrintTotal label="Total CGST" value={money(purchase.taxAmount / 2)} /><PrintTotal label="Total SGST" value={money(purchase.taxAmount / 2)} /></> : <PrintTotal label="Total IGST" value={money(purchase.taxAmount)} />}
+                {splitTax ? (
+                  <>
+                    <PrintTotal label="Total CGST" value={money(purchase.taxAmount / 2)} />
+                    <PrintTotal label="Total SGST" value={money(purchase.taxAmount / 2)} />
+                  </>
+                ) : (
+                  <PrintTotal label="Total IGST" value={money(purchase.taxAmount)} />
+                )}
                 <PrintTotal label="Total GST" value={money(purchase.taxAmount)} />
                 <PrintTotal label="Round Off" value={money(purchase.roundOff)} />
                 <PrintTotal label="GRAND TOTAL" strong value={money(purchase.amount)} />
               </div>
             </section>
             <section className="grid min-h-[5rem] grid-cols-[1fr_18rem] border-t border-slate-300">
-              <div className="flex items-end border-r border-slate-300 px-2 py-2 text-[9px]"><div className="mt-4">Receiver Sign</div></div>
-              <div className="grid grid-rows-[1fr_auto] px-2 py-2 text-[9px]"><div className="font-semibold">For CODEXSUN</div><div className="font-semibold">Authorised Signatory</div></div>
+              <div className="flex items-end border-r border-slate-300 px-2 py-2 text-[9px]">
+                <div className="mt-4">Receiver Sign</div>
+              </div>
+              <div className="grid grid-rows-[1fr_auto] px-2 py-2 text-[9px]">
+                <div className="font-semibold">For CODEXSUN</div>
+                <div className="font-semibold">Authorised Signatory</div>
+              </div>
             </section>
-            <footer className="border-t border-slate-300 px-2 py-1 text-[9px]">Subject to Tiruppur Jurisdiction</footer>
+            <footer className="border-t border-slate-300 px-2 py-1 text-[9px]">
+              Subject to Tiruppur Jurisdiction
+            </footer>
           </>
         ) : null}
       </div>
@@ -162,35 +271,67 @@ function PurchasePrintPage({
 }
 
 function PurchasePrintItemRow({ item, index }: { item: Purchase["items"][number]; index: number }) {
-  return <tr className="align-top">
-    <td className="border-r border-slate-200 px-2 py-2 text-center">{index + 1}</td>
-    <td className="border-r border-slate-200 px-2 py-2"><div className="font-medium">{item.productName}</div><div>{[item.description, item.colour ? `Colour : ${item.colour}` : "", item.size ? `Size : ${item.size}` : ""].filter(Boolean).join(" - ")}</div></td>
-    <td className="border-r border-slate-200 px-2 py-2 text-center">{item.hsnCode || "-"}</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-center">{item.poNo || "-"}</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-center">{item.dcNo || "-"}</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-center">{item.quantity}</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.rate)}</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.taxableAmount)}</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-center">{item.taxRate}%</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.taxAmount)}</td>
-    <td className="px-2 py-2 text-right">{money(item.lineTotal)}</td>
-  </tr>;
+  return (
+    <tr className="align-top">
+      <td className="border-r border-slate-200 px-2 py-2 text-center">{index + 1}</td>
+      <td className="border-r border-slate-200 px-2 py-2">
+        <div className="font-medium">{item.productName}</div>
+        <div>
+          {[
+            item.description,
+            item.colour ? `Colour : ${item.colour}` : "",
+            item.size ? `Size : ${item.size}` : ""
+          ]
+            .filter(Boolean)
+            .join(" - ")}
+        </div>
+      </td>
+      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.hsnCode || "-"}</td>
+      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.poNo || "-"}</td>
+      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.dcNo || "-"}</td>
+      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.quantity}</td>
+      <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.rate)}</td>
+      <td className="border-r border-slate-200 px-2 py-2 text-right">
+        {money(item.taxableAmount)}
+      </td>
+      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.taxRate}%</td>
+      <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.taxAmount)}</td>
+      <td className="px-2 py-2 text-right">{money(item.lineTotal)}</td>
+    </tr>
+  );
 }
 
 function PurchasePrintBlankRow() {
-  return <tr className="h-6">{purchasePrintHeadings.map((heading, index) => <td key={heading} className={index === purchasePrintHeadings.length - 1 ? "" : "border-r border-slate-200"} />)}</tr>;
+  return (
+    <tr className="h-6">
+      {purchasePrintHeadings.map((heading, index) => (
+        <td
+          key={heading}
+          className={index === purchasePrintHeadings.length - 1 ? "" : "border-r border-slate-200"}
+        />
+      ))}
+    </tr>
+  );
 }
 
 function PurchasePrintTotalRow({ purchase }: { purchase: Purchase }) {
-  return <tr className="border-t border-slate-300 font-semibold">
-    <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={5}>Total</td>
-    <td className="border-r border-slate-200 px-2 py-2 text-center">{purchase.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}</td>
-    <td className="border-r border-slate-200 px-2 py-2" />
-    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(purchase.subtotal)}</td>
-    <td className="border-r border-slate-200 px-2 py-2" />
-    <td className="border-r border-slate-200 px-2 py-2 text-right">{money(purchase.taxAmount)}</td>
-    <td className="px-2 py-2 text-right">{money(purchase.amount)}</td>
-  </tr>;
+  return (
+    <tr className="border-t border-slate-300 font-semibold">
+      <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={5}>
+        Total
+      </td>
+      <td className="border-r border-slate-200 px-2 py-2 text-center">
+        {purchase.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}
+      </td>
+      <td className="border-r border-slate-200 px-2 py-2" />
+      <td className="border-r border-slate-200 px-2 py-2 text-right">{money(purchase.subtotal)}</td>
+      <td className="border-r border-slate-200 px-2 py-2" />
+      <td className="border-r border-slate-200 px-2 py-2 text-right">
+        {money(purchase.taxAmount)}
+      </td>
+      <td className="px-2 py-2 text-right">{money(purchase.amount)}</td>
+    </tr>
+  );
 }
 
 function chunkItems(items: Purchase["items"], _size: number) {
@@ -199,7 +340,11 @@ function chunkItems(items: Purchase["items"], _size: number) {
   const pages: Array<Array<{ item: Purchase["items"][number]; index: number }>> = [];
   let index = 0;
   while (items.length - index > finalPageBudget) {
-    pages.push(items.slice(index, index + continuationPageBudget).map((item, offset) => ({ item, index: index + offset })));
+    pages.push(
+      items
+        .slice(index, index + continuationPageBudget)
+        .map((item, offset) => ({ item, index: index + offset }))
+    );
     index += continuationPageBudget;
   }
   pages.push(items.slice(index).map((item, offset) => ({ item, index: index + offset })));
@@ -217,7 +362,9 @@ function PrintPair({ children, label }: { children: string; label: string }) {
 
 function PrintTotal({ label, strong, value }: { label: string; strong?: boolean; value: string }) {
   return (
-    <div className={`grid grid-cols-[1fr_auto] gap-x-3 border-b border-slate-300 px-2 py-1.5 ${strong ? "font-semibold" : ""}`}>
+    <div
+      className={`grid grid-cols-[1fr_auto] gap-x-3 border-b border-slate-300 px-2 py-1.5 ${strong ? "font-semibold" : ""}`}
+    >
       <span>{label}</span>
       <span>{value}</span>
     </div>
@@ -237,12 +384,47 @@ function money(value: number) {
 function amountInWords(value: number) {
   const amount = Math.round(Number(value || 0));
   if (!amount) return "Zero Rupees Only";
-  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
-  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const ones = [
+    "",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+    "Eight",
+    "Nine",
+    "Ten",
+    "Eleven",
+    "Twelve",
+    "Thirteen",
+    "Fourteen",
+    "Fifteen",
+    "Sixteen",
+    "Seventeen",
+    "Eighteen",
+    "Nineteen"
+  ];
+  const tens = [
+    "",
+    "",
+    "Twenty",
+    "Thirty",
+    "Forty",
+    "Fifty",
+    "Sixty",
+    "Seventy",
+    "Eighty",
+    "Ninety"
+  ];
   const chunk = (num: number): string => {
     if (num < 20) return ones[num] || "";
-    if (num < 100) return [tens[Math.floor(num / 10)] || "", ones[num % 10] || ""].filter(Boolean).join(" ");
-    return [ones[Math.floor(num / 100)] || "", "Hundred", chunk(num % 100)].filter(Boolean).join(" ");
+    if (num < 100)
+      return [tens[Math.floor(num / 10)] || "", ones[num % 10] || ""].filter(Boolean).join(" ");
+    return [ones[Math.floor(num / 100)] || "", "Hundred", chunk(num % 100)]
+      .filter(Boolean)
+      .join(" ");
   };
   const parts: string[] = [];
   const crore = Math.floor(amount / 10000000);

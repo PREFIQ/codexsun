@@ -22,14 +22,14 @@
 ## Tables
 
 | Table | Rows | Primary key | Unique keys | Notes |
-| --- | ---: | --- | --- | --- |
-|  |  |  |  |  |
+| ----- | ---: | ----------- | ----------- | ----- |
+|       |      |             |             |       |
 
 ## Relationships
 
 | From table.column | To table.column | Required | Notes |
-| --- | --- | --- | --- |
-|  |  |  |  |
+| ----------------- | --------------- | -------- | ----- |
+|                   |                 |          |       |
 
 ## Data Quality Risks
 

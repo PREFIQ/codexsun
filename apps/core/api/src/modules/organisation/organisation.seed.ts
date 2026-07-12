@@ -1,3 +1,4 @@
+import { seedCompanyModule } from "./company/index.js";
 export async function seedOrganisationModule() {
-  return { module: "core.organisation", seeded: true };
+  await seedCompanyModule();
 }

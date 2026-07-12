@@ -5,5 +5,7 @@ export const reportsSyncPolicy = {
 } as const;
 
 export function shouldSyncReport(reportKey: string) {
-  return ["trial-balance", "ledger-statement", "outstanding", "voucher-register", "gst"].includes(reportKey);
+  return ["trial-balance", "ledger-statement", "outstanding", "voucher-register", "gst"].includes(
+    reportKey
+  );
 }

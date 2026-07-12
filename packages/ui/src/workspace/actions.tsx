@@ -1,14 +1,16 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
-import { cn } from "../lib/utils"
+import type { ReactNode } from "react";
+import { cn } from "../lib/utils";
 
 export function WorkspaceActionBar({
   children,
-  className,
+  className
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
-  return <div className={cn("flex shrink-0 flex-wrap items-center gap-2", className)}>{children}</div>
+  return (
+    <div className={cn("flex shrink-0 flex-wrap items-center gap-2", className)}>{children}</div>
+  );
 }

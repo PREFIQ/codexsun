@@ -14,6 +14,8 @@ export async function migratePlatformActivityModule(db: Kysely<PlatformDatabase>
     .addColumn("record_label", "varchar(190)", (column) => column.notNull())
     .addColumn("actor_email", "varchar(190)", (column) => column.notNull())
     .addColumn("details_json", "json", (column) => column.notNull())
-    .addColumn("created_at", "datetime", (column) => column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("created_at", "datetime", (column) =>
+      column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
+    )
     .execute();
 }

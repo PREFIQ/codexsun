@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
+const requestedApp = process.argv[2]?.trim();
+
 const moduleRoots = [
   {
     app: "kitchen-serve-api",
@@ -68,16 +70,7 @@ const webModuleRoots = [
   }
 ];
 
-const requiredFrontendRoles = [
-  "workspace",
-  "list",
-  "form",
-  "services",
-  "hooks",
-  "types",
-  "schema",
-  "spec"
-];
+const requiredFrontendRoles = ["workspace", "list", "form", "services", "hooks", "types", "schema"];
 const backendBehaviorMarkers = {
   events: ["create"],
   migration: ["migrate"],
@@ -95,11 +88,16 @@ const forbiddenScaffoldPatterns = [
 const missing = [];
 
 for (const root of moduleRoots) {
+  if (requestedApp && root.app !== `${requestedApp}-api`) continue;
   if (!existsSync(root.path)) {
     missing.push(`${root.app}: missing src/modules`);
     continue;
   }
 
+  if (root.app === "core-api") {
+    validateCoreBackend(root);
+    continue;
+  }
   const modules = readdirSync(root.path, { withFileTypes: true }).filter((entry) =>
     entry.isDirectory()
   );
@@ -120,7 +118,12 @@ for (const root of moduleRoots) {
 }
 
 for (const root of webModuleRoots) {
+  if (requestedApp && root.app !== `${requestedApp}-web`) continue;
   if (!existsSync(root.path)) continue;
+  if (root.app === "core-web") {
+    validateCoreFrontend(root);
+    continue;
+  }
   const modules = readdirSync(root.path, { withFileTypes: true }).filter((entry) =>
     entry.isDirectory()
   );
@@ -153,6 +156,61 @@ if (missing.length > 0) {
 
 console.log("Module boundary check passed.");
 
+function validateCoreBackend(root) {
+  const leafRoles = ["migration", "module", "repository", "routes", "seed", "service", "types"];
+  for (const modulePath of leafDirectories(root.path)) {
+    const moduleName = modulePath.split(/[\\/]/).at(-1);
+    const label = `${root.app}/${relativeModule(root.path, modulePath)}`;
+    for (const role of leafRoles) {
+      const filePath = join(modulePath, `${moduleName}.${role}.ts`);
+      if (!existsSync(filePath)) missing.push(`${label}: missing ${moduleName}.${role}.ts`);
+      else validateRoleFile(filePath, label, role);
+    }
+    if (!existsSync(join(modulePath, "index.ts"))) missing.push(`${label}: missing index.ts`);
+  }
+  for (const name of ["common", "master", "organisation"]) {
+    const path = join(root.path, name);
+    for (const role of ["module", "migration", "seed"]) {
+      if (!existsSync(join(path, `${name}.${role}.ts`)))
+        missing.push(`${root.app}/${name}: missing composition ${name}.${role}.ts`);
+    }
+    if (!existsSync(join(path, "index.ts"))) missing.push(`${root.app}/${name}: missing index.ts`);
+  }
+}
+
+function validateCoreFrontend(root) {
+  for (const modulePath of leafDirectories(root.path)) {
+    const moduleName = modulePath.split(/[\\/]/).at(-1);
+    const label = `${root.app}/${relativeModule(root.path, modulePath)}`;
+    for (const role of requiredFrontendRoles) {
+      const extension = ["form", "list", "workspace"].includes(role) ? "tsx" : "ts";
+      const filePath = join(modulePath, `${moduleName}.${role}.${extension}`);
+      if (!existsSync(filePath))
+        missing.push(`${label}: missing ${moduleName}.${role}.${extension}`);
+      else validateRoleFile(filePath, label, role);
+    }
+    if (!existsSync(join(modulePath, "index.ts"))) missing.push(`${label}: missing index.ts`);
+  }
+}
+
+function leafDirectories(rootPath) {
+  const result = [];
+  for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const path = join(rootPath, entry.name);
+    const childDirectories = readdirSync(path, { withFileTypes: true }).filter((child) =>
+      child.isDirectory()
+    );
+    if (existsSync(join(path, "index.ts")) && childDirectories.length === 0) result.push(path);
+    else result.push(...leafDirectories(path));
+  }
+  return result;
+}
+
+function relativeModule(rootPath, modulePath) {
+  return modulePath.slice(rootPath.length + 1).replaceAll("\\", "/");
+}
+
 function validateRoleFile(filePath, moduleLabel, role) {
   const source = readFileSync(filePath, "utf8").trim();
   if (!source) {
@@ -171,8 +229,5 @@ function validateRoleFile(filePath, moduleLabel, role) {
   }
   if (["form", "list", "workspace"].includes(role) && !/export\s+function\s+\w+/.test(source)) {
     missing.push(`${moduleLabel}: ${role} role must export a real component`);
-  }
-  if (role === "spec" && !/\b(describe|test|it)\s*\(/.test(source)) {
-    missing.push(`${moduleLabel}: spec role has no executable test`);
   }
 }

@@ -18,13 +18,37 @@ const defaultSales: PurchaseSavePayload[] = [
     invoiceNumber: "SAL-0001",
     issuedOn: "2026-07-08",
     items: [
-      { colour: "", dcNo: "", description: "Premium cotton fabric", hsnCode: "5208", poNo: "", productName: "Premium cotton fabric", quantity: 25, rate: 320, size: "", taxRate: 12, unit: "MTR" },
-      { colour: "", dcNo: "", description: "Finishing and packing", hsnCode: "9988", poNo: "", productName: "Finishing and packing", quantity: 1, rate: 1800, size: "", taxRate: 18, unit: "JOB" },
+      {
+        colour: "",
+        dcNo: "",
+        description: "Premium cotton fabric",
+        hsnCode: "5208",
+        poNo: "",
+        productName: "Premium cotton fabric",
+        quantity: 25,
+        rate: 320,
+        size: "",
+        taxRate: 12,
+        unit: "MTR"
+      },
+      {
+        colour: "",
+        dcNo: "",
+        description: "Finishing and packing",
+        hsnCode: "9988",
+        poNo: "",
+        productName: "Finishing and packing",
+        quantity: 1,
+        rate: 1800,
+        size: "",
+        taxRate: 18,
+        unit: "JOB"
+      }
     ],
     notes: "Dispatch against work order NS-447.",
     roundOff: 0,
     shippingAddress: "18 Market Road\nCoimbatore - 641018",
-    status: "confirmed",
+    status: "confirmed"
   },
   {
     billingAddress: "42 Textile Street\nTiruppur - 641603",
@@ -35,14 +59,38 @@ const defaultSales: PurchaseSavePayload[] = [
     invoiceNumber: "SAL-0002",
     issuedOn: "2026-07-09",
     items: [
-      { colour: "", dcNo: "", description: "Display rack accessories", hsnCode: "9403", poNo: "", productName: "Display rack accessories", quantity: 4, rate: 1350, size: "", taxRate: 18, unit: "SET" },
-      { colour: "", dcNo: "", description: "Store branding labels", hsnCode: "4821", poNo: "", productName: "Store branding labels", quantity: 120, rate: 18, size: "", taxRate: 12, unit: "PCS" },
+      {
+        colour: "",
+        dcNo: "",
+        description: "Display rack accessories",
+        hsnCode: "9403",
+        poNo: "",
+        productName: "Display rack accessories",
+        quantity: 4,
+        rate: 1350,
+        size: "",
+        taxRate: 18,
+        unit: "SET"
+      },
+      {
+        colour: "",
+        dcNo: "",
+        description: "Store branding labels",
+        hsnCode: "4821",
+        poNo: "",
+        productName: "Store branding labels",
+        quantity: 120,
+        rate: 18,
+        size: "",
+        taxRate: 12,
+        unit: "PCS"
+      }
     ],
     notes: "Draft invoice pending final dispatch quantity.",
     roundOff: 0.2,
     shippingAddress: "42 Textile Street\nTiruppur - 641603",
-    status: "draft",
-  },
+    status: "draft"
+  }
 ];
 
 export async function seedSalesModule(database: Kysely<any>) {
@@ -69,14 +117,18 @@ export async function seedSalesModule(database: Kysely<any>) {
         id: `seed-${normalized.invoiceNumber.toLowerCase()}`,
         invoice_number: normalized.invoiceNumber,
         issued_on: normalized.issuedOn,
-        status: normalized.status,
+        status: normalized.status
       })
       .onDuplicateKeyUpdate({
         customer_name: normalized.customerName,
         issued_on: normalized.issuedOn,
-        status: sql`status`,
+        status: sql`status`
       })
       .execute();
-    await repository.update(databaseName, `seed-${normalized.invoiceNumber.toLowerCase()}`, normalized);
+    await repository.update(
+      databaseName,
+      `seed-${normalized.invoiceNumber.toLowerCase()}`,
+      normalized
+    );
   }
 }

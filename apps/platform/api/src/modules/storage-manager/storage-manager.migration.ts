@@ -3,8 +3,18 @@ import type { PlatformDatabase } from "../../database/schema.js";
 
 export async function migrateStorageManagerModule(database: Kysely<PlatformDatabase>) {
   await addColumnIfMissing(database, "tenants", "storage_root", "VARCHAR(255) NOT NULL DEFAULT ''");
-  await addColumnIfMissing(database, "tenants", "storage_public_root", "VARCHAR(255) NOT NULL DEFAULT ''");
-  await addColumnIfMissing(database, "tenants", "storage_private_root", "VARCHAR(255) NOT NULL DEFAULT ''");
+  await addColumnIfMissing(
+    database,
+    "tenants",
+    "storage_public_root",
+    "VARCHAR(255) NOT NULL DEFAULT ''"
+  );
+  await addColumnIfMissing(
+    database,
+    "tenants",
+    "storage_private_root",
+    "VARCHAR(255) NOT NULL DEFAULT ''"
+  );
 
   await database.schema
     .createTable("storage_objects")
@@ -24,7 +34,12 @@ export async function migrateStorageManagerModule(database: Kysely<PlatformDatab
     .addColumn("updated_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .execute();
 
-  await database.schema.createIndex("storage_objects_scope_idx").ifNotExists().on("storage_objects").columns(["scope", "tenant_id", "visibility"]).execute();
+  await database.schema
+    .createIndex("storage_objects_scope_idx")
+    .ifNotExists()
+    .on("storage_objects")
+    .columns(["scope", "tenant_id", "visibility"])
+    .execute();
   await database.schema
     .createIndex("storage_objects_owner_path_idx")
     .ifNotExists()
@@ -34,18 +49,29 @@ export async function migrateStorageManagerModule(database: Kysely<PlatformDatab
     .execute();
 }
 
-async function addColumnIfMissing(database: Kysely<PlatformDatabase>, tableName: string, columnName: string, definition: string) {
+async function addColumnIfMissing(
+  database: Kysely<PlatformDatabase>,
+  tableName: string,
+  columnName: string,
+  definition: string
+) {
   if (await columnExists(database, tableName, columnName)) {
     return;
   }
   try {
-    await sql.raw(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`).execute(database);
+    await sql
+      .raw(`ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${definition}`)
+      .execute(database);
   } catch (error) {
     if (!isDuplicateColumnError(error)) throw error;
   }
 }
 
-async function columnExists(database: Kysely<PlatformDatabase>, tableName: string, columnName: string) {
+async function columnExists(
+  database: Kysely<PlatformDatabase>,
+  tableName: string,
+  columnName: string
+) {
   const result = await sql<{ column_count: number | string }>`
     SELECT COUNT(*) AS column_count
     FROM information_schema.COLUMNS
@@ -57,5 +83,11 @@ async function columnExists(database: Kysely<PlatformDatabase>, tableName: strin
 }
 
 function isDuplicateColumnError(error: unknown) {
-  return typeof error === "object" && error !== null && ("code" in error || "errno" in error) && ((error as { code?: string; errno?: number }).code === "ER_DUP_FIELDNAME" || (error as { code?: string; errno?: number }).errno === 1060);
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    ("code" in error || "errno" in error) &&
+    ((error as { code?: string; errno?: number }).code === "ER_DUP_FIELDNAME" ||
+      (error as { code?: string; errno?: number }).errno === 1060)
+  );
 }

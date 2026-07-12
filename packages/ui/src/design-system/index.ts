@@ -35,12 +35,8 @@ export const designSystemVariants = [
 
 export const defaultDesignSystemVariantId: DesignSystemVariantId = "default";
 
-export function getDesignSystemVariant(
-  id: string | null | undefined
-): DesignSystemVariant {
-  return (
-    designSystemVariants.find((variant) => variant.id === id) ?? defaultVariant
-  );
+export function getDesignSystemVariant(id: string | null | undefined): DesignSystemVariant {
+  return designSystemVariants.find((variant) => variant.id === id) ?? defaultVariant;
 }
 
 export function isDesignSystemVariantId(id: string): id is DesignSystemVariantId {

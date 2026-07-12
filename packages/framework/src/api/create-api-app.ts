@@ -46,14 +46,13 @@ export async function createApiApp(options: CreateApiAppOptions): Promise<Fastif
   });
   console.info("[plugin.ready] cookie");
 
-  app.addHook("onRequest", async (_request, reply) => {
-  });
-
   registerTenantContext(app);
   console.info("[context.ready] tenant");
 
   app.setErrorHandler((error, request, reply) => {
-    console.error(`[request.error] ${request.method} ${request.url} request=${request.id} ${errorMessage(error)}`);
+    console.error(
+      `[request.error] ${request.method} ${request.url} request=${request.id} ${errorMessage(error)}`
+    );
     if (isAppError(error)) {
       return reply.code(error.statusCode).send(
         fail(

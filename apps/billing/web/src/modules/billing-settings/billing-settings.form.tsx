@@ -4,7 +4,10 @@ import { BillingSettingsWorkspace } from "./billing-settings.workspace";
 
 export function BillingSettingsForm() {
   return (
-    <WorkspaceFormPanel title="Billing settings" description="Tenant-owned billing settings editor.">
+    <WorkspaceFormPanel
+      title="Billing settings"
+      description="Tenant-owned billing settings editor."
+    >
       <BillingSettingsWorkspace />
       <Button type="button">Review settings</Button>
     </WorkspaceFormPanel>

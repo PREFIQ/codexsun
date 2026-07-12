@@ -1,1 +1,56 @@
-export type { MasterRecord as ContactRecord, MasterSaveInput as ContactSaveInput } from "../foundation/master.types.js";
+export type ContactStatus = "active" | "inactive" | "not_active" | "suspend" | "deleted";
+export type ContactChild = Record<string, boolean | number | string | null> & {
+  id: number | string;
+};
+export type ContactRecord = {
+  id: number;
+  uuid: string | null;
+  code: string;
+  name: string;
+  legalName: string | null;
+  typeId: number | null;
+  typeName: string | null;
+  groupId: number | null;
+  groupName: string | null;
+  primaryPhone: string | null;
+  primaryEmail: string | null;
+  gstin: string | null;
+  pan: string | null;
+  msmeNo: string | null;
+  msmeCategory: string | null;
+  tanNo: string | null;
+  tdsAvailable: boolean;
+  tcsAvailable: boolean;
+  openingBalance: number;
+  creditLimit: number;
+  website: string | null;
+  description: string | null;
+  logoPath: string | null;
+  logoDarkPath: string | null;
+  industryId: number | null;
+  industryName: string | null;
+  productCategoryId: number | null;
+  productCategoryName: string | null;
+  unitId: number | null;
+  unitName: string | null;
+  hsnCodeId: number | null;
+  hsnCode: string | null;
+  taxId: number | null;
+  taxName: string | null;
+  openingStock: number;
+  openingRate: number;
+  status: ContactStatus;
+  isActive: boolean;
+  emails: ContactChild[];
+  phones: ContactChild[];
+  addresses: ContactChild[];
+  bankAccounts: ContactChild[];
+  socialLinks: ContactChild[];
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+export type ContactSaveInput = Partial<
+  Omit<ContactRecord, "id" | "uuid" | "createdAt" | "updatedAt" | "deletedAt">
+>;
+export type ContactListFilters = { search?: string };

@@ -34,7 +34,9 @@ type PurchaseDatabase = {
 
 export class PurchaseRepository {
   async list(databaseName: string) {
-    const rows = await (await purchaseDatabase(databaseName))
+    const rows = await (
+      await purchaseDatabase(databaseName)
+    )
       .selectFrom("billing_purchase")
       .selectAll()
       .orderBy("issued_on", "desc")
@@ -44,7 +46,9 @@ export class PurchaseRepository {
   }
 
   async get(databaseName: string, id: string) {
-    const row = await (await purchaseDatabase(databaseName))
+    const row = await (
+      await purchaseDatabase(databaseName)
+    )
       .selectFrom("billing_purchase")
       .selectAll()
       .where("id", "=", id)
@@ -53,31 +57,58 @@ export class PurchaseRepository {
   }
 
   async findByInvoiceNumber(databaseName: string, invoiceNumber: string) {
-    const row = await (await purchaseDatabase(databaseName)).selectFrom("billing_purchase").selectAll().where("invoice_number", "=", invoiceNumber).executeTakeFirst();
+    const row = await (
+      await purchaseDatabase(databaseName)
+    )
+      .selectFrom("billing_purchase")
+      .selectAll()
+      .where("invoice_number", "=", invoiceNumber)
+      .executeTakeFirst();
     return row ? toPurchase(row) : null;
   }
 
   async create(databaseName: string, input: PurchaseSavePayload) {
     const sale = createPurchaseRecord(input);
-    await (await purchaseDatabase(databaseName)).insertInto("billing_purchase").values(toPurchaseRow(sale)).execute();
+    await (
+      await purchaseDatabase(databaseName)
+    )
+      .insertInto("billing_purchase")
+      .values(toPurchaseRow(sale))
+      .execute();
     return sale;
   }
 
   async update(databaseName: string, id: string, input: PurchaseSavePayload) {
     const db = await purchaseDatabase(databaseName);
-    const existing = await db.selectFrom("billing_purchase").select("id").where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_purchase")
+      .select("id")
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
     const sale = createPurchaseRecord(input, { id });
-    await db.updateTable("billing_purchase").set(toPurchaseRow(sale)).where("id", "=", id).execute();
+    await db
+      .updateTable("billing_purchase")
+      .set(toPurchaseRow(sale))
+      .where("id", "=", id)
+      .execute();
     return sale;
   }
 
   async setStatus(databaseName: string, id: string, status: Purchase["status"]) {
     const db = await purchaseDatabase(databaseName);
-    const existing = await db.selectFrom("billing_purchase").selectAll().where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_purchase")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing) return null;
     const updatedAt = new Date().toISOString();
-    await db.updateTable("billing_purchase").set({ status, updated_at: updatedAt }).where("id", "=", id).execute();
+    await db
+      .updateTable("billing_purchase")
+      .set({ status, updated_at: updatedAt })
+      .where("id", "=", id)
+      .execute();
     return { ...toPurchase(existing), status, updatedAt };
   }
 
@@ -87,7 +118,11 @@ export class PurchaseRepository {
 
   async delete(databaseName: string, id: string) {
     const db = await purchaseDatabase(databaseName);
-    const existing = await db.selectFrom("billing_purchase").selectAll().where("id", "=", id).executeTakeFirst();
+    const existing = await db
+      .selectFrom("billing_purchase")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
     if (!existing || existing.status !== "draft") return null;
     await db.deleteFrom("billing_purchase").where("id", "=", id).execute();
     return toPurchase(existing);
@@ -122,7 +157,7 @@ function toPurchase(row: PurchaseTableRow): Purchase {
     taxAmount: Number(row.tax_amount ?? items.reduce((sum, item) => sum + item.taxAmount, 0)),
     taxType: row.tax_type ?? "CGST + SGST",
     updatedAt: row.updated_at ?? row.created_at ?? "",
-    workOrderNo: row.work_order_no ?? "",
+    workOrderNo: row.work_order_no ?? ""
   };
 }
 
@@ -149,11 +184,14 @@ function toPurchaseRow(sale: Purchase): PurchaseTableRow {
     tax_amount: sale.taxAmount,
     tax_type: sale.taxType,
     updated_at: sale.updatedAt,
-    work_order_no: sale.workOrderNo,
+    work_order_no: sale.workOrderNo
   };
 }
 
-function createPurchaseRecord(input: PurchaseSavePayload, current?: Partial<Pick<Purchase, "createdAt" | "id">>) {
+function createPurchaseRecord(
+  input: PurchaseSavePayload,
+  current?: Partial<Pick<Purchase, "createdAt" | "id">>
+) {
   const now = new Date().toISOString();
   const totals = buildPurchaseTotals(input);
   return {
@@ -178,7 +216,7 @@ function createPurchaseRecord(input: PurchaseSavePayload, current?: Partial<Pick
     taxAmount: totals.taxAmount,
     taxType: input.taxType ?? "CGST + SGST",
     updatedAt: now,
-    workOrderNo: input.workOrderNo ?? "",
+    workOrderNo: input.workOrderNo ?? ""
   } satisfies Purchase;
 }
 
@@ -195,13 +233,13 @@ function parseItems(value: string | null) {
 function buildPurchaseTotals(input: PurchaseSavePayload) {
   const items = input.items.map((item, index) => {
     const taxableAmount = roundMoney(item.quantity * item.rate);
-    const taxAmount = roundMoney(taxableAmount * item.taxRate / 100);
+    const taxAmount = roundMoney((taxableAmount * item.taxRate) / 100);
     return {
       ...item,
       id: `item-${index + 1}`,
       lineTotal: roundMoney(taxableAmount + taxAmount),
       taxableAmount,
-      taxAmount,
+      taxAmount
     };
   });
 

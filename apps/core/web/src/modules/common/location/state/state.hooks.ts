@@ -1,7 +1,5 @@
-import { stateDefinition } from "../shared/location.definitions";
-import { useCreateLocationRecord, useLocationRecords, useUpdateLocationRecord } from "../shared/location.hooks";
-
-export const useStates = () => useLocationRecords(stateDefinition);
-export const useCreateState = () => useCreateLocationRecord(stateDefinition);
-export const useUpdateState = () => useUpdateLocationRecord(stateDefinition);
-
+import { useQuery } from "@tanstack/react-query";
+import { listStateRecords } from "./state.services";
+export function useStateQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listStateRecords(path), queryKey: ["core", "location", key] });
+}

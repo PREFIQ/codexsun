@@ -1,5 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRightIcon, Building2Icon, MonitorCogIcon, ShieldCheckIcon, StoreIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  Building2Icon,
+  MonitorCogIcon,
+  ShieldCheckIcon,
+  StoreIcon
+} from "lucide-react";
 import { Button, Card, StatusBadge } from "@codexsun/ui";
 
 const deskLinks = [
@@ -30,7 +36,11 @@ export function HomePage() {
     <main className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border bg-background">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <button className="flex items-center gap-3" onClick={() => navigate({ to: "/" })} type="button">
+          <button
+            className="flex items-center gap-3"
+            onClick={() => navigate({ to: "/" })}
+            type="button"
+          >
             <img alt="Codexsun" className="size-8" src="/logo/logo.svg" />
             <span className="text-sm font-semibold">Codexsun</span>
           </button>
@@ -60,7 +70,11 @@ export function HomePage() {
           {deskLinks.map((desk) => (
             <Card key={desk.title} title={desk.title} description={desk.description}>
               <desk.icon className="size-5 text-muted-foreground" />
-              <Button className="mt-5 w-full justify-between" onClick={() => navigate({ to: desk.href })} variant="outline">
+              <Button
+                className="mt-5 w-full justify-between"
+                onClick={() => navigate({ to: desk.href })}
+                variant="outline"
+              >
                 Open
                 <ArrowRightIcon className="size-4" />
               </Button>

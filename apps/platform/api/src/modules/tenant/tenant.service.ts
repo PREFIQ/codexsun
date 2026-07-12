@@ -4,7 +4,10 @@ import { resolveEnabledApps, resolveLandingApp } from "../app-registry/index.js"
 import { EntitlementAccessService } from "../entitlement/entitlement.access.js";
 import { provisionTenantDatabase, provisionTenantStorage } from "./tenant.seed.js";
 import { env } from "../../env.js";
-import { defaultTenantDomainForSlug, normalizeTenantDomain } from "../tenant-domain/tenant-domain.repository.js";
+import {
+  defaultTenantDomainForSlug,
+  normalizeTenantDomain
+} from "../tenant-domain/tenant-domain.repository.js";
 
 export class TenantService {
   constructor(
@@ -25,7 +28,9 @@ export class TenantService {
     const accessTenant = tenant ? await this.access.refreshTenantAccess(tenant.id) : null;
     const runtimeTenant = accessTenant ?? tenant;
     const enabledModuleKeys = runtimeTenant?.enabledModuleKeys ?? ["platform.application"];
-    const landingSettings = isRecord(runtimeTenant?.payloadSettings?.landing) ? runtimeTenant?.payloadSettings.landing : {};
+    const landingSettings = isRecord(runtimeTenant?.payloadSettings?.landing)
+      ? runtimeTenant?.payloadSettings.landing
+      : {};
     const defaultLandingApp = resolveLandingApp(landingSettings?.app, enabledModuleKeys);
     return {
       apps: resolveEnabledApps(enabledModuleKeys),
@@ -65,13 +70,22 @@ export class TenantService {
   private normalize(input: TenantSavePayload): TenantSavePayload {
     const tenantCode = input.tenantCode.trim().toUpperCase();
     const slug = input.slug.trim().toLowerCase() || tenantCode.toLowerCase();
-    const legacyKeys = input.enabledModuleKeys.map((key) => (key === "platform.tenant" ? "platform.application" : key));
+    const legacyKeys = input.enabledModuleKeys.map((key) =>
+      key === "platform.tenant" ? "platform.application" : key
+    );
     const enabledModuleKeys = Array.from(new Set(["platform.application", ...legacyKeys]));
     const incomingPayloadSettings = isRecord(input.payloadSettings) ? input.payloadSettings : {};
-    const incomingLanding = isRecord(incomingPayloadSettings.landing) ? incomingPayloadSettings.landing : {};
+    const incomingLanding = isRecord(incomingPayloadSettings.landing)
+      ? incomingPayloadSettings.landing
+      : {};
     const incomingApps = isRecord(incomingPayloadSettings.apps) ? incomingPayloadSettings.apps : {};
-    const disabledModuleKeys = parseStringArray(incomingApps.disabled).filter((key) => key !== "platform.application");
-    const defaultLandingApp = resolveLandingApp(input.defaultLandingApp ?? incomingLanding.app, enabledModuleKeys);
+    const disabledModuleKeys = parseStringArray(incomingApps.disabled).filter(
+      (key) => key !== "platform.application"
+    );
+    const defaultLandingApp = resolveLandingApp(
+      input.defaultLandingApp ?? incomingLanding.app,
+      enabledModuleKeys
+    );
     return {
       ...input,
       corporateId: input.corporateId?.trim() || null,
@@ -111,5 +125,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseStringArray(value: unknown) {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }

@@ -32,7 +32,7 @@ export function registerRequestLogging(app: FastifyInstance): void {
     let durationMs: number | undefined;
     if (start) {
       const diff = process.hrtime(start);
-      durationMs = (diff[0] * 1e3) + (diff[1] / 1e6);
+      durationMs = diff[0] * 1e3 + diff[1] / 1e6;
     }
 
     const log = createStructuredLog({

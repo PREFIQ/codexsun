@@ -6,14 +6,14 @@ Use this runbook to create, verify, and restore CODEXSUN platform and tenant dat
 
 ## Backup Schedule
 
-| Backup type | Frequency | Retention |
-| --- | --- | --- |
-| Platform full backup | Daily | 30 days |
-| Tenant full backup | Daily | 30 days |
-| High-volume tenant incremental or PITR | 15 minutes to 1 hour | 7 to 30 days |
-| File storage backup | Daily | 30 days |
-| Pre-migration backup | Before every production migration | Through rollback window |
-| Monthly archive backup | Monthly | 1 year or compliance policy |
+| Backup type                            | Frequency                         | Retention                   |
+| -------------------------------------- | --------------------------------- | --------------------------- |
+| Platform full backup                   | Daily                             | 30 days                     |
+| Tenant full backup                     | Daily                             | 30 days                     |
+| High-volume tenant incremental or PITR | 15 minutes to 1 hour              | 7 to 30 days                |
+| File storage backup                    | Daily                             | 30 days                     |
+| Pre-migration backup                   | Before every production migration | Through rollback window     |
+| Monthly archive backup                 | Monthly                           | 1 year or compliance policy |
 
 ## Restore Test
 

@@ -1,6 +1,11 @@
 import { createHash, randomBytes } from "node:crypto";
 import { getPlatformDatabase } from "../../database/platform-database.js";
-import type { Entitlement, EntitlementSavePayload, PlanAccess, TenantAccessSummary } from "./entitlement.types.js";
+import type {
+  Entitlement,
+  EntitlementSavePayload,
+  PlanAccess,
+  TenantAccessSummary
+} from "./entitlement.types.js";
 
 export class EntitlementRepository {
   async list() {
@@ -56,7 +61,11 @@ export class EntitlementRepository {
   }
 
   async update(id: number, input: EntitlementSavePayload) {
-    await getPlatformDatabase().updateTable("entitlements").set(toRow(input)).where("id", "=", id).execute();
+    await getPlatformDatabase()
+      .updateTable("entitlements")
+      .set(toRow(input))
+      .where("id", "=", id)
+      .execute();
     return this.find(id);
   }
 
@@ -104,29 +113,45 @@ export class EntitlementRepository {
       .where("subscriptions.tenant_id", "=", tenantId)
       .where("subscriptions.status", "in", ["active", "trial"])
       .where("subscriptions.starts_on", "<=", today)
-      .where((eb) => eb.or([eb("subscriptions.ends_on", "is", null), eb("subscriptions.ends_on", ">=", today)]))
+      .where((eb) =>
+        eb.or([eb("subscriptions.ends_on", "is", null), eb("subscriptions.ends_on", ">=", today)])
+      )
       .where("entitlements.scope", "=", "plan")
       .where("entitlements.status", "=", "active")
       .where("entitlements.starts_on", "<=", today)
-      .where((eb) => eb.or([eb("entitlements.ends_on", "is", null), eb("entitlements.ends_on", ">=", today)]))
+      .where((eb) =>
+        eb.or([eb("entitlements.ends_on", "is", null), eb("entitlements.ends_on", ">=", today)])
+      )
       .execute();
     for (const grant of planGrants) keys.add(grant.module_key);
 
-    return Array.from(keys).map((key) => (key === "platform.tenant" ? "platform.application" : key)).sort();
+    return Array.from(keys)
+      .map((key) => (key === "platform.tenant" ? "platform.application" : key))
+      .sort();
   }
 
   async getPlanAccess(planId: number): Promise<PlanAccess | null> {
     const database = getPlatformDatabase();
-    const plan = await database.selectFrom("plans").select(["id", "name"]).where("id", "=", planId).executeTakeFirst();
+    const plan = await database
+      .selectFrom("plans")
+      .select(["id", "name"])
+      .where("id", "=", planId)
+      .executeTakeFirst();
     if (!plan) return null;
-    const apps = await database.selectFrom("platform_apps").select(["id", "label", "module_key"]).orderBy("label").execute();
+    const apps = await database
+      .selectFrom("platform_apps")
+      .select(["id", "label", "module_key"])
+      .orderBy("label")
+      .execute();
     const grants = await database
       .selectFrom("entitlements")
       .select(["module_key", "status"])
       .where("scope", "=", "plan")
       .where("plan_id", "=", planId)
       .execute();
-    const active = new Set(grants.filter((grant) => grant.status === "active").map((grant) => grant.module_key));
+    const active = new Set(
+      grants.filter((grant) => grant.status === "active").map((grant) => grant.module_key)
+    );
     return {
       apps: apps.map((app) => ({
         appId: Number(app.id),
@@ -168,7 +193,9 @@ export class EntitlementRepository {
           .execute();
         continue;
       }
-      await database.insertInto("entitlements").values({
+      await database
+        .insertInto("entitlements")
+        .values({
           app_id: Number(app.id),
           ends_on: null,
           module_key: app.module_key,
@@ -179,27 +206,53 @@ export class EntitlementRepository {
           status,
           tenant_id: null,
           uuid: stableUuid(`entitlement:plan:${planId}:${app.module_key}`)
-        }).execute();
+        })
+        .execute();
     }
     return this.getPlanAccess(planId);
   }
 
   async listTenantAccessSummaries(): Promise<TenantAccessSummary[]> {
-    const tenants = await getPlatformDatabase().selectFrom("tenants").select(["id", "uuid", "tenant_code", "tenant_name"]).orderBy("tenant_name").execute();
-    return Promise.all(tenants.map((tenant) => this.tenantAccessSummary(Number(tenant.id), tenant.uuid, tenant.tenant_code, tenant.tenant_name)));
+    const tenants = await getPlatformDatabase()
+      .selectFrom("tenants")
+      .select(["id", "uuid", "tenant_code", "tenant_name"])
+      .orderBy("tenant_name")
+      .execute();
+    return Promise.all(
+      tenants.map((tenant) =>
+        this.tenantAccessSummary(
+          Number(tenant.id),
+          tenant.uuid,
+          tenant.tenant_code,
+          tenant.tenant_name
+        )
+      )
+    );
   }
 
-  private async tenantAccessSummary(tenantId: number, uuid: string, tenantCode: string, tenantName: string): Promise<TenantAccessSummary> {
+  private async tenantAccessSummary(
+    tenantId: number,
+    uuid: string,
+    tenantCode: string,
+    tenantName: string
+  ): Promise<TenantAccessSummary> {
     const today = new Date().toISOString().slice(0, 10);
     const database = getPlatformDatabase();
     const subscription = await database
       .selectFrom("subscriptions")
       .innerJoin("plans", "plans.id", "subscriptions.plan_id")
-      .select(["subscriptions.plan_id", "subscriptions.billing_cycle", "subscriptions.status", "plans.name as plan_name"])
+      .select([
+        "subscriptions.plan_id",
+        "subscriptions.billing_cycle",
+        "subscriptions.status",
+        "plans.name as plan_name"
+      ])
       .where("subscriptions.tenant_id", "=", tenantId)
       .where("subscriptions.status", "in", ["active", "trial"])
       .where("subscriptions.starts_on", "<=", today)
-      .where((eb) => eb.or([eb("subscriptions.ends_on", "is", null), eb("subscriptions.ends_on", ">=", today)]))
+      .where((eb) =>
+        eb.or([eb("subscriptions.ends_on", "is", null), eb("subscriptions.ends_on", ">=", today)])
+      )
       .orderBy("subscriptions.id", "desc")
       .executeTakeFirst();
     const manual = await database

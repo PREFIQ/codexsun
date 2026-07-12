@@ -1,6 +1,13 @@
 import type { Kysely } from "kysely";
 import { getBillingDatabase } from "../../database/billing-database.js";
-import { defaultBillingSettings, defaultBillingSalesSettings, type BillingDocumentKind, type BillingDocumentLayoutSettings, type BillingGstApiMode, type BillingSettings } from "./settings.types.js";
+import {
+  defaultBillingSettings,
+  defaultBillingSalesSettings,
+  type BillingDocumentKind,
+  type BillingDocumentLayoutSettings,
+  type BillingGstApiMode,
+  type BillingSettings
+} from "./settings.types.js";
 
 type BillingSettingsRow = {
   created_at: string | null;
@@ -15,7 +22,9 @@ type BillingSettingsDatabase = {
 
 export class BillingSettingsRepository {
   async getBillingSettings(databaseName: string) {
-    const row = await (await database(databaseName))
+    const row = await (
+      await database(databaseName)
+    )
       .selectFrom("billing_settings")
       .selectAll()
       .where("id", "=", "billing")
@@ -38,11 +47,11 @@ export class BillingSettingsRepository {
         created_at: now,
         id: "billing",
         settings_json: payload,
-        updated_at: now,
+        updated_at: now
       })
       .onDuplicateKeyUpdate({
         settings_json: payload,
-        updated_at: now,
+        updated_at: now
       })
       .execute();
     return settings;
@@ -67,7 +76,9 @@ function normalizeSettings(value: string | null): BillingSettings {
     const parsed = JSON.parse(value) as Omit<Partial<BillingSettings>, "layout"> &
       Partial<BillingDocumentLayoutSettings> & {
         featureQuotation?: boolean;
-        layout?: Partial<BillingDocumentLayoutSettings> | Partial<Record<BillingDocumentKind, Partial<BillingDocumentLayoutSettings>>>;
+        layout?:
+          | Partial<BillingDocumentLayoutSettings>
+          | Partial<Record<BillingDocumentKind, Partial<BillingDocumentLayoutSettings>>>;
       };
     const legacyLayout: Partial<BillingDocumentLayoutSettings> = {};
     if (typeof parsed.useColour === "boolean") legacyLayout.useColour = parsed.useColour;
@@ -78,15 +89,17 @@ function normalizeSettings(value: string | null): BillingSettings {
     if (typeof parsed.useSize === "boolean") legacyLayout.useSize = parsed.useSize;
     const hasLegacyLayout = Object.values(legacyLayout).some((value) => typeof value === "boolean");
     const normalizedLegacyLayout = hasLegacyLayout ? normalizeLayout(legacyLayout) : undefined;
-    const gstApiMode: BillingGstApiMode = parsed.gstApiMode === "eway_only" ? "eway_only" : "einvoice_eway";
+    const gstApiMode: BillingGstApiMode =
+      parsed.gstApiMode === "eway_only" ? "eway_only" : "einvoice_eway";
     return {
       ...defaultBillingSettings,
       features: {
         exportSales: parsed.features?.exportSales ?? defaultBillingSettings.features.exportSales,
-        quotation: typeof parsed.featureQuotation === "boolean"
-          ? parsed.featureQuotation
-          : parsed.features?.quotation ?? defaultBillingSettings.features.quotation,
-        tconnect: parsed.features?.tconnect ?? defaultBillingSettings.features.tconnect,
+        quotation:
+          typeof parsed.featureQuotation === "boolean"
+            ? parsed.featureQuotation
+            : (parsed.features?.quotation ?? defaultBillingSettings.features.quotation),
+        tconnect: parsed.features?.tconnect ?? defaultBillingSettings.features.tconnect
       },
       gstApiMode,
       layout: normalizeSavedLayout(parsed.layout, normalizedLegacyLayout),
@@ -94,50 +107,61 @@ function normalizeSettings(value: string | null): BillingSettings {
       customise: {
         documentTitles: {
           ...defaultBillingSettings.customise.documentTitles,
-          ...(parsed.customise?.documentTitles ?? {}),
+          ...(parsed.customise?.documentTitles ?? {})
         },
-        printLanguage: "english",
+        printLanguage: "english"
       },
       printing: {
         ...defaultBillingSettings.printing,
         ...(parsed.printing ?? {}),
         letterhead: {
           ...defaultBillingSettings.printing.letterhead,
-          ...(parsed.printing?.letterhead ?? {}),
-        },
-      },
+          ...(parsed.printing?.letterhead ?? {})
+        }
+      }
     };
   } catch {
     return defaultBillingSalesSettings;
   }
 }
 
-function normalizeNumbering(value: Partial<BillingSettings["numbering"]> | undefined): BillingSettings["numbering"] {
+function normalizeNumbering(
+  value: Partial<BillingSettings["numbering"]> | undefined
+): BillingSettings["numbering"] {
   return {
     exportSales: { ...defaultBillingSettings.numbering.exportSales, ...(value?.exportSales ?? {}) },
     payment: { ...defaultBillingSettings.numbering.payment, ...(value?.payment ?? {}) },
     purchase: { ...defaultBillingSettings.numbering.purchase, ...(value?.purchase ?? {}) },
     quotation: { ...defaultBillingSettings.numbering.quotation, ...(value?.quotation ?? {}) },
     receipt: { ...defaultBillingSettings.numbering.receipt, ...(value?.receipt ?? {}) },
-    sales: { ...defaultBillingSettings.numbering.sales, ...(value?.sales ?? {}) },
+    sales: { ...defaultBillingSettings.numbering.sales, ...(value?.sales ?? {}) }
   };
 }
 
-function normalizeLayout(value: Partial<BillingDocumentLayoutSettings> | undefined): BillingDocumentLayoutSettings {
+function normalizeLayout(
+  value: Partial<BillingDocumentLayoutSettings> | undefined
+): BillingDocumentLayoutSettings {
   return {
     ...defaultBillingSettings.layout,
-    ...(value ?? {}),
+    ...(value ?? {})
   };
 }
 
 function normalizeSavedLayout(
-  value: Partial<BillingDocumentLayoutSettings> | Partial<Record<BillingDocumentKind, Partial<BillingDocumentLayoutSettings>>> | undefined,
+  value:
+    | Partial<BillingDocumentLayoutSettings>
+    | Partial<Record<BillingDocumentKind, Partial<BillingDocumentLayoutSettings>>>
+    | undefined,
   legacyLayout: BillingDocumentLayoutSettings | undefined
 ) {
   if (!value) return normalizeLayout(legacyLayout);
   if ("usePo" in value || "useDc" in value || "useColour" in value) {
     return normalizeLayout(value as Partial<BillingDocumentLayoutSettings>);
   }
-  const documentLayouts = value as Partial<Record<BillingDocumentKind, Partial<BillingDocumentLayoutSettings>>>;
-  return normalizeLayout(documentLayouts.sales ?? documentLayouts.quotation ?? documentLayouts.purchase ?? legacyLayout);
+  const documentLayouts = value as Partial<
+    Record<BillingDocumentKind, Partial<BillingDocumentLayoutSettings>>
+  >;
+  return normalizeLayout(
+    documentLayouts.sales ?? documentLayouts.quotation ?? documentLayouts.purchase ?? legacyLayout
+  );
 }

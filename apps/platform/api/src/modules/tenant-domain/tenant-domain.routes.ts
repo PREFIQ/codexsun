@@ -32,7 +32,10 @@ export async function registerTenantDomainRoutes(app: FastifyInstance) {
 
   app.put("/admin/tenant-domains/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const domain = await tenantDomainService.updateDomain(id, request.body as TenantDomainSavePayload);
+    const domain = await tenantDomainService.updateDomain(
+      id,
+      request.body as TenantDomainSavePayload
+    );
     if (!domain) return reply.code(404).send(notFound(request.id));
     return ok(domain, { requestId: request.id });
   });

@@ -1,4 +1,8 @@
-import { WorkspaceStatusBadge, WorkspaceTableHeaderCell, WorkspaceTablePanel } from "@codexsun/ui/workspace";
+import {
+  WorkspaceStatusBadge,
+  WorkspaceTableHeaderCell,
+  WorkspaceTablePanel
+} from "@codexsun/ui/workspace";
 import { defaultBillingSettings } from "./billing-settings.types";
 
 export function BillingSettingsList() {
@@ -14,7 +18,9 @@ export function BillingSettingsList() {
         {Object.keys(defaultBillingSettings.features).map((feature) => (
           <tr key={feature}>
             <td className="px-3 py-2 text-sm capitalize">{feature}</td>
-            <td className="px-3 py-2"><WorkspaceStatusBadge label="Active" tone="success" /></td>
+            <td className="px-3 py-2">
+              <WorkspaceStatusBadge label="Active" tone="success" />
+            </td>
           </tr>
         ))}
       </tbody>

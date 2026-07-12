@@ -33,7 +33,10 @@ export type Payment = {
   updatedAt: string;
 };
 
-export type PaymentInput = Omit<Partial<Payment>, "id" | "createdAt" | "updatedAt" | "totalAmount" | "allocatedAmount" | "unallocatedAmount"> & {
+export type PaymentInput = Omit<
+  Partial<Payment>,
+  "id" | "createdAt" | "updatedAt" | "totalAmount" | "allocatedAmount" | "unallocatedAmount"
+> & {
   paymentNumber?: string;
   paymentDate: string;
   partyName: string;

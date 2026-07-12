@@ -13,7 +13,9 @@ export async function migrateDatabaseMaintenanceModule(db: Kysely<PlatformDataba
     .addColumn("operation", "varchar(24)", (column) => column.notNull())
     .addColumn("status", "varchar(24)", (column) => column.notNull())
     .addColumn("details_json", "json", (column) => column.notNull())
-    .addColumn("created_at", "datetime", (column) => column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("created_at", "datetime", (column) =>
+      column.notNull().defaultTo(sql`CURRENT_TIMESTAMP`)
+    )
     .addColumn("completed_at", "datetime")
     .execute();
 }

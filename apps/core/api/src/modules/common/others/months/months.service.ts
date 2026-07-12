@@ -34,8 +34,8 @@ export class MonthsService {
   }
   private validate(input: MonthsSavePayload) {
     if (!String(input.name ?? "").trim()) throw new Error("Name is required.");
-    if (!String(input.fromDate ?? "").trim()) throw new Error("From date is required.");
-    if (!String(input.toDate ?? "").trim()) throw new Error("To date is required.");
+    if (!String(input.startDate ?? "").trim()) throw new Error("Start date is required.");
+    if (!String(input.endDate ?? "").trim()) throw new Error("End date is required.");
   }
   private async save<T>(work: () => Promise<T>) {
     try {

@@ -1,29 +1,42 @@
-import { createMasterRecord, forceDeleteMasterRecord, listMasterLookup, listMasterRecords, setMasterRecordActive, updateMasterRecord } from "../master.services";
-import { workOrderDefinition } from "./work-order.definition";
-import type { WorkOrderSavePayload } from "./work-order.types";
-
-export type { MasterLookupRecord as WorkOrderLookupRecord } from "../master.services";
-
-export function listWorkOrders(search = "") {
-  return listMasterRecords(workOrderDefinition, search);
+import { getTenantDbName, getToken } from "../../../shared/api/tenant-context";
+import { requiredClientEnv } from "../../../shared/env/client-env";
+import type {
+  WorkOrderLookupRecord,
+  WorkOrderRecord,
+  WorkOrderSavePayload
+} from "./work-order.types";
+const base = requiredClientEnv("VITE_CORE_API_URL"),
+  path = "/core/master/work-orders";
+type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+async function request<T>(url: string, options: RequestInit = {}) {
+  const token = getToken("tenant"),
+    database = getTenantDbName();
+  const response = await fetch(`${base}${url}`, {
+    ...options,
+    headers: {
+      Accept: "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(database ? { "x-tenant-db": database } : {}),
+      ...options.headers
+    }
+  });
+  const body = (await response.json()) as Envelope<T>;
+  if (!response.ok || !body.success)
+    throw new Error(body.success ? "Core API request failed." : body.error.message);
+  return body.data;
 }
-
-export function createWorkOrder(payload: WorkOrderSavePayload) {
-  return createMasterRecord(workOrderDefinition, payload);
-}
-
-export function updateWorkOrder(id: string, payload: WorkOrderSavePayload) {
-  return updateMasterRecord(workOrderDefinition, id, payload);
-}
-
-export function setWorkOrderActive(id: string, active: boolean) {
-  return setMasterRecordActive(workOrderDefinition, id, active);
-}
-
-export function forceDeleteWorkOrder(id: string) {
-  return forceDeleteMasterRecord(workOrderDefinition, id);
-}
-
-export function listWorkOrderLookup(path: string) {
-  return listMasterLookup(path);
-}
+export const listWorkOrders = (search = "") =>
+  request<WorkOrderRecord[]>(`${path}?search=${encodeURIComponent(search)}`);
+export const createWorkOrder = (payload: WorkOrderSavePayload) =>
+  request<WorkOrderRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export const updateWorkOrder = (id: number, payload: WorkOrderSavePayload) =>
+  request<WorkOrderRecord>(`${path}/${id}`, { body: JSON.stringify(payload), method: "PUT" });
+export const setWorkOrderActive = (id: number, active: boolean) =>
+  request<WorkOrderRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
+    method: "POST"
+  });
+export const forceDeleteWorkOrder = (id: number) =>
+  request<WorkOrderRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export const listWorkOrderLookup = (lookupPath: string) =>
+  request<WorkOrderLookupRecord[]>(lookupPath);

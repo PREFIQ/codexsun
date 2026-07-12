@@ -14,7 +14,12 @@ export type DatabaseExecutionTarget = {
   user: string;
 };
 
-export async function executeDatabaseBackup(input: { operation: string; runId: number; scope: string; target: DatabaseExecutionTarget }) {
+export async function executeDatabaseBackup(input: {
+  operation: string;
+  runId: number;
+  scope: string;
+  target: DatabaseExecutionTarget;
+}) {
   const databaseName = assertDatabaseName(input.target.databaseName);
   const backup = databaseBackupPath({
     databaseName,
@@ -39,9 +44,19 @@ export async function executeDatabaseBackup(input: { operation: string; runId: n
   };
 }
 
-export async function executeDatabaseRestore(input: { backupPath: string; liveRestoreConfirm?: string; operation: string; restoreMode?: string; runId: number; scope: string; target: DatabaseExecutionTarget }) {
+export async function executeDatabaseRestore(input: {
+  backupPath: string;
+  liveRestoreConfirm?: string;
+  operation: string;
+  restoreMode?: string;
+  runId: number;
+  scope: string;
+  target: DatabaseExecutionTarget;
+}) {
   const liveRestore = input.restoreMode === "live";
-  const restoreDatabaseName = liveRestore ? liveRestoreName(input.target.databaseName, input.liveRestoreConfirm) : restoreSandboxName(input.target.databaseName);
+  const restoreDatabaseName = liveRestore
+    ? liveRestoreName(input.target.databaseName, input.liveRestoreConfirm)
+    : restoreSandboxName(input.target.databaseName);
   const dump = await readFile(resolve(input.backupPath), "utf8");
   const connection = await createConnection({
     host: input.target.host,
@@ -52,12 +67,19 @@ export async function executeDatabaseRestore(input: { backupPath: string; liveRe
   });
 
   try {
-    await connection.query(`CREATE DATABASE IF NOT EXISTS ${quoteIdentifier(restoreDatabaseName)} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    await connection.query(
+      `CREATE DATABASE IF NOT EXISTS ${quoteIdentifier(restoreDatabaseName)} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    );
     await connection.query(`USE ${quoteIdentifier(restoreDatabaseName)}`);
     await connection.query("SET FOREIGN_KEY_CHECKS=0");
     for (const statement of splitSqlStatements(dump)) {
       const trimmed = statement.trim();
-      if (!trimmed || trimmed.startsWith("--") || trimmed.toUpperCase().startsWith("CREATE DATABASE") || trimmed.toUpperCase().startsWith("USE ")) {
+      if (
+        !trimmed ||
+        trimmed.startsWith("--") ||
+        trimmed.toUpperCase().startsWith("CREATE DATABASE") ||
+        trimmed.toUpperCase().startsWith("USE ")
+      ) {
         continue;
       }
       await connection.query(trimmed);
@@ -76,8 +98,13 @@ export async function executeDatabaseRestore(input: { backupPath: string; liveRe
 }
 
 function liveRestoreName(sourceDatabaseName: string, confirmation: string | undefined) {
-  if (env.CODEXSUN_ALLOW_LIVE_RESTORE !== "1" || env.CODEXSUN_LIVE_RESTORE_CONFIRM !== "ALLOW_LIVE_RESTORE") {
-    throw new Error("Live restore is disabled. Set CODEXSUN_ALLOW_LIVE_RESTORE=1 and CODEXSUN_LIVE_RESTORE_CONFIRM=ALLOW_LIVE_RESTORE only during an approved restore window.");
+  if (
+    env.CODEXSUN_ALLOW_LIVE_RESTORE !== "1" ||
+    env.CODEXSUN_LIVE_RESTORE_CONFIRM !== "ALLOW_LIVE_RESTORE"
+  ) {
+    throw new Error(
+      "Live restore is disabled. Set CODEXSUN_ALLOW_LIVE_RESTORE=1 and CODEXSUN_LIVE_RESTORE_CONFIRM=ALLOW_LIVE_RESTORE only during an approved restore window."
+    );
   }
   const databaseName = assertDatabaseName(sourceDatabaseName, "live restore database name");
   if (confirmation !== `RESTORE ${databaseName}`) {
@@ -90,7 +117,10 @@ function restoreSandboxName(sourceDatabaseName: string) {
   if (env.NODE_ENV === "production" && !env.CODEXSUN_RESTORE_TEST_DB_NAME) {
     throw new Error("Production restore requires CODEXSUN_RESTORE_TEST_DB_NAME.");
   }
-  return assertDatabaseName(env.CODEXSUN_RESTORE_TEST_DB_NAME || `${sourceDatabaseName}_restore_sandbox`, "restore sandbox database name");
+  return assertDatabaseName(
+    env.CODEXSUN_RESTORE_TEST_DB_NAME || `${sourceDatabaseName}_restore_sandbox`,
+    "restore sandbox database name"
+  );
 }
 
 async function createSqlDump(target: DatabaseExecutionTarget) {
@@ -106,7 +136,11 @@ async function createSqlDump(target: DatabaseExecutionTarget) {
 
   try {
     const [tableRows] = await connection.query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'");
-    const tableNames = Array.isArray(tableRows) ? tableRows.map((row) => String(Object.values(row as Record<string, unknown>)[0])).filter(Boolean) : [];
+    const tableNames = Array.isArray(tableRows)
+      ? tableRows
+          .map((row) => String(Object.values(row as Record<string, unknown>)[0]))
+          .filter(Boolean)
+      : [];
     const chunks = [
       `-- CODEXSUN database backup`,
       `-- database: ${databaseName}`,
@@ -118,16 +152,24 @@ async function createSqlDump(target: DatabaseExecutionTarget) {
 
     for (const tableName of tableNames) {
       const safeTableName = assertDatabaseName(tableName, "table name");
-      const [createRows] = await connection.query(`SHOW CREATE TABLE ${quoteIdentifier(safeTableName)}`);
-      const createSql = String((createRows as Array<Record<string, unknown>>)[0]?.["Create Table"] ?? "");
+      const [createRows] = await connection.query(
+        `SHOW CREATE TABLE ${quoteIdentifier(safeTableName)}`
+      );
+      const createSql = String(
+        (createRows as Array<Record<string, unknown>>)[0]?.["Create Table"] ?? ""
+      );
       chunks.push(`DROP TABLE IF EXISTS ${quoteIdentifier(safeTableName)};`, `${createSql};`);
 
       const [rows] = await connection.query(`SELECT * FROM ${quoteIdentifier(safeTableName)}`);
       if (Array.isArray(rows) && rows.length > 0) {
-        const columns = Object.keys(rows[0] as Record<string, unknown>).map(quoteIdentifier).join(", ");
+        const columns = Object.keys(rows[0] as Record<string, unknown>)
+          .map(quoteIdentifier)
+          .join(", ");
         for (const row of rows as Array<Record<string, unknown>>) {
           const values = Object.values(row).map(sqlValue).join(", ");
-          chunks.push(`INSERT INTO ${quoteIdentifier(safeTableName)} (${columns}) VALUES (${values});`);
+          chunks.push(
+            `INSERT INTO ${quoteIdentifier(safeTableName)} (${columns}) VALUES (${values});`
+          );
         }
       }
     }
@@ -143,7 +185,8 @@ function sqlValue(value: unknown) {
   if (value === null || value === undefined) return "NULL";
   if (typeof value === "number") return Number.isFinite(value) ? String(value) : "NULL";
   if (typeof value === "boolean") return value ? "1" : "0";
-  if (value instanceof Date) return `'${escapeSql(value.toISOString().slice(0, 19).replace("T", " "))}'`;
+  if (value instanceof Date)
+    return `'${escapeSql(value.toISOString().slice(0, 19).replace("T", " "))}'`;
   if (Buffer.isBuffer(value)) return `X'${value.toString("hex")}'`;
   return `'${escapeSql(String(value))}'`;
 }

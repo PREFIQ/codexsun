@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Pencil, Plus, RefreshCw, Save, TestTube2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -137,9 +137,11 @@ export function MigrationManagerWorkspace() {
               </tr>
             </thead>
             <tbody>
-              {jobs.map((job, index) => (
+              {jobs.map((job) => (
                 <tr className="border-b last:border-0" key={job.id}>
-                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">MJ-{job.id}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                    MJ-{job.id}
+                  </td>
                   <td className="px-4 py-2.5">
                     <button
                       className="font-medium hover:underline"

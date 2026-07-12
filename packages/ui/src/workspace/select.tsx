@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "../components/select"
+  SelectValue
+} from "../components/select";
 
 export type WorkspaceSelectOption = {
-  label: string
-  swatchClassName?: string
-  value: string
-}
+  label: string;
+  swatchClassName?: string;
+  value: string;
+};
 
 export function WorkspaceSelect({
   ariaLabel,
@@ -20,14 +20,14 @@ export function WorkspaceSelect({
   options,
   placeholder = "Select",
   required: _required,
-  value,
+  value
 }: {
-  ariaLabel?: string
-  onValueChange: (value: string) => void
-  options: WorkspaceSelectOption[]
-  placeholder?: string
-  required?: boolean
-  value: string
+  ariaLabel?: string;
+  onValueChange: (value: string) => void;
+  options: WorkspaceSelectOption[];
+  placeholder?: string;
+  required?: boolean;
+  value: string;
 }) {
   return (
     <Select value={value} onValueChange={onValueChange}>
@@ -41,12 +41,17 @@ export function WorkspaceSelect({
         {options.map((option) => (
           <SelectItem key={option.value} value={option.value} className="rounded-sm">
             <span className="flex items-center gap-2">
-              {option.swatchClassName ? <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full ${option.swatchClassName}`} /> : null}
+              {option.swatchClassName ? (
+                <span
+                  aria-hidden="true"
+                  className={`size-2.5 shrink-0 rounded-full ${option.swatchClassName}`}
+                />
+              ) : null}
               {option.label}
             </span>
           </SelectItem>
         ))}
       </SelectContent>
     </Select>
-  )
+  );
 }

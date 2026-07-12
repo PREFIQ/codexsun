@@ -11,7 +11,7 @@ export const purchaseLineItemSchema = z.object({
   rate: z.number().nonnegative("Rate must be zero or more."),
   size: z.string(),
   taxRate: z.number().min(0, "Tax rate must be zero or more."),
-  unit: z.string().trim().min(1, "Unit is required."),
+  unit: z.string().trim().min(1, "Unit is required.")
 });
 
 export const purchaseSchema = z.object({
@@ -30,5 +30,5 @@ export const purchaseSchema = z.object({
   supplierBillDate: z.string(),
   supplierBillNo: z.string(),
   taxType: z.string().trim().min(1, "Purchase tax type is required."),
-  workOrderNo: z.string(),
+  workOrderNo: z.string()
 });

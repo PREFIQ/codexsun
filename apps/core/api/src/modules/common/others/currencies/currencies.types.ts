@@ -1,6 +1,5 @@
 export type CurrenciesRecord = {
-  id: string;
-  uuid: string;
+  id: number;
   name: string;
   symbol: string;
   isActive: boolean;

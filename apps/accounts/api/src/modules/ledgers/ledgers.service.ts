@@ -1,7 +1,19 @@
 import { LedgersRepository } from "./ledgers.repository.js";
 import type { LedgerClassification, LedgerSavePayload, LedgerStatus } from "./ledgers.types.js";
 
-const classifications: LedgerClassification[] = ["bank", "cash", "customer", "discount", "gst_input", "gst_output", "purchase", "round_off", "sales", "supplier", "adjustment"];
+const classifications: LedgerClassification[] = [
+  "bank",
+  "cash",
+  "customer",
+  "discount",
+  "gst_input",
+  "gst_output",
+  "purchase",
+  "round_off",
+  "sales",
+  "supplier",
+  "adjustment"
+];
 const statuses: LedgerStatus[] = ["active", "inactive"];
 
 export class LedgersService {
@@ -35,12 +47,16 @@ export class LedgersService {
   }
 
   private normalize(input: LedgerSavePayload): LedgerSavePayload {
-    const code = input.code.trim().toUpperCase().replace(/[^A-Z0-9_ -]+/g, "");
+    const code = input.code
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9_ -]+/g, "");
     const name = input.name.trim();
     if (!code) throw new Error("Ledger code is required.");
     if (!name) throw new Error("Ledger name is required.");
     if (!input.groupId) throw new Error("Ledger group is required.");
-    if (!classifications.includes(input.classification)) throw new Error("Ledger classification is invalid.");
+    if (!classifications.includes(input.classification))
+      throw new Error("Ledger classification is invalid.");
     if (!statuses.includes(input.status)) throw new Error("Ledger status is invalid.");
     return {
       classification: input.classification,

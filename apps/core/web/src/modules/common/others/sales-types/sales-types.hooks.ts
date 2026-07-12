@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { salesTypesDefinition } from "./sales-types.definition";
-export function useSalesTypesQuery() { return useCommonMasterQuery(salesTypesDefinition.key, salesTypesDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listSalesTypes } from "./sales-types.services";
+export function useSalesTypesQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listSalesTypes(path), queryKey: ["core", "common", key] });
+}

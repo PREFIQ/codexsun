@@ -9,8 +9,13 @@ type SettingsRow = {
 export class AccountsSettingsRepository {
   async get(databaseName: string) {
     const db = await getAccountsDatabase(databaseName);
-    const result = await sql<SettingsRow>`SELECT settings_json FROM accounts_settings WHERE id = 'accounts' LIMIT 1`.execute(db);
-    return result.rows[0] ? normalizeSettings(result.rows[0].settings_json) : defaultAccountsSettings;
+    const result =
+      await sql<SettingsRow>`SELECT settings_json FROM accounts_settings WHERE id = 'accounts' LIMIT 1`.execute(
+        db
+      );
+    return result.rows[0]
+      ? normalizeSettings(result.rows[0].settings_json)
+      : defaultAccountsSettings;
   }
 
   async save(databaseName: string, settings: AccountsSettings) {

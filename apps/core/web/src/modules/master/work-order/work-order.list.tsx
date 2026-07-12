@@ -2,7 +2,12 @@ import { Trash2 } from "lucide-react";
 import { WorkspaceProtectedIndicator } from "@codexsun/ui/workspace/protected-indicator";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
-import { WorkspaceTableEmptyState, WorkspaceTableHeaderCell, WorkspaceTablePanel, WorkspaceTableSkeletonRows } from "@codexsun/ui/workspace/table";
+import {
+  WorkspaceTableEmptyState,
+  WorkspaceTableHeaderCell,
+  WorkspaceTablePanel,
+  WorkspaceTableSkeletonRows
+} from "@codexsun/ui/workspace/table";
 import type { WorkOrderRecord } from "./work-order.types";
 
 export function WorkOrderList({
@@ -35,17 +40,36 @@ export function WorkOrderList({
             </tr>
           </thead>
           <tbody>
-            {!loading ? records.map((record) => {
-              const protectedRow = isProtectedWorkOrder(record);
-              return (
-                <tr key={record.id} className="border-b last:border-0">
-                  {columns.map((column) => <WorkOrderCell columnId={column.id} key={column.id} protectedRow={protectedRow} record={record} onEdit={onEdit} />)}
-                  <td className="px-4 py-3 text-right">
-                    {protectedRow ? <WorkspaceProtectedIndicator /> : <WorkOrderRowActions record={record} onEdit={onEdit} onForceDelete={onForceDelete} onToggle={onToggle} />}
-                  </td>
-                </tr>
-              );
-            }) : null}
+            {!loading
+              ? records.map((record) => {
+                  const protectedRow = isProtectedWorkOrder(record);
+                  return (
+                    <tr key={record.id} className="border-b last:border-0">
+                      {columns.map((column) => (
+                        <WorkOrderCell
+                          columnId={column.id}
+                          key={column.id}
+                          protectedRow={protectedRow}
+                          record={record}
+                          onEdit={onEdit}
+                        />
+                      ))}
+                      <td className="px-4 py-3 text-right">
+                        {protectedRow ? (
+                          <WorkspaceProtectedIndicator />
+                        ) : (
+                          <WorkOrderRowActions
+                            record={record}
+                            onEdit={onEdit}
+                            onForceDelete={onForceDelete}
+                            onToggle={onToggle}
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              : null}
           </tbody>
         </table>
       </div>
@@ -57,16 +81,38 @@ export function WorkOrderList({
               <article className="px-4 py-4" key={record.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate text-base font-semibold text-foreground"><WorkOrderEditLink editable={!protectedRow} value={record.name} onEdit={() => onEdit(record)} /></h3>
-                    <p className="mt-1 text-xs font-medium uppercase text-muted-foreground"><WorkOrderEditLink editable={!protectedRow} value={record.code} onEdit={() => onEdit(record)} /></p>
+                    <h3 className="truncate text-base font-semibold text-foreground">
+                      <WorkOrderEditLink
+                        editable={!protectedRow}
+                        value={record.name}
+                        onEdit={() => onEdit(record)}
+                      />
+                    </h3>
+                    <p className="mt-1 text-xs font-medium uppercase text-muted-foreground">
+                      <WorkOrderEditLink
+                        editable={!protectedRow}
+                        value={record.code}
+                        onEdit={() => onEdit(record)}
+                      />
+                    </p>
                   </div>
-                  {protectedRow ? <WorkspaceProtectedIndicator /> : <WorkOrderRowActions record={record} onEdit={onEdit} onForceDelete={onForceDelete} onToggle={onToggle} />}
+                  {protectedRow ? (
+                    <WorkspaceProtectedIndicator />
+                  ) : (
+                    <WorkOrderRowActions
+                      record={record}
+                      onEdit={onEdit}
+                      onForceDelete={onForceDelete}
+                      onToggle={onToggle}
+                    />
+                  )}
                 </div>
-                <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
-                  <MobileMeta label="Type" value={record.typeName} />
-                </div>
+                <div className="mt-3 grid gap-2 text-sm text-muted-foreground"></div>
                 <div className="mt-3">
-                  <WorkspaceStatusBadge label={record.isActive ? "active" : "inactive"} tone={record.isActive ? "success" : "warning"} />
+                  <WorkspaceStatusBadge
+                    label={record.isActive ? "active" : "inactive"}
+                    tone={record.isActive ? "success" : "warning"}
+                  />
                 </div>
               </article>
             );
@@ -74,7 +120,9 @@ export function WorkOrderList({
         </div>
       ) : null}
       {loading ? <WorkspaceTableSkeletonRows columns={columns.length + 1} rows={4} /> : null}
-      {!loading && !records.length ? <WorkspaceTableEmptyState>No work orders found.</WorkspaceTableEmptyState> : null}
+      {!loading && !records.length ? (
+        <WorkspaceTableEmptyState>No work orders found.</WorkspaceTableEmptyState>
+      ) : null}
     </WorkspaceTablePanel>
   );
 }
@@ -82,15 +130,22 @@ export function WorkOrderList({
 export const workOrderColumns = [
   { id: "name", label: "Work Order" },
   { id: "code", label: "Code" },
-  { id: "type", label: "Type" },
   { id: "status", label: "Status" }
 ];
 
 export function isProtectedWorkOrder(record: WorkOrderRecord) {
-  return record.tenantId === "global" || record.name.trim() === "-";
+  return record.name.trim() === "-";
 }
 
-function WorkOrderEditLink({ editable, onEdit, value }: { editable: boolean; onEdit: () => void; value: unknown }) {
+function WorkOrderEditLink({
+  editable,
+  onEdit,
+  value
+}: {
+  editable: boolean;
+  onEdit: () => void;
+  value: unknown;
+}) {
   if (!editable) return <span>{String(value || "-")}</span>;
   return (
     <button
@@ -103,21 +158,71 @@ function WorkOrderEditLink({ editable, onEdit, value }: { editable: boolean; onE
   );
 }
 
-function WorkOrderCell({ columnId, onEdit, protectedRow, record }: { columnId: string; onEdit: (record: WorkOrderRecord) => void; protectedRow: boolean; record: WorkOrderRecord }) {
+function WorkOrderCell({
+  columnId,
+  onEdit,
+  protectedRow,
+  record
+}: {
+  columnId: string;
+  onEdit: (record: WorkOrderRecord) => void;
+  protectedRow: boolean;
+  record: WorkOrderRecord;
+}) {
   if (columnId === "name") {
-    return <td className="px-4 py-3"><WorkOrderEditLink editable={!protectedRow} value={record.name} onEdit={() => onEdit(record)} /></td>;
+    return (
+      <td className="px-4 py-3">
+        <WorkOrderEditLink
+          editable={!protectedRow}
+          value={record.name}
+          onEdit={() => onEdit(record)}
+        />
+      </td>
+    );
   }
   if (columnId === "code") {
-    return <td className="px-4 py-3 uppercase text-muted-foreground"><WorkOrderEditLink editable={!protectedRow} value={record.code} onEdit={() => onEdit(record)} /></td>;
+    return (
+      <td className="px-4 py-3 uppercase text-muted-foreground">
+        <WorkOrderEditLink
+          editable={!protectedRow}
+          value={record.code}
+          onEdit={() => onEdit(record)}
+        />
+      </td>
+    );
   }
-  if (columnId === "type") return <td className="px-4 py-3">{record.typeName || "-"}</td>;
-  return <td className="px-4 py-3"><WorkspaceStatusBadge label={record.isActive ? "active" : "inactive"} tone={record.isActive ? "success" : "warning"} /></td>;
+  return (
+    <td className="px-4 py-3">
+      <WorkspaceStatusBadge
+        label={record.isActive ? "active" : "inactive"}
+        tone={record.isActive ? "success" : "warning"}
+      />
+    </td>
+  );
 }
 
-function WorkOrderRowActions({ onEdit, onForceDelete, onToggle, record }: { onEdit: (record: WorkOrderRecord) => void; onForceDelete: (record: WorkOrderRecord) => void; onToggle: (record: WorkOrderRecord) => void; record: WorkOrderRecord }) {
+function WorkOrderRowActions({
+  onEdit,
+  onForceDelete,
+  onToggle,
+  record
+}: {
+  onEdit: (record: WorkOrderRecord) => void;
+  onForceDelete: (record: WorkOrderRecord) => void;
+  onToggle: (record: WorkOrderRecord) => void;
+  record: WorkOrderRecord;
+}) {
   return (
     <WorkspaceRowActions
-      actions={[{ id: "force-delete", icon: <Trash2 className="size-4" />, label: "Force delete", onSelect: () => onForceDelete(record), tone: "destructive" }]}
+      actions={[
+        {
+          id: "force-delete",
+          icon: <Trash2 className="size-4" />,
+          label: "Force delete",
+          onSelect: () => onForceDelete(record),
+          tone: "destructive"
+        }
+      ]}
       deleteLabel="Suspend"
       isSuspended={!record.isActive}
       onDelete={() => onToggle(record)}
@@ -127,9 +232,4 @@ function WorkOrderRowActions({ onEdit, onForceDelete, onToggle, record }: { onEd
       title={record.name}
     />
   );
-}
-
-function MobileMeta({ label, value }: { label: string; value: unknown }) {
-  const displayValue = value === null || value === undefined || value === "" ? "-" : String(value);
-  return <div className="flex min-w-0 justify-between gap-3"><span>{label}</span><span className="truncate text-right text-foreground">{displayValue}</span></div>;
 }

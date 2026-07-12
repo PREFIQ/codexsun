@@ -32,7 +32,11 @@ export class QueueManagerService {
   async runJob(id: number, options: { fromWorker?: boolean } = {}) {
     const job = await this.repository.find(id);
     if (!job) return null;
-    if (env.CODEXSUN_QUEUE_BACKEND === "bullmq-redis" && job.status === "pending" && !options.fromWorker) {
+    if (
+      env.CODEXSUN_QUEUE_BACKEND === "bullmq-redis" &&
+      job.status === "pending" &&
+      !options.fromWorker
+    ) {
       await publishBullMqJob(job);
       return job;
     }
@@ -77,20 +81,36 @@ export class QueueManagerService {
     const job = await this.repository.retry(id);
     if (!job) return null;
     await publishBullMqJob(job);
-    await this.activity.recordActivity({ action: "queue.job.retried", moduleKey: "platform.queue-manager", recordId: job.id, recordLabel: job.jobName, recordUuid: job.uuid });
+    await this.activity.recordActivity({
+      action: "queue.job.retried",
+      moduleKey: "platform.queue-manager",
+      recordId: job.id,
+      recordLabel: job.jobName,
+      recordUuid: job.uuid
+    });
     return job;
   }
 
   async cancelJob(id: number) {
     const job = await this.repository.cancel(id);
     if (!job) return null;
-    await this.activity.recordActivity({ action: "queue.job.cancelled", moduleKey: "platform.queue-manager", recordId: job.id, recordLabel: job.jobName, recordUuid: job.uuid });
+    await this.activity.recordActivity({
+      action: "queue.job.cancelled",
+      moduleKey: "platform.queue-manager",
+      recordId: job.id,
+      recordLabel: job.jobName,
+      recordUuid: job.uuid
+    });
     return job;
   }
 
   async cleanupRetainedJobs() {
-    const completedBefore = new Date(Date.now() - env.CODEXSUN_QUEUE_COMPLETED_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    const failedBefore = new Date(Date.now() - env.CODEXSUN_QUEUE_FAILED_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const completedBefore = new Date(
+      Date.now() - env.CODEXSUN_QUEUE_COMPLETED_RETENTION_DAYS * 24 * 60 * 60 * 1000
+    );
+    const failedBefore = new Date(
+      Date.now() - env.CODEXSUN_QUEUE_FAILED_RETENTION_DAYS * 24 * 60 * 60 * 1000
+    );
     return this.repository.cleanup({ completedBefore, failedBefore });
   }
 

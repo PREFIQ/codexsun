@@ -1,2 +1,2 @@
-export * from "./warehouses.definition";
+export * from "./warehouses.types";
 export * from "./warehouses.workspace";

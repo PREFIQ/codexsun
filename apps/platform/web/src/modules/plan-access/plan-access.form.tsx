@@ -25,7 +25,8 @@ export function PlanAccessForm({
       <PlanAccessList apps={apps} selectedKeys={selectedKeys} onToggle={onToggle} />
       <div className="flex justify-end">
         <Button disabled={saving} onClick={onSave}>
-          <SaveIcon className="size-4" />Save access
+          <SaveIcon className="size-4" />
+          Save access
         </Button>
       </div>
     </section>

@@ -1,3 +1,5 @@
-import { useCommonMasterQuery } from "../../../common-master/common-master.hooks";
-import { taxesDefinition } from "./taxes.definition";
-export function useTaxesQuery() { return useCommonMasterQuery(taxesDefinition.key, taxesDefinition.path); }
+import { useQuery } from "@tanstack/react-query";
+import { listTaxes } from "./taxes.services";
+export function useTaxesQuery(key: string, path: string) {
+  return useQuery({ queryFn: () => listTaxes(path), queryKey: ["core", "common", key] });
+}

@@ -36,13 +36,22 @@ export function TenantDomainTable({
             {domains.map((domain) => (
               <tr className="border-b border-border/70 last:border-b-0" key={domain.id}>
                 <td className="px-4 py-2.5 font-mono text-xs">{domain.domain}</td>
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{domain.uuid}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                  {domain.uuid}
+                </td>
                 <td className="px-4 py-2.5">{domain.tenantName}</td>
                 <td className="px-4 py-2.5">
-                  <WorkspaceStatusBadge label={domain.isPrimary ? "Primary" : "Alias"} tone={domain.isPrimary ? "success" : "neutral"} />
+                  <WorkspaceStatusBadge
+                    label={domain.isPrimary ? "Primary" : "Alias"}
+                    tone={domain.isPrimary ? "success" : "neutral"}
+                  />
                 </td>
                 <td className="px-4 py-1.5 text-right">
-                  <WorkspaceRowActions onEdit={() => onEdit(domain)} onView={() => onView(domain)} title={domain.domain} />
+                  <WorkspaceRowActions
+                    onEdit={() => onEdit(domain)}
+                    onView={() => onView(domain)}
+                    title={domain.domain}
+                  />
                 </td>
               </tr>
             ))}
@@ -50,7 +59,9 @@ export function TenantDomainTable({
         </table>
       </div>
       {domains.length === 0 && loading ? <WorkspaceTableSkeletonRows columns={5} /> : null}
-      {domains.length === 0 && !loading ? <WorkspaceTableEmptyState>No domains found.</WorkspaceTableEmptyState> : null}
+      {domains.length === 0 && !loading ? (
+        <WorkspaceTableEmptyState>No domains found.</WorkspaceTableEmptyState>
+      ) : null}
     </WorkspaceTablePanel>
   );
 }

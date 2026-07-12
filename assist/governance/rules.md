@@ -1,5 +1,14 @@
 # Governance Rules
 
+## Package Manager And Generated Output Rules
+
+- CODEXSUN uses npm only. Agents and developers must run dependency commands with `npm` from the repository root; pnpm, Yarn, workspace-local installs, and alternative lockfiles are prohibited.
+- The repository must contain exactly one dependency installation tree at `/node_modules`. Never create or retain `node_modules` inside `apps/`, `packages/`, `tools/`, or any other subfolder.
+- The root `package-lock.json` is the only dependency lockfile. Do not create `pnpm-lock.yaml`, `yarn.lock`, `.pnpm-store`, or a `node_modules/.pnpm` store.
+- All workspaces must resolve dependencies from the root installation through npm workspaces. A workspace must not carry installation configuration that creates its own dependency tree.
+- Generated build output belongs only under the root `/dist` tree. Subfolder `dist` and `dist-types` directories and configuration that emits them are prohibited.
+- Before completing dependency, tooling, build, or workspace changes, run `npm run dependencies:check`, confirm no nested dependency/build directories exist, and use the root npm scripts for formatting, lint, TypeScript, and builds.
+
 ## Architecture Rules
 
 - CODEXSUN is a modular monolith unless a stronger reason exists.
@@ -12,6 +21,9 @@
 - Role files must not be one-line aliases, empty arrays, metadata-only placeholders, “reserved for future” declarations, or exports of another role under a new name. A list owns list rendering, a form owns form rendering and validation display, events own typed event construction, workers own executable job dispatch, sync owns an explicit sync policy and decision behavior, and seeds/migrations execute or expose callable database behavior.
 - A module that intentionally has no UI or no lifecycle concern must document the exemption in its module definition and must not create fake role files merely to satisfy naming.
 - `npm run check:module-boundaries` is mandatory and must reject missing required files, alias-only wrappers, placeholder roles, and cross-module placement.
+- Every current and future application must pass a full backend/frontend ownership audit before completion. Inventory module folders; detect wrapper/alias files, private cross-module imports, centralized CRUD, stale exports/proxies, composition roots containing business behavior, and files outside their owner; distinguish infrastructure sharing from business logic; repair all violations; and validate the application plus Platform composition. Use `node tools/check-module-boundaries.mjs <app>` as the app-scoped gate.
+- Shared infrastructure is limited to transport/session API context, environment access, observability, and reusable design-system controls. Module fields, validation, persistence, lifecycle, routes, workflows, forms, lists, workspaces, print behavior, settings, and tests are business logic and must not be centralized under `shared`, `common`, `foundation`, `helpers`, or `utils` merely for reuse.
+- Composition roots are references only. They may register modules and orchestrate module-owned migrations, seeds, and exports, but must not own generic repositories, services, CRUD routes, record types, forms, lists, schemas, hooks, or workspaces.
 - Cross-module writes are not allowed without an approved application service or event.
 - Tenant context is mandatory for business data.
 - Events and jobs must include tenant context.

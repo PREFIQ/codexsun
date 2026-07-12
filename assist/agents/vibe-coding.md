@@ -112,4 +112,3 @@ If there is a conflict between speed and tenant/accounting/compliance safety, ch
 If there is a conflict between clever code and readable code, choose readable code.
 
 If there is a conflict between custom hack and extension point, choose extension point.
-

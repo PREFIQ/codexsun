@@ -1,5 +1,9 @@
 import { apiGet, apiPost } from "../../shared/api/platform-api";
-import type { DatabaseActionPayload, DatabaseMaintenanceRun, MasterDatabaseStatus } from "./master-database.types";
+import type {
+  DatabaseActionPayload,
+  DatabaseMaintenanceRun,
+  MasterDatabaseStatus
+} from "./master-database.types";
 
 export function getMasterDatabaseStatus() {
   return apiGet<MasterDatabaseStatus>("/admin/database/master", "sa");

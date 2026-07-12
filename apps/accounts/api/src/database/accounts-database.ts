@@ -6,7 +6,10 @@ import { migrateLedgersModule } from "../modules/ledgers/index.js";
 import { seedLedgersModule } from "../modules/ledgers/index.js";
 import { migrateVouchersModule } from "../modules/vouchers/index.js";
 import { migrateReportsModule } from "../modules/reports/index.js";
-import { migrateAccountsSettingsModule, seedAccountsSettingsModule } from "../modules/settings/index.js";
+import {
+  migrateAccountsSettingsModule,
+  seedAccountsSettingsModule
+} from "../modules/settings/index.js";
 
 export type AccountsDatabase = Record<string, unknown>;
 
@@ -17,7 +20,8 @@ export function resolveAccountsDatabaseName(value: unknown) {
   const requested = typeof value === "string" ? value.trim() : "";
   if (!requested) throw new Error("x-tenant-db is required for Accounts database access.");
   const name = assertDatabaseName(requested);
-  if (name === env.DB_MASTER_NAME) throw new Error("Accounts tables cannot use the Platform master database.");
+  if (name === env.DB_MASTER_NAME)
+    throw new Error("Accounts tables cannot use the Platform master database.");
   return name;
 }
 
@@ -78,7 +82,9 @@ async function ensureDatabase(databaseName: string) {
     user: env.DB_USER
   });
   try {
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${name}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    await connection.query(
+      `CREATE DATABASE IF NOT EXISTS \`${name}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    );
   } finally {
     await connection.end();
   }
@@ -94,8 +100,12 @@ async function registeredTenantDatabaseNames() {
     user: env.DB_USER
   });
   try {
-    const [rows] = await connection.query("SELECT db_name FROM tenants WHERE db_name IS NOT NULL AND status <> 'deleted'");
-    return (rows as Array<{ db_name: string }>).map(({ db_name }) => resolveAccountsDatabaseName(db_name));
+    const [rows] = await connection.query(
+      "SELECT db_name FROM tenants WHERE db_name IS NOT NULL AND status <> 'deleted'"
+    );
+    return (rows as Array<{ db_name: string }>).map(({ db_name }) =>
+      resolveAccountsDatabaseName(db_name)
+    );
   } finally {
     await connection.end();
   }

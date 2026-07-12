@@ -212,7 +212,7 @@ function MappingEditor({ id, onBack }: { id: number; onBack: () => void }) {
       </WorkspacePage>
     );
   const plan = query.data;
-  function chooseTarget(index: number, targetTable: string) {
+  function _chooseTarget(index: number, targetTable: string) {
     const target = plan.targetTables.find((table) => table.name === targetTable);
     setMappings((current) =>
       current.map((mapping, i) =>
@@ -259,11 +259,18 @@ function MappingEditor({ id, onBack }: { id: number; onBack: () => void }) {
             )
           }
           onFieldSkipChange={(fieldIndex, skipped) =>
-            setMappings((current) => current.map((item, itemIndex) =>
-              itemIndex === index
-                ? { ...item, fields: item.fields.map((field, currentFieldIndex) => currentFieldIndex === fieldIndex ? { ...field, skipped } : field) }
-                : item
-            ))
+            setMappings((current) =>
+              current.map((item, itemIndex) =>
+                itemIndex === index
+                  ? {
+                      ...item,
+                      fields: item.fields.map((field, currentFieldIndex) =>
+                        currentFieldIndex === fieldIndex ? { ...field, skipped } : field
+                      )
+                    }
+                  : item
+              )
+            )
           }
         />
       );
@@ -332,7 +339,9 @@ function MappingEditor({ id, onBack }: { id: number; onBack: () => void }) {
                     </button>
                   </td>
                   <td className="px-4 py-2.5 font-mono">{mapping.targetTable}</td>
-                  <td className="px-4 py-2.5 tabular-nums">{mapping.fields.filter((field) => !field.skipped).length}</td>
+                  <td className="px-4 py-2.5 tabular-nums">
+                    {mapping.fields.filter((field) => !field.skipped).length}
+                  </td>
                   <td className="px-4 py-2.5 tabular-nums">
                     {mapping.fields.filter((field) => !field.skipped && field.targetColumn).length}
                   </td>
@@ -442,7 +451,10 @@ function FieldMappingTablePage({
   const [fieldFilter, setFieldFilter] = useState("live");
   const visibleFields = mapping.fields
     .map((field, index) => ({ field, index }))
-    .filter(({ field }) => fieldFilter === "all" || (fieldFilter === "skipped" ? field.skipped : !field.skipped));
+    .filter(
+      ({ field }) =>
+        fieldFilter === "all" || (fieldFilter === "skipped" ? field.skipped : !field.skipped)
+    );
   return (
     <WorkspacePage
       title={`${mapping.sourceTable} → ${mapping.targetTable}`}
@@ -471,14 +483,29 @@ function FieldMappingTablePage({
         </div>
       </section>
       <section className="mb-4 flex items-end justify-between gap-3 rounded-md border bg-card p-4">
-        <div className="w-56"><p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Field view</p><WorkspaceSelect value={fieldFilter} onValueChange={setFieldFilter} options={[{ label: "Live fields", value: "live" }, { label: "Skipped fields", value: "skipped" }, { label: "All fields", value: "all" }]} /></div>
-        <p className="text-sm text-muted-foreground">{visibleFields.length} of {mapping.fields.length} fields</p>
+        <div className="w-56">
+          <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Field view</p>
+          <WorkspaceSelect
+            value={fieldFilter}
+            onValueChange={setFieldFilter}
+            options={[
+              { label: "Live fields", value: "live" },
+              { label: "Skipped fields", value: "skipped" },
+              { label: "All fields", value: "all" }
+            ]}
+          />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {visibleFields.length} of {mapping.fields.length} fields
+        </p>
       </section>
       <WorkspaceTablePanel>
         <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
           <thead className="bg-muted/50">
             <tr>
-              <WorkspaceTableHeaderCell className="w-20 border text-center">Skip</WorkspaceTableHeaderCell>
+              <WorkspaceTableHeaderCell className="w-20 border text-center">
+                Skip
+              </WorkspaceTableHeaderCell>
               <WorkspaceTableHeaderCell className="border">Source field</WorkspaceTableHeaderCell>
               <WorkspaceTableHeaderCell className="border">Source type</WorkspaceTableHeaderCell>
               <WorkspaceTableHeaderCell className="border">Target field</WorkspaceTableHeaderCell>
@@ -492,7 +519,13 @@ function FieldMappingTablePage({
               );
               return (
                 <tr className="h-12" key={field.sourceColumn}>
-                  <td className="border px-2 py-2.5 text-center"><Checkbox checked={Boolean(field.skipped)} aria-label={`Skip ${field.sourceColumn}`} onCheckedChange={(checked) => onFieldSkipChange(fieldIndex, checked === true)} /></td>
+                  <td className="border px-2 py-2.5 text-center">
+                    <Checkbox
+                      checked={Boolean(field.skipped)}
+                      aria-label={`Skip ${field.sourceColumn}`}
+                      onCheckedChange={(checked) => onFieldSkipChange(fieldIndex, checked === true)}
+                    />
+                  </td>
                   <td className="border px-4 py-2.5 font-mono">{field.sourceColumn}</td>
                   <td className="border px-4 py-2.5 text-muted-foreground">
                     {source?.columns.find((column) => column.name === field.sourceColumn)?.type ??
@@ -527,7 +560,7 @@ function FieldMappingTablePage({
   );
 }
 
-function TableConnectionBoard({
+function _TableConnectionBoard({
   mappings,
   targetTables,
   onConnect
