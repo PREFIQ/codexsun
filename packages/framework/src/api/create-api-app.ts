@@ -47,7 +47,6 @@ export async function createApiApp(options: CreateApiAppOptions): Promise<Fastif
   console.info("[plugin.ready] cookie");
 
   app.addHook("onRequest", async (_request, reply) => {
-    reply.header("Permissions-Policy", "unload=*");
   });
 
   registerTenantContext(app);

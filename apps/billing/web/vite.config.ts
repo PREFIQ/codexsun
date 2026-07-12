@@ -66,9 +66,6 @@ export default defineConfig(() => ({
   },
   plugins: [tailwindcss(), react()],
   server: {
-    headers: {
-      "Permissions-Policy": "unload=*"
-    },
     host: "127.0.0.1",
     port: requireEnvNumber(process.env.BILLING_WEB_PORT, "BILLING_WEB_PORT")
   }

@@ -1,6 +1,6 @@
 {
   "name": "codexsun",
-  "version": "1.0.22",
+  "version": "1.0.23",
   "private": true,
   "packageManager": "npm@11.17.0",
   "description": "CODEXSUN",
@@ -13,6 +13,7 @@
   "scripts": {
     "dev:api": "node tools/dev-stack.mjs api",
     "dev:web": "node tools/dev-stack.mjs web",
+    "dev:data-bridge": "node tools/dev-stack.mjs data-bridge",
     "preinstall": "node tools/enforce-root-install.mjs",
     "postinstall": "node tools/check-root-node-modules.mjs",
     "dependencies:clean": "node tools/clean-workspace-artifacts.mjs",

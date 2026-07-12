@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.22
+Current version: 1.0.23
 
-Release tag: v-1.0.22
+Release tag: v-1.0.23
 
-Changelog label: v 1.0.22
+Changelog label: v 1.0.23
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,18 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.23
+
+### [v 1.0.23] 2026-07-12 11:12 am - working on migration
+
+#### Database Changes
+
+- Database update: Yes (auto-check).
+
+#### App Codebase Changes
+
+- Bumped workspace version to 1.0.23.
 
 ## v-1.0.22
 

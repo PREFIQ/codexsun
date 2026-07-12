@@ -1,15 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  createServiceOrder,
+  createAndSubmitServiceOrder,
   listServiceOrders,
   transitionServiceOrder
 } from "./service-orders.services";
 import type { ServiceOrderInput, ServiceOrderStatus } from "./service-orders.types";
-export function useServiceOrders(status?: ServiceOrderStatus) {
+export function useServiceOrders(status?: ServiceOrderStatus, enabled = true) {
   return useQuery({
+    enabled,
     queryKey: ["kitchen-serve", "orders", status ?? "all"],
     queryFn: () => listServiceOrders(status),
-    retry: false
+    refetchInterval: enabled ? 2000 : false,
+    refetchIntervalInBackground: true,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
+    retry: false,
+    staleTime: 750
   });
 }
 export function useServiceOrderActions() {
@@ -17,7 +23,7 @@ export function useServiceOrderActions() {
   const done = () => client.invalidateQueries({ queryKey: ["kitchen-serve", "orders"] });
   return {
     create: useMutation({
-      mutationFn: (input: ServiceOrderInput) => createServiceOrder(input),
+      mutationFn: (input: ServiceOrderInput) => createAndSubmitServiceOrder(input),
       onSuccess: done
     }),
     transition: useMutation({

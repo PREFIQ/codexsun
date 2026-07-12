@@ -1,31 +1,12 @@
 import { AppLayout } from "@codexsun/ui";
 import { useState } from "react";
-import {
-  CheckCheckIcon,
-  DatabaseZapIcon,
-  GitCompareArrowsIcon,
-  KeyRoundIcon,
-  ListChecksIcon,
-  PlayCircleIcon,
-  ScanSearchIcon,
-  ShieldCheckIcon,
-  WorkflowIcon
-} from "lucide-react";
-import { MigrationProjectsWorkspace } from "../modules/migration-projects";
+import { DatabaseZapIcon, LayoutDashboardIcon, ScanSearchIcon, ShieldCheckIcon, WorkflowIcon } from "lucide-react";
+import { OverviewWorkspace } from "../modules/overview";
+import { MigrationManagerWorkspace } from "../modules/migration-manager";
+import { DiscoverySnapshotsWorkspace } from "../modules/discovery-snapshots";
 
 export function DataBridgeApp() {
-  const [page, setPage] = useState("overview");
-  const menuItems = [
-    { key: "overview", label: "Overview", icon: DatabaseZapIcon },
-    { key: "migration-projects", label: "Migration Projects", icon: WorkflowIcon },
-    { key: "connections", label: "Connections & Secrets", icon: KeyRoundIcon },
-    { key: "discovery", label: "Discovery Snapshots", icon: ScanSearchIcon },
-    { key: "schema-comparison", label: "Schema Comparison", icon: GitCompareArrowsIcon },
-    { key: "mappings", label: "Mappings & Transforms", icon: ListChecksIcon },
-    { key: "approvals", label: "Review & Approvals", icon: ShieldCheckIcon },
-    { key: "execution-runs", label: "Execution Runs", icon: PlayCircleIcon },
-    { key: "reconciliation", label: "Reconciliation & Audit", icon: CheckCheckIcon }
-  ];
+  const [page, setPage] = useState<"overview" | "migration-manager" | "discovery-snapshots">("overview");
   return (
     <AppLayout
       brand={{
@@ -33,15 +14,14 @@ export function DataBridgeApp() {
         subtitle: "controlled migration workspace",
         title: "Data Bridge"
       }}
-      headerTitle={menuItems.find((item) => item.key === page)?.label ?? "Data Bridge"}
+      headerTitle={page === "overview" ? "Overview" : page === "migration-manager" ? "Migration Manager" : "Discovery Snapshots"}
       homeHref="/data-bridge"
       logoutHref="/sa/login"
-      menuItems={menuItems.map((item) => ({
-        icon: item.icon,
-        isActive: page === item.key,
-        title: item.label,
-        onSelect: () => setPage(item.key)
-      }))}
+      menuItems={[
+        { icon: LayoutDashboardIcon, isActive: page === "overview", onSelect: () => setPage("overview"), title: "Overview" },
+        { icon: WorkflowIcon, isActive: page === "migration-manager", onSelect: () => setPage("migration-manager"), title: "Migration Manager" },
+        { icon: ScanSearchIcon, isActive: page === "discovery-snapshots", onSelect: () => setPage("discovery-snapshots"), title: "Discovery Snapshots" }
+      ]}
       subtitle={null}
       title={null}
       versionLabel={`v ${__APP_VERSION__}`}
@@ -62,7 +42,7 @@ export function DataBridgeApp() {
         }
       ]}
     >
-      <MigrationProjectsWorkspace page={page} />
+      {page === "overview" ? <OverviewWorkspace /> : page === "migration-manager" ? <MigrationManagerWorkspace /> : <DiscoverySnapshotsWorkspace />}
     </AppLayout>
   );
 }

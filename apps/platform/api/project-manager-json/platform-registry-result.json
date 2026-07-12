@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-11T12:26:00.191Z",
+  "generatedAt": "2026-07-12T03:56:00.819Z",
   "platforms": [
     {
       "active": true,
@@ -12,6 +12,46 @@
       "status": "active",
       "updatedAt": "2026-07-11T00:00:00.000Z",
       "groups": [
+        {
+          "active": true,
+          "createdAt": "2026-07-11T12:33:36.253Z",
+          "description": "Super Admin Todo planning and operational follow-up.",
+          "id": "group-sa-task-manager",
+          "key": "sa.task-manager",
+          "name": "Task Manager",
+          "parentGroupId": "",
+          "platformId": "platform-super-admin",
+          "sortOrder": 5,
+          "status": "active",
+          "updatedAt": "2026-07-11T12:33:36.253Z",
+          "modules": [
+            {
+              "active": true,
+              "createdAt": "2026-07-11T12:33:36.253Z",
+              "description": "Super Admin Todo workspace.",
+              "documentation": {
+                "actions": [],
+                "database": [],
+                "events": [],
+                "files": [],
+                "routes": []
+              },
+              "groupId": "group-sa-task-manager",
+              "id": "module-task-manager",
+              "key": "sa.task-manager",
+              "moduleType": "module",
+              "name": "Todos",
+              "parentModuleId": "",
+              "planningNotes": [],
+              "routePath": "/sa/task-manager",
+              "sortOrder": 10,
+              "status": "active",
+              "updatedAt": "2026-07-11T12:33:36.253Z",
+              "children": []
+            }
+          ],
+          "subGroups": []
+        },
         {
           "active": true,
           "createdAt": "2026-07-09T03:41:38.298Z",
@@ -21529,344 +21569,6 @@
               "status": "active",
               "updatedAt": "2026-07-11T00:00:00.000Z",
               "children": []
-            },
-            {
-              "active": true,
-              "createdAt": "2026-07-11T00:00:00.000Z",
-              "description": "",
-              "documentation": {
-                "database": [
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-database-1",
-                    "key": "Implementation",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "Implemented"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-database-2",
-                    "key": "Migration",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.migration.ts"
-                  }
-                ],
-                "routes": [
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-1",
-                    "key": "GET",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/todos"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-2",
-                    "key": "GET",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/lookups"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-3",
-                    "key": "POST",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/lookups"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-4",
-                    "key": "POST",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/todos"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-5",
-                    "key": "POST",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/todos/reorder"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-6",
-                    "key": "PUT",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/todos/:id"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-7",
-                    "key": "POST",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/todos/:id/status"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-8",
-                    "key": "DELETE",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/todos/:id"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-9",
-                    "key": "Client route",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "../../shared/api/platform-api"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-10",
-                    "key": "Client route",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/todos"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-11",
-                    "key": "Client route",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/lookups"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-12",
-                    "key": "Client route",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/todos/reorder"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-13",
-                    "key": "Client route",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/todos/${id}"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-routes-14",
-                    "key": "Client route",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "/task-manager/todos/${id}/status"
-                  }
-                ],
-                "files": [
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-1",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/index.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-2",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.events.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-3",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.lookup-store.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-4",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.migration.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-5",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.module.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-6",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.repository.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-7",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.routes.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-8",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.seed.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-9",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.service.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-10",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.store.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-11",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.sync.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-12",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.types.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-13",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/api/src/modules/task-manager/task-manager.worker.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-14",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/web/src/modules/task-manager/index.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-15",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/web/src/modules/task-manager/task-manager.form.tsx"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-16",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/web/src/modules/task-manager/task-manager.hooks.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-17",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/web/src/modules/task-manager/task-manager.list.tsx"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-18",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/web/src/modules/task-manager/task-manager.schema.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-19",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/web/src/modules/task-manager/task-manager.services.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-20",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/web/src/modules/task-manager/task-manager.spec.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-21",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/web/src/modules/task-manager/task-manager.types.ts"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-files-22",
-                    "key": "File",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "apps/platform/web/src/modules/task-manager/task-manager.workspace.tsx"
-                  }
-                ],
-                "actions": [
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-actions-1",
-                    "key": "Registry actions",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "Edit, deactivate, restore"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-actions-2",
-                    "key": "Module actions",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "Review implementation files"
-                  }
-                ],
-                "events": [
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-events-1",
-                    "key": "task-manager.events.ts",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "platform.task-manager.todo.created"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-events-2",
-                    "key": "task-manager.events.ts",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "platform.task-manager.todo.updated"
-                  },
-                  {
-                    "createdAt": "2026-07-11T11:15:26.838Z",
-                    "id": "module-app-task-manager-events-3",
-                    "key": "task-manager.sync.ts",
-                    "updatedAt": "2026-07-11T11:15:26.838Z",
-                    "value": "platform.task-manager"
-                  }
-                ]
-              },
-              "groupId": "group-tenant-apps",
-              "id": "module-app-task-manager",
-              "key": "tenant.apps.task-manager",
-              "moduleType": "area",
-              "name": "Task Manager",
-              "parentModuleId": "",
-              "planningNotes": [
-                {
-                  "body": "Keep this registry documentation synchronized as the implementation, database, API, and events evolve.",
-                  "createdAt": "2026-07-11T11:15:26.838Z",
-                  "id": "module-app-task-manager-planning-1",
-                  "title": "Maintain implementation documentation",
-                  "updatedAt": "2026-07-11T11:15:26.838Z"
-                }
-              ],
-              "routePath": "/app/task-manager/overview",
-              "sortOrder": 40,
-              "status": "active",
-              "updatedAt": "2026-07-11T00:00:00.000Z",
-              "children": []
             }
           ],
           "subGroups": []
@@ -21875,10 +21577,10 @@
     }
   ],
   "summary": {
-    "activeGroups": 8,
+    "activeGroups": 9,
     "activeModules": 77,
     "platforms": 3,
-    "totalGroups": 8,
+    "totalGroups": 9,
     "totalModules": 77
   }
 }

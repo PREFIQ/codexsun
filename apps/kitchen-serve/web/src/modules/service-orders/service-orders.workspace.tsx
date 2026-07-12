@@ -2,10 +2,11 @@ import { StatusBadge } from "@codexsun/ui";
 import { ServiceOrdersForm } from "./service-orders.form";
 import { useServiceOrderActions, useServiceOrders } from "./service-orders.hooks";
 import { ServiceOrdersList } from "./service-orders.list";
-import type { KitchenServePage, ServiceOrderStatus } from "./service-orders.types";
+import { FloorTablesPanel, MenuPanel, OrderQueuePanel, SettingsPanel } from "./service-orders.operations";
+import type { KitchenServePage } from "./service-orders.types";
 export function ServiceOrdersWorkspace({ page }: { page: KitchenServePage }) {
-  const status = statusForPage(page);
-  const query = useServiceOrders(status);
+  const usesOrders = ["overview", "waiter-orders", "kitchen", "ready", "bill-waiting", "history"].includes(page);
+  const query = useServiceOrders(undefined, usesOrders);
   const actions = useServiceOrderActions();
   const busy = actions.create.isPending || actions.transition.isPending;
   return (
@@ -21,51 +22,25 @@ export function ServiceOrdersWorkspace({ page }: { page: KitchenServePage }) {
               Waiter order capture, kitchen execution, serving handoff, and controlled bill waiting.
             </p>
           </div>
-          <StatusBadge tone="green">Tenant scoped</StatusBadge>
+          <div className="flex items-center gap-2"><span className="size-2 animate-pulse rounded-full bg-emerald-500" /><StatusBadge tone="green">Live sync · 2 sec</StatusBadge></div>
         </div>
       </section>
-      {query.error ? (
+      {usesOrders && query.error ? (
         <section className="rounded-md border border-destructive/40 bg-card p-4 text-sm text-destructive">
           {query.error.message}
         </section>
       ) : null}
-      {page === "waiter-orders" ? (
-        <ServiceOrdersForm busy={busy} onSave={(input) => actions.create.mutate(input)} />
-      ) : null}
-      {["overview", "waiter-orders", "kitchen", "ready", "bill-waiting", "history"].includes(
-        page
-      ) ? (
-        <ServiceOrdersList
-          busy={busy}
-          records={query.data ?? []}
-          onTransition={(id, next) => actions.transition.mutate({ id, status: next })}
-        />
-      ) : (
-        <FoundationPanel page={page} />
-      )}
+      {page === "tables" && <FloorTablesPanel />}
+      {page === "menu" && <MenuPanel />}
+      {page === "settings" && <SettingsPanel />}
+      {page === "waiter-orders" && <><ServiceOrdersForm busy={busy} onSave={(input) => actions.create.mutate(input)} /><ServiceOrdersList busy={busy} records={query.data ?? []} onTransition={(id, next) => actions.transition.mutate({ id, status: next })} /></>}
+      {["overview", "kitchen", "ready", "bill-waiting", "history"].includes(page) && <OrderQueuePanel page={page} busy={busy} records={query.data ?? []} onTransition={(id, next) => actions.transition.mutate({ id, status: next })} />}
     </main>
   );
-}
-function statusForPage(page: KitchenServePage): ServiceOrderStatus | undefined {
-  if (page === "kitchen") return "preparing";
-  if (page === "ready") return "ready";
-  if (page === "bill-waiting") return "bill-waiting";
-  return undefined;
 }
 function title(page: KitchenServePage) {
   return page
     .split("-")
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
     .join(" ");
-}
-function FoundationPanel({ page }: { page: KitchenServePage }) {
-  return (
-    <section className="rounded-md border bg-card p-5 shadow-sm">
-      <h2 className="text-lg font-semibold">{title(page)}</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        This module is reserved for database-backed hotel configuration and will use Core masters
-        where applicable. No fake operational records are loaded.
-      </p>
-    </section>
-  );
 }
