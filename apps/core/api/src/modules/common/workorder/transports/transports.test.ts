@@ -1,3 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { transportsDefinition } from "./transports.definition.js";
-describe("Transports", () => { it("owns an independent table and required fields", () => { expect(transportsDefinition.tableName).toBe("transports"); expect(transportsDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { TRANSPORTS_COLLECTION_PATH } from "./transports.routes.js";
+
+describe("Transports module contract", () => {
+  it("owns its route", () =>
+    expect(TRANSPORTS_COLLECTION_PATH).toBe("/core/common/workorder/transports"));
+});

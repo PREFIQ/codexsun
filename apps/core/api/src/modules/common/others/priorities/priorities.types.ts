@@ -1,1 +1,19 @@
-export type PrioritiesSavePayload = Record<string, boolean | number | string | null>;
+export type PrioritiesRecord = {
+  id: string;
+  uuid: string;
+  name: string;
+  colour: string;
+  tag: string;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+export type PrioritiesSavePayload = {
+  name: string;
+  colour: string;
+  tag: string;
+  isActive?: boolean;
+  sortOrder?: number;
+};
+
+export type PrioritiesListFilters = { search?: string };

@@ -8,4 +8,3 @@ export const commonModule = {
     return registerCommonRoutes(app);
   }
 };
-

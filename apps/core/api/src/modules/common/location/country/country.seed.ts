@@ -1,15 +1,27 @@
-import { countryLocationDefinition } from "../location.definitions.js";
-import { countrySeeds } from "../location.seed-data.js";
-import { seedLocationRecord } from "../shared/location.repository.js";
+import { sql } from "kysely";
+import { getCoreDatabase } from "../../../../database/core-database.js";
 
 export const countrySeed = {
-  description: "Seed global country records with India first.",
+  description: "Seed country records with India first.",
   key: "core.common.location.country.seed"
 };
 
 export async function seedCountryModule() {
   for (const country of countrySeeds) {
-    await seedLocationRecord(countryLocationDefinition.tableName, country);
+    const uuid = country.code.toLowerCase().padEnd(8, "0").slice(0, 8);
+    await sql`INSERT INTO countries (uuid, code, name, sort_order, status)
+      VALUES (${uuid}, ${country.code}, ${country.name}, ${country.sortOrder}, ${country.status})
+      ON DUPLICATE KEY UPDATE name=VALUES(name), sort_order=VALUES(sort_order), status=VALUES(status)`.execute(
+      getCoreDatabase()
+    );
   }
 }
 
+const countrySeeds = [
+  { code: "IN", name: "India", sortOrder: 1, status: "active" as const },
+  { code: "US", name: "United States", sortOrder: 20, status: "active" as const },
+  { code: "GB", name: "United Kingdom", sortOrder: 30, status: "active" as const },
+  { code: "AE", name: "United Arab Emirates", sortOrder: 40, status: "active" as const },
+  { code: "SG", name: "Singapore", sortOrder: 50, status: "active" as const },
+  { code: "AU", name: "Australia", sortOrder: 60, status: "active" as const }
+];

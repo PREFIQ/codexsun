@@ -34,7 +34,7 @@ Tenant context should include:
 - Locale and compliance settings.
 - User role and permission scope.
 
-Current implementation note: tenant login resolves the tenant database for tenant user authentication, then tenant API calls carry `x-tenant-id`. Tenant business records are presently protected by explicit `tenant_id` filters in database-backed repositories. Production completion still requires routing tenant business repositories through the resolved tenant database connection.
+Current implementation note: tenant login resolves the tenant database for tenant user authentication, and Core business requests require a validated `x-tenant-db` context. Core rejects the Platform master database and routes repositories through the request-bound tenant database connection. Core Common master tables therefore do not duplicate tenant identity in `tenant_id` columns; the selected database is their isolation boundary.
 
 Tenant context must be available in:
 

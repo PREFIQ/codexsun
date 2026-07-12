@@ -1,15 +1,69 @@
-import { districtLocationDefinition } from "../location.definitions.js";
-import { districtSeeds } from "../location.seed-data.js";
-import { seedLocationRecord } from "../shared/location.repository.js";
+import { sql } from "kysely";
+import { getCoreDatabase } from "../../../../database/core-database.js";
 
 export const districtSeed = {
-  description: "Seed Tamil Nadu districts plus unknown default.",
+  description: "Seed Tamil Nadu districts.",
   key: "core.common.location.district.seed"
 };
 
 export async function seedDistrictModule() {
+  const states = await sql<{ id: number }>`SELECT states.id FROM states
+    INNER JOIN countries ON countries.id = states.country_id
+    WHERE countries.code = 'IN' AND states.name = 'Tamil Nadu' LIMIT 1`.execute(getCoreDatabase());
+  const stateId = states.rows[0]?.id;
+  if (!stateId)
+    throw new Error("Tamil Nadu state seed must exist before district seeds are applied.");
+
   for (const district of districtSeeds) {
-    await seedLocationRecord(districtLocationDefinition.tableName, district);
+    const uuid = `d${String(district.sortOrder).padStart(7, "0")}`;
+    await sql`INSERT INTO districts (uuid, state_id, name, sort_order, status)
+      VALUES (${uuid}, ${stateId}, ${district.name}, ${district.sortOrder}, ${district.status})
+      ON DUPLICATE KEY UPDATE state_id=VALUES(state_id), name=VALUES(name), sort_order=VALUES(sort_order), status=VALUES(status)`.execute(
+      getCoreDatabase()
+    );
   }
 }
 
+const districtSeeds = [
+  { name: "-", sortOrder: 0, status: "active" as const },
+  ...[
+    "Ariyalur",
+    "Chengalpattu",
+    "Chennai",
+    "Coimbatore",
+    "Cuddalore",
+    "Dharmapuri",
+    "Dindigul",
+    "Erode",
+    "Kallakurichi",
+    "Kancheepuram",
+    "Karur",
+    "Krishnagiri",
+    "Madurai",
+    "Mayiladuthurai",
+    "Nagapattinam",
+    "Kanniyakumari",
+    "Namakkal",
+    "Perambalur",
+    "Pudukkottai",
+    "Ramanathapuram",
+    "Ranipet",
+    "Salem",
+    "Sivaganga",
+    "Tenkasi",
+    "Thanjavur",
+    "Theni",
+    "Thoothukudi",
+    "Tiruchirappalli",
+    "Tirunelveli",
+    "Tirupathur",
+    "Tiruppur",
+    "Tiruvallur",
+    "Tiruvannamalai",
+    "Tiruvarur",
+    "Vellore",
+    "Viluppuram",
+    "Virudhunagar",
+    "The Nilgiris"
+  ].map((name, index) => ({ name, sortOrder: index + 1, status: "active" as const }))
+];

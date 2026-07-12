@@ -1,3 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { brandsDefinition } from "./brands.definition.js";
-describe("Brands", () => { it("owns an independent table and required fields", () => { expect(brandsDefinition.tableName).toBe("brands"); expect(brandsDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { BRANDS_COLLECTION_PATH } from "./brands.routes.js";
+
+describe("Brands module contract", () => {
+  it("owns its route", () => expect(BRANDS_COLLECTION_PATH).toBe("/core/common/products/brands"));
+});

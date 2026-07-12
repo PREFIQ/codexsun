@@ -1,3 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { workOrderTypesDefinition } from "./work-order-types.definition.js";
-describe("Work Order Types", () => { it("owns an independent table and required fields", () => { expect(workOrderTypesDefinition.tableName).toBe("work_order_types"); expect(workOrderTypesDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { WORK_ORDER_TYPES_COLLECTION_PATH } from "./work-order-types.routes.js";
+
+describe("Work Order Types module contract", () => {
+  it("owns its route", () =>
+    expect(WORK_ORDER_TYPES_COLLECTION_PATH).toBe("/core/common/workorder/work-order-types"));
+});

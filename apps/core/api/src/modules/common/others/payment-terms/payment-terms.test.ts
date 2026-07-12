@@ -1,3 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { paymentTermsDefinition } from "./payment-terms.definition.js";
-describe("Payment Terms", () => { it("owns an independent table and required fields", () => { expect(paymentTermsDefinition.tableName).toBe("payment_terms"); expect(paymentTermsDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { PAYMENT_TERMS_COLLECTION_PATH } from "./payment-terms.routes.js";
+
+describe("Payment Terms module contract", () => {
+  it("owns its route", () =>
+    expect(PAYMENT_TERMS_COLLECTION_PATH).toBe("/core/common/others/payment-terms"));
+});

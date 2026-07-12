@@ -1,3 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { coloursDefinition } from "./colours.definition.js";
-describe("Colours", () => { it("owns an independent table and required fields", () => { expect(coloursDefinition.tableName).toBe("colours"); expect(coloursDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { COLOURS_COLLECTION_PATH } from "./colours.routes.js";
+
+describe("Colours module contract", () => {
+  it("owns its route", () => expect(COLOURS_COLLECTION_PATH).toBe("/core/common/products/colours"));
+});

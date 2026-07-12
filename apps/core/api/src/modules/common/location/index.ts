@@ -6,4 +6,3 @@ export * from "./state/index.js";
 export * from "./district/index.js";
 export * from "./city/index.js";
 export * from "./pincode/index.js";
-

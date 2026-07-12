@@ -141,7 +141,7 @@ export function LocationModuleShell({ kind }: { kind: LocationKind }) {
         onEdit={(record) => setEditing(record)}
         onForceDelete={(record) => setPendingAction({ record, type: "delete" })}
         onSuspend={(record) => setPendingAction({ record, type: "suspend" })}
-        {...(kind === "country" || kind === "state" ? { onView: setViewing } : {})}
+        {...(kind === "state" ? { onView: setViewing } : {})}
       />
       <WorkspacePagination
         page={currentPage}
@@ -232,7 +232,7 @@ export function LocationTable({
           <tbody>
             {records.map((record, index) => {
               const canMutate = canMutateLocationRow(definition.kind, record)
-              const protectedRow = isProtectedLocationRow(record)
+              const protectedRow = isProtectedLocationRow(definition.kind, record)
               return (
               <tr className="border-b border-border/70 last:border-b-0" key={record.id}>
                 <td className="px-4 py-2.5 text-muted-foreground">{(startIndex ?? 0) + index + 1}</td>
@@ -287,12 +287,15 @@ export function LocationTable({
 }
 
 function canMutateLocationRow(kind: LocationKind, record: LocationRecord) {
-  if (isProtectedLocationRow(record)) return false
+  if (isProtectedLocationRow(kind, record)) return false
+  if (kind === "country") return true
   return record.tenantId !== "global" || kind === "district" || kind === "city" || kind === "pincode"
 }
 
-function isProtectedLocationRow(record: LocationRecord) {
-  return record.name.trim() === "-" || record.code.trim() === "-"
+function isProtectedLocationRow(kind: LocationKind, record: LocationRecord) {
+  return record.name.trim() === "-"
+    || record.code.trim() === "-"
+    || (kind === "country" && (record.code.trim().toUpperCase() === "IN" || record.name.trim().toLowerCase() === "india"))
 }
 
 function isPrimaryLocationColumn(kind: LocationKind, key: keyof LocationRecord) {

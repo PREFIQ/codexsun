@@ -6,4 +6,3 @@ describe("common module contract", () => {
     expect(new CommonService().listAreas()[0]?.area).toBe("location");
   });
 });
-

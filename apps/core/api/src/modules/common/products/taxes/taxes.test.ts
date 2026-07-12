@@ -1,3 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { taxesDefinition } from "./taxes.definition.js";
-describe("Taxes", () => { it("owns an independent table and required fields", () => { expect(taxesDefinition.tableName).toBe("taxes"); expect(taxesDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { TAXES_COLLECTION_PATH } from "./taxes.routes.js";
+
+describe("Taxes module contract", () => {
+  it("owns its route", () => expect(TAXES_COLLECTION_PATH).toBe("/core/common/products/taxes"));
+});

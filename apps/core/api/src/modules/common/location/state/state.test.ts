@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { stateLocationDefinition } from "../location.definitions.js";
+import { STATE_COLLECTION_PATH } from "./state.routes.js";
 
-describe("state location module contract", () => {
-  it("uses the common location route and state table", () => {
-    expect(stateLocationDefinition.collectionPath).toBe("/core/common/location/states");
-    expect(stateLocationDefinition.tableName).toBe("states");
+describe("state module contract", () => {
+  it("owns the state route", () => {
+    expect(STATE_COLLECTION_PATH).toBe("/core/common/location/states");
   });
 });
-

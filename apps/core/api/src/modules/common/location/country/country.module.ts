@@ -8,4 +8,3 @@ export const countryModule = {
     return registerCountryRoutes(app);
   }
 };
-

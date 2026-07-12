@@ -1,1 +1,15 @@
-export type SizesSavePayload = Record<string, boolean | number | string | null>;
+export type SizesRecord = {
+  id: string;
+  uuid: string;
+  name: string;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+export type SizesSavePayload = {
+  name: string;
+  isActive?: boolean;
+  sortOrder?: number;
+};
+
+export type SizesListFilters = { search?: string };

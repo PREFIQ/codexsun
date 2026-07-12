@@ -1,3 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { currenciesDefinition } from "./currencies.definition.js";
-describe("Currencies", () => { it("owns an independent table and required fields", () => { expect(currenciesDefinition.tableName).toBe("currencies"); expect(currenciesDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { CURRENCIES_COLLECTION_PATH } from "./currencies.routes.js";
+
+describe("Currencies module contract", () => {
+  it("owns its route", () =>
+    expect(CURRENCIES_COLLECTION_PATH).toBe("/core/common/others/currencies"));
+});

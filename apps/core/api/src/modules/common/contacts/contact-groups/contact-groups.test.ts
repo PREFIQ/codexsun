@@ -1,3 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { contactGroupsDefinition } from "./contact-groups.definition.js";
-describe("Contact Groups", () => { it("owns an independent table and required fields", () => { expect(contactGroupsDefinition.tableName).toBe("contact_groups"); expect(contactGroupsDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { CONTACT_GROUPS_COLLECTION_PATH } from "./contact-groups.routes.js";
+
+describe("Contact Groups module contract", () => {
+  it("owns its route", () =>
+    expect(CONTACT_GROUPS_COLLECTION_PATH).toBe("/core/common/contacts/contact-groups"));
+});

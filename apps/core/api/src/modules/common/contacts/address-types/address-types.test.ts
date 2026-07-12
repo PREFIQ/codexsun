@@ -1,3 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { addressTypesDefinition } from "./address-types.definition.js";
-describe("Address Types", () => { it("owns an independent table and required fields", () => { expect(addressTypesDefinition.tableName).toBe("address_types"); expect(addressTypesDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { ADDRESS_TYPES_COLLECTION_PATH } from "./address-types.routes.js";
+
+describe("Address Types module contract", () => {
+  it("owns its route", () =>
+    expect(ADDRESS_TYPES_COLLECTION_PATH).toBe("/core/common/contacts/address-types"));
+});

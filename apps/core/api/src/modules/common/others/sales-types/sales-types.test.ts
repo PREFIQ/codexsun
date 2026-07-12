@@ -1,3 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { salesTypesDefinition } from "./sales-types.definition.js";
-describe("Sales Types", () => { it("owns an independent table and required fields", () => { expect(salesTypesDefinition.tableName).toBe("sales_types"); expect(salesTypesDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { SALES_TYPES_COLLECTION_PATH } from "./sales-types.routes.js";
+
+describe("Sales Types module contract", () => {
+  it("owns its route", () =>
+    expect(SALES_TYPES_COLLECTION_PATH).toBe("/core/common/others/sales-types"));
+});

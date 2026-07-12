@@ -7,4 +7,3 @@ export const commonSyncPolicy = {
 export function resolveCommonSyncAreas(tenantId: string) {
   return [{ area: "location", includeGlobal: true, tenantId }];
 }
-

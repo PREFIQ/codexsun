@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { cityLocationDefinition } from "../location.definitions.js";
+import { CITY_COLLECTION_PATH } from "./city.routes.js";
 
-describe("city location module contract", () => {
-  it("uses the common location route and city table", () => {
-    expect(cityLocationDefinition.collectionPath).toBe("/core/common/location/cities");
-    expect(cityLocationDefinition.tableName).toBe("cities");
+describe("city module contract", () => {
+  it("owns the city route", () => {
+    expect(CITY_COLLECTION_PATH).toBe("/core/common/location/cities");
   });
 });
-

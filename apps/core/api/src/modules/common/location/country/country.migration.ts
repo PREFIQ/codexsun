@@ -1,14 +1,27 @@
 import type { Kysely } from "kysely";
 import type { CoreDatabase } from "../../../../database/core-database.js";
-import { countryLocationDefinition } from "../location.definitions.js";
-import { migrateLocationTable } from "../shared/location.migration.js";
+import { sql } from "kysely";
 
 export const countryMigration = {
-  description: "Country master data with tenant-aware global defaults.",
+  description: "Country master data.",
   key: "core.common.location.country"
 };
 
 export function migrateCountryModule(database: Kysely<CoreDatabase>) {
-  return migrateLocationTable(database, countryLocationDefinition.tableName);
+  return sql
+    .raw(
+      `
+    CREATE TABLE IF NOT EXISTS countries (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      uuid VARCHAR(8) NOT NULL UNIQUE,
+      code VARCHAR(80) NOT NULL UNIQUE,
+      name VARCHAR(200) NOT NULL,
+      sort_order INT(11) NOT NULL DEFAULT 1000,
+      status VARCHAR(24) NOT NULL DEFAULT 'active',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `
+    )
+    .execute(database);
 }
-

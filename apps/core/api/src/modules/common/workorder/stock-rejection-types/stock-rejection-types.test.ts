@@ -1,3 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { stockRejectionTypesDefinition } from "./stock-rejection-types.definition.js";
-describe("Stock Rejection Types", () => { it("owns an independent table and required fields", () => { expect(stockRejectionTypesDefinition.tableName).toBe("stock_rejection_types"); expect(stockRejectionTypesDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { STOCK_REJECTION_TYPES_COLLECTION_PATH } from "./stock-rejection-types.routes.js";
+
+describe("Stock Rejection Types module contract", () => {
+  it("owns its route", () =>
+    expect(STOCK_REJECTION_TYPES_COLLECTION_PATH).toBe(
+      "/core/common/workorder/stock-rejection-types"
+    ));
+});

@@ -8,4 +8,3 @@ export const cityModule = {
     return registerCityRoutes(app);
   }
 };
-

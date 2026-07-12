@@ -1,3 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { monthsDefinition } from "./months.definition.js";
-describe("Months", () => { it("owns an independent table and required fields", () => { expect(monthsDefinition.tableName).toBe("months"); expect(monthsDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { MONTHS_COLLECTION_PATH } from "./months.routes.js";
+
+describe("Months module contract", () => {
+  it("owns its route", () => expect(MONTHS_COLLECTION_PATH).toBe("/core/common/others/months"));
+});

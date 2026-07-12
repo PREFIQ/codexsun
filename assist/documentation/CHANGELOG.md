@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.24
+Current version: 1.0.25
 
-Release tag: v-1.0.24
+Release tag: v-1.0.25
 
-Changelog label: v 1.0.24
+Changelog label: v 1.0.25
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,35 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.25
+
+### [v 1.0.25] 2026-07-12 10:17 pm - Common Module Boundary and Location Hierarchy
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Rebuilt the Core location foundation migrations as independent Country, State, District, City, and Pincode tables with ordered foreign keys and relationship-safe delete restrictions.
+- Added scoped uniqueness for State per Country, District per State, City per District, and Pincode per City.
+- Moved Country, Indian State and territory, Tamil Nadu District and City, and supported Pincode seed records into their owning modules with deterministic, idempotent upserts.
+- Preserved the ordered Country -> State -> District -> City -> Pincode migration and seed sequence.
+- Removed redundant `tenant_id` columns and tenant-scoped indexes from all 24 non-location Core Common master migrations; the selected tenant database is now the sole data-isolation boundary.
+- Changed Common master uniqueness from `(tenant_id, primary field)` to database-local primary-field uniqueness and removed tenant prefixes from generated record IDs.
+- Existing development databases created from the earlier Common schema require the fresh migration workflow to physically rebuild the tables without legacy `tenant_id` columns.
+
+#### App Codebase Changes
+
+- Refactored all 29 Core Common leaf modules to the reduced nine-file backend contract: migration, module, repository, routes, seed, service, test, types, and index.
+- Replaced all 24 generic Common master wrappers with module-owned migrations, typed records and payloads, direct SQL repositories, validation services, Fastify routes, lifecycle behavior, seeds, and contract tests.
+- Removed the Common master definition registry and the shared migration, repository, route, seed, service, context, and type factories; no Common leaf module extends, aliases, or delegates its backend behavior to a generic foundation.
+- Removed separate definition, event, sync, and worker placeholder files while preserving each module's fields, protected placeholder rows, seed values, routes, lifecycle behavior, and table ownership.
+- Removed Common-level `x-tenant-id` parsing, logical global/tenant row filtering, tenant parameters, and `tenantId` response fields; Common requests now rely exclusively on the fail-closed `x-tenant-db` database context.
+- Replaced the former shared location backend with independently owned Country, State, District, City, and Pincode repositories, services, routes, contracts, migrations, seeds, and tests.
+- Added normalized Country, State, District, and City relationship joins and parent validation throughout the location hierarchy.
+- Added separate Pincode individual and relation endpoints; relation reads return the complete City, District, State, and Country hierarchy.
+- Removed obsolete shared location helpers, shared seed data, and the stale legacy location database test that targeted the deleted global/tenant location contract.
+- Formatted the complete Core Common backend and verified it with Prettier, ESLint, TypeScript, and Core API tests.
+- Bumped workspace version to 1.0.25.
 
 ## v-1.0.24
 

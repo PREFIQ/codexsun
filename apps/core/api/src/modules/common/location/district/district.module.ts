@@ -8,4 +8,3 @@ export const districtModule = {
     return registerDistrictRoutes(app);
   }
 };
-

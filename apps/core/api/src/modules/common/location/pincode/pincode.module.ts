@@ -8,4 +8,3 @@ export const pincodeModule = {
     return registerPincodeRoutes(app);
   }
 };
-

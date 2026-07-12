@@ -8,4 +8,3 @@ export const stateModule = {
     return registerStateRoutes(app);
   }
 };
-

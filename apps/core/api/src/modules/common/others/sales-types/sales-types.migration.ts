@@ -1,5 +1,28 @@
 import type { Kysely } from "kysely";
+import { sql } from "kysely";
 import type { CoreDatabase } from "../../../../database/core-database.js";
-import { migrateCommonMaster } from "../../foundation/common-master.migration.js";
-import { salesTypesDefinition } from "./sales-types.definition.js";
-export function migrateSalesTypes(database: Kysely<CoreDatabase>) { return migrateCommonMaster(database, salesTypesDefinition); }
+
+export const salesTypesMigration = {
+  description: "Sales Types master data.",
+  key: "core.common.others.salesTypes"
+};
+
+export function migrateSalesTypes(database: Kysely<CoreDatabase>) {
+  return sql
+    .raw(
+      `
+    CREATE TABLE IF NOT EXISTS sales_types (
+      id VARCHAR(160) NOT NULL PRIMARY KEY,
+      uuid CHAR(8) NOT NULL UNIQUE,
+      name VARCHAR(255) NOT NULL,
+      description VARCHAR(255) NULL,
+      is_active TINYINT(1) NOT NULL DEFAULT 1,
+      sort_order INT NOT NULL DEFAULT 1000,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY sales_types_name_unique (name),
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `
+    )
+    .execute(database);
+}

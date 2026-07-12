@@ -11,4 +11,3 @@ export function createCommonAreaRegisteredEvent(registration: CommonModuleRegist
     version: 1
   };
 }
-

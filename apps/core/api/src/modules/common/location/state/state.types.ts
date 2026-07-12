@@ -1,7 +1,20 @@
-export type {
-  LocationListFilters as StateListFilters,
-  LocationRecord as State,
-  LocationSavePayload as StateSavePayload,
-  LocationStatus as StateStatus
-} from "../shared/location.types.js";
+export type StateStatus = "active" | "inactive";
 
+export type State = {
+  id: string;
+  uuid: string;
+  countryId: string;
+  countryName: string;
+  name: string;
+  sortOrder: number;
+  status: StateStatus;
+};
+
+export type StateSavePayload = {
+  countryId: string;
+  name: string;
+  sortOrder: number;
+  status: StateStatus;
+};
+
+export type StateListFilters = { countryId?: string; search?: string };

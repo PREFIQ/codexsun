@@ -1,5 +1,28 @@
 import type { Kysely } from "kysely";
+import { sql } from "kysely";
 import type { CoreDatabase } from "../../../../database/core-database.js";
-import { migrateCommonMaster } from "../../foundation/common-master.migration.js";
-import { hsnCodesDefinition } from "./hsn-codes.definition.js";
-export function migrateHsnCodes(database: Kysely<CoreDatabase>) { return migrateCommonMaster(database, hsnCodesDefinition); }
+
+export const hsnCodesMigration = {
+  description: "HSN Codes master data.",
+  key: "core.common.products.hsnCodes"
+};
+
+export function migrateHsnCodes(database: Kysely<CoreDatabase>) {
+  return sql
+    .raw(
+      `
+    CREATE TABLE IF NOT EXISTS hsn_codes (
+      id VARCHAR(160) NOT NULL PRIMARY KEY,
+      uuid CHAR(8) NOT NULL UNIQUE,
+      code VARCHAR(255) NOT NULL,
+      description VARCHAR(255) NOT NULL,
+      is_active TINYINT(1) NOT NULL DEFAULT 1,
+      sort_order INT NOT NULL DEFAULT 1000,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY hsn_codes_code_unique (code),
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `
+    )
+    .execute(database);
+}

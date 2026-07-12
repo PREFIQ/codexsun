@@ -90,6 +90,24 @@ This structure keeps module code easy to scan while preserving clear roles. It r
 
 Full modules must contain every role above. Do not add empty role files to make the folder look complete. Each file must expose callable, testable behavior for its role. A deliberately smaller module must declare its capability exemptions in `{module}.module.ts`; undocumented omissions are boundary failures.
 
+### Core Common Reduced Modules
+
+Core Common leaf masters deliberately use a reduced nine-file backend boundary:
+
+```text
+{module}.migration.ts
+{module}.module.ts
+{module}.repository.ts
+{module}.routes.ts
+{module}.seed.ts
+{module}.service.ts
+{module}.test.ts
+{module}.types.ts
+index.ts
+```
+
+Each reduced Common module must own concrete migration SQL, repository queries, service validation, HTTP routes, lifecycle behavior, seeds, types, and executable tests. Shared factories, generic inherited repositories/services, alias wrappers, and metadata definitions do not satisfy these roles. These synchronous CRUD masters must not carry separate metadata-only definition, event, sync, or worker files. If a Common module later gains real event, offline-sync, or background-job behavior, promote it to the full module contract when that behavior is implemented.
+
 Strict naming rules:
 
 - Use the module name as the filename prefix, for example `quotation.service.ts`, not `service.ts`.
@@ -107,20 +125,20 @@ Strict naming rules:
 
 ### Role Behavior Contract
 
-| File | Required behavior |
-|---|---|
-| `{module}.module.ts` | Stable key, scope/capabilities, and registration/composition function |
-| `{module}.service.ts` | Business use cases and validation orchestration |
-| `{module}.repository.ts` | Owned persistence reads/writes with tenant/platform scope |
-| `{module}.routes.ts` | Thin HTTP handlers that call the service and return structured responses |
-| `{module}.events.ts` | Typed event names, envelope construction, and handlers/subscribers when consumed |
-| `{module}.migration.ts` | Callable, idempotent table/index migration owned by the module |
-| `{module}.worker.ts` | Typed job names, retry/idempotency policy, and executable dispatch |
-| `{module}.seed.ts` | Callable, repeatable seed behavior or an explicit tested no-data policy |
-| `{module}.sync.ts` | Explicit sync scope/direction/conflict policy and callable sync decision behavior |
-| `{module}.test.ts` | Executable module contract tests |
-| `{module}.types.ts` | Public DTOs, commands, results, event/job/sync contracts |
-| `index.ts` | Intentional public API only |
+| File                     | Required behavior                                                                 |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| `{module}.module.ts`     | Stable key, scope/capabilities, and registration/composition function             |
+| `{module}.service.ts`    | Business use cases and validation orchestration                                   |
+| `{module}.repository.ts` | Owned persistence reads/writes with tenant/platform scope                         |
+| `{module}.routes.ts`     | Thin HTTP handlers that call the service and return structured responses          |
+| `{module}.events.ts`     | Typed event names, envelope construction, and handlers/subscribers when consumed  |
+| `{module}.migration.ts`  | Callable, idempotent table/index migration owned by the module                    |
+| `{module}.worker.ts`     | Typed job names, retry/idempotency policy, and executable dispatch                |
+| `{module}.seed.ts`       | Callable, repeatable seed behavior or an explicit tested no-data policy           |
+| `{module}.sync.ts`       | Explicit sync scope/direction/conflict policy and callable sync decision behavior |
+| `{module}.test.ts`       | Executable module contract tests                                                  |
+| `{module}.types.ts`      | Public DTOs, commands, results, event/job/sync contracts                          |
+| `index.ts`               | Intentional public API only                                                       |
 
 ## Standard App Source Structure
 
@@ -275,48 +293,49 @@ Do not put unstable business rules in the shared kernel.
 
 ### App Boundaries (Physical)
 
-| App/Package | Role | Owns |
-|---|---|---|
-| `packages/framework` | Shared kernel | DB abstraction, HTTP helpers, errors, modules registry, health check, testing utilities |
-| `packages/platform` | Platform services | Auth, tenants, audit, settings, permissions, roles, subscription (scaffold), users, catalog, notifications, files, activity, agents, templates, API client |
-| `packages/ui` | Design system | React components, layouts, workspace patterns, blocks (sidemenu, tables, forms) |
-| `apps/core/src` | Master/business backend modules | Common definitions, contacts, companies, and products with database-backed tenant records; work orders and generic core records remain temporary |
-| `apps/core/web` | Core frontend modules | Common/master tenant screens, lookup controls, and reusable tenant record workspace UI |
-| `apps/billing/src` | Billing backend modules | Quotation, sales, export sales, purchase, receipt, payment contracts, routes, migrations, workers, seeders, and sync rules under module folders |
-| `apps/billing/web` | Billing frontend modules | Billing entry workspaces, billing settings, billing forms, and billing reports |
-| `apps/accounts/src` | Accounting backend modules | Ledgers, bank accounts, cash accounts, journal, contra, double-entry contracts, posting contracts |
-| `apps/accounts/web` | Accounting frontend modules | Accounts screens, reports, voucher UI, and app-specific account workspaces |
-| `apps/platform/api` | API gateway + platform routes | Route registration, guard functions (session, tenant, feature, permission), migration runner, DB bootstrap |
-| `apps/platform/web` | Platform shell and React composer | Login, SA desk, Admin desk, Tenant desk shell, design system pages, route/menu composition, API client integration |
+| App/Package          | Role                              | Owns                                                                                                                                                       |
+| -------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/framework` | Shared kernel                     | DB abstraction, HTTP helpers, errors, modules registry, health check, testing utilities                                                                    |
+| `packages/platform`  | Platform services                 | Auth, tenants, audit, settings, permissions, roles, subscription (scaffold), users, catalog, notifications, files, activity, agents, templates, API client |
+| `packages/ui`        | Design system                     | React components, layouts, workspace patterns, blocks (sidemenu, tables, forms)                                                                            |
+| `apps/core/src`      | Master/business backend modules   | Common definitions, contacts, companies, and products with database-backed tenant records; work orders and generic core records remain temporary           |
+| `apps/core/web`      | Core frontend modules             | Common/master tenant screens, lookup controls, and reusable tenant record workspace UI                                                                     |
+| `apps/billing/src`   | Billing backend modules           | Quotation, sales, export sales, purchase, receipt, payment contracts, routes, migrations, workers, seeders, and sync rules under module folders            |
+| `apps/billing/web`   | Billing frontend modules          | Billing entry workspaces, billing settings, billing forms, and billing reports                                                                             |
+| `apps/accounts/src`  | Accounting backend modules        | Ledgers, bank accounts, cash accounts, journal, contra, double-entry contracts, posting contracts                                                          |
+| `apps/accounts/web`  | Accounting frontend modules       | Accounts screens, reports, voucher UI, and app-specific account workspaces                                                                                 |
+| `apps/platform/api`  | API gateway + platform routes     | Route registration, guard functions (session, tenant, feature, permission), migration runner, DB bootstrap                                                 |
+| `apps/platform/web`  | Platform shell and React composer | Login, SA desk, Admin desk, Tenant desk shell, design system pages, route/menu composition, API client integration                                         |
 
 ### Table Ownership
 
 **Master Database (cxsun_master_db) — owned by `apps/platform/api`:**
 
-| Table | Owner | Purpose |
-|---|---|---|
-| `super_admin_users` | platform.users | SA authentication |
-| `staff_users` | platform.users | Staff authentication |
-| `tenants` | platform.tenants | Tenant registry |
-| `tenant_databases` | platform.tenants | Per-tenant database tracking |
-| `tenant_domain_mappings` | platform.tenants | Custom domain binding |
-| `audit_events` | platform.audit | All audit records |
-| `sessions` | platform.auth | Session store |
-| `platform_modules` | platform.catalog | Module registry |
-| `tenant_module_activation` | platform.catalog | Per-tenant module state |
-| `platform_settings` | platform.settings | Key-value settings store |
-| `platform_feature_flags` | platform.settings | Feature toggles |
-| `file_metadata` | platform.files | File registry |
-| `notification_records` | platform.notifications | Notification queue |
-| `agent_action_audits` | platform.agents | Agent execution log |
-| `activity_timeline` | platform.activity | Business activity feed |
-| `comments` | platform.activity | Record-level comments |
+| Table                      | Owner                  | Purpose                      |
+| -------------------------- | ---------------------- | ---------------------------- |
+| `super_admin_users`        | platform.users         | SA authentication            |
+| `staff_users`              | platform.users         | Staff authentication         |
+| `tenants`                  | platform.tenants       | Tenant registry              |
+| `tenant_databases`         | platform.tenants       | Per-tenant database tracking |
+| `tenant_domain_mappings`   | platform.tenants       | Custom domain binding        |
+| `audit_events`             | platform.audit         | All audit records            |
+| `sessions`                 | platform.auth          | Session store                |
+| `platform_modules`         | platform.catalog       | Module registry              |
+| `tenant_module_activation` | platform.catalog       | Per-tenant module state      |
+| `platform_settings`        | platform.settings      | Key-value settings store     |
+| `platform_feature_flags`   | platform.settings      | Feature toggles              |
+| `file_metadata`            | platform.files         | File registry                |
+| `notification_records`     | platform.notifications | Notification queue           |
+| `agent_action_audits`      | platform.agents        | Agent execution log          |
+| `activity_timeline`        | platform.activity      | Business activity feed       |
+| `comments`                 | platform.activity      | Record-level comments        |
 
 **Tenant Databases — owned by tenant apps (future):**
-| Table | Owner | Purpose |
-|---|---|---|
-| `users` | Platform (tenant bootstrap) | Tenant user auth |
-| `tenant_audit_events` | Platform (bootstrap) | Tenant-scoped audit |
+
+| Table                 | Owner                       | Purpose             |
+| --------------------- | --------------------------- | ------------------- |
+| `users`               | Platform (tenant bootstrap) | Tenant user auth    |
+| `tenant_audit_events` | Platform (bootstrap)        | Tenant-scoped audit |
 
 ### Package Dependency Direction
 
@@ -357,13 +376,13 @@ Key rule: `packages/platform` depends on `packages/framework` **only**. `apps/co
 
 ### App Suite Bundles
 
-| Bundle | Includes | Purpose |
-|---|---|---|
-| Base SaaS | shared packages + `framework` + `platform` + `core` | Tenant, identity, RBAC, common modules, contacts, products, work orders |
-| Billing Software | shared packages + `framework` + `platform` + `core` + `billing` + `accounts` | Entry billing with industry feature flags, document settings, and optional accounting integration |
-| Ecommerce Suite | shared packages + `framework` + `platform` + `core` + `billing` + `ecommerce` | Ecommerce app consuming core masters and billing documents |
-| CRM Suite | shared packages + `framework` + `platform` + `core` + `crm` | CRM app with shared identity, tenant, and core customer data foundation |
-| Sites Suite | shared packages + `framework` + `platform` + `sites` | Sites app with platform identity, settings, files, and site-specific publishing tools |
+| Bundle           | Includes                                                                      | Purpose                                                                                           |
+| ---------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Base SaaS        | shared packages + `framework` + `platform` + `core`                           | Tenant, identity, RBAC, common modules, contacts, products, work orders                           |
+| Billing Software | shared packages + `framework` + `platform` + `core` + `billing` + `accounts`  | Entry billing with industry feature flags, document settings, and optional accounting integration |
+| Ecommerce Suite  | shared packages + `framework` + `platform` + `core` + `billing` + `ecommerce` | Ecommerce app consuming core masters and billing documents                                        |
+| CRM Suite        | shared packages + `framework` + `platform` + `core` + `crm`                   | CRM app with shared identity, tenant, and core customer data foundation                           |
+| Sites Suite      | shared packages + `framework` + `platform` + `sites`                          | Sites app with platform identity, settings, files, and site-specific publishing tools             |
 
 Billing industry fields must stay as billing settings/features. Examples: offset billing uses PO/DC, garments uses colour/size, uPVC can add length/width/area later. Shared billing fields remain particulars, quantity, price, GST, subtotal, totals, and document controls.
 
@@ -379,46 +398,46 @@ All 5 migration units pass initialization and run cleanly. Migration runner trac
 
 ### Task 14 Artifact Cleanup
 
-| Artifact | Action | Status |
-|---|---|---|
-| `packages/platform/src/master-data/` | Removed (entire dir) | ✓ Done |
-| `apps/platform/api/src/master-data/routes.ts` | Removed | ✓ Done |
-| `apps/platform/api/src/__tests__/master-data.test.ts` | Removed (replaced by core-routes.test.ts) | ✓ Done |
-| `packages/platform/src/index.ts` — master-data export | Removed | ✓ Done |
-| `apps/platform/api/src/app.ts` — master-data imports/services/decorations/routes | Removed | ✓ Done |
-| `packages/platform/src/catalog/contracts.ts` — `business.master-data` entry | Removed | ✓ Done |
-| `packages/platform/src/permissions/contracts.ts` — `business.master-data.*` permissions | Removed | ✓ Done |
-| `apps/platform/web/src/pages/TenantDesk.tsx` — master-data nav items | Removed | ✓ Done |
-| `apps/platform/web/src/pages/tenant/MasterDataPage.tsx` | Retained (read-only reference, no route dependency) | Retained |
-| `apps/platform/web/src/pages/tenant/MasterRecordsPage.tsx` | Retained (read-only reference, no route dependency) | Retained |
+| Artifact                                                                                | Action                                              | Status   |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------- | -------- |
+| `packages/platform/src/master-data/`                                                    | Removed (entire dir)                                | ✓ Done   |
+| `apps/platform/api/src/master-data/routes.ts`                                           | Removed                                             | ✓ Done   |
+| `apps/platform/api/src/__tests__/master-data.test.ts`                                   | Removed (replaced by core-routes.test.ts)           | ✓ Done   |
+| `packages/platform/src/index.ts` — master-data export                                   | Removed                                             | ✓ Done   |
+| `apps/platform/api/src/app.ts` — master-data imports/services/decorations/routes        | Removed                                             | ✓ Done   |
+| `packages/platform/src/catalog/contracts.ts` — `business.master-data` entry             | Removed                                             | ✓ Done   |
+| `packages/platform/src/permissions/contracts.ts` — `business.master-data.*` permissions | Removed                                             | ✓ Done   |
+| `apps/platform/web/src/pages/TenantDesk.tsx` — master-data nav items                    | Removed                                             | ✓ Done   |
+| `apps/platform/web/src/pages/tenant/MasterDataPage.tsx`                                 | Retained (read-only reference, no route dependency) | Retained |
+| `apps/platform/web/src/pages/tenant/MasterRecordsPage.tsx`                              | Retained (read-only reference, no route dependency) | Retained |
 
 ### Module Catalog (Updated)
 
 Current registered modules in `platformModuleCatalog`:
 
-| Module Key | Scope | Status |
-|---|---|---|
-| `platform.tenants` | platform | Active |
-| `platform.users` | platform | Active |
-| `platform.roles` | platform | Active |
-| `platform.permissions` | platform | Active |
-| `platform.activation` | platform | Active |
-| `platform.audit` | platform | Active |
-| `platform.settings` | platform | Active |
-| `platform.notifications` | platform | Active |
-| `core` | tenant | Active (common definitions) |
-| `core.contact` | tenant | Active |
-| `core.company` | tenant | Active |
-| `core.product` | tenant | Active |
-| `business.items` | tenant | Future |
-| `business.billing` | tenant | Active (entry modules) |
-| `business.accounting` | tenant | Planned (`apps/accounts`) |
-| `business.reports` | tenant | Future |
-| `business.offline-sync` | tenant | Future |
-| `app.zetro` | tenant | Future |
-| `app.mail` | tenant | Future |
-| `app.blog` | tenant | Future |
-| `app.sites` | tenant | Future |
+| Module Key               | Scope    | Status                      |
+| ------------------------ | -------- | --------------------------- |
+| `platform.tenants`       | platform | Active                      |
+| `platform.users`         | platform | Active                      |
+| `platform.roles`         | platform | Active                      |
+| `platform.permissions`   | platform | Active                      |
+| `platform.activation`    | platform | Active                      |
+| `platform.audit`         | platform | Active                      |
+| `platform.settings`      | platform | Active                      |
+| `platform.notifications` | platform | Active                      |
+| `core`                   | tenant   | Active (common definitions) |
+| `core.contact`           | tenant   | Active                      |
+| `core.company`           | tenant   | Active                      |
+| `core.product`           | tenant   | Active                      |
+| `business.items`         | tenant   | Future                      |
+| `business.billing`       | tenant   | Active (entry modules)      |
+| `business.accounting`    | tenant   | Planned (`apps/accounts`)   |
+| `business.reports`       | tenant   | Future                      |
+| `business.offline-sync`  | tenant   | Future                      |
+| `app.zetro`              | tenant   | Future                      |
+| `app.mail`               | tenant   | Future                      |
+| `app.blog`               | tenant   | Future                      |
+| `app.sites`              | tenant   | Future                      |
 
 ### Boundary Decisions
 

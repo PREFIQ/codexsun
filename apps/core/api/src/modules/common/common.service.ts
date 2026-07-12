@@ -7,4 +7,3 @@ export class CommonService {
     return this.repository.listRegisteredAreas();
   }
 }
-

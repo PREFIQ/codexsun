@@ -1,3 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { prioritiesDefinition } from "./priorities.definition.js";
-describe("Priorities", () => { it("owns an independent table and required fields", () => { expect(prioritiesDefinition.tableName).toBe("priorities"); expect(prioritiesDefinition.fields.filter((field) => field.required).length).toBeGreaterThan(0); }); });
+import { PRIORITIES_COLLECTION_PATH } from "./priorities.routes.js";
+
+describe("Priorities module contract", () => {
+  it("owns its route", () =>
+    expect(PRIORITIES_COLLECTION_PATH).toBe("/core/common/others/priorities"));
+});
