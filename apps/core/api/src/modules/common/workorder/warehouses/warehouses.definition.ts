@@ -19,5 +19,5 @@ export const warehousesDefinition: CommonMasterDefinition = {
       "name": "Main Warehouse"
     }
   ],
-  "tableName": "core_common_warehouses"
+  "tableName": "warehouses"
 };

@@ -471,7 +471,10 @@ function LocationForm({
           <>
             <Field label={`${definition.label} name`} required><Input required value={value.name} onChange={(event) => update({ name: event.target.value })} /></Field>
             {definition.kind === "country" ? (
-              <Field label={`${definition.label} code`} required><Input className="font-mono" required value={value.code} onChange={(event) => update({ code: event.target.value })} /></Field>
+              <>
+                <Field label="Country code" required><Input className="font-mono uppercase" required value={value.code} onChange={(event) => update({ code: event.target.value.toUpperCase() })} /></Field>
+                <Field label="Sort order"><Input min={0} type="number" value={value.sortOrder} onChange={(event) => update({ sortOrder: Number(event.target.value) })} /></Field>
+              </>
             ) : null}
           </>
         )}

@@ -20,21 +20,21 @@
           "id": "module-tenants-database-1",
           "key": "Table",
           "updatedAt": "2026-07-11T11:15:26.838Z",
-          "value": "tenant_migrations"
+          "value": "schema_migrations"
         },
         {
           "createdAt": "2026-07-11T11:15:26.838Z",
           "id": "module-tenants-database-2",
           "key": "Table",
           "updatedAt": "2026-07-11T11:15:26.838Z",
-          "value": "tenant_module_settings"
+          "value": "module_settings"
         },
         {
           "createdAt": "2026-07-11T11:15:26.838Z",
           "id": "module-tenants-database-3",
           "key": "Table",
           "updatedAt": "2026-07-11T11:15:26.838Z",
-          "value": "tenant_users"
+          "value": "users"
         }
       ],
       "routes": [

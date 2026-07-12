@@ -184,7 +184,7 @@ async function listMigrationState() {
     });
     try {
       const [tenantRows] = await tenantConnection.query(
-        "SELECT name, applied_at FROM tenant_migrations ORDER BY applied_at, id"
+        "SELECT name, applied_at FROM schema_migrations ORDER BY applied_at, id"
       );
       console.info(`[database] tenant "${tenant.tenantCode}" (${tenant.dbName})`);
       console.table(tenantRows);

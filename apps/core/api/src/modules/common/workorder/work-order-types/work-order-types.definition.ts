@@ -19,5 +19,5 @@ export const workOrderTypesDefinition: CommonMasterDefinition = {
       "name": "General"
     }
   ],
-  "tableName": "core_common_work_order_types"
+  "tableName": "work_order_types"
 };

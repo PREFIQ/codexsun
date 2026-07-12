@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.23
+Current version: 1.0.24
 
-Release tag: v-1.0.23
+Release tag: v-1.0.24
 
-Changelog label: v 1.0.23
+Changelog label: v 1.0.24
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,18 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.24
+
+### [v 1.0.24] 2026-07-12 7:34 pm - reworking on full app
+
+#### Database Changes
+
+- Database update: Yes (auto-check).
+
+#### App Codebase Changes
+
+- Bumped workspace version to 1.0.24.
 
 ## v-1.0.23
 
@@ -242,7 +254,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 #### Database Changes
 
 - Database update: Yes (manual).
-- Added the protected Work Order placeholder seed (`WO-0000`) for `core_master_work_orders`.
+- Added the protected Work Order placeholder seed (`WO-0000`) for `work_orders`.
 - Aligned master-record protection so global and placeholder records are blocked consistently in update, status, and force-delete flows.
 
 #### App Codebase Changes

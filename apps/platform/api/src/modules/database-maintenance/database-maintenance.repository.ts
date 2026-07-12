@@ -164,7 +164,7 @@ export class DatabaseMaintenanceRepository {
     try {
       const connection = await createConnection({ database: tenant.dbName, host: tenant.dbHost || env.DB_HOST, password: env.DB_PASSWORD, port: tenant.dbPort || env.DB_PORT, timezone: "Z", user: tenant.dbUser || env.DB_USER });
       try {
-        const [rows] = await connection.query("SELECT name, applied_at FROM tenant_migrations ORDER BY applied_at, id");
+        const [rows] = await connection.query("SELECT name, applied_at FROM schema_migrations ORDER BY applied_at, id");
         return Array.isArray(rows) ? rows.map((row) => ({ appliedAt: new Date((row as { applied_at: Date | string }).applied_at).toISOString(), name: String((row as { name: string }).name) })) : [];
       } finally {
         await connection.end();

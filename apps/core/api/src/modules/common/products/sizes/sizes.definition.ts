@@ -19,5 +19,5 @@ export const sizesDefinition: CommonMasterDefinition = {
       "name": "Standard"
     }
   ],
-  "tableName": "core_common_sizes"
+  "tableName": "sizes"
 };

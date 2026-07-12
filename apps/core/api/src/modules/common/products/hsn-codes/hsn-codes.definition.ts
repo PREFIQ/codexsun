@@ -27,5 +27,5 @@ export const hsnCodesDefinition: CommonMasterDefinition = {
       "description": "General"
     }
   ],
-  "tableName": "core_common_hsn_codes"
+  "tableName": "hsn_codes"
 };

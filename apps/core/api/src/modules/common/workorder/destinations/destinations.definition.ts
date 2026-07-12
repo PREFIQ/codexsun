@@ -19,5 +19,5 @@ export const destinationsDefinition: CommonMasterDefinition = {
       "name": "Local"
     }
   ],
-  "tableName": "core_common_destinations"
+  "tableName": "destinations"
 };

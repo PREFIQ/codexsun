@@ -8,13 +8,18 @@ export const tenantMigration = {
 
 export const tenantRuntimeMigrations = [
   {
-    description: "Tenant runtime foundation tables, module settings, users, and tenant migration ledger.",
+    description: "Tenant runtime foundation tables, module settings, identity/access, and tenant migration ledger.",
     name: "001_tenant_foundation",
     statements: [
-      "CREATE TABLE IF NOT EXISTS tenant_migrations (...)",
-      "CREATE TABLE IF NOT EXISTS tenant_module_settings (...)",
-      "CREATE TABLE IF NOT EXISTS tenant_users (...)",
-      "INSERT IGNORE INTO tenant_migrations (name) VALUES ('001_tenant_foundation')"
+      "RENAME legacy tenant_* tables to module-owned names when present",
+      "CREATE TABLE IF NOT EXISTS schema_migrations (...)",
+      "CREATE TABLE IF NOT EXISTS module_settings (...)",
+      "CREATE TABLE IF NOT EXISTS users (...)",
+      "CREATE TABLE IF NOT EXISTS roles (...)",
+      "CREATE TABLE IF NOT EXISTS permissions (...)",
+      "CREATE TABLE IF NOT EXISTS role_permissions (...)",
+      "CREATE TABLE IF NOT EXISTS user_roles (...)",
+      "INSERT IGNORE INTO schema_migrations (name) VALUES ('001_tenant_foundation'), ('002_runtime_table_names'), ('004_flatten_access_table_names')"
     ]
   }
 ] as const;
@@ -66,8 +71,9 @@ export async function migrateTenantRegistryModule(database: Kysely<PlatformDatab
 
 export async function migrateTenantRuntimeModule(database: Kysely<TenantDatabase>) {
   console.info("[database] migrating tenant runtime module tables");
+  await renameLegacyTenantRuntimeTables(database);
   await database.schema
-    .createTable("tenant_migrations")
+    .createTable("schema_migrations")
     .ifNotExists()
     .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
     .addColumn("name", "varchar(160)", (col) => col.notNull().unique())
@@ -75,7 +81,7 @@ export async function migrateTenantRuntimeModule(database: Kysely<TenantDatabase
     .execute();
 
   await database.schema
-    .createTable("tenant_module_settings")
+    .createTable("module_settings")
     .ifNotExists()
     .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
     .addColumn("uuid", "varchar(8)", (col) => col.notNull().unique())
@@ -87,7 +93,7 @@ export async function migrateTenantRuntimeModule(database: Kysely<TenantDatabase
     .execute();
 
   await database.schema
-    .createTable("tenant_users")
+    .createTable("users")
     .ifNotExists()
     .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
     .addColumn("uuid", "varchar(8)", (col) => col.notNull().unique())
@@ -100,8 +106,80 @@ export async function migrateTenantRuntimeModule(database: Kysely<TenantDatabase
     .addColumn("updated_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .execute();
 
-  await database.insertInto("tenant_migrations").ignore().values({ name: "001_tenant_foundation" }).execute();
-  console.info("[database] tenant runtime migration applied: 001_tenant_foundation");
+  await database.schema
+    .createTable("roles")
+    .ifNotExists()
+    .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
+    .addColumn("uuid", "varchar(8)", (col) => col.notNull().unique())
+    .addColumn("key", "varchar(120)", (col) => col.notNull().unique())
+    .addColumn("label", "varchar(160)", (col) => col.notNull())
+    .addColumn("status", "varchar(24)", (col) => col.notNull().defaultTo("active"))
+    .addColumn("created_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("updated_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .execute();
+
+  await database.schema
+    .createTable("permissions")
+    .ifNotExists()
+    .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
+    .addColumn("uuid", "varchar(8)", (col) => col.notNull().unique())
+    .addColumn("key", "varchar(160)", (col) => col.notNull().unique())
+    .addColumn("label", "varchar(160)", (col) => col.notNull())
+    .addColumn("status", "varchar(24)", (col) => col.notNull().defaultTo("active"))
+    .addColumn("created_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .addColumn("updated_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
+    .execute();
+
+  await database.schema
+    .createTable("role_permissions")
+    .ifNotExists()
+    .addColumn("role_id", "integer", (col) => col.notNull())
+    .addColumn("permission_id", "integer", (col) => col.notNull())
+    .addPrimaryKeyConstraint("role_permissions_pk", ["role_id", "permission_id"])
+    .execute();
+
+  await database.schema
+    .createTable("user_roles")
+    .ifNotExists()
+    .addColumn("user_id", "integer", (col) => col.notNull())
+    .addColumn("role_id", "integer", (col) => col.notNull())
+    .addPrimaryKeyConstraint("user_roles_pk", ["user_id", "role_id"])
+    .execute();
+
+  await database.insertInto("schema_migrations").ignore().values([{ name: "001_tenant_foundation" }, { name: "002_runtime_table_names" }, { name: "004_flatten_access_table_names" }]).execute();
+  console.info("[database] tenant runtime migrations applied through: 004_flatten_access_table_names");
+}
+
+const tenantRuntimeTableRenames = [
+  ["tenant_migrations", "schema_migrations"],
+  ["tenant_module_settings", "module_settings"],
+  ["tenant_users", "users"],
+  ["tenant_roles", "roles"],
+  ["tenant_permissions", "permissions"],
+  ["tenant_role_permissions", "role_permissions"],
+  ["tenant_user_roles", "user_roles"],
+  ["access_users", "users"],
+  ["access_roles", "roles"],
+  ["access_permissions", "permissions"],
+  ["access_role_permissions", "role_permissions"],
+  ["access_user_roles", "user_roles"]
+] as const;
+
+async function renameLegacyTenantRuntimeTables(database: Kysely<TenantDatabase>) {
+  for (const [legacyName, currentName] of tenantRuntimeTableRenames) {
+    if (await tableExists(database, legacyName) && !(await tableExists(database, currentName))) {
+      await sql.raw(`RENAME TABLE \`${legacyName}\` TO \`${currentName}\``).execute(database);
+    }
+  }
+}
+
+async function tableExists(database: Kysely<TenantDatabase>, tableName: string) {
+  const result = await sql<{ table_count: number | string }>`
+    SELECT COUNT(*) AS table_count
+    FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${tableName}
+  `.execute(database);
+  return Number(result.rows[0]?.table_count ?? 0) > 0;
 }
 
 async function ensureTenantColumns(database: Kysely<PlatformDatabase>) {

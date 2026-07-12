@@ -3,8 +3,10 @@ import { env } from "../env.js";
 const pools = new Map<string, Pool>();
 const migrated = new Set<string>();
 export function resolveKitchenServeDatabaseName(value: unknown) {
-  const name = typeof value === "string" && value.trim() ? value.trim() : env.DB_MASTER_NAME;
+  const name = typeof value === "string" ? value.trim() : "";
+  if (!name) throw new Error("x-tenant-db is required for KitchenServe database access.");
   if (!/^[a-zA-Z0-9_]+$/.test(name)) throw new Error("Invalid tenant database name.");
+  if (name === env.DB_MASTER_NAME) throw new Error("KitchenServe tables cannot use the Platform master database.");
   return name;
 }
 export async function getKitchenServePool(name: string) {

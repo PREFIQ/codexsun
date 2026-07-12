@@ -22,7 +22,7 @@ CODEXSUN is intended to be:
 - Tenant database registry exists in the master database through `tenant_databases`.
 - Tenant domain mapping exists in the master database through `tenant_domain_mappings`.
 - Tenant module activation exists through `tenant_module_activation`.
-- Tenant login resolves `tenantCode`, verifies active tenant status, resolves the tenant database, and reads `tenant_users` from that tenant database.
+- Tenant login resolves `tenantCode`, verifies active tenant status, resolves the tenant database, and reads `users` from that tenant database.
 - Tenant sessions include `tenantId` and `tenantCode`.
 - Tenant web API calls send `x-tenant-id`.
 - Tenant API routes reject missing or mismatched tenant context.

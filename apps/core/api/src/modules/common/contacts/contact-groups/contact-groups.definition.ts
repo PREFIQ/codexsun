@@ -26,5 +26,5 @@ export const contactGroupsDefinition: CommonMasterDefinition = {
       "name": "Web Clients"
     }
   ],
-  "tableName": "core_common_contact_groups"
+  "tableName": "contact_groups"
 };

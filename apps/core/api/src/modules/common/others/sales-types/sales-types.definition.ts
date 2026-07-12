@@ -31,5 +31,5 @@ export const salesTypesDefinition: CommonMasterDefinition = {
       "description": "Wholesale sale"
     }
   ],
-  "tableName": "core_common_sales_types"
+  "tableName": "sales_types"
 };

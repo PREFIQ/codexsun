@@ -12,7 +12,7 @@ export class EntitlementAccessService {
     const tenant = await this.tenants.findByIdOrCode(String(tenantId));
     if (!tenant) return null;
     const moduleKeys = await this.entitlements.resolveTenantModuleKeys(tenant.id);
-    const defaultLandingApp = resolveLandingApp(tenant.defaultLandingApp, moduleKeys);
+    const defaultLandingApp = resolveLandingApp(tenant.defaultLandingApp, [...tenant.enabledModuleKeys, ...moduleKeys]);
     return this.tenants.updateAccess(tenant, moduleKeys, defaultLandingApp);
   }
 

@@ -1,4 +1,5 @@
 import { requiredClientEnv } from "../env/client-env";
+import { getTenantDbName } from "./tenant-context";
 
 const API_BASE_URL = requiredClientEnv("VITE_CORE_API_URL");
 
@@ -14,7 +15,8 @@ export type ApiEnvelope<T> = {
 export async function coreApiGet<T>(path: string) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
-      Accept: "application/json"
+      Accept: "application/json",
+      ...(getTenantDbName() ? { "x-tenant-db": getTenantDbName()! } : {})
     }
   });
 
@@ -39,7 +41,8 @@ async function coreApiWrite<T>(method: "POST" | "PUT", path: string, body: unkno
     body: JSON.stringify(body),
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      ...(getTenantDbName() ? { "x-tenant-db": getTenantDbName()! } : {})
     },
     method
   });

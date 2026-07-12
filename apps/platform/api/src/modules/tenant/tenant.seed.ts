@@ -74,7 +74,7 @@ export async function seedTenantRuntimeModule(database: Kysely<TenantDatabase>, 
   console.info(`[seeder] seeding tenant "${tenant.tenantCode}" app modules (${moduleKeys.length} modules)`);
 
   await database
-    .updateTable("tenant_module_settings")
+    .updateTable("module_settings")
     .set({
       enabled: false,
       updated_at: sql`CURRENT_TIMESTAMP`
@@ -89,7 +89,7 @@ export async function seedTenantRuntimeModule(database: Kysely<TenantDatabase>, 
     });
 
     await database
-      .insertInto("tenant_module_settings")
+      .insertInto("module_settings")
       .values({
         enabled: enabledKeys.has(moduleKey),
         module_key: moduleKey,
@@ -157,7 +157,9 @@ async function seedTenantAdmin(database: Kysely<TenantDatabase>) {
     return;
   }
 
-  const existing = await database.selectFrom("tenant_users").select("id").where("email", "=", email).executeTakeFirst();
+  await database.insertInto("roles").values({ key: "admin", label: "Tenant Administrator", status: "active", uuid: stableUuid("tenant-role:admin") }).onDuplicateKeyUpdate({ label: "Tenant Administrator", status: "active" }).execute();
+  const adminRole = await database.selectFrom("roles").select("id").where("key", "=", "admin").executeTakeFirstOrThrow();
+  const existing = await database.selectFrom("users").select("id").where("email", "=", email).executeTakeFirst();
   const row = {
     email,
     name,
@@ -169,17 +171,19 @@ async function seedTenantAdmin(database: Kysely<TenantDatabase>) {
   };
 
   if (existing) {
-    await database.updateTable("tenant_users").set(row).where("id", "=", existing.id).execute();
+    await database.updateTable("users").set(row).where("id", "=", existing.id).execute();
+    await database.insertInto("user_roles").values({ role_id: adminRole.id, user_id: existing.id }).ignore().execute();
     console.info(`[seeder] tenant admin updated: ${email}`);
     return;
   }
 
-  await database
-    .insertInto("tenant_users")
+  const inserted = await database
+    .insertInto("users")
     .values({
       ...row
     })
-    .execute();
+    .executeTakeFirstOrThrow();
+  await database.insertInto("user_roles").values({ role_id: adminRole.id, user_id: Number(inserted.insertId) }).ignore().execute();
   console.info(`[seeder] tenant admin created: ${email}`);
 }
 

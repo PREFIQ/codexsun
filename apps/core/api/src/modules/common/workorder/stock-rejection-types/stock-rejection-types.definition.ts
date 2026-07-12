@@ -22,5 +22,5 @@ export const stockRejectionTypesDefinition: CommonMasterDefinition = {
       "name": "Quality issue"
     }
   ],
-  "tableName": "core_common_stock_rejection_types"
+  "tableName": "stock_rejection_types"
 };

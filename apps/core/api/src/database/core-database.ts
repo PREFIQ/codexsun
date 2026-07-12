@@ -1,4 +1,5 @@
-import { Kysely, MysqlDialect } from "kysely";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { Kysely, MysqlDialect, sql } from "kysely";
 import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
 import { env } from "../env.js";
@@ -9,49 +10,112 @@ import { migrateOrganisationModule } from "../modules/organisation/index.js";
 
 export type CoreDatabase = Record<string, unknown>;
 
-let database: Kysely<CoreDatabase> | null = null;
+const context = new AsyncLocalStorage<string>();
+const connections = new Map<string, Kysely<CoreDatabase>>();
+const migrated = new Set<string>();
+const bootstrapping = new Map<string, Promise<void>>();
 
-export function getCoreDatabase() {
-  if (!database) {
-    database = new Kysely<CoreDatabase>({
-      dialect: new MysqlDialect({
-        pool: createPool({
-          database: env.DB_MASTER_NAME,
-          host: env.DB_HOST,
-          password: env.DB_PASSWORD,
-          port: env.DB_PORT,
-          timezone: "Z",
-          user: env.DB_USER
-        } satisfies PoolOptions)
-      })
-    });
-  }
+export function resolveCoreDatabaseName(value: unknown) {
+  const requested = typeof value === "string" ? value.trim() : "";
+  if (!requested) throw new Error("x-tenant-db is required for Core database access.");
+  if (!/^[a-zA-Z0-9_]+$/.test(requested)) throw new Error("Invalid tenant database name.");
+  if (requested === env.DB_MASTER_NAME) throw new Error("Core tables cannot use the Platform master database.");
+  return requested;
+}
 
+export function runWithCoreDatabase<T>(databaseName: string, callback: () => T) {
+  return context.run(resolveCoreDatabaseName(databaseName), callback);
+}
+
+export function getCoreDatabase(databaseName = context.getStore()) {
+  const name = resolveCoreDatabaseName(databaseName);
+  const existing = connections.get(name);
+  if (existing) return existing;
+  const database = new Kysely<CoreDatabase>({
+    dialect: new MysqlDialect({
+      pool: createPool({
+        database: name,
+        host: env.DB_HOST,
+        password: env.DB_PASSWORD,
+        port: env.DB_PORT,
+        timezone: "Z",
+        user: env.DB_USER
+      } satisfies PoolOptions)
+    })
+  });
+  connections.set(name, database);
   return database;
 }
 
-export async function closeCoreDatabase() {
-  if (!database) return;
-  await database.destroy();
-  database = null;
+export async function bootstrapCoreDatabase(databaseName: string) {
+  const name = resolveCoreDatabaseName(databaseName);
+  if (migrated.has(name)) return;
+  const active = bootstrapping.get(name);
+  if (active) return active;
+  const promise = runWithCoreDatabase(name, async () => {
+    await ensureDatabase(name);
+    const database = getCoreDatabase(name);
+    await flattenLegacyCoreTableNames(database);
+    await migrateCommonModule(database);
+    await migrateOrganisationModule(database);
+    await migrateMasterModule(database);
+    await seedMasterModule();
+    await seedCommonModule();
+    migrated.add(name);
+  });
+  bootstrapping.set(name, promise);
+  try {
+    await promise;
+  } finally {
+    bootstrapping.delete(name);
+  }
 }
 
-export async function bootstrapCoreDatabase() {
-  await ensureDatabase(env.DB_MASTER_NAME);
-  const db = getCoreDatabase();
+async function flattenLegacyCoreTableNames(database: Kysely<CoreDatabase>) {
+  await sql.raw(
+    "CREATE TABLE IF NOT EXISTS schema_migrations (" +
+    "id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(160) NOT NULL UNIQUE, " +
+    "applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+  ).execute(database);
+  const result = await sql<{ table_name: string }>`
+    SELECT TABLE_NAME AS table_name
+    FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'core\_%'
+    ORDER BY TABLE_NAME
+  `.execute(database);
 
-  await migrateCommonModule(db);
-  await migrateOrganisationModule(db);
-  await migrateMasterModule(db);
-  await seedMasterModule();
-  await seedCommonModule();
+  for (const { table_name: legacyName } of result.rows) {
+    const currentName = legacyName
+      .replace(/^core_common_/, "")
+      .replace(/^core_master_/, "")
+      .replace(/^core_/, "");
+    const existing = await sql<{ table_count: number | string }>`
+      SELECT COUNT(*) AS table_count
+      FROM information_schema.TABLES
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ${currentName}
+    `.execute(database);
+    if (Number(existing.rows[0]?.table_count ?? 0) > 0) {
+      throw new Error(`Cannot flatten Core table ${legacyName}: ${currentName} already exists.`);
+    }
+    await sql.raw(`RENAME TABLE \`${legacyName}\` TO \`${currentName}\``).execute(database);
+  }
+
+  await sql`INSERT IGNORE INTO schema_migrations (name) VALUES ('003_flatten_core_table_names')`.execute(database);
+}
+
+export async function bootstrapRegisteredCoreDatabases() {
+  const databaseNames = await registeredTenantDatabaseNames();
+  await Promise.all(databaseNames.map((databaseName) => bootstrapCoreDatabase(databaseName)));
+}
+
+export async function closeCoreDatabase() {
+  const open = [...connections.values()];
+  connections.clear();
+  migrated.clear();
+  await Promise.all(open.map((database) => database.destroy()));
 }
 
 async function ensureDatabase(databaseName: string) {
-  if (!/^[a-zA-Z0-9_]+$/.test(databaseName)) {
-    throw new Error(`Invalid database name: ${databaseName}`);
-  }
-
   const connection = await createConnection({
     host: env.DB_HOST,
     password: env.DB_PASSWORD,
@@ -61,6 +125,23 @@ async function ensureDatabase(databaseName: string) {
   });
   try {
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${databaseName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  } finally {
+    await connection.end();
+  }
+}
+
+async function registeredTenantDatabaseNames() {
+  const connection = await createConnection({
+    database: env.DB_MASTER_NAME,
+    host: env.DB_HOST,
+    password: env.DB_PASSWORD,
+    port: env.DB_PORT,
+    timezone: "Z",
+    user: env.DB_USER
+  });
+  try {
+    const [rows] = await connection.query("SELECT db_name FROM tenants WHERE db_name IS NOT NULL AND status <> 'deleted'");
+    return (rows as Array<{ db_name: string }>).map(({ db_name }) => resolveCoreDatabaseName(db_name));
   } finally {
     await connection.end();
   }

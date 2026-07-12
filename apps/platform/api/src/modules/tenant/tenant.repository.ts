@@ -185,7 +185,7 @@ export class TenantRepository {
   async findTenantUserByEmail(tenant: Tenant, email: string) {
     const database = getTenantDatabase(tenant);
     const row = await database
-      .selectFrom("tenant_users")
+      .selectFrom("users")
       .select(["id", "uuid", "name", "email", "password_hash", "role", "status"])
       .where(sql<string>`LOWER(email)`, "=", email.trim().toLowerCase())
       .executeTakeFirst();

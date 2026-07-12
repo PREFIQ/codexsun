@@ -15,16 +15,19 @@ const migrated = new Set<string>();
 
 export function resolveAccountsDatabaseName(value: unknown) {
   const requested = typeof value === "string" ? value.trim() : "";
-  return assertDatabaseName(requested || env.DB_MASTER_NAME);
+  if (!requested) throw new Error("x-tenant-db is required for Accounts database access.");
+  const name = assertDatabaseName(requested);
+  if (name === env.DB_MASTER_NAME) throw new Error("Accounts tables cannot use the Platform master database.");
+  return name;
 }
 
-export async function getAccountsDatabase(databaseName = env.DB_MASTER_NAME) {
+export async function getAccountsDatabase(databaseName: string) {
   const name = assertDatabaseName(databaseName);
   await bootstrapAccountsDatabase(name);
   return openAccountsDatabase(name);
 }
 
-export async function bootstrapAccountsDatabase(databaseName = env.DB_MASTER_NAME) {
+export async function bootstrapAccountsDatabase(databaseName: string) {
   const name = assertDatabaseName(databaseName);
   if (migrated.has(name)) return;
 
@@ -37,6 +40,11 @@ export async function bootstrapAccountsDatabase(databaseName = env.DB_MASTER_NAM
   await seedLedgersModule(db);
   await seedAccountsSettingsModule(db);
   migrated.add(name);
+}
+
+export async function bootstrapRegisteredAccountsDatabases() {
+  const databaseNames = await registeredTenantDatabaseNames();
+  await Promise.all(databaseNames.map((databaseName) => bootstrapAccountsDatabase(databaseName)));
 }
 
 function openAccountsDatabase(databaseName: string) {
@@ -71,6 +79,23 @@ async function ensureDatabase(databaseName: string) {
   });
   try {
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${name}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+  } finally {
+    await connection.end();
+  }
+}
+
+async function registeredTenantDatabaseNames() {
+  const connection = await createConnection({
+    database: env.DB_MASTER_NAME,
+    host: env.DB_HOST,
+    password: env.DB_PASSWORD,
+    port: env.DB_PORT,
+    timezone: "Z",
+    user: env.DB_USER
+  });
+  try {
+    const [rows] = await connection.query("SELECT db_name FROM tenants WHERE db_name IS NOT NULL AND status <> 'deleted'");
+    return (rows as Array<{ db_name: string }>).map(({ db_name }) => resolveAccountsDatabaseName(db_name));
   } finally {
     await connection.end();
   }

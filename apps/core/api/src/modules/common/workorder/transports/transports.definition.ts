@@ -54,5 +54,5 @@ export const transportsDefinition: CommonMasterDefinition = {
       "name": "Self"
     }
   ],
-  "tableName": "core_common_transports"
+  "tableName": "transports"
 };

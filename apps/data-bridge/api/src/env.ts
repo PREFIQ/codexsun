@@ -6,11 +6,6 @@ const schema = z.object({
   DATA_BRIDGE_API_HOST: z.string().default("127.0.0.1"),
   DATA_BRIDGE_API_PORT: z.coerce.number().int().positive(),
   DATA_BRIDGE_WEB_ORIGIN: z.string().min(1),
-  DB_HOST: z.string().min(1),
-  DB_MASTER_NAME: z.string().min(1),
-  DB_PASSWORD: z.string(),
-  DB_PORT: z.coerce.number().int().positive(),
-  DB_USER: z.string().min(1),
   NODE_ENV: z.enum(["development", "test", "staging", "production"]).default("development"),
   PLATFORM_WEB_ORIGIN: z.string().min(1)
 });

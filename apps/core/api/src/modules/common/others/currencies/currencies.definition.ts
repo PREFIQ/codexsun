@@ -31,5 +31,5 @@ export const currenciesDefinition: CommonMasterDefinition = {
       "symbol": "$"
     }
   ],
-  "tableName": "core_common_currencies"
+  "tableName": "currencies"
 };

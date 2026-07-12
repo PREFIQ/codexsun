@@ -5,16 +5,16 @@ export const countryLocationDefinition: LocationDefinition = {
   collectionPath: "/core/common/location/countries",
   defaultSortLabel: "India first, then country name",
   dependents: [
-    { columnName: "country_id", label: "states", tableName: "core_states" },
-    { columnName: "country_id", label: "districts", tableName: "core_districts" },
-    { columnName: "country_id", label: "cities", tableName: "core_cities" },
-    { columnName: "country_id", label: "pincodes", tableName: "core_pincodes" }
+    { columnName: "country_id", label: "states", tableName: "states" },
+    { columnName: "country_id", label: "districts", tableName: "districts" },
+    { columnName: "country_id", label: "cities", tableName: "cities" },
+    { columnName: "country_id", label: "pincodes", tableName: "pincodes" }
   ],
   kind: "country",
   label: "Country",
   notFoundCode: "COUNTRY_NOT_FOUND",
   notFoundMessage: "Country was not found.",
-  tableName: "core_countries"
+  tableName: "countries"
 };
 
 export const stateLocationDefinition: LocationDefinition = {
@@ -22,15 +22,15 @@ export const stateLocationDefinition: LocationDefinition = {
   collectionPath: "/core/common/location/states",
   defaultSortLabel: "Unknown first, then GST state code",
   dependents: [
-    { columnName: "state_id", label: "districts", tableName: "core_districts" },
-    { columnName: "state_id", label: "cities", tableName: "core_cities" },
-    { columnName: "state_id", label: "pincodes", tableName: "core_pincodes" }
+    { columnName: "state_id", label: "districts", tableName: "districts" },
+    { columnName: "state_id", label: "cities", tableName: "cities" },
+    { columnName: "state_id", label: "pincodes", tableName: "pincodes" }
   ],
   kind: "state",
   label: "State",
   notFoundCode: "STATE_NOT_FOUND",
   notFoundMessage: "State was not found.",
-  tableName: "core_states"
+  tableName: "states"
 };
 
 export const districtLocationDefinition: LocationDefinition = {
@@ -38,14 +38,14 @@ export const districtLocationDefinition: LocationDefinition = {
   collectionPath: "/core/common/location/districts",
   defaultSortLabel: "Unknown first, then district name",
   dependents: [
-    { columnName: "district_id", label: "cities", tableName: "core_cities" },
-    { columnName: "district_id", label: "pincodes", tableName: "core_pincodes" }
+    { columnName: "district_id", label: "cities", tableName: "cities" },
+    { columnName: "district_id", label: "pincodes", tableName: "pincodes" }
   ],
   kind: "district",
   label: "District",
   notFoundCode: "DISTRICT_NOT_FOUND",
   notFoundMessage: "District was not found.",
-  tableName: "core_districts"
+  tableName: "districts"
 };
 
 export const cityLocationDefinition: LocationDefinition = {
@@ -53,13 +53,13 @@ export const cityLocationDefinition: LocationDefinition = {
   collectionPath: "/core/common/location/cities",
   defaultSortLabel: "Unknown first, then city name",
   dependents: [
-    { columnName: "city_id", label: "pincodes", tableName: "core_pincodes" }
+    { columnName: "city_id", label: "pincodes", tableName: "pincodes" }
   ],
   kind: "city",
   label: "City",
   notFoundCode: "CITY_NOT_FOUND",
   notFoundMessage: "City was not found.",
-  tableName: "core_cities"
+  tableName: "cities"
 };
 
 export const pincodeLocationDefinition: LocationDefinition = {
@@ -71,7 +71,7 @@ export const pincodeLocationDefinition: LocationDefinition = {
   label: "Pincode",
   notFoundCode: "PINCODE_NOT_FOUND",
   notFoundMessage: "Pincode was not found.",
-  tableName: "core_pincodes"
+  tableName: "pincodes"
 };
 
 export const locationDefinitions = [

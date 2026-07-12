@@ -35,6 +35,15 @@ Migration Projects is the orchestration aggregate. Other modules own their recor
 - Source databases are read-only unless an approved adapter explicitly requires otherwise.
 - Reconciliation and customer sign-off are required before completion.
 
+## Locked Existing-Record Policy
+
+- If a Source record already exists in Target, the affected table stops immediately.
+- Existing Target records are never inserted over or overwritten automatically.
+- Every conflict requires an individual `override` or `reject` decision.
+- Each decision requires the conflict reference, Source and Target record references, actor, reason, and timestamp.
+- Every decision must produce an immutable audit entry.
+- A stopped table can resume only after all conflicts have decisions, the query plan remains approved, and its checksum is unchanged.
+
 ## Scaffold State
 
 The first scaffold supplies a dedicated API and web bundle, workflow contract, Super Admin navigation, and locked UI. Persistence, connection adapters, encrypted secrets, permission policies, schema diff engines, transformation runners, and execution workers intentionally remain disabled until their contracts are reviewed and approved.

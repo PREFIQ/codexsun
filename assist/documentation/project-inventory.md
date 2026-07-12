@@ -1,5 +1,7 @@
 # CODEXSUN Project Inventory
 
+> Database boundary update: the Platform master database contains only global Platform/Super Admin tables. Core, Billing, Accounts, KitchenServe, and tenant identity/access tables are tenant-database owned. Project Manager, Task Manager, and Data Bridge remain JSON-backed.
+
 ## Purpose
 
 This document records what is present in the current CODEXSUN workspace. Use it as the first practical inventory before

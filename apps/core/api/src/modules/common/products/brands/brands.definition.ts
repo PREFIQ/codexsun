@@ -19,5 +19,5 @@ export const brandsDefinition: CommonMasterDefinition = {
       "name": "General"
     }
   ],
-  "tableName": "core_common_brands"
+  "tableName": "brands"
 };

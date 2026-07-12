@@ -4,6 +4,6 @@ export const companyDefinition = {
   key: "company",
   label: "Companies",
   route: "companies",
-  tableName: "core_master_companies",
+  tableName: "companies",
   title: "Company"
 } as const satisfies MasterDefinition;

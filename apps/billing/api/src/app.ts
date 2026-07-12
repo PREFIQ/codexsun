@@ -1,6 +1,6 @@
 import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
 import type { HealthCheck } from "@codexsun/framework/health";
-import { bootstrapBillingDatabase, closeAllBillingDatabases } from "./database/billing-database.js";
+import { bootstrapRegisteredBillingDatabases, closeAllBillingDatabases } from "./database/billing-database.js";
 import { env } from "./env.js";
 import { exportSalesModule } from "./modules/export-sales/index.js";
 import { purchaseModule } from "./modules/purchase/index.js";
@@ -39,6 +39,7 @@ export async function createApp() {
 
   registerRequestLogging(app);
   registerHealthRoute(app, healthChecks);
+  await bootstrapRegisteredBillingDatabases();
   await salesModule.register(app);
   await purchaseModule.register(app);
   await exportSalesModule.register(app);
@@ -46,13 +47,5 @@ export async function createApp() {
   await paymentModule.register(app);
   await receiptModule.register(app);
   await billingSettingsModule.register(app);
-  void bootstrapBillingDatabase()
-    .then(() => {
-      console.info("[billing.boot] database bootstrap completed");
-    })
-    .catch((error: unknown) => {
-      console.error("[billing.boot] database bootstrap failed", error);
-    });
-
   return app;
 }

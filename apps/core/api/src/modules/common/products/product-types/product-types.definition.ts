@@ -22,5 +22,5 @@ export const productTypesDefinition: CommonMasterDefinition = {
       "name": "Service"
     }
   ],
-  "tableName": "core_common_product_types"
+  "tableName": "product_types"
 };

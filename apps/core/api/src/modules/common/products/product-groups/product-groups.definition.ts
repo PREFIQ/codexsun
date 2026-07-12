@@ -19,5 +19,5 @@ export const productGroupsDefinition: CommonMasterDefinition = {
       "name": "General"
     }
   ],
-  "tableName": "core_common_product_groups"
+  "tableName": "product_groups"
 };

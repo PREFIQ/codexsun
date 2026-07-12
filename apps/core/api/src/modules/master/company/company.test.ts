@@ -3,6 +3,6 @@ import { companyDefinition } from "../../organisation/company/company.definition
 
 describe("Company organisation wrapper", () => {
   it("points at the organisation-owned company table", () => {
-    expect(companyDefinition.tableName).toBe("core_master_companies");
+    expect(companyDefinition.tableName).toBe("companies");
   });
 });

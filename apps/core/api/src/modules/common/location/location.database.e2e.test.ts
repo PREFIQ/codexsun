@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const runDbE2e = process.env.CODEXSUN_DB_E2E === "1";
 const suffix = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-const masterDb = `codexsun_core_location_e2e_${suffix}`;
+const masterDb = `codexsun_core_location_master_e2e_${suffix}`;
+const tenantDb = `codexsun_core_location_tenant_e2e_${suffix}`;
 
 describe.skipIf(!runDbE2e)("core common location database e2e", () => {
   beforeAll(() => {
@@ -24,6 +25,7 @@ describe.skipIf(!runDbE2e)("core common location database e2e", () => {
     });
     try {
       await connection.query(`DROP DATABASE IF EXISTS \`${masterDb}\``);
+      await connection.query(`DROP DATABASE IF EXISTS \`${tenantDb}\``);
     } finally {
       await connection.end();
     }
@@ -32,6 +34,11 @@ describe.skipIf(!runDbE2e)("core common location database e2e", () => {
   it("seeds readable location records and isolates tenant-specific records", async () => {
     const { createApp } = await import("../../../app.js");
     const app = await createApp();
+    const originalInject = app.inject.bind(app);
+    app.inject = ((options: { headers?: Record<string, string>; [key: string]: unknown }) => originalInject({
+      ...options,
+      headers: { "x-tenant-db": tenantDb, ...(options.headers ?? {}) }
+    } as never)) as typeof app.inject;
 
     const countries = await app.inject({ method: "GET", url: "/core/common/location/countries" });
     expect(countries.statusCode).toBe(200);
@@ -523,5 +530,5 @@ describe.skipIf(!runDbE2e)("core common location database e2e", () => {
     expect(betaGroups.json().data.some((record: { name: string }) => record.name === "Tenant Alpha Group")).toBe(false);
 
     await app.close();
-  }, 30000);
+  }, 120000);
 });

@@ -177,5 +177,5 @@ export const bankNamesDefinition: CommonMasterDefinition = {
   "label": "Bank Names",
   "path": "/core/common/contacts/bank-names",
   "seeds": bankNames.map((name) => ({ name })),
-  "tableName": "core_common_bank_names"
+  "tableName": "bank_names"
 };

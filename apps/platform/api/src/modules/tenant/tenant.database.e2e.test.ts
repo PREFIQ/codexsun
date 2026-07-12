@@ -34,6 +34,7 @@ describe.skipIf(!runDbE2e)("tenant database e2e", () => {
       await connection.query(`DROP DATABASE IF EXISTS \`${masterDb}\``);
       await connection.query(`DROP DATABASE IF EXISTS \`${tenantOneDb}\``);
       await connection.query(`DROP DATABASE IF EXISTS \`${tenantTwoDb}\``);
+      await connection.query(`DROP DATABASE IF EXISTS \`e2e_seed_${suffix}\``);
     } finally {
       await connection.end();
     }
@@ -91,12 +92,12 @@ describe.skipIf(!runDbE2e)("tenant database e2e", () => {
 
     try {
       const tenantOneModules = await tenantOneDatabase
-        .selectFrom("tenant_module_settings")
+        .selectFrom("module_settings")
         .select("module_key")
         .orderBy("module_key")
         .execute();
       const tenantTwoModules = await tenantTwoDatabase
-        .selectFrom("tenant_module_settings")
+        .selectFrom("module_settings")
         .select("module_key")
         .orderBy("module_key")
         .execute();
@@ -115,6 +116,7 @@ describe.skipIf(!runDbE2e)("tenant database e2e", () => {
     const { TenantService } = await import("./tenant.service.js");
 
     await bootstrapPlatformDatabase();
+    await seedDefaultTenant();
     const service = new TenantService();
     const existing = await service.getTenant("E2ESEED");
     expect(existing).not.toBeNull();
@@ -139,7 +141,7 @@ describe.skipIf(!runDbE2e)("tenant database e2e", () => {
     await seedDefaultTenant();
 
     const afterRestartSeed = await service.getTenant("E2ESEED");
-    expect(afterRestartSeed?.enabledModuleKeys).toEqual(["platform.application", "billing.sales"]);
+    expect(afterRestartSeed?.enabledModuleKeys.slice().sort()).toEqual(["billing.sales", "platform.application"]);
     expect(afterRestartSeed?.defaultLandingApp).toBe("billing");
   });
 });

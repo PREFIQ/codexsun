@@ -4,9 +4,9 @@ import { getCoreDatabase } from "../../database/core-database.js";
 
 export async function seedMasterModule() {
   const database = getCoreDatabase();
-  await seedReserved(database, "core_master_contacts", "global-contact-reserved", "c0000000", "C-0000");
-  await seedReserved(database, "core_master_products", "global-product-reserved", "p0000000", "P-0000");
-  await seedReserved(database, "core_master_work_orders", "global-work-order-reserved", "w0000000", "WO-0000");
+  await seedReserved(database, "contacts", "global-contact-reserved", "c0000000", "C-0000");
+  await seedReserved(database, "products", "global-product-reserved", "p0000000", "P-0000");
+  await seedReserved(database, "work_orders", "global-work-order-reserved", "w0000000", "WO-0000");
   await seedDefaultCompanies(database);
   return { seeded: true, module: "core.master" };
 }
@@ -25,7 +25,7 @@ async function seedDefaultCompanies(database: ReturnType<typeof getCoreDatabase>
     const tenantKey = slug(tenant.tenantCode || tenant.tenantId);
     const name = tenant.tenantName.trim() || "Codexsun";
     await sql`
-      INSERT IGNORE INTO core_master_companies
+      INSERT IGNORE INTO companies
         (id, uuid, tenant_id, code, name, legal_name, description, status, is_active, opening_balance, credit_limit)
       VALUES (
         ${`tenant-${tenantKey}-company-default`},

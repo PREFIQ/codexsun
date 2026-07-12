@@ -315,7 +315,7 @@ Do not put unstable business rules in the shared kernel.
 **Tenant Databases — owned by tenant apps (future):**
 | Table | Owner | Purpose |
 |---|---|---|
-| `tenant_users` | Platform (bootstrap) | Tenant user auth |
+| `users` | Platform (tenant bootstrap) | Tenant user auth |
 | `tenant_audit_events` | Platform (bootstrap) | Tenant-scoped audit |
 
 ### Package Dependency Direction
@@ -373,7 +373,7 @@ Billing industry fields must stay as billing settings/features. Examples: offset
 - **002_master_audit_sessions**: Creates audit_events, sessions. ✓ Applied.
 - **003_master_platform_catalog**: Creates platform_modules, tenant_module_activation. ✓ Applied.
 - **004_master_settings_files_notifications**: Creates settings, features, files, notifications, agents, activity, comments. ✓ Applied.
-- **Bootstrap tenant migration**: Creates tenant_users, tenant_audit_events inline. ✓ Applied.
+- **Bootstrap tenant migration**: Creates tenant-local `access_*`, `module_settings`, and `schema_migrations` tables; master audit events remain in `tenant_audit_events`. ✓ Applied.
 
 All 5 migration units pass initialization and run cleanly. Migration runner tracks state in `platform_migrations` table.
 

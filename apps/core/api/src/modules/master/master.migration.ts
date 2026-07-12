@@ -18,8 +18,8 @@ export async function migrateMasterTable(database: Kysely<CoreDatabase>, tableNa
   await migrateOpeningStockColumns(database, tableName);
   await migrateCompanyLogoColumns(database, tableName);
   await migrateIndustryColumns(database, tableName);
-  if (tableName === "core_master_products") {
-    await sql.raw("UPDATE core_master_products SET group_id = NULL, group_name = NULL WHERE group_id IS NOT NULL OR group_name IS NOT NULL").execute(database);
+  if (tableName === "products") {
+    await sql.raw("UPDATE products SET group_id = NULL, group_name = NULL WHERE group_id IS NOT NULL OR group_name IS NOT NULL").execute(database);
   }
   await migrateChildTables(database, tableName);
 }

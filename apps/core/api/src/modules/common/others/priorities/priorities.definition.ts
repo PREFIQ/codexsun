@@ -45,5 +45,5 @@ export const prioritiesDefinition: CommonMasterDefinition = {
       "tag": "LOW"
     }
   ],
-  "tableName": "core_common_priorities"
+  "tableName": "priorities"
 };

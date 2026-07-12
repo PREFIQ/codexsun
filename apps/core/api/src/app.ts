@@ -1,6 +1,6 @@
 import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
 import type { HealthCheck } from "@codexsun/framework/health";
-import { bootstrapCoreDatabase, closeCoreDatabase } from "./database/core-database.js";
+import { bootstrapCoreDatabase, bootstrapRegisteredCoreDatabases, closeCoreDatabase, resolveCoreDatabaseName, runWithCoreDatabase } from "./database/core-database.js";
 import { env } from "./env.js";
 import { commonModule } from "./modules/common/index.js";
 import { locationModules } from "./modules/common/location/location.module.js";
@@ -8,8 +8,6 @@ import { masterModule } from "./modules/master/index.js";
 import { organisationModule } from "./modules/organisation/index.js";
 
 export async function createApp() {
-  await bootstrapCoreDatabase();
-
   const app = await createApiApp({
     appName: "CODEXSUN Core API",
     cookieSecret: env.JWT_SECRET,
@@ -38,6 +36,22 @@ export async function createApp() {
 
   registerRequestLogging(app);
   registerHealthRoute(app, healthChecks);
+  await bootstrapRegisteredCoreDatabases();
+  app.addHook("onRequest", (request, _reply, done) => {
+    if (request.url === "/health" || request.url === "/") return done();
+    try {
+      const value = request.headers["x-tenant-db"];
+      const databaseName = resolveCoreDatabaseName(Array.isArray(value) ? value[0] : value);
+      runWithCoreDatabase(databaseName, done);
+    } catch (error) {
+      done(error as Error);
+    }
+  });
+  app.addHook("preHandler", async (request) => {
+    if (request.url === "/health" || request.url === "/") return;
+    const value = request.headers["x-tenant-db"];
+    await bootstrapCoreDatabase(resolveCoreDatabaseName(Array.isArray(value) ? value[0] : value));
+  });
   await commonModule.register(app);
   await organisationModule.register(app);
   await masterModule.register(app);

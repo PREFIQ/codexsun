@@ -90,5 +90,5 @@ export const monthsDefinition: CommonMasterDefinition = {
       "toDate": "2027-03-31"
     }
   ],
-  "tableName": "core_common_months"
+  "tableName": "months"
 };

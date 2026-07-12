@@ -1,4 +1,4 @@
-import { getTenantId, getToken } from "../../shared/api/tenant-context"
+import { getTenantDbName, getTenantId, getToken } from "../../shared/api/tenant-context"
 import { requiredClientEnv } from "../../shared/env/client-env"
 import type { LocationRecord, LocationSavePayload } from "./location.types"
 
@@ -11,6 +11,7 @@ type ApiEnvelope<T> =
 async function request<T>(path: string, options: RequestInit = {}) {
   const token = getToken("tenant")
   const tenantId = getTenantId()
+  const tenantDbName = getTenantDbName()
   const response = await fetch(`${coreApiBaseUrl}${path}`, {
     ...options,
     headers: {
@@ -18,6 +19,7 @@ async function request<T>(path: string, options: RequestInit = {}) {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantId ? { "x-tenant-id": tenantId } : {}),
+      ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   })

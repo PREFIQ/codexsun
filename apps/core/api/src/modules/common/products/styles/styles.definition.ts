@@ -19,5 +19,5 @@ export const stylesDefinition: CommonMasterDefinition = {
       "name": "Standard"
     }
   ],
-  "tableName": "core_common_styles"
+  "tableName": "styles"
 };

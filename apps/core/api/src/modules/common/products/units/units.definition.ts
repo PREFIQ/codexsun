@@ -28,5 +28,5 @@ export const unitsDefinition: CommonMasterDefinition = {
       "name": "Litre"
     }
   ],
-  "tableName": "core_common_units"
+  "tableName": "units"
 };

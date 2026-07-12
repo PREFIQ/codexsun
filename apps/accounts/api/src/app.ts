@@ -1,6 +1,6 @@
 import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
 import type { HealthCheck } from "@codexsun/framework/health";
-import { bootstrapAccountsDatabase, closeAllAccountsDatabases } from "./database/accounts-database.js";
+import { bootstrapRegisteredAccountsDatabases, closeAllAccountsDatabases } from "./database/accounts-database.js";
 import { env } from "./env.js";
 import { ledgersModule } from "./modules/ledgers/index.js";
 import { vouchersModule } from "./modules/vouchers/index.js";
@@ -8,8 +8,6 @@ import { reportsModule } from "./modules/reports/index.js";
 import { accountsSettingsModule } from "./modules/settings/index.js";
 
 export async function createApp() {
-  await bootstrapAccountsDatabase();
-
   const app = await createApiApp({
     appName: "CODEXSUN Accounts API",
     cookieSecret: env.JWT_SECRET,
@@ -38,6 +36,7 @@ export async function createApp() {
 
   registerRequestLogging(app);
   registerHealthRoute(app, healthChecks);
+  await bootstrapRegisteredAccountsDatabases();
   await ledgersModule.register(app);
   await vouchersModule.register(app);
   await reportsModule.register(app);

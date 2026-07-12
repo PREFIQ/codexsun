@@ -25,5 +25,5 @@ export const coloursDefinition: CommonMasterDefinition = {
       "name": "Blue"
     }
   ],
-  "tableName": "core_common_colours"
+  "tableName": "colours"
 };

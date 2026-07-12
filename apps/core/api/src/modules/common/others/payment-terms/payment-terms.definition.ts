@@ -25,5 +25,5 @@ export const paymentTermsDefinition: CommonMasterDefinition = {
       "name": "Net 30"
     }
   ],
-  "tableName": "core_common_payment_terms"
+  "tableName": "payment_terms"
 };

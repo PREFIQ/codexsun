@@ -120,3 +120,10 @@ Use:
 - Export jobs.
 - Permission-aware query services.
 - Cached report snapshots for heavy reports.
+# Enforced database ownership
+
+The Platform master database is restricted to global Platform and Super Admin state. Core masters/common data, Billing, Accounts, KitchenServe, tenant users, tenant roles, and tenant permissions belong only to the selected tenant database.
+
+Business APIs must require an explicit validated tenant database context and must reject `DB_MASTER_NAME`. They must not bootstrap business tables into the master database during application startup.
+
+Project Manager, Task Manager, and Data Bridge retain their existing JSON stores and are outside this SQL database split.

@@ -24,9 +24,13 @@ export type PlatformDatabase = {
 };
 
 export type TenantDatabase = {
-  tenant_migrations: TenantMigrationsTable;
-  tenant_module_settings: TenantModuleSettingsTable;
-  tenant_users: TenantUsersTable;
+  schema_migrations: TenantMigrationsTable;
+  module_settings: TenantModuleSettingsTable;
+  permissions: TenantPermissionsTable;
+  role_permissions: TenantRolePermissionsTable;
+  roles: TenantRolesTable;
+  user_roles: TenantUserRolesTable;
+  users: TenantUsersTable;
 };
 
 export type PlatformAppsTable = {
@@ -273,4 +277,34 @@ export type TenantUsersTable = {
   status: "active" | "inactive" | "suspended";
   updated_at: TimestampColumn;
   uuid: string;
+};
+
+export type TenantRolesTable = {
+  created_at: TimestampColumn;
+  id: Generated<number>;
+  key: string;
+  label: string;
+  status: "active" | "inactive";
+  updated_at: TimestampColumn;
+  uuid: string;
+};
+
+export type TenantPermissionsTable = {
+  created_at: TimestampColumn;
+  id: Generated<number>;
+  key: string;
+  label: string;
+  status: "active" | "inactive";
+  updated_at: TimestampColumn;
+  uuid: string;
+};
+
+export type TenantRolePermissionsTable = {
+  permission_id: number;
+  role_id: number;
+};
+
+export type TenantUserRolesTable = {
+  role_id: number;
+  user_id: number;
 };

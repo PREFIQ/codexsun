@@ -1,15 +1,18 @@
 import type { FastifyInstance } from "fastify";
-import { createDatabaseConnector, type CompatibleDbPool } from "@codexsun/framework/db";
+import { createDatabaseConnector } from "@codexsun/framework/db";
 import { MigrationManagerRepository } from "../migration-manager/migration-manager.repository.js";
 import { DiscoverySnapshotsRepository } from "./discovery-snapshots.repository.js";
 import type { SchemaColumn, SchemaTable, TableDifference } from "./discovery-snapshots.types.js";
 type MetaRow = Record<string, unknown>;
-export async function registerDiscoverySnapshotRoutes(app: FastifyInstance, database: CompatibleDbPool) {
-  const snapshots = new DiscoverySnapshotsRepository(database); const jobs = new MigrationManagerRepository(database); await snapshots.initialize();
+export async function registerDiscoverySnapshotRoutes(app: FastifyInstance) {
+  const snapshots = new DiscoverySnapshotsRepository(); const jobs = new MigrationManagerRepository(); await snapshots.initialize();
   app.get("/data-bridge/discovery-snapshots", async () => ({ data: await snapshots.list() }));
   app.get("/data-bridge/discovery-snapshots/:id", async (request, reply) => { const item=await snapshots.get(Number((request.params as {id:string}).id)); return item ? {data:item} : reply.code(404).send({message:"Discovery snapshot not found."}); });
   app.patch("/data-bridge/discovery-snapshots/:id/omitted-tables", async (request, reply) => { const tables=(request.body as {tables?:unknown})?.tables; if(!Array.isArray(tables)||!tables.every((item)=>typeof item==="string"))return reply.code(400).send({message:"Tables must be a string array."}); const item=await snapshots.setOmittedTables(Number((request.params as {id:string}).id),tables); return item?{data:item}:reply.code(404).send({message:"Discovery snapshot not found."}); });
+  app.patch("/data-bridge/discovery-snapshots/:id/table-mappings",async(request,reply)=>{const mappings=(request.body as {mappings?:unknown})?.mappings;if(!mappings||typeof mappings!=="object"||Array.isArray(mappings)||!Object.values(mappings).every(value=>typeof value==="string"))return reply.code(400).send({message:"Mappings must contain Source and Target table names."});const item=await snapshots.setTableMappings(Number((request.params as {id:string}).id),mappings as Record<string,string>);return item?{data:item}:reply.code(404).send({message:"Discovery snapshot not found."});});
+  app.patch("/data-bridge/discovery-snapshots/:id/table-groups",async(request,reply)=>{const groups=(request.body as {groups?:unknown})?.groups;if(!groups||typeof groups!=="object"||Array.isArray(groups)||!Object.values(groups).every(value=>typeof value==="string"))return reply.code(400).send({message:"Groups must contain Target table and group labels."});const item=await snapshots.setTableGroups(Number((request.params as {id:string}).id),groups as Record<string,string>);return item?{data:item}:reply.code(404).send({message:"Discovery snapshot not found."});});
   app.post("/data-bridge/discovery-snapshots/:id/prepare-mappings",async(request,reply)=>{const item=await snapshots.prepareMappingInput(Number((request.params as {id:string}).id));return item?{data:item}:reply.code(404).send({message:"Discovery snapshot not found."});});
+  app.delete("/data-bridge/discovery-snapshots/:id",async(request,reply)=>{const deleted=await snapshots.delete(Number((request.params as {id:string}).id));return deleted?{data:{deleted:true}}:reply.code(404).send({message:"Discovery snapshot not found."});});
   app.post("/data-bridge/discovery-snapshots", async (request, reply) => {
     const jobId=Number((request.body as {migrationJobId?:number})?.migrationJobId); const job=await jobs.secretSettings(jobId);
     if (!job) return reply.code(404).send({message:"Migration job not found."});

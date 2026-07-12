@@ -29,5 +29,5 @@ export const addressTypesDefinition: CommonMasterDefinition = {
       "name": "Office"
     }
   ],
-  "tableName": "core_common_address_types"
+  "tableName": "address_types"
 };

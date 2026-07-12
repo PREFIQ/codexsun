@@ -39,5 +39,5 @@ export const taxesDefinition: CommonMasterDefinition = {
       "description": "GST 18%"
     }
   ],
-  "tableName": "core_common_taxes"
+  "tableName": "taxes"
 };

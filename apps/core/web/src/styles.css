@@ -111,6 +111,75 @@ body {
   text-align: center;
 }
 
+.location-panel {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 20px;
+}
+
+.location-panel-header,
+.location-panel-header > div {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.location-panel-header {
+  justify-content: space-between;
+}
+
+.location-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.location-table {
+  border-collapse: collapse;
+  min-width: 760px;
+  table-layout: auto;
+  width: 100%;
+}
+
+.location-table th,
+.location-table td {
+  border: 1px solid hsl(var(--border));
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.location-table th {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.location-table tbody tr {
+  cursor: pointer;
+}
+
+.location-table tbody tr:hover {
+  background: hsl(var(--muted) / 0.45);
+}
+
+.location-primary {
+  font-weight: 600;
+  min-width: 180px;
+}
+
+.location-empty {
+  border: 1px dashed hsl(var(--border));
+  border-radius: 8px;
+  color: hsl(var(--muted-foreground));
+  padding: 28px;
+  text-align: center;
+}
+
 @media (max-width: 760px) {
   .core-hero,
   .core-toolbar {

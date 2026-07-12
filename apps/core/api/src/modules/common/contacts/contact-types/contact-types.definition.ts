@@ -35,5 +35,5 @@ export const contactTypesDefinition: CommonMasterDefinition = {
       "name": "Employee"
     }
   ],
-  "tableName": "core_common_contact_types"
+  "tableName": "contact_types"
 };
