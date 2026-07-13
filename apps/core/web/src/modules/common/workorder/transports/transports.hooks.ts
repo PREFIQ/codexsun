@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { listTransports } from "./transports.services";
-export function useTransportsQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listTransports(path), queryKey: ["core", "common", key] });
+import type { TransportsListFilters } from "./transports.types";
+
+export const transportsQueryKey = ["core", "common", "workorder", "transports"] as const;
+export function useTransports(filters: TransportsListFilters = {}) {
+  return useQuery({
+    queryFn: () => listTransports(filters),
+    queryKey: [...transportsQueryKey, filters.search ?? ""]
+  });
 }

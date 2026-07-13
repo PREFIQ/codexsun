@@ -1,2 +1,5 @@
+export * from "./address-types.hooks";
+export * from "./address-types.schema";
+export * from "./address-types.services";
 export * from "./address-types.types";
-export * from "./address-types.workspace";
+export { AddressTypesWorkspace } from "./address-types.workspace";

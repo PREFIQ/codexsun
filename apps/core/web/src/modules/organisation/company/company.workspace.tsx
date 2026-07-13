@@ -8,8 +8,14 @@ import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { CompanyForm } from "./company.form";
 import { useCompanies } from "./company.hooks";
 import { CompanyList } from "./company.list";
-import { createCompany, updateCompany } from "./company.services";
-import { companyDefinition, type CompanyRecord, type CompanySavePayload } from "./company.types";
+import {
+  activateCompany,
+  createCompany,
+  deactivateCompany,
+  forceDeleteCompany,
+  updateCompany
+} from "./company.services";
+import type { CompanyRecord, CompanySavePayload } from "./company.types";
 export function CompanyWorkspace() {
   const client = useQueryClient(),
     [search, setSearch] = useState(""),
@@ -26,6 +32,25 @@ export function CompanyWorkspace() {
     },
     onError: (error) => toast.error("Unable to save company", { description: error.message })
   });
+  const lifecycle = useMutation({
+    mutationFn: ({
+      record,
+      type
+    }: {
+      record: CompanyRecord;
+      type: "force-delete" | "restore" | "suspend";
+    }) =>
+      type === "force-delete"
+        ? forceDeleteCompany(record.id)
+        : type === "restore"
+          ? activateCompany(record.id)
+          : deactivateCompany(record.id),
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ["core", "company", "list"] });
+      toast.success("Company status updated");
+    },
+    onError: (error) => toast.error("Unable to update company", { description: error.message })
+  });
   if (editing !== undefined)
     return (
       <CompanyForm
@@ -39,8 +64,8 @@ export function CompanyWorkspace() {
     );
   return (
     <WorkspacePage
-      title={companyDefinition.label}
-      description={companyDefinition.description}
+      title="Companies"
+      description="Manage organisation companies, tax identity, communication, and industry details."
       actions={
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => void query.refetch()}>
@@ -55,7 +80,7 @@ export function CompanyWorkspace() {
       }
     >
       <WorkspaceFilters
-        searchPlaceholder={companyDefinition.search}
+        searchPlaceholder="Search code, company, phone, or email"
         searchValue={search}
         onSearchValueChange={setSearch}
       />
@@ -63,6 +88,12 @@ export function CompanyWorkspace() {
         loading={query.isFetching && !query.data}
         records={records}
         onEdit={setEditing}
+        onForceDelete={(record) => {
+          if (window.confirm(`Force delete ${record.name}?`))
+            lifecycle.mutate({ record, type: "force-delete" });
+        }}
+        onRestore={(record) => lifecycle.mutate({ record, type: "restore" })}
+        onSuspend={(record) => lifecycle.mutate({ record, type: "suspend" })}
       />
     </WorkspacePage>
   );

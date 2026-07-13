@@ -36,7 +36,6 @@ import {
   type PlatformAppId
 } from "../../app/app-registry";
 import { getTenantRuntime } from "../../modules/tenant/tenant.services";
-import { commonMasterDefinitions } from "../../modules/common/registry";
 import { AddressTypesWorkspace } from "@codexsun/core-web/modules/common/contacts/address-types";
 import { BankNamesWorkspace } from "@codexsun/core-web/modules/common/contacts/bank-names";
 import { ContactGroupsWorkspace } from "@codexsun/core-web/modules/common/contacts/contact-groups";
@@ -66,8 +65,10 @@ import { StockRejectionTypesWorkspace } from "@codexsun/core-web/modules/common/
 import { TransportsWorkspace } from "@codexsun/core-web/modules/common/workorder/transports";
 import { WarehousesWorkspace } from "@codexsun/core-web/modules/common/workorder/warehouses";
 import { WorkOrderTypesWorkspace } from "@codexsun/core-web/modules/common/workorder/work-order-types";
-import { ContactWorkspace, ProductWorkspace, WorkOrderWorkspace } from "../../modules/master";
-import { CompanyWorkspace, listCompanies } from "../../modules/organisation";
+import { ContactWorkspace } from "@codexsun/core-web/modules/master/contact";
+import { ProductWorkspace } from "@codexsun/core-web/modules/master/product";
+import { WorkOrderWorkspace } from "@codexsun/core-web/modules/master/work-order";
+import { CompanyWorkspace, listCompanies } from "@codexsun/core-web/modules/organisation/company";
 import { QuotationWorkspace } from "../../modules/quotation/quotation.workspace";
 import { SalesWorkspace } from "../../modules/sales/sales.workspace";
 import { PurchaseWorkspace } from "../../modules/purchase/purchase.workspace";
@@ -381,7 +382,7 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "core.master.contact" ||
     key === "core.master.product" ||
     key === "core.master.work-order" ||
-    commonMasterDefinitions.some((definition) => pageKeyForCommonMaster(definition.path) === key)
+    isCommonMasterPage(key)
   ) {
     return (key === "billing.desk" ? "billing.overview" : key) as AppPage;
   }
@@ -981,10 +982,6 @@ function accountsSettingsDescription(page: Extract<AppPage, `accounts.${string}`
   return descriptions[page] ?? "Accounts configuration.";
 }
 
-function pageKeyForCommonMaster(path: string) {
-  return path.replace(/^\/core\//, "core.").replaceAll("/", ".");
-}
-
 function renderOwnedLocationPage(page: AppPage) {
   if (page === "core.common.location.countries") return <CountryWorkspace />;
   if (page === "core.common.location.states") return <StateWorkspace />;
@@ -1024,10 +1021,6 @@ function renderOwnedCommonMasterPage(page: AppPage) {
 }
 
 function titleForPage(page: AppPage) {
-  const commonDefinition = commonMasterDefinitions.find(
-    (definition) => pageKeyForCommonMaster(definition.path) === page
-  );
-  if (commonDefinition) return commonDefinition.label;
   const labels: Partial<Record<AppPage, string>> = {
     "application.overview": "Overview",
     "application.landing": "Landing Desk",
@@ -1066,6 +1059,30 @@ function titleForPage(page: AppPage) {
     "core.common.location.districts": "Districts",
     "core.common.location.pincodes": "Pincodes",
     "core.common.location.states": "States",
+    "core.common.contacts.address-types": "Address Types",
+    "core.common.contacts.bank-names": "Bank Names",
+    "core.common.contacts.contact-groups": "Contact Groups",
+    "core.common.contacts.contact-types": "Contact Types",
+    "core.common.others.currencies": "Currencies",
+    "core.common.others.months": "Months",
+    "core.common.others.payment-terms": "Payment Terms",
+    "core.common.others.priorities": "Priorities",
+    "core.common.others.sales-types": "Sales Types",
+    "core.common.products.brands": "Brands",
+    "core.common.products.colours": "Colours",
+    "core.common.products.hsn-codes": "HSN Codes",
+    "core.common.products.product-categories": "Product Categories",
+    "core.common.products.product-groups": "Product Groups",
+    "core.common.products.product-types": "Product Types",
+    "core.common.products.sizes": "Sizes",
+    "core.common.products.styles": "Styles",
+    "core.common.products.taxes": "Taxes",
+    "core.common.products.units": "Units",
+    "core.common.workorder.destinations": "Destinations",
+    "core.common.workorder.stock-rejection-types": "Stock Rejection Types",
+    "core.common.workorder.transports": "Transports",
+    "core.common.workorder.warehouses": "Warehouses",
+    "core.common.workorder.work-order-types": "Work Order Types",
     "core.organisation.company": "Company",
     "core.master.contact": "Contact",
     "core.master.product": "Product",
@@ -1073,6 +1090,37 @@ function titleForPage(page: AppPage) {
   };
   return labels[page] ?? "Application";
 }
+
+function isCommonMasterPage(page: string): page is AppPage {
+  return COMMON_MASTER_PAGES.has(page);
+}
+
+const COMMON_MASTER_PAGES = new Set<string>([
+  "core.common.contacts.address-types",
+  "core.common.contacts.bank-names",
+  "core.common.contacts.contact-groups",
+  "core.common.contacts.contact-types",
+  "core.common.others.currencies",
+  "core.common.others.months",
+  "core.common.others.payment-terms",
+  "core.common.others.priorities",
+  "core.common.others.sales-types",
+  "core.common.products.brands",
+  "core.common.products.colours",
+  "core.common.products.hsn-codes",
+  "core.common.products.product-categories",
+  "core.common.products.product-groups",
+  "core.common.products.product-types",
+  "core.common.products.sizes",
+  "core.common.products.styles",
+  "core.common.products.taxes",
+  "core.common.products.units",
+  "core.common.workorder.destinations",
+  "core.common.workorder.stock-rejection-types",
+  "core.common.workorder.transports",
+  "core.common.workorder.warehouses",
+  "core.common.workorder.work-order-types"
+]);
 
 function appFromPage(
   page: AppPage,

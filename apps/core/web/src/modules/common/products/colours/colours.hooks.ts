@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { listColours } from "./colours.services";
-export function useColoursQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listColours(path), queryKey: ["core", "common", key] });
+import type { ColoursListFilters } from "./colours.types";
+
+export const coloursQueryKey = ["core", "common", "products", "colours"] as const;
+export function useColours(filters: ColoursListFilters = {}) {
+  return useQuery({
+    queryFn: () => listColours(filters),
+    queryKey: [...coloursQueryKey, filters.search ?? ""]
+  });
 }

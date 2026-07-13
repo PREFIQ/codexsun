@@ -1,49 +1,55 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { TransportsRecord, TransportsValue } from "./transports.types";
+import type {
+  TransportsListFilters,
+  TransportsRecord,
+  TransportsSavePayload
+} from "./transports.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const transportsPath = "/core/common/workorder/transports";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function transportsRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${transportsPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "Transports request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listTransports(path: string) {
-  return request<TransportsRecord[]>(path);
+export function listTransports(filters: TransportsListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return transportsRequest<TransportsRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createTransports(path: string, payload: Record<string, TransportsValue>) {
-  return request<TransportsRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createTransports(payload: TransportsSavePayload) {
+  return transportsRequest<TransportsRecord>("", { body: JSON.stringify(payload), method: "POST" });
 }
-export function updateTransports(
-  path: string,
-  id: number,
-  payload: Record<string, TransportsValue>
-) {
-  return request<TransportsRecord>(`${path}/${id}`, {
+export function updateTransports(id: number, payload: TransportsSavePayload) {
+  return transportsRequest<TransportsRecord>(`/${id}`, {
     body: JSON.stringify(payload),
     method: "PUT"
   });
 }
-export function setTransportsActive(path: string, id: number, active: boolean) {
-  return request<TransportsRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateTransports(id: number) {
+  return transportsRequest<TransportsRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteTransports(path: string, id: number) {
-  return request<TransportsRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateTransports(id: number) {
+  return transportsRequest<TransportsRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteTransports(id: number) {
+  return transportsRequest<TransportsRecord>(`/${id}/force`, { method: "DELETE" });
 }

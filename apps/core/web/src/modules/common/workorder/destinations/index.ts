@@ -1,2 +1,5 @@
+export * from "./destinations.hooks";
+export * from "./destinations.schema";
+export * from "./destinations.services";
 export * from "./destinations.types";
-export * from "./destinations.workspace";
+export { DestinationsWorkspace } from "./destinations.workspace";

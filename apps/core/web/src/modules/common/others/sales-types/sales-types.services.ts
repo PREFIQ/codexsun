@@ -1,49 +1,55 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { SalesTypesRecord, SalesTypesValue } from "./sales-types.types";
+import type {
+  SalesTypesListFilters,
+  SalesTypesRecord,
+  SalesTypesSavePayload
+} from "./sales-types.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const salesTypesPath = "/core/common/others/sales-types";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function salesTypesRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${salesTypesPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "SalesTypes request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listSalesTypes(path: string) {
-  return request<SalesTypesRecord[]>(path);
+export function listSalesTypes(filters: SalesTypesListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return salesTypesRequest<SalesTypesRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createSalesTypes(path: string, payload: Record<string, SalesTypesValue>) {
-  return request<SalesTypesRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createSalesTypes(payload: SalesTypesSavePayload) {
+  return salesTypesRequest<SalesTypesRecord>("", { body: JSON.stringify(payload), method: "POST" });
 }
-export function updateSalesTypes(
-  path: string,
-  id: number,
-  payload: Record<string, SalesTypesValue>
-) {
-  return request<SalesTypesRecord>(`${path}/${id}`, {
+export function updateSalesTypes(id: number, payload: SalesTypesSavePayload) {
+  return salesTypesRequest<SalesTypesRecord>(`/${id}`, {
     body: JSON.stringify(payload),
     method: "PUT"
   });
 }
-export function setSalesTypesActive(path: string, id: number, active: boolean) {
-  return request<SalesTypesRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateSalesTypes(id: number) {
+  return salesTypesRequest<SalesTypesRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteSalesTypes(path: string, id: number) {
-  return request<SalesTypesRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateSalesTypes(id: number) {
+  return salesTypesRequest<SalesTypesRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteSalesTypes(id: number) {
+  return salesTypesRequest<SalesTypesRecord>(`/${id}/force`, { method: "DELETE" });
 }

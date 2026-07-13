@@ -12,6 +12,7 @@ type PincodeRow = {
   id: number;
   city_id: number;
   name: string;
+  area: string;
   sort_order: number;
   status: PincodeStatus;
 };
@@ -28,9 +29,10 @@ type PincodeRelationRow = PincodeRow & {
 
 export class PincodeRepository {
   async list(filters: PincodeListFilters = {}) {
-    const rows = await sql<PincodeRow>`SELECT id, city_id, name, sort_order, status FROM pincodes
+    const rows =
+      await sql<PincodeRow>`SELECT id, city_id, name, area, sort_order, status FROM pincodes
       WHERE (${filters.cityId ?? ""} = '' OR city_id = ${Number(filters.cityId ?? 0)})
-        AND (${filters.search ?? ""} = '' OR LOWER(name) LIKE ${like(filters.search)})
+        AND (${filters.search ?? ""} = '' OR LOWER(name) LIKE ${like(filters.search)} OR LOWER(area) LIKE ${like(filters.search)})
       ORDER BY sort_order, name`.execute(getCoreDatabase());
     return rows.rows.map(toPincode);
   }
@@ -39,14 +41,14 @@ export class PincodeRepository {
     const rows = await sql<PincodeRelationRow>`SELECT pincodes.id, pincodes.city_id,
         cities.name city_name, cities.district_id, districts.name district_name,
         districts.state_id, states.name state_name, states.country_id, countries.name country_name,
-        pincodes.name, pincodes.sort_order, pincodes.status
+        pincodes.name, pincodes.area, pincodes.sort_order, pincodes.status
       FROM pincodes
       INNER JOIN cities ON cities.id = pincodes.city_id
       INNER JOIN districts ON districts.id = cities.district_id
       INNER JOIN states ON states.id = districts.state_id
       INNER JOIN countries ON countries.id = states.country_id
       WHERE (${filters.cityId ?? ""} = '' OR pincodes.city_id = ${Number(filters.cityId ?? 0)})
-        AND (${filters.search ?? ""} = '' OR LOWER(pincodes.name) LIKE ${like(filters.search)}
+        AND (${filters.search ?? ""} = '' OR LOWER(pincodes.name) LIKE ${like(filters.search)} OR LOWER(pincodes.area) LIKE ${like(filters.search)}
           OR LOWER(cities.name) LIKE ${like(filters.search)} OR LOWER(districts.name) LIKE ${like(filters.search)}
           OR LOWER(states.name) LIKE ${like(filters.search)} OR LOWER(countries.name) LIKE ${like(filters.search)})
       ORDER BY pincodes.sort_order, pincodes.name`.execute(getCoreDatabase());
@@ -55,7 +57,7 @@ export class PincodeRepository {
 
   async find(id: string | number) {
     const rows =
-      await sql<PincodeRow>`SELECT id, city_id, name, sort_order, status FROM pincodes WHERE id=${Number(id)} LIMIT 1`.execute(
+      await sql<PincodeRow>`SELECT id, city_id, name, area, sort_order, status FROM pincodes WHERE id=${Number(id)} LIMIT 1`.execute(
         getCoreDatabase()
       );
     return rows.rows[0] ? toPincode(rows.rows[0]) : null;
@@ -65,7 +67,7 @@ export class PincodeRepository {
     const rows = await sql<PincodeRelationRow>`SELECT pincodes.id, pincodes.city_id,
         cities.name city_name, cities.district_id, districts.name district_name,
         districts.state_id, states.name state_name, states.country_id, countries.name country_name,
-        pincodes.name, pincodes.sort_order, pincodes.status
+        pincodes.name, pincodes.area, pincodes.sort_order, pincodes.status
       FROM pincodes
       INNER JOIN cities ON cities.id = pincodes.city_id
       INNER JOIN districts ON districts.id = cities.district_id
@@ -83,15 +85,15 @@ export class PincodeRepository {
   }
 
   async create(input: PincodeSavePayload) {
-    const result = await sql`INSERT INTO pincodes (city_id, name, sort_order, status) VALUES
-      (${Number(input.cityId)}, ${input.name}, ${input.sortOrder}, ${input.status})`.execute(
+    const result = await sql`INSERT INTO pincodes (city_id, name, area, sort_order, status) VALUES
+      (${Number(input.cityId)}, ${input.name}, ${input.area}, ${input.sortOrder}, ${input.status})`.execute(
       getCoreDatabase()
     );
     return (await this.find(String(result.insertId)))!;
   }
 
   async update(id: string | number, input: PincodeSavePayload) {
-    await sql`UPDATE pincodes SET city_id=${Number(input.cityId)}, name=${input.name}, sort_order=${input.sortOrder}, status=${input.status} WHERE id=${Number(id)}`.execute(
+    await sql`UPDATE pincodes SET city_id=${Number(input.cityId)}, name=${input.name}, area=${input.area}, sort_order=${input.sortOrder}, status=${input.status} WHERE id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return this.find(id);
@@ -117,6 +119,7 @@ function toPincode(row: PincodeRow): Pincode {
     id: Number(row.id),
     cityId: Number(row.city_id),
     name: row.name,
+    area: row.area,
     sortOrder: Number(row.sort_order),
     status: row.status
   };

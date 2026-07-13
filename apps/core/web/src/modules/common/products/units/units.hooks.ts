@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { listUnits } from "./units.services";
-export function useUnitsQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listUnits(path), queryKey: ["core", "common", key] });
+import type { UnitsListFilters } from "./units.types";
+
+export const unitsQueryKey = ["core", "common", "products", "units"] as const;
+export function useUnits(filters: UnitsListFilters = {}) {
+  return useQuery({
+    queryFn: () => listUnits(filters),
+    queryKey: [...unitsQueryKey, filters.search ?? ""]
+  });
 }

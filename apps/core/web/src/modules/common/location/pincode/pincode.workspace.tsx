@@ -18,7 +18,7 @@ import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 import { cn } from "@codexsun/ui/lib/utils";
-import { PincodeForm, PincodeView } from "./pincode.form";
+import { PincodeForm } from "./pincode.form";
 import { pincodeQueryKey, usePincodes, usePincodeCityOptions } from "./pincode.hooks";
 import { PincodeList } from "./pincode.list";
 import {
@@ -37,7 +37,6 @@ export function PincodeWorkspace() {
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(100);
   const [editing, setEditing] = useState<PincodeRecord | null | undefined>(undefined);
-  const [viewing, setViewing] = useState<PincodeRecord | null>(null);
   const [action, setAction] = useState<Action | null>(null);
   const query = usePincodes();
   const options = usePincodeCityOptions();
@@ -132,7 +131,6 @@ export function PincodeWorkspace() {
         onForceDelete={(record) => setAction({ record, type: "force-delete" })}
         onRestore={(record) => setAction({ record, type: "restore" })}
         onSuspend={(record) => setAction({ record, type: "suspend" })}
-        onView={setViewing}
         records={rows}
       />
       <WorkspacePagination
@@ -159,7 +157,6 @@ export function PincodeWorkspace() {
         options={options.data ?? []}
         record={editing ?? null}
       />
-      <PincodeView onClose={() => setViewing(null)} record={viewing} />
       <ActionDialog
         action={action}
         loading={lifecycle.isPending}
@@ -197,7 +194,15 @@ function ActionDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-          <AlertDialogAction disabled={loading} onClick={onConfirm}>
+          <AlertDialogAction
+            className={
+              action?.type === "force-delete"
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : undefined
+            }
+            disabled={loading}
+            onClick={onConfirm}
+          >
             {verb}
           </AlertDialogAction>
         </AlertDialogFooter>

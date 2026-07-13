@@ -14,6 +14,12 @@ export class CompanyService {
   update(id: string, input: CompanySaveInput) {
     return this.repository.update(id, input);
   }
+  setActive(id: string, active: boolean) {
+    return this.repository.setActive(id, active);
+  }
+  forceDelete(id: string) {
+    return this.repository.forceDelete(id);
+  }
   listIndustries() {
     return this.repository.listIndustries();
   }

@@ -1,42 +1,48 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { StylesRecord, StylesValue } from "./styles.types";
+import type { StylesListFilters, StylesRecord, StylesSavePayload } from "./styles.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const stylesPath = "/core/common/products/styles";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function stylesRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${stylesPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "Styles request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listStyles(path: string) {
-  return request<StylesRecord[]>(path);
+export function listStyles(filters: StylesListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return stylesRequest<StylesRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createStyles(path: string, payload: Record<string, StylesValue>) {
-  return request<StylesRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createStyles(payload: StylesSavePayload) {
+  return stylesRequest<StylesRecord>("", { body: JSON.stringify(payload), method: "POST" });
 }
-export function updateStyles(path: string, id: number, payload: Record<string, StylesValue>) {
-  return request<StylesRecord>(`${path}/${id}`, { body: JSON.stringify(payload), method: "PUT" });
+export function updateStyles(id: number, payload: StylesSavePayload) {
+  return stylesRequest<StylesRecord>(`/${id}`, { body: JSON.stringify(payload), method: "PUT" });
 }
-export function setStylesActive(path: string, id: number, active: boolean) {
-  return request<StylesRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateStyles(id: number) {
+  return stylesRequest<StylesRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteStyles(path: string, id: number) {
-  return request<StylesRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateStyles(id: number) {
+  return stylesRequest<StylesRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteStyles(id: number) {
+  return stylesRequest<StylesRecord>(`/${id}/force`, { method: "DELETE" });
 }

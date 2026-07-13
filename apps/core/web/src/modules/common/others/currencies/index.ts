@@ -1,2 +1,5 @@
+export * from "./currencies.hooks";
+export * from "./currencies.schema";
+export * from "./currencies.services";
 export * from "./currencies.types";
-export * from "./currencies.workspace";
+export { CurrenciesWorkspace } from "./currencies.workspace";

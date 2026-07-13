@@ -17,11 +17,7 @@ import {
   setWorkOrderActive,
   updateWorkOrder
 } from "./work-order.services";
-import {
-  workOrderDefinition,
-  type WorkOrderRecord,
-  type WorkOrderSavePayload
-} from "./work-order.types";
+import type { WorkOrderRecord, WorkOrderSavePayload } from "./work-order.types";
 
 const workOrderFilterOptions = [
   { id: "all", label: "All work orders" },
@@ -112,8 +108,8 @@ export function WorkOrderWorkspace() {
 
   return (
     <WorkspacePage
-      title={workOrderDefinition.label}
-      description={workOrderDefinition.description}
+      title="Work Orders"
+      description="Manage work order code, name, status, and lifecycle."
       actions={
         <div className="flex gap-2">
           <Button className="h-9 rounded-md" variant="outline" onClick={() => void query.refetch()}>
@@ -131,7 +127,7 @@ export function WorkOrderWorkspace() {
         columnOptions={columnOptions}
         filterOptions={workOrderFilterOptions}
         filterValue={statusFilter}
-        searchPlaceholder={workOrderDefinition.search}
+        searchPlaceholder="Search code or work order"
         searchValue={search}
         onFilterValueChange={setStatusFilter}
         onSearchValueChange={setSearch}
@@ -156,7 +152,7 @@ export function WorkOrderWorkspace() {
         page={currentPage}
         rowsPerPage={rowsPerPage}
         showingLabel={buildShowingLabel(currentPage, rowsPerPage, filteredRows.length)}
-        singularLabel={workOrderDefinition.singular}
+        singularLabel="work order"
         totalCount={filteredRows.length}
         totalPages={totalPages}
         onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}

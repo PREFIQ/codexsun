@@ -1,2 +1,5 @@
+export * from "./priorities.hooks";
+export * from "./priorities.schema";
+export * from "./priorities.services";
 export * from "./priorities.types";
-export * from "./priorities.workspace";
+export { PrioritiesWorkspace } from "./priorities.workspace";

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
-import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
 import { Switch } from "@codexsun/ui/components/switch";
 import { WorkspaceLookup } from "@codexsun/ui/workspace/lookup";
@@ -13,7 +12,13 @@ import {
 } from "@codexsun/ui/workspace/upsert";
 import { pincodeSchema } from "./pincode.schema";
 import type { CityOption, PincodeRecord, PincodeSavePayload } from "./pincode.types";
-const emptyValue: PincodeSavePayload = { cityId: 0, name: "", sortOrder: 1000, status: "active" };
+const emptyValue: PincodeSavePayload = {
+  area: "",
+  cityId: 0,
+  name: "",
+  sortOrder: 1000,
+  status: "active"
+};
 export function PincodeForm({
   error,
   loading,
@@ -46,6 +51,7 @@ export function PincodeForm({
             ? {
                 cityId: record.cityId,
                 name: record.name,
+                area: record.area,
                 sortOrder: record.sortOrder,
                 status: record.status
               }
@@ -93,12 +99,19 @@ function Body({
         <WorkspaceFormBanner title="Unable to save">{validation || error}</WorkspaceFormBanner>
       ) : null}
       <WorkspaceFormGrid columns={1}>
-        <WorkspaceFormField label="Pincode value" required>
+        <WorkspaceFormField label="Postal code" required>
           <Input
             autoFocus
             required
             value={value.name}
             onChange={(event) => setValue((current) => ({ ...current, name: event.target.value }))}
+          />
+        </WorkspaceFormField>
+        <WorkspaceFormField label="Area" required>
+          <Input
+            required
+            value={value.area}
+            onChange={(event) => setValue((current) => ({ ...current, area: event.target.value }))}
           />
         </WorkspaceFormField>
         <WorkspaceFormField label="City" required>
@@ -150,44 +163,5 @@ function Body({
         }}
       />
     </form>
-  );
-}
-export function PincodeView({
-  onClose,
-  record
-}: {
-  onClose: () => void;
-  record: PincodeRecord | null;
-}) {
-  return (
-    <WorkspaceUpsertDialog onClose={onClose} open={record !== null} title="Pincode details">
-      {record ? (
-        <div className="space-y-4">
-          <WorkspaceFormGrid columns={1}>
-            <WorkspaceFormField label="Pincode">
-              <Input readOnly value={record.name} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="City">
-              <Input readOnly value={record.cityName} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="District">
-              <Input readOnly value={record.districtName} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="State">
-              <Input readOnly value={record.stateName} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="Country">
-              <Input readOnly value={record.countryName} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="Status">
-              <Input readOnly value={record.status === "active" ? "Active" : "Inactive"} />
-            </WorkspaceFormField>
-          </WorkspaceFormGrid>
-          <Button onClick={onClose} type="button" variant="outline">
-            Close
-          </Button>
-        </div>
-      ) : null}
-    </WorkspaceUpsertDialog>
   );
 }

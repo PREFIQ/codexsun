@@ -11,7 +11,6 @@ export function CityList({
   onForceDelete,
   onRestore,
   onSuspend,
-  onView,
   records
 }: {
   loading: boolean;
@@ -19,11 +18,31 @@ export function CityList({
   onForceDelete: (r: CityRecord) => void;
   onRestore: (r: CityRecord) => void;
   onSuspend: (r: CityRecord) => void;
-  onView: (r: CityRecord) => void;
   records: CityRecord[];
 }) {
   const columns: ColumnDef<CityRecord>[] = [
-    { accessorKey: "name", header: "City" },
+    {
+      accessorKey: "sortOrder",
+      cell: ({ row }) => <div className="text-center tabular-nums">{row.original.sortOrder}</div>,
+      header: () => <div className="text-center">#</div>,
+      size: 64
+    },
+    {
+      accessorKey: "name",
+      cell: ({ row }) =>
+        isProtectedCity(row.original) ? (
+          <span className="font-medium">{row.original.name}</span>
+        ) : (
+          <button
+            className="cursor-pointer font-medium text-foreground hover:underline"
+            onClick={() => onEdit(row.original)}
+            type="button"
+          >
+            {row.original.name}
+          </button>
+        ),
+      header: "City"
+    },
     { accessorKey: "districtName", header: "District" },
     { accessorKey: "stateName", header: "State" },
     { accessorKey: "countryName", header: "Country" },
@@ -39,13 +58,14 @@ export function CityList({
     },
     {
       id: "actions",
-      header: "Actions",
+      header: () => <div className="text-center">Actions</div>,
+      size: 96,
       enableSorting: false,
       cell: ({ row }) => {
         const record = row.original;
         return (
           <div
-            className="flex justify-end"
+            className="flex w-full justify-center"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
@@ -67,7 +87,6 @@ export function CityList({
                 onDelete={() => onSuspend(record)}
                 onEdit={() => onEdit(record)}
                 onRestore={() => onRestore(record)}
-                onView={() => onView(record)}
                 title={record.name}
               />
             )}
@@ -83,7 +102,6 @@ export function CityList({
       emptyState="No citys found."
       isLoading={loading}
       minWidth="860px"
-      onRowClick={onView}
     />
   );
 }

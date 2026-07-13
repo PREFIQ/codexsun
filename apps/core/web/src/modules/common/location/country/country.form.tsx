@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
-import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
 import { Switch } from "@codexsun/ui/components/switch";
 import {
@@ -145,40 +144,6 @@ function CountryFormBody({
         }}
       />
     </form>
-  );
-}
-
-export function CountryView({
-  onClose,
-  record
-}: {
-  onClose: () => void;
-  record: CountryRecord | null;
-}) {
-  return (
-    <WorkspaceUpsertDialog onClose={onClose} open={record !== null} title="Country details">
-      {record ? (
-        <div className="space-y-4">
-          <WorkspaceFormGrid columns={1}>
-            <WorkspaceFormField label="Country name">
-              <Input readOnly value={record.name} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="Country code">
-              <Input className="font-mono" readOnly value={record.code} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="Sort order">
-              <Input readOnly value={record.sortOrder} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="Status">
-              <Input readOnly value={record.status === "active" ? "Active" : "Inactive"} />
-            </WorkspaceFormField>
-          </WorkspaceFormGrid>
-          <Button onClick={onClose} type="button" variant="outline">
-            Close
-          </Button>
-        </div>
-      ) : null}
-    </WorkspaceUpsertDialog>
   );
 }
 

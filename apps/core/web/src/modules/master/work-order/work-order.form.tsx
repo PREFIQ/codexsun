@@ -5,11 +5,13 @@ import { Input } from "@codexsun/ui/components/input";
 import { Switch } from "@codexsun/ui/components/switch";
 import {
   WorkspaceFormActions,
+  WorkspaceFormBanner,
   WorkspaceFormBody,
   WorkspaceFormField,
   WorkspaceFormGrid,
   WorkspaceFormSurface
 } from "@codexsun/ui/workspace/upsert";
+import { workOrderSchema } from "./work-order.schema";
 import type { WorkOrderRecord, WorkOrderSavePayload } from "./work-order.types";
 export function WorkOrderForm({
   error,
@@ -26,6 +28,7 @@ export function WorkOrderForm({
   onSubmit: (payload: WorkOrderSavePayload) => void;
   record: WorkOrderRecord | null;
 }) {
+  const [validationError, setValidationError] = useState("");
   const [form, setForm] = useState<WorkOrderSavePayload>(() =>
     record
       ? { code: record.code, isActive: record.isActive, name: record.name, status: record.status }
@@ -75,12 +78,26 @@ export function WorkOrderForm({
               </div>
             </WorkspaceFormField>
           </WorkspaceFormGrid>
-          {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+          {validationError || error ? (
+            <WorkspaceFormBanner title="Unable to save">
+              {validationError || error}
+            </WorkspaceFormBanner>
+          ) : null}
         </WorkspaceFormBody>
         <WorkspaceFormActions>
           <Button
             disabled={loading || !form.name?.trim() || !form.code?.trim()}
-            onClick={() => onSubmit(form)}
+            onClick={() => {
+              const result = workOrderSchema.safeParse(form);
+              if (!result.success) {
+                setValidationError(
+                  result.error.issues[0]?.message ?? "Check the work order details."
+                );
+                return;
+              }
+              setValidationError("");
+              onSubmit(form);
+            }}
           >
             <Save className="size-4" />
             Save

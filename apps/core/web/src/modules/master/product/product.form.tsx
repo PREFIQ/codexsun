@@ -5,11 +5,13 @@ import { Input } from "@codexsun/ui/components/input";
 import { Switch } from "@codexsun/ui/components/switch";
 import {
   WorkspaceFormActions,
+  WorkspaceFormBanner,
   WorkspaceFormBody,
   WorkspaceFormField,
   WorkspaceFormGrid,
   WorkspaceFormSurface
 } from "@codexsun/ui/workspace/upsert";
+import { productSchema } from "./product.schema";
 import type { ProductRecord, ProductSavePayload } from "./product.types";
 export function ProductForm({
   error,
@@ -24,6 +26,7 @@ export function ProductForm({
   onSubmit: (payload: ProductSavePayload) => void;
   record: ProductRecord | null;
 }) {
+  const [validationError, setValidationError] = useState("");
   const [form, setForm] = useState<ProductSavePayload>(() =>
     record
       ? { ...record }
@@ -84,10 +87,25 @@ export function ProductForm({
               </div>
             </WorkspaceFormField>
           </WorkspaceFormGrid>
-          {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+          {validationError || error ? (
+            <WorkspaceFormBanner title="Unable to save">
+              {validationError || error}
+            </WorkspaceFormBanner>
+          ) : null}
         </WorkspaceFormBody>
         <WorkspaceFormActions>
-          <Button disabled={loading || !form.name.trim()} onClick={() => onSubmit(form)}>
+          <Button
+            disabled={loading || !form.name.trim()}
+            onClick={() => {
+              const result = productSchema.safeParse(form);
+              if (!result.success) {
+                setValidationError(result.error.issues[0]?.message ?? "Check the product details.");
+                return;
+              }
+              setValidationError("");
+              onSubmit(form);
+            }}
+          >
             <Save className="size-4" />
             Save
           </Button>

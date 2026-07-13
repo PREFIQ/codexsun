@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { listWorkOrderTypes } from "./work-order-types.services";
-export function useWorkOrderTypesQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listWorkOrderTypes(path), queryKey: ["core", "common", key] });
+import type { WorkOrderTypesListFilters } from "./work-order-types.types";
+
+export const workOrderTypesQueryKey = ["core", "common", "workorder", "work-order-types"] as const;
+export function useWorkOrderTypes(filters: WorkOrderTypesListFilters = {}) {
+  return useQuery({
+    queryFn: () => listWorkOrderTypes(filters),
+    queryKey: [...workOrderTypesQueryKey, filters.search ?? ""]
+  });
 }

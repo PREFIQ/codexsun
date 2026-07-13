@@ -18,10 +18,3 @@ export type WorkOrderLookupRecord = {
   name?: string | null;
   description?: string | null;
 };
-export const workOrderDefinition = {
-  description: "Work order master with owned code, name, status, and lifecycle.",
-  label: "Work Orders",
-  route: "work-orders",
-  search: "Search code or work order",
-  singular: "work order"
-} as const;

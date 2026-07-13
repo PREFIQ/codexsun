@@ -1,36 +1,14 @@
-export type WarehousesValue = boolean | number | string | null;
 export type WarehousesRecord = {
   id: number;
+  name: string;
   isActive: boolean;
-  [key: string]: WarehousesValue;
-};
-export type WarehousesField = {
-  key: string;
-  label: string;
-  required?: boolean;
-  type: "boolean" | "color" | "date" | "number" | "string";
-};
-export type WarehousesDefinition = {
-  fields: WarehousesField[];
-  group: "contacts" | "others" | "products" | "workorder";
-  key: string;
-  label: string;
-  path: string;
-  route: string;
+  sortOrder: number;
 };
 
-export const warehousesDefinition: WarehousesDefinition = {
-  fields: [
-    {
-      key: "name",
-      label: "Name",
-      type: "string",
-      required: true
-    }
-  ],
-  group: "workorder",
-  key: "warehouses",
-  label: "Warehouses",
-  path: "/core/common/workorder/warehouses",
-  route: "core.common.workorder.warehouses"
+export type WarehousesSavePayload = {
+  name?: string;
+  isActive: boolean;
+  sortOrder: number;
 };
+
+export type WarehousesListFilters = { search?: string };

@@ -1,42 +1,48 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { BrandsRecord, BrandsValue } from "./brands.types";
+import type { BrandsListFilters, BrandsRecord, BrandsSavePayload } from "./brands.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const brandsPath = "/core/common/products/brands";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function brandsRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${brandsPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "Brands request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listBrands(path: string) {
-  return request<BrandsRecord[]>(path);
+export function listBrands(filters: BrandsListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return brandsRequest<BrandsRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createBrands(path: string, payload: Record<string, BrandsValue>) {
-  return request<BrandsRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createBrands(payload: BrandsSavePayload) {
+  return brandsRequest<BrandsRecord>("", { body: JSON.stringify(payload), method: "POST" });
 }
-export function updateBrands(path: string, id: number, payload: Record<string, BrandsValue>) {
-  return request<BrandsRecord>(`${path}/${id}`, { body: JSON.stringify(payload), method: "PUT" });
+export function updateBrands(id: number, payload: BrandsSavePayload) {
+  return brandsRequest<BrandsRecord>(`/${id}`, { body: JSON.stringify(payload), method: "PUT" });
 }
-export function setBrandsActive(path: string, id: number, active: boolean) {
-  return request<BrandsRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateBrands(id: number) {
+  return brandsRequest<BrandsRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteBrands(path: string, id: number) {
-  return request<BrandsRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateBrands(id: number) {
+  return brandsRequest<BrandsRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteBrands(id: number) {
+  return brandsRequest<BrandsRecord>(`/${id}/force`, { method: "DELETE" });
 }

@@ -10,12 +10,14 @@ export type PincodeRecord = {
   countryId: number;
   countryName: string;
   name: string;
+  area: string;
   sortOrder: number;
   status: PincodeStatus;
 };
 export type PincodeSavePayload = {
   cityId: number;
   name: string;
+  area: string;
   sortOrder: number;
   status: PincodeStatus;
 };

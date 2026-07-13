@@ -28,5 +28,11 @@ export const createCompany = (payload: CompanySavePayload) =>
   request<CompanyRecord>(path, { body: JSON.stringify(payload), method: "POST" });
 export const updateCompany = (id: number, payload: CompanySavePayload) =>
   request<CompanyRecord>(`${path}/${id}`, { body: JSON.stringify(payload), method: "PUT" });
+export const activateCompany = (id: number) =>
+  request<CompanyRecord>(`${path}/${id}/activate`, { method: "POST" });
+export const deactivateCompany = (id: number) =>
+  request<CompanyRecord>(`${path}/${id}/deactivate`, { method: "POST" });
+export const forceDeleteCompany = (id: number) =>
+  request<CompanyRecord>(`${path}/${id}/force`, { method: "DELETE" });
 export const listCompanyIndustries = () =>
   request<CompanyIndustry[]>("/core/organisation/industries");

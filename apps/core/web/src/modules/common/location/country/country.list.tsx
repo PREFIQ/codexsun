@@ -12,7 +12,6 @@ export function CountryList({
   onForceDelete,
   onRestore,
   onSuspend,
-  onView,
   records
 }: {
   loading: boolean;
@@ -20,13 +19,32 @@ export function CountryList({
   onForceDelete: (record: CountryRecord) => void;
   onRestore: (record: CountryRecord) => void;
   onSuspend: (record: CountryRecord) => void;
-  onView: (record: CountryRecord) => void;
   records: CountryRecord[];
 }) {
   const columns: ColumnDef<CountryRecord>[] = [
-    { accessorKey: "name", header: "Country" },
+    {
+      accessorKey: "sortOrder",
+      cell: ({ row }) => <div className="text-center tabular-nums">{row.original.sortOrder}</div>,
+      header: () => <div className="text-center">#</div>,
+      size: 64
+    },
+    {
+      accessorKey: "name",
+      cell: ({ row }) =>
+        isProtectedCountry(row.original) ? (
+          <span className="font-medium">{row.original.name}</span>
+        ) : (
+          <button
+            className="cursor-pointer font-medium text-foreground hover:underline"
+            onClick={() => onEdit(row.original)}
+            type="button"
+          >
+            {row.original.name}
+          </button>
+        ),
+      header: "Country"
+    },
     { accessorKey: "code", header: "Country code" },
-    { accessorKey: "sortOrder", header: "Sort order" },
     {
       accessorKey: "status",
       cell: ({ row }) => (
@@ -43,7 +61,7 @@ export function CountryList({
         const protectedRecord = isProtectedCountry(record);
         return (
           <div
-            className="flex justify-end"
+            className="flex w-full justify-center"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
@@ -65,7 +83,6 @@ export function CountryList({
                 onDelete={() => onSuspend(record)}
                 onEdit={() => onEdit(record)}
                 onRestore={() => onRestore(record)}
-                onView={() => onView(record)}
                 title={record.name}
               />
             )}
@@ -73,7 +90,8 @@ export function CountryList({
         );
       },
       enableSorting: false,
-      header: "Actions",
+      header: () => <div className="text-center">Actions</div>,
+      size: 96,
       id: "actions"
     }
   ];
@@ -85,7 +103,6 @@ export function CountryList({
       emptyState="No countries found."
       isLoading={loading}
       minWidth="760px"
-      onRowClick={onView}
     />
   );
 }

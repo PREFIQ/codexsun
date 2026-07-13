@@ -1,58 +1,68 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
 import type {
+  StockRejectionTypesListFilters,
   StockRejectionTypesRecord,
-  StockRejectionTypesValue
+  StockRejectionTypesSavePayload
 } from "./stock-rejection-types.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const stockRejectionTypesPath = "/core/common/workorder/stock-rejection-types";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function stockRejectionTypesRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${stockRejectionTypesPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(
+      envelope.success ? "StockRejectionTypes request failed." : envelope.error.message
+    );
+  }
+  return envelope.data;
 }
 
-export function listStockRejectionTypes(path: string) {
-  return request<StockRejectionTypesRecord[]>(path);
+export function listStockRejectionTypes(filters: StockRejectionTypesListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return stockRejectionTypesRequest<StockRejectionTypesRecord[]>(
+    query.size ? `?${query.toString()}` : ""
+  );
 }
-export function createStockRejectionTypes(
-  path: string,
-  payload: Record<string, StockRejectionTypesValue>
-) {
-  return request<StockRejectionTypesRecord>(path, {
+export function createStockRejectionTypes(payload: StockRejectionTypesSavePayload) {
+  return stockRejectionTypesRequest<StockRejectionTypesRecord>("", {
     body: JSON.stringify(payload),
     method: "POST"
   });
 }
-export function updateStockRejectionTypes(
-  path: string,
-  id: number,
-  payload: Record<string, StockRejectionTypesValue>
-) {
-  return request<StockRejectionTypesRecord>(`${path}/${id}`, {
+export function updateStockRejectionTypes(id: number, payload: StockRejectionTypesSavePayload) {
+  return stockRejectionTypesRequest<StockRejectionTypesRecord>(`/${id}`, {
     body: JSON.stringify(payload),
     method: "PUT"
   });
 }
-export function setStockRejectionTypesActive(path: string, id: number, active: boolean) {
-  return request<StockRejectionTypesRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
+export function activateStockRejectionTypes(id: number) {
+  return stockRejectionTypesRequest<StockRejectionTypesRecord>(`/${id}/activate`, {
     method: "POST"
   });
 }
-export function forceDeleteStockRejectionTypes(path: string, id: number) {
-  return request<StockRejectionTypesRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateStockRejectionTypes(id: number) {
+  return stockRejectionTypesRequest<StockRejectionTypesRecord>(`/${id}/deactivate`, {
+    method: "POST"
+  });
+}
+export function forceDeleteStockRejectionTypes(id: number) {
+  return stockRejectionTypesRequest<StockRejectionTypesRecord>(`/${id}/force`, {
+    method: "DELETE"
+  });
 }

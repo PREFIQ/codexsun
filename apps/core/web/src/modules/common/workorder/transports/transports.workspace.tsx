@@ -1,7 +1,6 @@
-import { transportsDefinition } from "./transports.types";
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -14,121 +13,109 @@ import {
   AlertDialogTitle
 } from "@codexsun/ui/components/alert-dialog";
 import { Button } from "@codexsun/ui/components/button";
-import { Input } from "@codexsun/ui/components/input";
-import { Switch } from "@codexsun/ui/components/switch";
 import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
-import { WorkspaceProtectedIndicator } from "@codexsun/ui/workspace/protected-indicator";
-import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
-import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
-import {
-  WorkspaceTableEmptyState,
-  WorkspaceTableHeaderCell,
-  WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
-} from "@codexsun/ui/workspace/table";
-import {
-  WorkspaceFormBanner,
-  WorkspaceFormField,
-  WorkspaceFormFooter,
-  WorkspaceFormGrid,
-  WorkspaceUpsertDialog
-} from "@codexsun/ui/workspace/upsert";
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 import { cn } from "@codexsun/ui/lib/utils";
+import { TransportsForm } from "./transports.form";
+import { transportsQueryKey, useTransports } from "./transports.hooks";
+import { TransportsList } from "./transports.list";
 import {
+  activateTransports,
   createTransports,
+  deactivateTransports,
   forceDeleteTransports,
-  listTransports,
-  setTransportsActive,
   updateTransports
 } from "./transports.services";
-import type { TransportsDefinition, TransportsRecord, TransportsValue } from "./transports.types";
+import type { TransportsRecord, TransportsSavePayload } from "./transports.types";
+type PendingAction = { record: TransportsRecord; type: "force-delete" | "restore" | "suspend" };
 
-export function TransportsShell({ definition }: { definition: TransportsDefinition }) {
+export function TransportsWorkspace() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
   const [editing, setEditing] = useState<TransportsRecord | null | undefined>(undefined);
-  const [deleting, setDeleting] = useState<TransportsRecord | null>(null);
-  const query = useQuery({
-    queryFn: () => listTransports(definition.path),
-    queryKey: ["core", "common", definition.key]
-  });
-  const save = useMutation({
-    mutationFn: (payload: Record<string, TransportsValue>) =>
-      editing
-        ? updateTransports(definition.path, editing.id, payload)
-        : createTransports(definition.path, payload),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["core", "common", definition.key] });
-      toast.success(`${singular(definition.label)} saved`);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const query = useTransports();
+  const saveMutation = useMutation({
+    mutationFn: (payload: TransportsSavePayload) =>
+      editing ? updateTransports(editing.id, payload) : createTransports(payload),
+    onError: showError("Unable to save transport"),
+    onSuccess: async (record) => {
+      await queryClient.invalidateQueries({ queryKey: transportsQueryKey });
+      toast.success(`Transport ${editing ? "updated" : "created"}`, {
+        description: String(record.name)
+      });
       setEditing(undefined);
     }
   });
-  const toggle = useMutation({
-    mutationFn: (record: TransportsRecord) =>
-      setTransportsActive(definition.path, record.id, !record.isActive),
-    onSuccess: async () =>
-      queryClient.invalidateQueries({ queryKey: ["core", "common", definition.key] })
+  const lifecycleMutation = useMutation({
+    mutationFn: ({ record, type }: PendingAction) =>
+      type === "force-delete"
+        ? forceDeleteTransports(record.id)
+        : type === "restore"
+          ? activateTransports(record.id)
+          : deactivateTransports(record.id),
+    onError: showError("Unable to update transport"),
+    onSuccess: async (record, action) => {
+      await queryClient.invalidateQueries({ queryKey: transportsQueryKey });
+      toast.success(
+        action.type === "force-delete"
+          ? "Transport force deleted"
+          : action.type === "restore"
+            ? "Transport restored"
+            : "Transport suspended",
+        { description: String(record.name) }
+      );
+      setPendingAction(null);
+    }
   });
-  const forceDelete = useMutation({
-    mutationFn: (record: TransportsRecord) => forceDeleteTransports(definition.path, record.id),
-    onSuccess: async (record) => {
-      await queryClient.invalidateQueries({ queryKey: ["core", "common", definition.key] });
-      toast.success(`${singular(definition.label)} force deleted`, {
-        description: `${String(record.name ?? "Record")} was permanently removed.`
-      });
-      setDeleting(null);
-    },
-    onError: (error) =>
-      toast.error(`Unable to delete ${singular(definition.label).toLowerCase()}`, {
-        description: error instanceof Error ? error.message : "Please try again."
-      })
-  });
-  const rows = useMemo(
-    () =>
-      (query.data ?? []).filter((record) => {
-        const matchesStatus =
-          status === "all" || (status === "active" ? record.isActive : !record.isActive);
-        const term = search.trim().toLowerCase();
-        return (
-          matchesStatus &&
-          (!term ||
-            definition.fields.some((field) =>
-              String(record[field.key] ?? "")
-                .toLowerCase()
-                .includes(term)
-            ))
-        );
-      }),
-    [definition.fields, query.data, search, status]
-  );
-  const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage));
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return (query.data ?? []).filter(
+      (record) =>
+        (status === "all" || (status === "active" ? record.isActive : !record.isActive)) &&
+        (!term ||
+          String(record.name).toLowerCase().includes(term) ||
+          String(record.gst).toLowerCase().includes(term) ||
+          String(record.vehicleNo).toLowerCase().includes(term) ||
+          String(record.address).toLowerCase().includes(term) ||
+          String(record.contactNo).toLowerCase().includes(term) ||
+          String(record.contactPerson).toLowerCase().includes(term))
+    );
+  }, [query.data, search, status]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = rows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
-  const finalized = isFinalizedContactMaster(definition);
-
+  const records = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
   return (
     <WorkspacePage
-      title={definition.label}
-      description={`Manage ${definition.label.toLowerCase()} for this workspace.`}
-      technicalName={`page.common.${definition.group}.${definition.key}.list`}
       actions={
-        <div className="flex gap-2">
-          <Button className="h-9 rounded-md" variant="outline" onClick={() => void query.refetch()}>
+        <div className="flex items-center gap-2">
+          <Button
+            className="h-9 rounded-md"
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+            type="button"
+            variant="outline"
+          >
             <RefreshCw className={cn("size-4", query.isFetching && "animate-spin")} />
             Refresh
           </Button>
-          <Button className="h-9 rounded-md" onClick={() => setEditing(null)}>
+          <Button className="h-9 rounded-md" onClick={() => setEditing(null)} type="button">
             <Plus className="size-4" />
-            New {singular(definition.label).toLowerCase()}
+            New transport
           </Button>
         </div>
       }
+      description="Manage transports for the current tenant database."
+      technicalName="page.common.workorder.transports.list"
+      title="Transports"
     >
       <WorkspaceFilters
         filterOptions={[
@@ -145,24 +132,23 @@ export function TransportsShell({ definition }: { definition: TransportsDefiniti
           setSearch(value);
           setPage(1);
         }}
-        searchPlaceholder={`Search ${definition.label.toLowerCase()}`}
+        searchPlaceholder="Search transports"
         searchValue={search}
       />
       <TransportsList
-        definition={definition}
         loading={query.isFetching && !query.data}
-        records={pageRows}
-        startIndex={(currentPage - 1) * rowsPerPage}
         onEdit={setEditing}
-        onToggle={(record) => toggle.mutate(record)}
-        {...(finalized ? { onForceDelete: setDeleting } : {})}
+        onForceDelete={(record) => setPendingAction({ record, type: "force-delete" })}
+        onRestore={(record) => setPendingAction({ record, type: "restore" })}
+        onSuspend={(record) => setPendingAction({ record, type: "suspend" })}
+        records={records}
       />
       <WorkspacePagination
         page={currentPage}
         rowsPerPage={rowsPerPage}
-        showingLabel={buildShowingLabel(currentPage, rowsPerPage, rows.length)}
-        singularLabel={definition.label.toLowerCase()}
-        totalCount={rows.length}
+        showingLabel={buildShowingLabel(currentPage, rowsPerPage, filtered.length)}
+        singularLabel="transport"
+        totalCount={filtered.length}
         totalPages={totalPages}
         onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
         onPageChange={setPage}
@@ -173,348 +159,67 @@ export function TransportsShell({ definition }: { definition: TransportsDefiniti
         }}
       />
       <TransportsForm
-        key={`${definition.key}:${editing?.id ?? "new"}:${editing !== undefined}`}
-        definition={definition}
-        error={save.error instanceof Error ? save.error.message : ""}
-        loading={save.isPending}
+        {...(saveMutation.error instanceof Error ? { error: saveMutation.error.message } : {})}
+        loading={saveMutation.isPending}
+        onCancel={() => setEditing(undefined)}
+        onSubmit={(payload) => saveMutation.mutate(payload)}
         open={editing !== undefined}
         record={editing ?? null}
-        onClose={() => setEditing(undefined)}
-        onSubmit={(payload) => save.mutate(payload)}
       />
-      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
-        <AlertDialogContent className="rounded-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Force delete {singular(definition.label).toLowerCase()}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {String(deleting?.name ?? "This record")} will be permanently removed. This action
-              cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={forceDelete.isPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={!deleting || forceDelete.isPending}
-              onClick={() => deleting && forceDelete.mutate(deleting)}
-            >
-              Force delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <TransportsActionDialog
+        action={pendingAction}
+        loading={lifecycleMutation.isPending}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={() => pendingAction && lifecycleMutation.mutate(pendingAction)}
+      />
     </WorkspacePage>
   );
 }
-
-export function TransportsList({
-  definition,
+function TransportsActionDialog({
+  action,
   loading,
-  onEdit,
-  onForceDelete,
-  onToggle,
-  records,
-  startIndex = 0
+  onCancel,
+  onConfirm
 }: {
-  definition: TransportsDefinition;
+  action: PendingAction | null;
   loading: boolean;
-  onEdit: (record: TransportsRecord) => void;
-  onForceDelete?: (record: TransportsRecord) => void;
-  onToggle: (record: TransportsRecord) => void;
-  records: TransportsRecord[];
-  startIndex?: number;
+  onCancel: () => void;
+  onConfirm: () => void;
 }) {
+  const destructive = action?.type === "force-delete";
+  const verb = action?.type === "restore" ? "Restore" : destructive ? "Force delete" : "Suspend";
   return (
-    <WorkspaceTablePanel>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[680px] text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              <WorkspaceTableHeaderCell>#</WorkspaceTableHeaderCell>
-              {definition.fields.map((field) => (
-                <WorkspaceTableHeaderCell key={field.key}>{field.label}</WorkspaceTableHeaderCell>
-              ))}
-              <WorkspaceTableHeaderCell>Status</WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell className="text-right">Action</WorkspaceTableHeaderCell>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((record, index) => {
-              const placeholder = isPlaceholder(record, definition);
-              const editable = !placeholder;
-              return (
-                <tr className="border-b border-border/70 last:border-0" key={record.id}>
-                  <td className="px-4 py-2.5 text-muted-foreground">{startIndex + index + 1}</td>
-                  {definition.fields.map((field, fieldIndex) => (
-                    <td className="px-4 py-2.5" key={field.key}>
-                      {placeholder && fieldIndex === 0 ? (
-                        "-"
-                      ) : fieldIndex === 0 && editable ? (
-                        <button
-                          className="cursor-pointer text-left font-medium hover:underline"
-                          onClick={() => onEdit(record)}
-                          type="button"
-                        >
-                          {formatValue(record[field.key] ?? null, field.type)}
-                        </button>
-                      ) : (
-                        formatValue(record[field.key] ?? null, field.type)
-                      )}
-                    </td>
-                  ))}
-                  <td className="px-4 py-2.5">
-                    <WorkspaceStatusBadge
-                      label={record.isActive ? "active" : "inactive"}
-                      tone={record.isActive ? "success" : "neutral"}
-                    />
-                  </td>
-                  <td className="px-4 py-1.5 text-right">
-                    {placeholder ? (
-                      <WorkspaceProtectedIndicator />
-                    ) : !editable ? (
-                      <span className="text-xs text-muted-foreground">Shared</span>
-                    ) : (
-                      <WorkspaceRowActions
-                        title={String(record[definition.fields[0]?.key ?? "id"])}
-                        isSuspended={!record.isActive}
-                        onEdit={() => onEdit(record)}
-                        onDelete={() => onToggle(record)}
-                        onRestore={() => onToggle(record)}
-                        deleteLabel="Suspend"
-                        restoreLabel="Activate"
-                        {...(onForceDelete
-                          ? {
-                              actions: [
-                                {
-                                  id: "force-delete",
-                                  icon: <Trash2 className="size-4" />,
-                                  label: "Force delete",
-                                  onSelect: () => onForceDelete(record),
-                                  tone: "destructive" as const
-                                }
-                              ]
-                            }
-                          : {})}
-                      />
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {loading ? <WorkspaceTableSkeletonRows columns={definition.fields.length + 3} /> : null}
-      {!loading && records.length === 0 ? (
-        <WorkspaceTableEmptyState>No records found.</WorkspaceTableEmptyState>
-      ) : null}
-    </WorkspaceTablePanel>
+    <AlertDialog open={action !== null} onOpenChange={(open) => !open && onCancel()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{verb} transport?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {destructive
+              ? `${String(action?.record.name ?? "This record")} will be permanently removed.`
+              : `${String(action?.record.name ?? "This record")} will be marked ${action?.type === "restore" ? "active" : "inactive"}.`}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className={
+              destructive
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : undefined
+            }
+            disabled={loading}
+            onClick={onConfirm}
+          >
+            {verb}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
-
-export function TransportsForm({
-  definition,
-  error,
-  loading,
-  onClose,
-  onSubmit,
-  open,
-  record
-}: {
-  definition: TransportsDefinition;
-  error: string;
-  loading: boolean;
-  onClose: () => void;
-  onSubmit: (payload: Record<string, TransportsValue>) => void;
-  open: boolean;
-  record: TransportsRecord | null;
-}) {
-  const initial = Object.fromEntries(
-    definition.fields.map((field) => [field.key, record?.[field.key] ?? defaultValue(field.type)])
-  );
-  const [value, setValue] = useState<Record<string, TransportsValue>>({
-    ...initial,
-    isActive: record?.isActive ?? true,
-    sortOrder: 1000
-  });
-  return (
-    <WorkspaceUpsertDialog
-      className="max-h-[90vh] overflow-y-auto sm:max-w-xl"
-      description={`Enter the ${singular(definition.label).toLowerCase()} details.`}
-      open={open}
-      onClose={onClose}
-      title={`${record ? "Edit" : "New"} ${singular(definition.label).toLowerCase()}`}
-    >
-      <form
-        key={`${definition.key}:${record?.id ?? "new"}:${open}`}
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSubmit(value);
-        }}
-      >
-        {error ? <WorkspaceFormBanner title="Unable to save">{error}</WorkspaceFormBanner> : null}
-        <WorkspaceFormGrid columns={1}>
-          {definition.fields.map((field) => (
-            <WorkspaceFormField
-              key={field.key}
-              label={field.label}
-              {...(field.required ? { required: true } : {})}
-            >
-              {field.type === "boolean" ? (
-                <Switch
-                  checked={Boolean(value[field.key])}
-                  onCheckedChange={(checked) =>
-                    setValue((current) => ({ ...current, [field.key]: checked }))
-                  }
-                />
-              ) : (
-                <Input
-                  required={field.required}
-                  type={
-                    field.type === "number"
-                      ? "number"
-                      : field.type === "date"
-                        ? "date"
-                        : field.type === "color"
-                          ? "color"
-                          : "text"
-                  }
-                  value={String(value[field.key] ?? "")}
-                  onChange={(event) =>
-                    setValue((current) => ({
-                      ...current,
-                      [field.key]:
-                        field.type === "number" ? Number(event.target.value) : event.target.value
-                    }))
-                  }
-                />
-              )}
-            </WorkspaceFormField>
-          ))}
-          {!isFinalizedContactMaster(definition) ? (
-            <WorkspaceFormField label="Sort order">
-              <Input
-                min={0}
-                type="number"
-                value={String(value.sortOrder ?? 1000)}
-                onChange={(event) =>
-                  setValue((current) => ({ ...current, sortOrder: Number(event.target.value) }))
-                }
-              />
-            </WorkspaceFormField>
-          ) : null}
-          {isFinalizedContactMaster(definition) ? (
-            <div
-              className={cn(
-                "flex h-11 items-center gap-2 rounded-md border px-3",
-                value.isActive
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                  : "border-border/80 bg-muted/30 text-muted-foreground"
-              )}
-            >
-              <CheckCircle2 className="size-4 shrink-0" />
-              <span className="text-sm font-medium">Active</span>
-              <Switch
-                aria-label="Active"
-                checked={Boolean(value.isActive)}
-                className="ml-auto"
-                onCheckedChange={(checked) =>
-                  setValue((current) => ({ ...current, isActive: checked }))
-                }
-              />
-            </div>
-          ) : (
-            <WorkspaceFormField label="Active">
-              <div className="flex h-11 items-center gap-3 rounded-md border px-3">
-                <Switch
-                  checked={Boolean(value.isActive)}
-                  onCheckedChange={(checked) =>
-                    setValue((current) => ({ ...current, isActive: checked }))
-                  }
-                />
-                <span className="text-sm text-muted-foreground">
-                  {value.isActive ? "Available" : "Inactive"}
-                </span>
-              </div>
-            </WorkspaceFormField>
-          )}
-        </WorkspaceFormGrid>
-        <WorkspaceFormFooter
-          className="mt-6 border-t pt-4"
-          onCancel={onClose}
-          primaryLabel="Save"
-          primaryLoading={loading}
-          primaryProps={{
-            children: (
-              <>
-                <Save className="size-4" />
-                Save
-              </>
-            )
-          }}
-        />
-      </form>
-    </WorkspaceUpsertDialog>
-  );
-}
-
-function formatValue(value: TransportsValue, type: string) {
-  if (type === "boolean") return value ? "Yes" : "No";
-  if (type === "color")
-    return (
-      <span className="inline-flex items-center gap-2">
-        <span className="size-4 rounded-sm border" style={{ backgroundColor: String(value) }} />
-        {String(value ?? "-")}
-      </span>
-    );
-  return String(value ?? "-");
-}
-function defaultValue(type: string): TransportsValue {
-  return type === "boolean" ? false : type === "number" ? 0 : "";
-}
-function singular(label: string) {
-  return label.endsWith("ies")
-    ? `${label.slice(0, -3)}y`
-    : label.endsWith("s")
-      ? label.slice(0, -1)
-      : label;
-}
-function isFinalizedContactMaster(definition: TransportsDefinition) {
-  return FINALIZED_COMMON_MASTER_KEYS.has(definition.key);
-}
-function isPlaceholder(record: TransportsRecord, definition: TransportsDefinition) {
-  return definition.fields.some((field) => String(record[field.key] ?? "").trim() === "-");
-}
-
-const FINALIZED_COMMON_MASTER_KEYS = new Set([
-  "contactGroups",
-  "contactTypes",
-  "addressTypes",
-  "bankNames",
-  "productGroups",
-  "productCategories",
-  "productTypes",
-  "units",
-  "hsnCodes",
-  "taxes",
-  "brands",
-  "colours",
-  "sizes",
-  "styles",
-  "workOrderTypes",
-  "transports",
-  "warehouses",
-  "destinations",
-  "stockRejectionTypes",
-  "currencies",
-  "priorities",
-  "paymentTerms",
-  "salesTypes",
-  "months"
-]);
-
-export function TransportsWorkspace() {
-  return <TransportsShell definition={transportsDefinition} />;
+function showError(title: string) {
+  return (error: unknown) =>
+    toast.error(title, {
+      description: error instanceof Error ? error.message : "Please try again."
+    });
 }

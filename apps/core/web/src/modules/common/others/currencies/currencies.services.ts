@@ -1,49 +1,55 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { CurrenciesRecord, CurrenciesValue } from "./currencies.types";
+import type {
+  CurrenciesListFilters,
+  CurrenciesRecord,
+  CurrenciesSavePayload
+} from "./currencies.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const currenciesPath = "/core/common/others/currencies";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function currenciesRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${currenciesPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "Currencies request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listCurrencies(path: string) {
-  return request<CurrenciesRecord[]>(path);
+export function listCurrencies(filters: CurrenciesListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return currenciesRequest<CurrenciesRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createCurrencies(path: string, payload: Record<string, CurrenciesValue>) {
-  return request<CurrenciesRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createCurrencies(payload: CurrenciesSavePayload) {
+  return currenciesRequest<CurrenciesRecord>("", { body: JSON.stringify(payload), method: "POST" });
 }
-export function updateCurrencies(
-  path: string,
-  id: number,
-  payload: Record<string, CurrenciesValue>
-) {
-  return request<CurrenciesRecord>(`${path}/${id}`, {
+export function updateCurrencies(id: number, payload: CurrenciesSavePayload) {
+  return currenciesRequest<CurrenciesRecord>(`/${id}`, {
     body: JSON.stringify(payload),
     method: "PUT"
   });
 }
-export function setCurrenciesActive(path: string, id: number, active: boolean) {
-  return request<CurrenciesRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateCurrencies(id: number) {
+  return currenciesRequest<CurrenciesRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteCurrencies(path: string, id: number) {
-  return request<CurrenciesRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateCurrencies(id: number) {
+  return currenciesRequest<CurrenciesRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteCurrencies(id: number) {
+  return currenciesRequest<CurrenciesRecord>(`/${id}/force`, { method: "DELETE" });
 }

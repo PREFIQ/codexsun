@@ -1,49 +1,58 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { ContactGroupsRecord, ContactGroupsValue } from "./contact-groups.types";
+import type {
+  ContactGroupsListFilters,
+  ContactGroupsRecord,
+  ContactGroupsSavePayload
+} from "./contact-groups.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const contactGroupsPath = "/core/common/contacts/contact-groups";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function contactGroupsRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${contactGroupsPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "ContactGroups request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listContactGroups(path: string) {
-  return request<ContactGroupsRecord[]>(path);
+export function listContactGroups(filters: ContactGroupsListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return contactGroupsRequest<ContactGroupsRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createContactGroups(path: string, payload: Record<string, ContactGroupsValue>) {
-  return request<ContactGroupsRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createContactGroups(payload: ContactGroupsSavePayload) {
+  return contactGroupsRequest<ContactGroupsRecord>("", {
+    body: JSON.stringify(payload),
+    method: "POST"
+  });
 }
-export function updateContactGroups(
-  path: string,
-  id: number,
-  payload: Record<string, ContactGroupsValue>
-) {
-  return request<ContactGroupsRecord>(`${path}/${id}`, {
+export function updateContactGroups(id: number, payload: ContactGroupsSavePayload) {
+  return contactGroupsRequest<ContactGroupsRecord>(`/${id}`, {
     body: JSON.stringify(payload),
     method: "PUT"
   });
 }
-export function setContactGroupsActive(path: string, id: number, active: boolean) {
-  return request<ContactGroupsRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateContactGroups(id: number) {
+  return contactGroupsRequest<ContactGroupsRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteContactGroups(path: string, id: number) {
-  return request<ContactGroupsRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateContactGroups(id: number) {
+  return contactGroupsRequest<ContactGroupsRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteContactGroups(id: number) {
+  return contactGroupsRequest<ContactGroupsRecord>(`/${id}/force`, { method: "DELETE" });
 }

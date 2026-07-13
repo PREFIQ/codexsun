@@ -1,53 +1,74 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { DestinationsService } from "./destinations.service.js";
-import type { DestinationsListFilters, DestinationsSavePayload } from "./destinations.types.js";
-
 export const DESTINATIONS_COLLECTION_PATH = "/core/common/workorder/destinations";
 const service = new DestinationsService();
-
+const idParamsSchema = z.object({
+  id: z.string().regex(/^\d+$/, "Destinations ID must be numeric.")
+});
+const destinationsSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  isActive: z.boolean(),
+  sortOrder: z.number().int()
+});
+const destinationsPayloadSchema = z.object({
+  name: z.string().trim(),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).default(1000)
+});
+const destinationsQuerySchema = z.object({ search: z.string().trim().optional() });
 export async function registerDestinationsRoutes(app: FastifyInstance) {
-  app.get(DESTINATIONS_COLLECTION_PATH, async (request) =>
-    ok(await service.list(filters(request)), { requestId: request.id })
-  );
-  app.get(`/core/common/workorder/destinations/:id`, async (request, reply) => {
-    const record = await service.get(id(request));
-    return record
-      ? ok(record, { requestId: request.id })
-      : reply.code(404).send(notFound(request.id));
+  registerContractRoute(app, {
+    handler: ({ query }) => service.list(query.search ? { search: query.search } : {}),
+    method: "GET",
+    schemas: { querystring: destinationsQuerySchema, response: z.array(destinationsSchema) },
+    url: DESTINATIONS_COLLECTION_PATH
   });
-  app.post(DESTINATIONS_COLLECTION_PATH, async (request) =>
-    ok(await service.create(request.body as DestinationsSavePayload), {
-      requestId: request.id
-    })
-  );
-  app.put(`/core/common/workorder/destinations/:id`, async (request) =>
-    ok(await service.update(id(request), request.body as DestinationsSavePayload), {
-      requestId: request.id
-    })
-  );
-  app.post(`/core/common/workorder/destinations/:id/activate`, async (request) =>
-    ok(await service.setActive(id(request), true), { requestId: request.id })
-  );
-  app.post(`/core/common/workorder/destinations/:id/deactivate`, async (request) =>
-    ok(await service.setActive(id(request), false), { requestId: request.id })
-  );
-  app.delete(`/core/common/workorder/destinations/:id/force`, async (request) =>
-    ok(await service.forceDelete(id(request)), { requestId: request.id })
-  );
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.get(params.id)),
+    method: "GET",
+    schemas: { params: idParamsSchema, response: destinationsSchema },
+    url: `${DESTINATIONS_COLLECTION_PATH}/:id`
+  });
+  registerContractRoute(app, {
+    handler: async ({ body }) => required(await service.create(body)),
+    method: "POST",
+    schemas: { body: destinationsPayloadSchema, response: destinationsSchema },
+    url: DESTINATIONS_COLLECTION_PATH
+  });
+  registerContractRoute(app, {
+    handler: async ({ body, params }) => required(await service.update(params.id, body)),
+    method: "PUT",
+    schemas: {
+      body: destinationsPayloadSchema,
+      params: idParamsSchema,
+      response: destinationsSchema
+    },
+    url: `${DESTINATIONS_COLLECTION_PATH}/:id`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.setActive(params.id, true)),
+    method: "POST",
+    schemas: { params: idParamsSchema, response: destinationsSchema },
+    url: `${DESTINATIONS_COLLECTION_PATH}/:id/activate`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.setActive(params.id, false)),
+    method: "POST",
+    schemas: { params: idParamsSchema, response: destinationsSchema },
+    url: `${DESTINATIONS_COLLECTION_PATH}/:id/deactivate`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.forceDelete(params.id)),
+    method: "DELETE",
+    schemas: { params: idParamsSchema, response: destinationsSchema },
+    url: `${DESTINATIONS_COLLECTION_PATH}/:id/force`
+  });
 }
-
-function id(request: FastifyRequest) {
-  return (request.params as { id: string }).id;
-}
-function filters(request: FastifyRequest): DestinationsListFilters {
-  const search = (request.query as { search?: string } | undefined)?.search;
-  return search ? { search } : {};
-}
-function notFound(requestId: string) {
-  return {
-    error: { code: "DESTINATIONS_NOT_FOUND", message: "Destinations record was not found." },
-    meta: { requestId, timestamp: new Date().toISOString() },
-    success: false as const
-  };
+function required<T>(record: T | null): T {
+  if (!record) throw AppError.notFound("Destinations record was not found.");
+  return record;
 }

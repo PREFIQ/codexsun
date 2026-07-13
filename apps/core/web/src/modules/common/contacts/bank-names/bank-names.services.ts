@@ -1,45 +1,55 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { BankNamesRecord, BankNamesValue } from "./bank-names.types";
+import type {
+  BankNamesListFilters,
+  BankNamesRecord,
+  BankNamesSavePayload
+} from "./bank-names.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const bankNamesPath = "/core/common/contacts/bank-names";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function bankNamesRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${bankNamesPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "BankNames request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listBankNames(path: string) {
-  return request<BankNamesRecord[]>(path);
+export function listBankNames(filters: BankNamesListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return bankNamesRequest<BankNamesRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createBankNames(path: string, payload: Record<string, BankNamesValue>) {
-  return request<BankNamesRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createBankNames(payload: BankNamesSavePayload) {
+  return bankNamesRequest<BankNamesRecord>("", { body: JSON.stringify(payload), method: "POST" });
 }
-export function updateBankNames(path: string, id: number, payload: Record<string, BankNamesValue>) {
-  return request<BankNamesRecord>(`${path}/${id}`, {
+export function updateBankNames(id: number, payload: BankNamesSavePayload) {
+  return bankNamesRequest<BankNamesRecord>(`/${id}`, {
     body: JSON.stringify(payload),
     method: "PUT"
   });
 }
-export function setBankNamesActive(path: string, id: number, active: boolean) {
-  return request<BankNamesRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateBankNames(id: number) {
+  return bankNamesRequest<BankNamesRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteBankNames(path: string, id: number) {
-  return request<BankNamesRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateBankNames(id: number) {
+  return bankNamesRequest<BankNamesRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteBankNames(id: number) {
+  return bankNamesRequest<BankNamesRecord>(`/${id}/force`, { method: "DELETE" });
 }

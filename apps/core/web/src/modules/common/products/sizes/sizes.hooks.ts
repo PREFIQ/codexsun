@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { listSizes } from "./sizes.services";
-export function useSizesQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listSizes(path), queryKey: ["core", "common", key] });
+import type { SizesListFilters } from "./sizes.types";
+
+export const sizesQueryKey = ["core", "common", "products", "sizes"] as const;
+export function useSizes(filters: SizesListFilters = {}) {
+  return useQuery({
+    queryFn: () => listSizes(filters),
+    queryKey: [...sizesQueryKey, filters.search ?? ""]
+  });
 }

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
-import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
 import { Switch } from "@codexsun/ui/components/switch";
 import { WorkspaceLookup } from "@codexsun/ui/workspace/lookup";
@@ -150,35 +149,5 @@ function Body({
         }}
       />
     </form>
-  );
-}
-export function CityView({ onClose, record }: { onClose: () => void; record: CityRecord | null }) {
-  return (
-    <WorkspaceUpsertDialog onClose={onClose} open={record !== null} title="City details">
-      {record ? (
-        <div className="space-y-4">
-          <WorkspaceFormGrid columns={1}>
-            <WorkspaceFormField label="City">
-              <Input readOnly value={record.name} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="District">
-              <Input readOnly value={record.districtName} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="State">
-              <Input readOnly value={record.stateName} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="Country">
-              <Input readOnly value={record.countryName} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="Status">
-              <Input readOnly value={record.status === "active" ? "Active" : "Inactive"} />
-            </WorkspaceFormField>
-          </WorkspaceFormGrid>
-          <Button onClick={onClose} type="button" variant="outline">
-            Close
-          </Button>
-        </div>
-      ) : null}
-    </WorkspaceUpsertDialog>
   );
 }

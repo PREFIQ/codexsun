@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
-import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
 import { Switch } from "@codexsun/ui/components/switch";
 import { WorkspaceLookup } from "@codexsun/ui/workspace/lookup";
@@ -168,43 +167,6 @@ function StateFormBody({
         }}
       />
     </form>
-  );
-}
-
-export function StateView({
-  onClose,
-  record
-}: {
-  onClose: () => void;
-  record: StateRecord | null;
-}) {
-  return (
-    <WorkspaceUpsertDialog onClose={onClose} open={record !== null} title="State details">
-      {record ? (
-        <div className="space-y-4">
-          <WorkspaceFormGrid columns={1}>
-            <WorkspaceFormField label="State name">
-              <Input readOnly value={record.name} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="State code">
-              <Input className="font-mono" readOnly value={record.code} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="Country">
-              <Input readOnly value={record.countryName} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="Sort order">
-              <Input readOnly value={record.sortOrder} />
-            </WorkspaceFormField>
-            <WorkspaceFormField label="Status">
-              <Input readOnly value={record.status === "active" ? "Active" : "Inactive"} />
-            </WorkspaceFormField>
-          </WorkspaceFormGrid>
-          <Button onClick={onClose} type="button" variant="outline">
-            Close
-          </Button>
-        </div>
-      ) : null}
-    </WorkspaceUpsertDialog>
   );
 }
 

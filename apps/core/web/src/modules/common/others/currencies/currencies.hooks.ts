@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { listCurrencies } from "./currencies.services";
-export function useCurrenciesQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listCurrencies(path), queryKey: ["core", "common", key] });
+import type { CurrenciesListFilters } from "./currencies.types";
+
+export const currenciesQueryKey = ["core", "common", "others", "currencies"] as const;
+export function useCurrencies(filters: CurrenciesListFilters = {}) {
+  return useQuery({
+    queryFn: () => listCurrencies(filters),
+    queryKey: [...currenciesQueryKey, filters.search ?? ""]
+  });
 }

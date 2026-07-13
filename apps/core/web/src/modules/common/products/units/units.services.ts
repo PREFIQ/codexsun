@@ -1,42 +1,48 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { UnitsRecord, UnitsValue } from "./units.types";
+import type { UnitsListFilters, UnitsRecord, UnitsSavePayload } from "./units.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const unitsPath = "/core/common/products/units";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function unitsRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${unitsPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "Units request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listUnits(path: string) {
-  return request<UnitsRecord[]>(path);
+export function listUnits(filters: UnitsListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return unitsRequest<UnitsRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createUnits(path: string, payload: Record<string, UnitsValue>) {
-  return request<UnitsRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createUnits(payload: UnitsSavePayload) {
+  return unitsRequest<UnitsRecord>("", { body: JSON.stringify(payload), method: "POST" });
 }
-export function updateUnits(path: string, id: number, payload: Record<string, UnitsValue>) {
-  return request<UnitsRecord>(`${path}/${id}`, { body: JSON.stringify(payload), method: "PUT" });
+export function updateUnits(id: number, payload: UnitsSavePayload) {
+  return unitsRequest<UnitsRecord>(`/${id}`, { body: JSON.stringify(payload), method: "PUT" });
 }
-export function setUnitsActive(path: string, id: number, active: boolean) {
-  return request<UnitsRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateUnits(id: number) {
+  return unitsRequest<UnitsRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteUnits(path: string, id: number) {
-  return request<UnitsRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateUnits(id: number) {
+  return unitsRequest<UnitsRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteUnits(id: number) {
+  return unitsRequest<UnitsRecord>(`/${id}/force`, { method: "DELETE" });
 }

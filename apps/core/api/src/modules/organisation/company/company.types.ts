@@ -26,5 +26,8 @@ export type CompanyRecord = {
   createdAt: string;
   updatedAt: string;
 };
-export type CompanySaveInput = Partial<Omit<CompanyRecord, "id" | "createdAt" | "updatedAt">>;
+type CompanyWritableFields = Omit<CompanyRecord, "id" | "createdAt" | "updatedAt">;
+export type CompanySaveInput = {
+  [Key in keyof CompanyWritableFields]?: CompanyWritableFields[Key] | undefined;
+};
 export type CompanyIndustry = { code: string; id: number; name: string };

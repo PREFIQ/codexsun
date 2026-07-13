@@ -1,42 +1,48 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { TaxesRecord, TaxesValue } from "./taxes.types";
+import type { TaxesListFilters, TaxesRecord, TaxesSavePayload } from "./taxes.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const taxesPath = "/core/common/products/taxes";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function taxesRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${taxesPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "Taxes request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listTaxes(path: string) {
-  return request<TaxesRecord[]>(path);
+export function listTaxes(filters: TaxesListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return taxesRequest<TaxesRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createTaxes(path: string, payload: Record<string, TaxesValue>) {
-  return request<TaxesRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createTaxes(payload: TaxesSavePayload) {
+  return taxesRequest<TaxesRecord>("", { body: JSON.stringify(payload), method: "POST" });
 }
-export function updateTaxes(path: string, id: number, payload: Record<string, TaxesValue>) {
-  return request<TaxesRecord>(`${path}/${id}`, { body: JSON.stringify(payload), method: "PUT" });
+export function updateTaxes(id: number, payload: TaxesSavePayload) {
+  return taxesRequest<TaxesRecord>(`/${id}`, { body: JSON.stringify(payload), method: "PUT" });
 }
-export function setTaxesActive(path: string, id: number, active: boolean) {
-  return request<TaxesRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateTaxes(id: number) {
+  return taxesRequest<TaxesRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteTaxes(path: string, id: number) {
-  return request<TaxesRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateTaxes(id: number) {
+  return taxesRequest<TaxesRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteTaxes(id: number) {
+  return taxesRequest<TaxesRecord>(`/${id}/force`, { method: "DELETE" });
 }

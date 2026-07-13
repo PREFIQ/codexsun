@@ -1,42 +1,51 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { HsnCodesRecord, HsnCodesValue } from "./hsn-codes.types";
+import type { HsnCodesListFilters, HsnCodesRecord, HsnCodesSavePayload } from "./hsn-codes.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const hsnCodesPath = "/core/common/products/hsn-codes";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function hsnCodesRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${hsnCodesPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "HsnCodes request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listHsnCodes(path: string) {
-  return request<HsnCodesRecord[]>(path);
+export function listHsnCodes(filters: HsnCodesListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return hsnCodesRequest<HsnCodesRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createHsnCodes(path: string, payload: Record<string, HsnCodesValue>) {
-  return request<HsnCodesRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createHsnCodes(payload: HsnCodesSavePayload) {
+  return hsnCodesRequest<HsnCodesRecord>("", { body: JSON.stringify(payload), method: "POST" });
 }
-export function updateHsnCodes(path: string, id: number, payload: Record<string, HsnCodesValue>) {
-  return request<HsnCodesRecord>(`${path}/${id}`, { body: JSON.stringify(payload), method: "PUT" });
-}
-export function setHsnCodesActive(path: string, id: number, active: boolean) {
-  return request<HsnCodesRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
+export function updateHsnCodes(id: number, payload: HsnCodesSavePayload) {
+  return hsnCodesRequest<HsnCodesRecord>(`/${id}`, {
+    body: JSON.stringify(payload),
+    method: "PUT"
   });
 }
-export function forceDeleteHsnCodes(path: string, id: number) {
-  return request<HsnCodesRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function activateHsnCodes(id: number) {
+  return hsnCodesRequest<HsnCodesRecord>(`/${id}/activate`, { method: "POST" });
+}
+export function deactivateHsnCodes(id: number) {
+  return hsnCodesRequest<HsnCodesRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteHsnCodes(id: number) {
+  return hsnCodesRequest<HsnCodesRecord>(`/${id}/force`, { method: "DELETE" });
 }

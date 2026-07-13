@@ -1,36 +1,14 @@
-export type ColoursValue = boolean | number | string | null;
 export type ColoursRecord = {
   id: number;
+  name: string;
   isActive: boolean;
-  [key: string]: ColoursValue;
-};
-export type ColoursField = {
-  key: string;
-  label: string;
-  required?: boolean;
-  type: "boolean" | "color" | "date" | "number" | "string";
-};
-export type ColoursDefinition = {
-  fields: ColoursField[];
-  group: "contacts" | "others" | "products" | "workorder";
-  key: string;
-  label: string;
-  path: string;
-  route: string;
+  sortOrder: number;
 };
 
-export const coloursDefinition: ColoursDefinition = {
-  fields: [
-    {
-      key: "name",
-      label: "Name",
-      type: "color",
-      required: true
-    }
-  ],
-  group: "products",
-  key: "colours",
-  label: "Colours",
-  path: "/core/common/products/colours",
-  route: "core.common.products.colours"
+export type ColoursSavePayload = {
+  name?: string;
+  isActive: boolean;
+  sortOrder: number;
 };
+
+export type ColoursListFilters = { search?: string };

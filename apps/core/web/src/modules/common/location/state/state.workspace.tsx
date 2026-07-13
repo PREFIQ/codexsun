@@ -18,7 +18,7 @@ import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 import { cn } from "@codexsun/ui/lib/utils";
-import { StateForm, StateView } from "./state.form";
+import { StateForm } from "./state.form";
 import { stateQueryKey, useStateCountryOptions, useStates } from "./state.hooks";
 import { StateList } from "./state.list";
 import {
@@ -39,7 +39,6 @@ export function StateWorkspace() {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
   const [editing, setEditing] = useState<StateRecord | null | undefined>(undefined);
-  const [viewing, setViewing] = useState<StateRecord | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const statesQuery = useStates();
   const countriesQuery = useStateCountryOptions();
@@ -141,7 +140,6 @@ export function StateWorkspace() {
         onForceDelete={(record) => setPendingAction({ record, type: "force-delete" })}
         onRestore={(record) => setPendingAction({ record, type: "restore" })}
         onSuspend={(record) => setPendingAction({ record, type: "suspend" })}
-        onView={setViewing}
         records={pageStates}
       />
       <WorkspacePagination
@@ -168,7 +166,6 @@ export function StateWorkspace() {
         open={editing !== undefined}
         record={editing ?? null}
       />
-      <StateView onClose={() => setViewing(null)} record={viewing} />
       <StateActionDialog
         action={pendingAction}
         loading={lifecycleMutation.isPending}
@@ -205,7 +202,15 @@ function StateActionDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-          <AlertDialogAction disabled={loading} onClick={onConfirm}>
+          <AlertDialogAction
+            className={
+              action?.type === "force-delete"
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : undefined
+            }
+            disabled={loading}
+            onClick={onConfirm}
+          >
             {verb}
           </AlertDialogAction>
         </AlertDialogFooter>

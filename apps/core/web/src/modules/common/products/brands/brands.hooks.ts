@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { listBrands } from "./brands.services";
-export function useBrandsQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listBrands(path), queryKey: ["core", "common", key] });
+import type { BrandsListFilters } from "./brands.types";
+
+export const brandsQueryKey = ["core", "common", "products", "brands"] as const;
+export function useBrands(filters: BrandsListFilters = {}) {
+  return useQuery({
+    queryFn: () => listBrands(filters),
+    queryKey: [...brandsQueryKey, filters.search ?? ""]
+  });
 }

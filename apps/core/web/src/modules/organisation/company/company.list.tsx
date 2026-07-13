@@ -11,10 +11,16 @@ import type { CompanyRecord } from "./company.types";
 export function CompanyList({
   loading,
   onEdit,
+  onForceDelete,
+  onRestore,
+  onSuspend,
   records
 }: {
   loading: boolean;
   onEdit: (record: CompanyRecord) => void;
+  onForceDelete: (record: CompanyRecord) => void;
+  onRestore: (record: CompanyRecord) => void;
+  onSuspend: (record: CompanyRecord) => void;
   records: CompanyRecord[];
 }) {
   return (
@@ -57,8 +63,19 @@ export function CompanyList({
                       <WorkspaceProtectedIndicator />
                     ) : (
                       <WorkspaceRowActions
-                        actions={[]}
+                        actions={[
+                          {
+                            id: "force-delete",
+                            label: "Force delete",
+                            onSelect: () => onForceDelete(record),
+                            tone: "destructive"
+                          }
+                        ]}
+                        deleteLabel="Suspend"
+                        isSuspended={!record.isActive}
+                        onDelete={() => onSuspend(record)}
                         onEdit={() => onEdit(record)}
+                        onRestore={() => onRestore(record)}
                         title={record.name}
                       />
                     )}

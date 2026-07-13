@@ -1,2 +1,5 @@
+export * from "./months.hooks";
+export * from "./months.schema";
+export * from "./months.services";
 export * from "./months.types";
-export * from "./months.workspace";
+export { MonthsWorkspace } from "./months.workspace";

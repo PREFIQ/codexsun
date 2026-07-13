@@ -11,7 +11,6 @@ export function DistrictList({
   onForceDelete,
   onRestore,
   onSuspend,
-  onView,
   records
 }: {
   loading: boolean;
@@ -19,11 +18,31 @@ export function DistrictList({
   onForceDelete: (r: DistrictRecord) => void;
   onRestore: (r: DistrictRecord) => void;
   onSuspend: (r: DistrictRecord) => void;
-  onView: (r: DistrictRecord) => void;
   records: DistrictRecord[];
 }) {
   const columns: ColumnDef<DistrictRecord>[] = [
-    { accessorKey: "name", header: "District" },
+    {
+      accessorKey: "sortOrder",
+      cell: ({ row }) => <div className="text-center tabular-nums">{row.original.sortOrder}</div>,
+      header: () => <div className="text-center">#</div>,
+      size: 64
+    },
+    {
+      accessorKey: "name",
+      cell: ({ row }) =>
+        isProtectedDistrict(row.original) ? (
+          <span className="font-medium">{row.original.name}</span>
+        ) : (
+          <button
+            className="cursor-pointer font-medium text-foreground hover:underline"
+            onClick={() => onEdit(row.original)}
+            type="button"
+          >
+            {row.original.name}
+          </button>
+        ),
+      header: "District"
+    },
     { accessorKey: "stateName", header: "State" },
     { accessorKey: "countryName", header: "Country" },
     {
@@ -38,13 +57,14 @@ export function DistrictList({
     },
     {
       id: "actions",
-      header: "Actions",
+      header: () => <div className="text-center">Actions</div>,
+      size: 96,
       enableSorting: false,
       cell: ({ row }) => {
         const record = row.original;
         return (
           <div
-            className="flex justify-end"
+            className="flex w-full justify-center"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
@@ -66,7 +86,6 @@ export function DistrictList({
                 onDelete={() => onSuspend(record)}
                 onEdit={() => onEdit(record)}
                 onRestore={() => onRestore(record)}
-                onView={() => onView(record)}
                 title={record.name}
               />
             )}
@@ -82,7 +101,6 @@ export function DistrictList({
       emptyState="No districts found."
       isLoading={loading}
       minWidth="860px"
-      onRowClick={onView}
     />
   );
 }

@@ -16,7 +16,6 @@ import {
   type LucideIcon
 } from "lucide-react";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
-import { commonMasterDefinitions } from "../modules/common/registry";
 
 export type PlatformAppId = "application" | "billing" | "accounts" | "task-manager";
 
@@ -745,28 +744,67 @@ function commonMasterMenuGroups(
   onSelect: (page: string) => void
 ): SidemenuItem[] {
   const groups = [
-    { icon: UsersIcon, id: "contacts", label: "Contacts" },
-    { icon: PackageIcon, id: "products", label: "Product" },
-    { icon: ClipboardListIcon, id: "workorder", label: "Work Orders" },
-    { icon: Settings2Icon, id: "others", label: "Others" }
+    {
+      icon: UsersIcon,
+      id: "contacts",
+      label: "Contacts",
+      pages: [
+        ["Contact Groups", "core.common.contacts.contact-groups"],
+        ["Contact Types", "core.common.contacts.contact-types"],
+        ["Address Types", "core.common.contacts.address-types"],
+        ["Bank Names", "core.common.contacts.bank-names"]
+      ]
+    },
+    {
+      icon: PackageIcon,
+      id: "products",
+      label: "Product",
+      pages: [
+        ["Product Groups", "core.common.products.product-groups"],
+        ["Product Categories", "core.common.products.product-categories"],
+        ["Product Types", "core.common.products.product-types"],
+        ["Units", "core.common.products.units"],
+        ["HSN Codes", "core.common.products.hsn-codes"],
+        ["Taxes", "core.common.products.taxes"],
+        ["Brands", "core.common.products.brands"],
+        ["Colours", "core.common.products.colours"],
+        ["Sizes", "core.common.products.sizes"],
+        ["Styles", "core.common.products.styles"]
+      ]
+    },
+    {
+      icon: ClipboardListIcon,
+      id: "workorder",
+      label: "Work Orders",
+      pages: [
+        ["Work Order Types", "core.common.workorder.work-order-types"],
+        ["Transports", "core.common.workorder.transports"],
+        ["Warehouses", "core.common.workorder.warehouses"],
+        ["Destinations", "core.common.workorder.destinations"],
+        ["Stock Rejection Types", "core.common.workorder.stock-rejection-types"]
+      ]
+    },
+    {
+      icon: Settings2Icon,
+      id: "others",
+      label: "Others",
+      pages: [
+        ["Currencies", "core.common.others.currencies"],
+        ["Priorities", "core.common.others.priorities"],
+        ["Payment Terms", "core.common.others.payment-terms"],
+        ["Sales Types", "core.common.others.sales-types"],
+        ["Months", "core.common.others.months"]
+      ]
+    }
   ] as const;
   return groups.map((group) => ({
     icon: group.icon,
-    title: group.label,
     isActive: activePage.startsWith(`core.common.${group.id}.`),
-    items: commonMasterDefinitions
-      .filter((definition) => definition.group === group.id)
-      .map((definition) => {
-        const page = pageKeyForCommonMaster(definition.path);
-        return {
-          title: definition.label,
-          isActive: activePage === page,
-          onSelect: () => onSelect(page)
-        };
-      })
+    items: group.pages.map(([title, page]) => ({
+      isActive: activePage === page,
+      onSelect: () => onSelect(page),
+      title
+    })),
+    title: group.label
   }));
-}
-
-function pageKeyForCommonMaster(path: string) {
-  return path.replace(/^\/core\//, "core.").replaceAll("/", ".");
 }

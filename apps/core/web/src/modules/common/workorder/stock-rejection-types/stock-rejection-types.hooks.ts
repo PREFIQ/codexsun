@@ -1,8 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { listStockRejectionTypes } from "./stock-rejection-types.services";
-export function useStockRejectionTypesQuery(key: string, path: string) {
+import type { StockRejectionTypesListFilters } from "./stock-rejection-types.types";
+
+export const stockRejectionTypesQueryKey = [
+  "core",
+  "common",
+  "workorder",
+  "stock-rejection-types"
+] as const;
+export function useStockRejectionTypes(filters: StockRejectionTypesListFilters = {}) {
   return useQuery({
-    queryFn: () => listStockRejectionTypes(path),
-    queryKey: ["core", "common", key]
+    queryFn: () => listStockRejectionTypes(filters),
+    queryKey: [...stockRejectionTypesQueryKey, filters.search ?? ""]
   });
 }

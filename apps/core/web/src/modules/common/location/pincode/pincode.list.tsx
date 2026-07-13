@@ -11,7 +11,6 @@ export function PincodeList({
   onForceDelete,
   onRestore,
   onSuspend,
-  onView,
   records
 }: {
   loading: boolean;
@@ -19,11 +18,32 @@ export function PincodeList({
   onForceDelete: (r: PincodeRecord) => void;
   onRestore: (r: PincodeRecord) => void;
   onSuspend: (r: PincodeRecord) => void;
-  onView: (r: PincodeRecord) => void;
   records: PincodeRecord[];
 }) {
   const columns: ColumnDef<PincodeRecord>[] = [
-    { accessorKey: "name", header: "Pincode" },
+    {
+      accessorKey: "sortOrder",
+      cell: ({ row }) => <div className="text-center tabular-nums">{row.original.sortOrder}</div>,
+      header: () => <div className="text-center">#</div>,
+      size: 64
+    },
+    {
+      accessorKey: "name",
+      cell: ({ row }) =>
+        isProtectedPincode(row.original) ? (
+          <span className="font-medium">{row.original.name}</span>
+        ) : (
+          <button
+            className="cursor-pointer font-medium text-foreground hover:underline"
+            onClick={() => onEdit(row.original)}
+            type="button"
+          >
+            {row.original.name}
+          </button>
+        ),
+      header: "Pincode"
+    },
+    { accessorKey: "area", header: "Area" },
     { accessorKey: "cityName", header: "City" },
     { accessorKey: "districtName", header: "District" },
     { accessorKey: "stateName", header: "State" },
@@ -40,13 +60,14 @@ export function PincodeList({
     },
     {
       id: "actions",
-      header: "Actions",
+      header: () => <div className="text-center">Actions</div>,
+      size: 96,
       enableSorting: false,
       cell: ({ row }) => {
         const record = row.original;
         return (
           <div
-            className="flex justify-end"
+            className="flex w-full justify-center"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
@@ -68,7 +89,6 @@ export function PincodeList({
                 onDelete={() => onSuspend(record)}
                 onEdit={() => onEdit(record)}
                 onRestore={() => onRestore(record)}
-                onView={() => onView(record)}
                 title={record.name}
               />
             )}
@@ -84,7 +104,6 @@ export function PincodeList({
       emptyState="No pincodes found."
       isLoading={loading}
       minWidth="860px"
-      onRowClick={onView}
     />
   );
 }

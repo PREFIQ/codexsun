@@ -1,49 +1,58 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { AddressTypesRecord, AddressTypesValue } from "./address-types.types";
+import type {
+  AddressTypesListFilters,
+  AddressTypesRecord,
+  AddressTypesSavePayload
+} from "./address-types.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const addressTypesPath = "/core/common/contacts/address-types";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function addressTypesRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${addressTypesPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "AddressTypes request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listAddressTypes(path: string) {
-  return request<AddressTypesRecord[]>(path);
+export function listAddressTypes(filters: AddressTypesListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return addressTypesRequest<AddressTypesRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createAddressTypes(path: string, payload: Record<string, AddressTypesValue>) {
-  return request<AddressTypesRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createAddressTypes(payload: AddressTypesSavePayload) {
+  return addressTypesRequest<AddressTypesRecord>("", {
+    body: JSON.stringify(payload),
+    method: "POST"
+  });
 }
-export function updateAddressTypes(
-  path: string,
-  id: number,
-  payload: Record<string, AddressTypesValue>
-) {
-  return request<AddressTypesRecord>(`${path}/${id}`, {
+export function updateAddressTypes(id: number, payload: AddressTypesSavePayload) {
+  return addressTypesRequest<AddressTypesRecord>(`/${id}`, {
     body: JSON.stringify(payload),
     method: "PUT"
   });
 }
-export function setAddressTypesActive(path: string, id: number, active: boolean) {
-  return request<AddressTypesRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateAddressTypes(id: number) {
+  return addressTypesRequest<AddressTypesRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteAddressTypes(path: string, id: number) {
-  return request<AddressTypesRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateAddressTypes(id: number) {
+  return addressTypesRequest<AddressTypesRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteAddressTypes(id: number) {
+  return addressTypesRequest<AddressTypesRecord>(`/${id}/force`, { method: "DELETE" });
 }

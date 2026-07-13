@@ -1,49 +1,58 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { DestinationsRecord, DestinationsValue } from "./destinations.types";
+import type {
+  DestinationsListFilters,
+  DestinationsRecord,
+  DestinationsSavePayload
+} from "./destinations.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const destinationsPath = "/core/common/workorder/destinations";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function destinationsRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${destinationsPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "Destinations request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listDestinations(path: string) {
-  return request<DestinationsRecord[]>(path);
+export function listDestinations(filters: DestinationsListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return destinationsRequest<DestinationsRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createDestinations(path: string, payload: Record<string, DestinationsValue>) {
-  return request<DestinationsRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createDestinations(payload: DestinationsSavePayload) {
+  return destinationsRequest<DestinationsRecord>("", {
+    body: JSON.stringify(payload),
+    method: "POST"
+  });
 }
-export function updateDestinations(
-  path: string,
-  id: number,
-  payload: Record<string, DestinationsValue>
-) {
-  return request<DestinationsRecord>(`${path}/${id}`, {
+export function updateDestinations(id: number, payload: DestinationsSavePayload) {
+  return destinationsRequest<DestinationsRecord>(`/${id}`, {
     body: JSON.stringify(payload),
     method: "PUT"
   });
 }
-export function setDestinationsActive(path: string, id: number, active: boolean) {
-  return request<DestinationsRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateDestinations(id: number) {
+  return destinationsRequest<DestinationsRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteDestinations(path: string, id: number) {
-  return request<DestinationsRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateDestinations(id: number) {
+  return destinationsRequest<DestinationsRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteDestinations(id: number) {
+  return destinationsRequest<DestinationsRecord>(`/${id}/force`, { method: "DELETE" });
 }

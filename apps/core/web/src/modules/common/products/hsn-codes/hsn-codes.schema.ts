@@ -1,5 +1,8 @@
 import { z } from "zod";
-export const hsncodesSchema = z.record(
-  z.string(),
-  z.union([z.string(), z.number(), z.boolean(), z.null()])
-);
+
+export const hsnCodesSchema = z.object({
+  code: z.string().trim().min(1, "Code is required.").max(200),
+  description: z.string().trim().min(1, "Description is required.").max(200),
+  isActive: z.boolean(),
+  sortOrder: z.number().int().min(0, "Sort order cannot be negative.")
+});

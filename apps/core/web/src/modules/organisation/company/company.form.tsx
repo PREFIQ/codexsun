@@ -4,6 +4,7 @@ import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
 import {
   WorkspaceFormActions,
+  WorkspaceFormBanner,
   WorkspaceFormBody,
   WorkspaceFormField,
   WorkspaceFormGrid,
@@ -11,6 +12,7 @@ import {
 } from "@codexsun/ui/workspace/upsert";
 import { WorkspaceLookup } from "@codexsun/ui/workspace/lookup";
 import { useCompanyIndustries } from "./company.hooks";
+import { companySchema } from "./company.schema";
 import type { CompanyRecord, CompanySavePayload } from "./company.types";
 export function CompanyForm({
   error,
@@ -27,6 +29,7 @@ export function CompanyForm({
   record: CompanyRecord | null;
   records: CompanyRecord[];
 }) {
+  const [validationError, setValidationError] = useState("");
   const industries = useCompanyIndustries(),
     [form, setForm] = useState<CompanySavePayload>(() =>
       record
@@ -81,12 +84,24 @@ export function CompanyForm({
               />
             </WorkspaceFormField>
           </WorkspaceFormGrid>
-          {error ? <p className="mt-4 text-sm text-destructive">{error}</p> : null}
+          {validationError || error ? (
+            <WorkspaceFormBanner title="Unable to save">
+              {validationError || error}
+            </WorkspaceFormBanner>
+          ) : null}
         </WorkspaceFormBody>
         <WorkspaceFormActions>
           <Button
             disabled={loading || !form.name.trim() || !form.code?.trim()}
-            onClick={() => onSubmit(form)}
+            onClick={() => {
+              const result = companySchema.safeParse(form);
+              if (!result.success) {
+                setValidationError(result.error.issues[0]?.message ?? "Check the company details.");
+                return;
+              }
+              setValidationError("");
+              onSubmit(form);
+            }}
           >
             <Save className="size-4" />
             Save

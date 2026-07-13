@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { listBankNames } from "./bank-names.services";
-export function useBankNamesQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listBankNames(path), queryKey: ["core", "common", key] });
+import type { BankNamesListFilters } from "./bank-names.types";
+
+export const bankNamesQueryKey = ["core", "common", "contacts", "bank-names"] as const;
+export function useBankNames(filters: BankNamesListFilters = {}) {
+  return useQuery({
+    queryFn: () => listBankNames(filters),
+    queryKey: [...bankNamesQueryKey, filters.search ?? ""]
+  });
 }

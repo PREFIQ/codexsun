@@ -34,6 +34,20 @@ export class CompanyRepository {
     );
     return this.find(id);
   }
+  async setActive(id: string | number, active: boolean) {
+    const current = await this.find(id);
+    if (!current || current.name.trim() === "-") return null;
+    await sql`UPDATE companies SET status=${active ? "active" : "inactive"},updated_at=CURRENT_TIMESTAMP WHERE id=${Number(id)}`.execute(
+      getCoreDatabase()
+    );
+    return this.find(id);
+  }
+  async forceDelete(id: string | number) {
+    const current = await this.find(id);
+    if (!current || current.name.trim() === "-") return null;
+    await sql`DELETE FROM companies WHERE id=${Number(id)}`.execute(getCoreDatabase());
+    return current;
+  }
   async listIndustries(): Promise<CompanyIndustry[]> {
     const rows = await sql<{
       code: string;

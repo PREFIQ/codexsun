@@ -1,49 +1,58 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { ProductGroupsRecord, ProductGroupsValue } from "./product-groups.types";
+import type {
+  ProductGroupsListFilters,
+  ProductGroupsRecord,
+  ProductGroupsSavePayload
+} from "./product-groups.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const productGroupsPath = "/core/common/products/product-groups";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function productGroupsRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${productGroupsPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "ProductGroups request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listProductGroups(path: string) {
-  return request<ProductGroupsRecord[]>(path);
+export function listProductGroups(filters: ProductGroupsListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return productGroupsRequest<ProductGroupsRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createProductGroups(path: string, payload: Record<string, ProductGroupsValue>) {
-  return request<ProductGroupsRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createProductGroups(payload: ProductGroupsSavePayload) {
+  return productGroupsRequest<ProductGroupsRecord>("", {
+    body: JSON.stringify(payload),
+    method: "POST"
+  });
 }
-export function updateProductGroups(
-  path: string,
-  id: number,
-  payload: Record<string, ProductGroupsValue>
-) {
-  return request<ProductGroupsRecord>(`${path}/${id}`, {
+export function updateProductGroups(id: number, payload: ProductGroupsSavePayload) {
+  return productGroupsRequest<ProductGroupsRecord>(`/${id}`, {
     body: JSON.stringify(payload),
     method: "PUT"
   });
 }
-export function setProductGroupsActive(path: string, id: number, active: boolean) {
-  return request<ProductGroupsRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateProductGroups(id: number) {
+  return productGroupsRequest<ProductGroupsRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteProductGroups(path: string, id: number) {
-  return request<ProductGroupsRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateProductGroups(id: number) {
+  return productGroupsRequest<ProductGroupsRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteProductGroups(id: number) {
+  return productGroupsRequest<ProductGroupsRecord>(`/${id}/force`, { method: "DELETE" });
 }

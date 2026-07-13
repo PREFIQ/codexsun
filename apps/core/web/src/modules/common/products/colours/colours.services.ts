@@ -1,42 +1,48 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { ColoursRecord, ColoursValue } from "./colours.types";
+import type { ColoursListFilters, ColoursRecord, ColoursSavePayload } from "./colours.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const coloursPath = "/core/common/products/colours";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function coloursRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${coloursPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "Colours request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listColours(path: string) {
-  return request<ColoursRecord[]>(path);
+export function listColours(filters: ColoursListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return coloursRequest<ColoursRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createColours(path: string, payload: Record<string, ColoursValue>) {
-  return request<ColoursRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createColours(payload: ColoursSavePayload) {
+  return coloursRequest<ColoursRecord>("", { body: JSON.stringify(payload), method: "POST" });
 }
-export function updateColours(path: string, id: number, payload: Record<string, ColoursValue>) {
-  return request<ColoursRecord>(`${path}/${id}`, { body: JSON.stringify(payload), method: "PUT" });
+export function updateColours(id: number, payload: ColoursSavePayload) {
+  return coloursRequest<ColoursRecord>(`/${id}`, { body: JSON.stringify(payload), method: "PUT" });
 }
-export function setColoursActive(path: string, id: number, active: boolean) {
-  return request<ColoursRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateColours(id: number) {
+  return coloursRequest<ColoursRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteColours(path: string, id: number) {
-  return request<ColoursRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateColours(id: number) {
+  return coloursRequest<ColoursRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteColours(id: number) {
+  return coloursRequest<ColoursRecord>(`/${id}/force`, { method: "DELETE" });
 }

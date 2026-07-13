@@ -1,53 +1,68 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { StylesService } from "./styles.service.js";
-import type { StylesListFilters, StylesSavePayload } from "./styles.types.js";
-
 export const STYLES_COLLECTION_PATH = "/core/common/products/styles";
 const service = new StylesService();
-
+const idParamsSchema = z.object({ id: z.string().regex(/^\d+$/, "Styles ID must be numeric.") });
+const stylesSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  isActive: z.boolean(),
+  sortOrder: z.number().int()
+});
+const stylesPayloadSchema = z.object({
+  name: z.string().trim(),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).default(1000)
+});
+const stylesQuerySchema = z.object({ search: z.string().trim().optional() });
 export async function registerStylesRoutes(app: FastifyInstance) {
-  app.get(STYLES_COLLECTION_PATH, async (request) =>
-    ok(await service.list(filters(request)), { requestId: request.id })
-  );
-  app.get(`/core/common/products/styles/:id`, async (request, reply) => {
-    const record = await service.get(id(request));
-    return record
-      ? ok(record, { requestId: request.id })
-      : reply.code(404).send(notFound(request.id));
+  registerContractRoute(app, {
+    handler: ({ query }) => service.list(query.search ? { search: query.search } : {}),
+    method: "GET",
+    schemas: { querystring: stylesQuerySchema, response: z.array(stylesSchema) },
+    url: STYLES_COLLECTION_PATH
   });
-  app.post(STYLES_COLLECTION_PATH, async (request) =>
-    ok(await service.create(request.body as StylesSavePayload), {
-      requestId: request.id
-    })
-  );
-  app.put(`/core/common/products/styles/:id`, async (request) =>
-    ok(await service.update(id(request), request.body as StylesSavePayload), {
-      requestId: request.id
-    })
-  );
-  app.post(`/core/common/products/styles/:id/activate`, async (request) =>
-    ok(await service.setActive(id(request), true), { requestId: request.id })
-  );
-  app.post(`/core/common/products/styles/:id/deactivate`, async (request) =>
-    ok(await service.setActive(id(request), false), { requestId: request.id })
-  );
-  app.delete(`/core/common/products/styles/:id/force`, async (request) =>
-    ok(await service.forceDelete(id(request)), { requestId: request.id })
-  );
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.get(params.id)),
+    method: "GET",
+    schemas: { params: idParamsSchema, response: stylesSchema },
+    url: `${STYLES_COLLECTION_PATH}/:id`
+  });
+  registerContractRoute(app, {
+    handler: async ({ body }) => required(await service.create(body)),
+    method: "POST",
+    schemas: { body: stylesPayloadSchema, response: stylesSchema },
+    url: STYLES_COLLECTION_PATH
+  });
+  registerContractRoute(app, {
+    handler: async ({ body, params }) => required(await service.update(params.id, body)),
+    method: "PUT",
+    schemas: { body: stylesPayloadSchema, params: idParamsSchema, response: stylesSchema },
+    url: `${STYLES_COLLECTION_PATH}/:id`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.setActive(params.id, true)),
+    method: "POST",
+    schemas: { params: idParamsSchema, response: stylesSchema },
+    url: `${STYLES_COLLECTION_PATH}/:id/activate`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.setActive(params.id, false)),
+    method: "POST",
+    schemas: { params: idParamsSchema, response: stylesSchema },
+    url: `${STYLES_COLLECTION_PATH}/:id/deactivate`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.forceDelete(params.id)),
+    method: "DELETE",
+    schemas: { params: idParamsSchema, response: stylesSchema },
+    url: `${STYLES_COLLECTION_PATH}/:id/force`
+  });
 }
-
-function id(request: FastifyRequest) {
-  return (request.params as { id: string }).id;
-}
-function filters(request: FastifyRequest): StylesListFilters {
-  const search = (request.query as { search?: string } | undefined)?.search;
-  return search ? { search } : {};
-}
-function notFound(requestId: string) {
-  return {
-    error: { code: "STYLES_NOT_FOUND", message: "Styles record was not found." },
-    meta: { requestId, timestamp: new Date().toISOString() },
-    success: false as const
-  };
+function required<T>(record: T | null): T {
+  if (!record) throw AppError.notFound("Styles record was not found.");
+  return record;
 }

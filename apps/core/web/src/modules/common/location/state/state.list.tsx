@@ -12,7 +12,6 @@ export function StateList({
   onForceDelete,
   onRestore,
   onSuspend,
-  onView,
   records
 }: {
   loading: boolean;
@@ -20,14 +19,33 @@ export function StateList({
   onForceDelete: (record: StateRecord) => void;
   onRestore: (record: StateRecord) => void;
   onSuspend: (record: StateRecord) => void;
-  onView: (record: StateRecord) => void;
   records: StateRecord[];
 }) {
   const columns: ColumnDef<StateRecord>[] = [
-    { accessorKey: "name", header: "State" },
+    {
+      accessorKey: "sortOrder",
+      cell: ({ row }) => <div className="text-center tabular-nums">{row.original.sortOrder}</div>,
+      header: () => <div className="text-center">#</div>,
+      size: 64
+    },
+    {
+      accessorKey: "name",
+      cell: ({ row }) =>
+        isProtectedState(row.original) ? (
+          <span className="font-medium">{row.original.name}</span>
+        ) : (
+          <button
+            className="cursor-pointer font-medium text-foreground hover:underline"
+            onClick={() => onEdit(row.original)}
+            type="button"
+          >
+            {row.original.name}
+          </button>
+        ),
+      header: "State"
+    },
     { accessorKey: "code", header: "State code" },
     { accessorKey: "countryName", header: "Country" },
-    { accessorKey: "sortOrder", header: "Sort order" },
     {
       accessorKey: "status",
       cell: ({ row }) => (
@@ -41,12 +59,13 @@ export function StateList({
     {
       id: "actions",
       enableSorting: false,
-      header: "Actions",
+      header: () => <div className="text-center">Actions</div>,
+      size: 96,
       cell: ({ row }) => {
         const record = row.original;
         return (
           <div
-            className="flex justify-end"
+            className="flex w-full justify-center"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
@@ -68,7 +87,6 @@ export function StateList({
                 onDelete={() => onSuspend(record)}
                 onEdit={() => onEdit(record)}
                 onRestore={() => onRestore(record)}
-                onView={() => onView(record)}
                 title={record.name}
               />
             )}
@@ -84,7 +102,6 @@ export function StateList({
       emptyState="No states found."
       isLoading={loading}
       minWidth="860px"
-      onRowClick={onView}
     />
   );
 }

@@ -1,74 +1,126 @@
 import { randomBytes } from "node:crypto";
-import { sql } from "kysely";
-import { getCoreDatabase } from "../../../database/core-database.js";
-import type { ContactChild, ContactRecord, ContactSaveInput } from "./contact.types.js";
+import type { Kysely, Transaction } from "kysely";
+import { getCoreDatabase, type CoreDatabase } from "../../../database/core-database.js";
+import type {
+  ContactAddress,
+  ContactBankAccount,
+  ContactEmail,
+  ContactLocationReference,
+  ContactPhone,
+  ContactRecord,
+  ContactReference,
+  ContactSaveInput,
+  ContactSocialLink
+} from "./contact.types.js";
+
 type Row = Record<string, unknown>;
+type ContactDatabase = Kysely<CoreDatabase> | Transaction<CoreDatabase>;
+
 export class ContactRepository {
+  async nextCode() {
+    const rows = (await getCoreDatabase()
+      .selectFrom("contacts" as never)
+      .select(["code" as never])
+      .execute()) as Row[];
+    const next =
+      rows.reduce((highest, row) => {
+        const match = /^C[-_](\d+)$/i.exec(String(row.code ?? "").trim());
+        return match ? Math.max(highest, Number(match[1])) : highest;
+      }, 0) + 1;
+    return `C-${String(next).padStart(4, "0")}`;
+  }
+
   async list(search = "") {
-    const db = getCoreDatabase();
-    let query = db
+    const database = getCoreDatabase();
+    let query = database
       .selectFrom("contacts" as never)
       .selectAll()
+      .where("deleted_at" as never, "is", null as never)
       .orderBy("code" as never);
-    query = query.where("deleted_at" as never, "is", null as never);
     if (search.trim()) {
-      const like = "%" + search.trim() + "%";
-      query = query.where((eb) =>
-        eb.or([
-          eb("name" as never, "like", like as never),
-          eb("code" as never, "like", like as never),
-          eb("primary_phone" as never, "like", like as never),
-          eb("primary_email" as never, "like", like as never)
+      const like = `%${search.trim()}%`;
+      query = query.where((expression) =>
+        expression.or([
+          expression("name" as never, "like", like as never),
+          expression("code" as never, "like", like as never),
+          expression("primary_phone" as never, "like", like as never),
+          expression("primary_email" as never, "like", like as never)
         ])
       );
     }
-    const rows = (await query.execute()) as Row[];
-    return rows.map(toRecord);
+    const records = ((await query.execute()) as Row[]).map(toContactRecord);
+    return hydrateContactChildren(database, records);
   }
+
   async find(id: number | string) {
-    let query = getCoreDatabase()
+    const database = getCoreDatabase();
+    const row = (await database
       .selectFrom("contacts" as never)
       .selectAll()
-      .where("id" as never, "=", Number(id) as never);
-    query = query.where("deleted_at" as never, "is", null as never);
-    const row = (await query.executeTakeFirst()) as Row | undefined;
-    return row ? toRecord(row) : null;
+      .where("id" as never, "=", Number(id) as never)
+      .where("deleted_at" as never, "is", null as never)
+      .executeTakeFirst()) as Row | undefined;
+    if (!row) return null;
+    return (await hydrateContactChildren(database, [toContactRecord(row)]))[0] ?? null;
   }
+
+  async findByCode(code: string, excludingId?: number) {
+    const database = getCoreDatabase();
+    let query = database
+      .selectFrom("contacts" as never)
+      .select(["id" as never])
+      .where("code" as never, "=", code as never)
+      .where("deleted_at" as never, "is", null as never);
+    if (excludingId) query = query.where("id" as never, "!=", excludingId as never);
+    return Boolean(await query.executeTakeFirst());
+  }
+
   async create(input: ContactSaveInput) {
-    const draft = normalizeRecord(input, null);
-    const result = await getCoreDatabase()
-      .insertInto("contacts" as never)
-      .values(toRow(draft) as never)
-      .executeTakeFirst();
-    const record = { ...draft, id: Number(result.insertId) };
-    await syncChildTables("contacts", record);
-    return record;
+    const draft = normalizeContact(input, null);
+    const database = getCoreDatabase();
+    const id = await database.transaction().execute(async (transaction) => {
+      const result = await transaction
+        .insertInto("contacts" as never)
+        .values(toContactRow(draft) as never)
+        .executeTakeFirst();
+      const contactId = Number(result.insertId);
+      await replaceContactChildren(transaction, contactId, draft);
+      return contactId;
+    });
+    return requiredContact(await this.find(id));
   }
+
   async update(id: number | string, input: ContactSaveInput) {
-    const current = await this.find(id);
-    if (!current || isReserved(current)) return null;
-    const record = normalizeRecord(input, current);
-    let query = getCoreDatabase()
-      .updateTable("contacts" as never)
-      .set(toRow(record) as never)
-      .where("id" as never, "=", Number(id) as never);
-    await query.execute();
-    await syncChildTables("contacts", record);
-    return record;
+    const numericId = Number(id);
+    const current = await this.find(numericId);
+    if (!current || isProtectedContact(current)) return null;
+    const draft = normalizeContact(input, current);
+    const database = getCoreDatabase();
+    await database.transaction().execute(async (transaction) => {
+      await transaction
+        .updateTable("contacts" as never)
+        .set(toContactRow(draft) as never)
+        .where("id" as never, "=", numericId as never)
+        .execute();
+      await replaceContactChildren(transaction, numericId, draft);
+    });
+    return requiredContact(await this.find(numericId));
   }
+
   async setActive(id: number | string, isActive: boolean) {
     const current = await this.find(id);
-    if (!current || isReserved(current)) return null;
-    let query = getCoreDatabase()
+    if (!current || isProtectedContact(current)) return null;
+    await getCoreDatabase()
       .updateTable("contacts" as never)
       .set({ status: isActive ? "active" : "suspend" } as never)
-      .where("id" as never, "=", Number(id) as never);
-    await query.execute();
+      .where("id" as never, "=", Number(id) as never)
+      .execute();
     return this.find(id);
   }
+
   async forceDelete(id: number | string) {
     const current = await this.find(id);
-    if (!current || isReserved(current)) return null;
+    if (!current || isProtectedContact(current)) return null;
     await getCoreDatabase()
       .updateTable("contacts" as never)
       .set({ deleted_at: new Date(), status: "deleted" } as never)
@@ -76,78 +128,277 @@ export class ContactRepository {
       .execute();
     return current;
   }
+
+  async findContactType(id: number): Promise<ContactReference | null> {
+    const row = (await getCoreDatabase()
+      .selectFrom("contact_types" as never)
+      .select(["id" as never, "name" as never])
+      .where("id" as never, "=", id as never)
+      .where("status" as never, "=", "active" as never)
+      .executeTakeFirst()) as Row | undefined;
+    return row ? { id: Number(row.id), name: String(row.name) } : null;
+  }
+
+  async findContactGroup(id: number): Promise<ContactReference | null> {
+    const row = (await getCoreDatabase()
+      .selectFrom("contact_groups" as never)
+      .select(["id" as never, "name" as never])
+      .where("id" as never, "=", id as never)
+      .where("status" as never, "=", "active" as never)
+      .executeTakeFirst()) as Row | undefined;
+    return row ? { id: Number(row.id), name: String(row.name) } : null;
+  }
+
+  async findAddressType(id: number): Promise<ContactReference | null> {
+    const row = (await getCoreDatabase()
+      .selectFrom("address_types" as never)
+      .select(["id" as never, "name" as never])
+      .where("id" as never, "=", id as never)
+      .where("status" as never, "=", "active" as never)
+      .executeTakeFirst()) as Row | undefined;
+    return row ? { id: Number(row.id), name: String(row.name) } : null;
+  }
+
+  async findBankName(id: number): Promise<ContactReference | null> {
+    const row = (await getCoreDatabase()
+      .selectFrom("bank_names" as never)
+      .select(["id" as never, "name" as never])
+      .where("id" as never, "=", id as never)
+      .where("status" as never, "=", "active" as never)
+      .executeTakeFirst()) as Row | undefined;
+    return row ? { id: Number(row.id), name: String(row.name) } : null;
+  }
+
+  async findCountry(id: number): Promise<ContactReference | null> {
+    const row = (await getCoreDatabase()
+      .selectFrom("countries" as never)
+      .select(["id" as never, "name" as never])
+      .where("id" as never, "=", id as never)
+      .where("status" as never, "=", "active" as never)
+      .executeTakeFirst()) as Row | undefined;
+    return row ? { id: Number(row.id), name: String(row.name) } : null;
+  }
+
+  async findState(id: number): Promise<ContactLocationReference | null> {
+    const row = (await getCoreDatabase()
+      .selectFrom("states" as never)
+      .select(["id" as never, "name" as never, "country_id" as never])
+      .where("id" as never, "=", id as never)
+      .where("status" as never, "=", "active" as never)
+      .executeTakeFirst()) as Row | undefined;
+    return row
+      ? { id: Number(row.id), name: String(row.name), parentId: nullableNumber(row.country_id) }
+      : null;
+  }
+
+  async findDistrict(id: number): Promise<ContactLocationReference | null> {
+    const row = (await getCoreDatabase()
+      .selectFrom("districts" as never)
+      .select(["id" as never, "name" as never, "state_id" as never])
+      .where("id" as never, "=", id as never)
+      .where("status" as never, "=", "active" as never)
+      .executeTakeFirst()) as Row | undefined;
+    return row
+      ? { id: Number(row.id), name: String(row.name), parentId: nullableNumber(row.state_id) }
+      : null;
+  }
+
+  async findCity(id: number): Promise<ContactLocationReference | null> {
+    const row = (await getCoreDatabase()
+      .selectFrom("cities" as never)
+      .select(["id" as never, "name" as never, "district_id" as never])
+      .where("id" as never, "=", id as never)
+      .where("status" as never, "=", "active" as never)
+      .executeTakeFirst()) as Row | undefined;
+    return row
+      ? { id: Number(row.id), name: String(row.name), parentId: nullableNumber(row.district_id) }
+      : null;
+  }
+
+  async findPincode(id: number): Promise<ContactLocationReference | null> {
+    const row = (await getCoreDatabase()
+      .selectFrom("pincodes" as never)
+      .select(["id" as never, "name" as never, "city_id" as never])
+      .where("id" as never, "=", id as never)
+      .where("status" as never, "=", "active" as never)
+      .executeTakeFirst()) as Row | undefined;
+    return row
+      ? { id: Number(row.id), name: String(row.name), parentId: nullableNumber(row.city_id) }
+      : null;
+  }
 }
-function isReserved(record: ContactRecord) {
+
+function requiredContact(record: ContactRecord | null) {
+  if (!record) throw new Error("Contact could not be loaded after it was saved.");
+  return record;
+}
+
+function isProtectedContact(record: ContactRecord) {
   return record.name.trim() === "-";
 }
-function normalizeRecord(input: ContactSaveInput, current: ContactRecord | null): ContactRecord {
+
+function normalizeContact(input: ContactSaveInput, current: ContactRecord | null): ContactRecord {
   const now = new Date().toISOString();
-  const name = stringValue(input.name ?? current?.name);
-  if (!name) throw new Error("Name is required.");
-  const code = stringValue(input.code ?? current?.code) || nextCode(name);
-  const emails = normalizeChildren(input.emails ?? current?.emails);
-  const phones = normalizeChildren(input.phones ?? current?.phones);
+  const name = text(input.name ?? current?.name);
+  if (!name) throw new Error("Contact name is required.");
+  const status = input.isActive === false ? "suspend" : (input.status ?? "active");
+  const emails = normalizeEmails(input.emails ?? current?.emails ?? []);
+  const phones = normalizePhones(input.phones ?? current?.phones ?? []);
   return {
     id: current?.id ?? 0,
     uuid: current?.uuid ?? randomBytes(4).toString("hex"),
-    code,
+    code: text(input.code ?? current?.code) || codeFromName(name),
     name,
-    legalName: nullable(input.legalName ?? current?.legalName),
-    typeId: nullableNumber(input.typeId ?? current?.typeId),
-    typeName: nullable(input.typeName ?? current?.typeName),
+    legalName: nullableText(input.legalName ?? current?.legalName),
+    typeId: Number(input.typeId ?? current?.typeId),
+    typeName: nullableText(input.typeName ?? current?.typeName),
     groupId: nullableNumber(input.groupId ?? current?.groupId),
-    groupName: nullable(input.groupName ?? current?.groupName),
-    primaryPhone: nullable(
-      input.primaryPhone ??
-        (input.phones ? primaryChildValue(phones, "phone") : current?.primaryPhone) ??
-        primaryChildValue(phones, "phone")
-    ),
-    primaryEmail: nullable(
-      input.primaryEmail ??
-        (input.emails ? primaryChildValue(emails, "email") : current?.primaryEmail) ??
-        primaryChildValue(emails, "email")
-    ),
-    gstin: nullable(input.gstin ?? current?.gstin),
-    pan: nullable(input.pan ?? current?.pan),
-    msmeNo: nullable(input.msmeNo ?? current?.msmeNo),
-    msmeCategory: nullable(input.msmeCategory ?? current?.msmeCategory),
-    tanNo: nullable(input.tanNo ?? current?.tanNo),
+    groupName: nullableText(input.groupName ?? current?.groupName),
+    primaryPhone: nullableText(primaryValue(phones, "phone")),
+    primaryEmail: nullableText(primaryValue(emails, "email")),
+    gstin: nullableText(input.gstin ?? current?.gstin)?.toUpperCase() ?? null,
+    pan: nullableText(input.pan ?? current?.pan)?.toUpperCase() ?? null,
+    msmeNo: nullableText(input.msmeNo ?? current?.msmeNo),
+    msmeCategory: nullableText(input.msmeCategory ?? current?.msmeCategory),
+    tanNo: nullableText(input.tanNo ?? current?.tanNo)?.toUpperCase() ?? null,
     tdsAvailable: booleanValue(input.tdsAvailable ?? current?.tdsAvailable),
     tcsAvailable: booleanValue(input.tcsAvailable ?? current?.tcsAvailable),
     openingBalance: numberValue(input.openingBalance ?? current?.openingBalance),
     creditLimit: numberValue(input.creditLimit ?? current?.creditLimit),
-    website: nullable(input.website ?? current?.website),
-    description: nullable(input.description ?? current?.description),
-    logoPath: nullable(input.logoPath ?? current?.logoPath),
-    logoDarkPath: nullable(input.logoDarkPath ?? current?.logoDarkPath),
-    industryId: nullableNumber(input.industryId ?? current?.industryId),
-    industryName: nullable(input.industryName ?? current?.industryName),
-    productCategoryId: nullableNumber(input.productCategoryId ?? current?.productCategoryId),
-    productCategoryName: nullable(input.productCategoryName ?? current?.productCategoryName),
-    unitId: nullableNumber(input.unitId ?? current?.unitId),
-    unitName: nullable(input.unitName ?? current?.unitName),
-    hsnCodeId: nullableNumber(input.hsnCodeId ?? current?.hsnCodeId),
-    hsnCode: nullable(input.hsnCode ?? current?.hsnCode),
-    taxId: nullableNumber(input.taxId ?? current?.taxId),
-    taxName: nullable(input.taxName ?? current?.taxName),
-    openingStock: numberValue(input.openingStock ?? current?.openingStock),
-    openingRate: numberValue(input.openingRate ?? current?.openingRate),
-    status: input.status ?? current?.status ?? "active",
-    isActive: booleanValue(input.isActive ?? current?.isActive ?? true),
+    website: nullableText(input.website ?? current?.website),
+    description: nullableText(input.description ?? current?.description),
+    status,
+    isActive: status === "active",
     emails,
     phones,
-    addresses: normalizeChildren(input.addresses ?? current?.addresses),
-    bankAccounts: normalizeChildren(input.bankAccounts ?? current?.bankAccounts),
-    socialLinks: normalizeChildren(input.socialLinks ?? current?.socialLinks),
+    addresses: normalizeAddresses(input.addresses ?? current?.addresses ?? []),
+    bankAccounts: normalizeBankAccounts(input.bankAccounts ?? current?.bankAccounts ?? []),
+    socialLinks: normalizeSocialLinks(input.socialLinks ?? current?.socialLinks ?? []),
     createdAt: current?.createdAt ?? now,
     updatedAt: now,
     deletedAt: current?.deletedAt ?? null
   };
 }
-function toRow(record: ContactRecord) {
+
+function normalizeEmails(items: ContactSaveInput["emails"] | ContactEmail[]) {
+  const normalized = (items ?? [])
+    .map((item, index) => ({
+      id: Number(item.id ?? 0),
+      email: text(item.email).toLowerCase(),
+      emailType: text(item.emailType) || "Primary",
+      isPrimary: booleanValue(item.isPrimary),
+      sortOrder: index + 1
+    }))
+    .filter((item) => item.email);
+  ensureOnePrimary(normalized);
+  return normalized;
+}
+
+function normalizePhones(items: ContactSaveInput["phones"] | ContactPhone[]) {
+  const normalized = (items ?? [])
+    .map((item, index) => ({
+      id: Number(item.id ?? 0),
+      phone: text(item.phone),
+      phoneType: text(item.phoneType) || "Mobile",
+      isPrimary: booleanValue(item.isPrimary),
+      sortOrder: index + 1
+    }))
+    .filter((item) => item.phone);
+  ensureOnePrimary(normalized);
+  return normalized;
+}
+
+function normalizeAddresses(items: ContactSaveInput["addresses"] | ContactAddress[]) {
+  const normalized = (items ?? [])
+    .map((item, index) => ({
+      id: Number(item.id ?? 0),
+      addressTypeId: nullableNumber(item.addressTypeId),
+      addressTypeName: nullableText(item.addressTypeName),
+      addressLine1: text(item.addressLine1),
+      addressLine2: nullableText(item.addressLine2),
+      countryId: nullableNumber(item.countryId),
+      countryName: nullableText(item.countryName),
+      stateId: nullableNumber(item.stateId),
+      stateName: nullableText(item.stateName),
+      districtId: nullableNumber(item.districtId),
+      districtName: nullableText(item.districtName),
+      cityId: nullableNumber(item.cityId),
+      cityName: nullableText(item.cityName),
+      pincodeId: nullableNumber(item.pincodeId),
+      pincodeName: nullableText(item.pincodeName),
+      isDefault: booleanValue(item.isDefault),
+      sortOrder: index + 1
+    }))
+    .filter(hasAddressValue);
+  ensureOnePrimary(normalized, "isDefault");
+  return normalized;
+}
+
+function hasAddressValue(item: ContactAddress) {
+  return Boolean(
+    item.addressTypeId ||
+    item.addressLine1 ||
+    item.addressLine2 ||
+    item.countryId ||
+    item.stateId ||
+    item.districtId ||
+    item.cityId ||
+    item.pincodeId
+  );
+}
+
+function normalizeBankAccounts(items: ContactSaveInput["bankAccounts"] | ContactBankAccount[]) {
+  const normalized = (items ?? [])
+    .map((item, index) => ({
+      id: Number(item.id ?? 0),
+      bankNameId: nullableNumber(item.bankNameId),
+      bankName: nullableText(item.bankName),
+      accountType: nullableText(item.accountType),
+      accountNumber: text(item.accountNumber),
+      holderName: nullableText(item.holderName),
+      ifsc: nullableText(item.ifsc)?.toUpperCase() ?? null,
+      branch: nullableText(item.branch),
+      isPrimary: booleanValue(item.isPrimary),
+      sortOrder: index + 1
+    }))
+    .filter((item) => item.accountNumber);
+  ensureOnePrimary(normalized);
+  return normalized;
+}
+
+function normalizeSocialLinks(items: ContactSaveInput["socialLinks"] | ContactSocialLink[]) {
+  return (items ?? [])
+    .map((item, index) => {
+      const isActive = booleanValue(item.isActive ?? item.status === "active");
+      return {
+        id: Number(item.id ?? 0),
+        platform: text(item.platform) || "Website",
+        url: text(item.url),
+        status: isActive ? ("active" as const) : ("inactive" as const),
+        isActive,
+        sortOrder: index + 1
+      };
+    })
+    .filter((item) => item.url);
+}
+
+function ensureOnePrimary<T extends Record<string, unknown>>(
+  items: T[],
+  key: "isDefault" | "isPrimary" = "isPrimary"
+) {
+  if (!items.length) return;
+  const selected = Math.max(
+    0,
+    items.findIndex((item) => booleanValue(item[key]))
+  );
+  items.forEach((item, index) => {
+    (item as Record<string, unknown>)[key] = index === selected;
+  });
+}
+
+function toContactRow(record: ContactRecord) {
   return {
     uuid: record.uuid,
-    deleted_at: record.deletedAt,
     code: record.code,
     name: record.name,
     legal_name: record.legalName,
@@ -168,214 +419,325 @@ function toRow(record: ContactRecord) {
     credit_limit: record.creditLimit,
     website: record.website,
     description: record.description,
-    logo_path: record.logoPath,
-    logo_dark_path: record.logoDarkPath,
-    industry_id: record.industryId,
-    industry_name: record.industryName,
-    product_category_id: record.productCategoryId,
-    product_category_name: record.productCategoryName,
-    unit_id: record.unitId,
-    unit_name: record.unitName,
-    hsn_code_id: record.hsnCodeId,
-    hsn_code: record.hsnCode,
-    tax_id: record.taxId,
-    tax_name: record.taxName,
-    opening_stock: record.openingStock,
-    opening_rate: record.openingRate,
     status: record.status,
-    emails_json: sql.lit(JSON.stringify(record.emails)),
-    phones_json: sql.lit(JSON.stringify(record.phones)),
-    addresses_json: sql.lit(JSON.stringify(record.addresses)),
-    bank_accounts_json: sql.lit(JSON.stringify(record.bankAccounts)),
-    social_links_json: sql.lit(JSON.stringify(record.socialLinks)),
-    created_at: new Date(record.createdAt),
     updated_at: new Date(record.updatedAt)
   };
 }
-function toRecord(row: Row): ContactRecord {
+
+function toContactRecord(row: Row): ContactRecord {
+  const status = String(row.status ?? "active") as ContactRecord["status"];
   return {
     id: Number(row.id),
-    uuid: nullable(row.uuid),
+    uuid: String(row.uuid),
     code: String(row.code),
     name: String(row.name),
-    legalName: nullable(row.legal_name),
+    legalName: nullableText(row.legal_name),
     typeId: nullableNumber(row.type_id),
-    typeName: nullable(row.type_name),
+    typeName: nullableText(row.type_name),
     groupId: nullableNumber(row.group_id),
-    groupName: nullable(row.group_name),
-    primaryPhone: nullable(row.primary_phone),
-    primaryEmail: nullable(row.primary_email),
-    gstin: nullable(row.gstin),
-    pan: nullable(row.pan),
-    msmeNo: nullable(row.msme_no),
-    msmeCategory: nullable(row.msme_category),
-    tanNo: nullable(row.tan_no),
+    groupName: nullableText(row.group_name),
+    primaryPhone: nullableText(row.primary_phone),
+    primaryEmail: nullableText(row.primary_email),
+    gstin: nullableText(row.gstin),
+    pan: nullableText(row.pan),
+    msmeNo: nullableText(row.msme_no),
+    msmeCategory: nullableText(row.msme_category),
+    tanNo: nullableText(row.tan_no),
     tdsAvailable: booleanValue(row.tds_available),
     tcsAvailable: booleanValue(row.tcs_available),
     openingBalance: numberValue(row.opening_balance),
     creditLimit: numberValue(row.credit_limit),
-    website: nullable(row.website),
-    description: nullable(row.description),
-    logoPath: nullable(row.logo_path),
-    logoDarkPath: nullable(row.logo_dark_path),
-    industryId: nullableNumber(row.industry_id),
-    industryName: nullable(row.industry_name),
-    productCategoryId: nullableNumber(row.product_category_id),
-    productCategoryName: nullable(row.product_category_name),
-    unitId: nullableNumber(row.unit_id),
-    unitName: nullable(row.unit_name),
-    hsnCodeId: nullableNumber(row.hsn_code_id),
-    hsnCode: nullable(row.hsn_code),
-    taxId: nullableNumber(row.tax_id),
-    taxName: nullable(row.tax_name),
-    openingStock: numberValue(row.opening_stock),
-    openingRate: numberValue(row.opening_rate),
-    status: String(row.status ?? "active") as ContactRecord["status"],
-    isActive: String(row.status) === "active",
-    emails: parseArray(row.emails_json),
-    phones: parseArray(row.phones_json),
-    addresses: parseArray(row.addresses_json),
-    bankAccounts: parseArray(row.bank_accounts_json),
-    socialLinks: parseArray(row.social_links_json),
+    website: nullableText(row.website),
+    description: nullableText(row.description),
+    status,
+    isActive: status === "active",
+    emails: [],
+    phones: [],
+    addresses: [],
+    bankAccounts: [],
+    socialLinks: [],
     createdAt: dateValue(row.created_at),
     updatedAt: dateValue(row.updated_at),
-    deletedAt: nullable(row.deleted_at)
+    deletedAt: nullableDateValue(row.deleted_at)
   };
 }
-function parseArray(value: unknown): ContactChild[] {
-  if (Array.isArray(value)) return normalizeChildren(value);
-  if (!value) return [];
-  try {
-    return normalizeChildren(JSON.parse(String(value)));
-  } catch {
-    return [];
+
+async function hydrateContactChildren(database: ContactDatabase, records: ContactRecord[]) {
+  if (!records.length) return records;
+  const ids = records.map(({ id }) => id);
+  const [emails, phones, addresses, bankAccounts, socialLinks] = await Promise.all([
+    database
+      .selectFrom("contacts_emails" as never)
+      .selectAll()
+      .where("parent_id" as never, "in", ids as never)
+      .orderBy("sort_order" as never)
+      .execute() as Promise<Row[]>,
+    database
+      .selectFrom("contacts_phones" as never)
+      .selectAll()
+      .where("parent_id" as never, "in", ids as never)
+      .orderBy("sort_order" as never)
+      .execute() as Promise<Row[]>,
+    database
+      .selectFrom("contacts_addresses" as never)
+      .selectAll()
+      .where("parent_id" as never, "in", ids as never)
+      .orderBy("sort_order" as never)
+      .execute() as Promise<Row[]>,
+    database
+      .selectFrom("contacts_bank_accounts" as never)
+      .selectAll()
+      .where("parent_id" as never, "in", ids as never)
+      .orderBy("sort_order" as never)
+      .execute() as Promise<Row[]>,
+    database
+      .selectFrom("contacts_social_links" as never)
+      .selectAll()
+      .where("parent_id" as never, "in", ids as never)
+      .orderBy("sort_order" as never)
+      .execute() as Promise<Row[]>
+  ]);
+  return records.map((record) => ({
+    ...record,
+    emails: emails.filter(parent(record.id)).map(toEmail),
+    phones: phones.filter(parent(record.id)).map(toPhone),
+    addresses: addresses.filter(parent(record.id)).map(toAddress),
+    bankAccounts: bankAccounts.filter(parent(record.id)).map(toBankAccount),
+    socialLinks: socialLinks.filter(parent(record.id)).map(toSocialLink)
+  }));
+}
+
+function parent(id: number) {
+  return (row: Row) => Number(row.parent_id) === id;
+}
+
+function toEmail(row: Row): ContactEmail {
+  return {
+    id: Number(row.id),
+    email: String(row.email ?? ""),
+    emailType: String(row.email_type ?? "Primary"),
+    isPrimary: booleanValue(row.is_primary),
+    sortOrder: Number(row.sort_order ?? 1)
+  };
+}
+
+function toPhone(row: Row): ContactPhone {
+  return {
+    id: Number(row.id),
+    phone: String(row.phone ?? ""),
+    phoneType: String(row.phone_type ?? "Mobile"),
+    isPrimary: booleanValue(row.is_primary),
+    sortOrder: Number(row.sort_order ?? 1)
+  };
+}
+
+function toAddress(row: Row): ContactAddress {
+  return {
+    id: Number(row.id),
+    addressTypeId: nullableNumber(row.address_type_id),
+    addressTypeName: nullableText(row.address_type_name),
+    addressLine1: String(row.address_line1 ?? ""),
+    addressLine2: nullableText(row.address_line2),
+    countryId: nullableNumber(row.country_id),
+    countryName: nullableText(row.country_name),
+    stateId: nullableNumber(row.state_id),
+    stateName: nullableText(row.state_name),
+    districtId: nullableNumber(row.district_id),
+    districtName: nullableText(row.district_name),
+    cityId: nullableNumber(row.city_id),
+    cityName: nullableText(row.city_name),
+    pincodeId: nullableNumber(row.pincode_id),
+    pincodeName: nullableText(row.pincode_name),
+    isDefault: booleanValue(row.is_default),
+    sortOrder: Number(row.sort_order ?? 1)
+  };
+}
+
+function toBankAccount(row: Row): ContactBankAccount {
+  return {
+    id: Number(row.id),
+    bankNameId: nullableNumber(row.bank_name_id),
+    bankName: nullableText(row.bank_name),
+    accountType: nullableText(row.account_type),
+    accountNumber: String(row.account_number ?? ""),
+    holderName: nullableText(row.holder_name),
+    ifsc: nullableText(row.ifsc),
+    branch: nullableText(row.branch),
+    isPrimary: booleanValue(row.is_primary),
+    sortOrder: Number(row.sort_order ?? 1)
+  };
+}
+
+function toSocialLink(row: Row): ContactSocialLink {
+  const status = String(row.status) === "inactive" ? "inactive" : "active";
+  return {
+    id: Number(row.id),
+    platform: String(row.platform ?? "Website"),
+    url: String(row.url ?? ""),
+    status,
+    isActive: status === "active",
+    sortOrder: Number(row.sort_order ?? 1)
+  };
+}
+
+async function replaceContactChildren(
+  database: ContactDatabase,
+  contactId: number,
+  record: ContactRecord
+) {
+  await database
+    .deleteFrom("contacts_emails" as never)
+    .where("parent_id" as never, "=", contactId as never)
+    .execute();
+  await database
+    .deleteFrom("contacts_phones" as never)
+    .where("parent_id" as never, "=", contactId as never)
+    .execute();
+  await database
+    .deleteFrom("contacts_addresses" as never)
+    .where("parent_id" as never, "=", contactId as never)
+    .execute();
+  await database
+    .deleteFrom("contacts_bank_accounts" as never)
+    .where("parent_id" as never, "=", contactId as never)
+    .execute();
+  await database
+    .deleteFrom("contacts_social_links" as never)
+    .where("parent_id" as never, "=", contactId as never)
+    .execute();
+
+  if (record.emails.length) {
+    await database
+      .insertInto("contacts_emails" as never)
+      .values(
+        record.emails.map((item) => ({
+          parent_id: contactId,
+          email: item.email,
+          email_type: item.emailType,
+          is_primary: item.isPrimary ? 1 : 0,
+          sort_order: item.sortOrder
+        })) as never
+      )
+      .execute();
+  }
+  if (record.phones.length) {
+    await database
+      .insertInto("contacts_phones" as never)
+      .values(
+        record.phones.map((item) => ({
+          parent_id: contactId,
+          phone: item.phone,
+          phone_type: item.phoneType,
+          is_primary: item.isPrimary ? 1 : 0,
+          sort_order: item.sortOrder
+        })) as never
+      )
+      .execute();
+  }
+  if (record.addresses.length) {
+    await database
+      .insertInto("contacts_addresses" as never)
+      .values(
+        record.addresses.map((item) => ({
+          parent_id: contactId,
+          address_type_id: item.addressTypeId,
+          address_type_name: item.addressTypeName,
+          address_line1: item.addressLine1,
+          address_line2: item.addressLine2,
+          country_id: item.countryId,
+          country_name: item.countryName,
+          state_id: item.stateId,
+          state_name: item.stateName,
+          district_id: item.districtId,
+          district_name: item.districtName,
+          city_id: item.cityId,
+          city_name: item.cityName,
+          pincode_id: item.pincodeId,
+          pincode_name: item.pincodeName,
+          is_default: item.isDefault ? 1 : 0,
+          sort_order: item.sortOrder
+        })) as never
+      )
+      .execute();
+  }
+  if (record.bankAccounts.length) {
+    await database
+      .insertInto("contacts_bank_accounts" as never)
+      .values(
+        record.bankAccounts.map((item) => ({
+          parent_id: contactId,
+          bank_name_id: item.bankNameId,
+          bank_name: item.bankName,
+          account_type: item.accountType,
+          account_number: item.accountNumber,
+          holder_name: item.holderName,
+          ifsc: item.ifsc,
+          branch: item.branch,
+          is_primary: item.isPrimary ? 1 : 0,
+          sort_order: item.sortOrder
+        })) as never
+      )
+      .execute();
+  }
+  if (record.socialLinks.length) {
+    await database
+      .insertInto("contacts_social_links" as never)
+      .values(
+        record.socialLinks.map((item) => ({
+          parent_id: contactId,
+          platform: item.platform,
+          url: item.url,
+          status: item.status,
+          sort_order: item.sortOrder
+        })) as never
+      )
+      .execute();
   }
 }
-function normalizeChildren(value: unknown): ContactChild[] {
-  return Array.isArray(value)
-    ? value.map((item) => ({
-        ...(item && typeof item === "object"
-          ? (item as Record<string, boolean | number | string | null>)
-          : {}),
-        id: (item as { id?: number | string })?.id ?? 0
-      }))
-    : [];
+
+function primaryValue<T extends { isPrimary: boolean }>(items: T[], key: keyof T) {
+  return items.find((item) => item.isPrimary)?.[key] ?? items[0]?.[key] ?? null;
 }
-function stringValue(value: unknown) {
+
+function text(value: unknown) {
   return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
 }
-function nullable(value: unknown) {
-  const string = stringValue(value);
-  return string ? string : null;
+
+function nullableText(value: unknown) {
+  const normalized = text(value);
+  return normalized || null;
 }
-function numberValue(value: unknown) {
-  const number = Number(value ?? 0);
-  return Number.isFinite(number) ? number : 0;
-}
+
 function nullableNumber(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : null;
 }
+
+function numberValue(value: unknown) {
+  const normalized = Number(value ?? 0);
+  return Number.isFinite(normalized) ? normalized : 0;
+}
+
 function booleanValue(value: unknown) {
   return value === true || value === 1 || value === "1" || value === "true";
 }
+
 function dateValue(value: unknown) {
   return value instanceof Date ? value.toISOString() : String(value ?? new Date().toISOString());
 }
-function nextCode(name: string) {
+
+function nullableDateValue(value: unknown) {
+  if (!value) return null;
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
+function codeFromName(name: string) {
   return (
     name
       .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 24) || `M-${Date.now()}`
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_|_$/g, "")
+      .slice(0, 80) || `CONTACT_${Date.now()}`
   );
-}
-function primaryChildValue(items: ContactChild[], key: string) {
-  return items.find((item) => booleanValue(item.isPrimary))?.[key] ?? items[0]?.[key] ?? null;
-}
-
-async function syncChildTables(tableName: string, record: ContactRecord) {
-  await syncChildTable(tableName + "_emails", record.id, record.emails, (item, index) => ({
-    email: nullable(item.email),
-    email_type: nullable(item.emailType),
-    is_primary: booleanValue(item.isPrimary) ? 1 : 0,
-    parent_id: record.id,
-    sort_order: index + 1
-  }));
-  await syncChildTable(tableName + "_phones", record.id, record.phones, (item, index) => ({
-    is_primary: booleanValue(item.isPrimary) ? 1 : 0,
-    parent_id: record.id,
-    phone: nullable(item.phone),
-    phone_type: nullable(item.phoneType),
-    sort_order: index + 1
-  }));
-  await syncChildTable(tableName + "_addresses", record.id, record.addresses, (item, index) => ({
-    address_line1: nullable(item.addressLine1),
-    address_line2: nullable(item.addressLine2),
-    address_type_id: nullableNumber(item.addressTypeId),
-    address_type_name: nullable(item.addressTypeName ?? item.addressType),
-    city_id: nullableNumber(item.cityId),
-    city_name: nullable(item.cityName ?? item.city),
-    country_id: nullableNumber(item.countryId),
-    country_name: nullable(item.countryName ?? item.country),
-    district_id: nullableNumber(item.districtId),
-    district_name: nullable(item.districtName ?? item.district),
-    is_default: booleanValue(item.isDefault) ? 1 : 0,
-    parent_id: record.id,
-    pincode_id: nullableNumber(item.pincodeId),
-    pincode_name: nullable(item.pincodeName ?? item.pincode),
-    sort_order: index + 1,
-    state_id: nullableNumber(item.stateId),
-    state_name: nullable(item.stateName ?? item.state)
-  }));
-  await syncChildTable(
-    tableName + "_bank_accounts",
-    record.id,
-    record.bankAccounts,
-    (item, index) => ({
-      account_number: nullable(item.accountNumber),
-      account_type: nullable(item.accountType),
-      bank_name: nullable(item.bankName),
-      bank_name_id: nullableNumber(item.bankNameId),
-      branch: nullable(item.branch),
-      holder_name: nullable(item.holderName),
-      ifsc: nullable(item.ifsc),
-      is_primary: booleanValue(item.isPrimary) ? 1 : 0,
-      parent_id: record.id,
-      sort_order: index + 1
-    })
-  );
-  await syncChildTable(
-    tableName + "_social_links",
-    record.id,
-    record.socialLinks,
-    (item, index) => ({
-      status: booleanValue(item.isActive ?? true) ? "active" : "inactive",
-      parent_id: record.id,
-      platform: nullable(item.platform),
-      sort_order: index + 1,
-      url: nullable(item.url)
-    })
-  );
-}
-
-async function syncChildTable(
-  tableName: string,
-  parentId: number,
-  items: ContactChild[],
-  mapItem: (item: ContactChild, index: number) => Record<string, boolean | number | string | null>
-) {
-  const db = getCoreDatabase();
-  await db
-    .deleteFrom(tableName as never)
-    .where("parent_id" as never, "=", parentId as never)
-    .execute();
-  const rows = items.map(mapItem);
-  if (rows.length)
-    await db
-      .insertInto(tableName as never)
-      .values(rows as never)
-      .execute();
 }

@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { listTaxes } from "./taxes.services";
-export function useTaxesQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listTaxes(path), queryKey: ["core", "common", key] });
+import type { TaxesListFilters } from "./taxes.types";
+
+export const taxesQueryKey = ["core", "common", "products", "taxes"] as const;
+export function useTaxes(filters: TaxesListFilters = {}) {
+  return useQuery({
+    queryFn: () => listTaxes(filters),
+    queryKey: [...taxesQueryKey, filters.search ?? ""]
+  });
 }

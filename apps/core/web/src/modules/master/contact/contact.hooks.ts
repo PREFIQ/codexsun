@@ -1,8 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { listContacts } from "./contact.services";
+import { listContactLookups, listContacts } from "./contact.services";
+
+export const contactsQueryKey = ["core", "master", "contacts"] as const;
+export const contactLookupsQueryKey = ["core", "master", "contacts", "lookups"] as const;
+
 export function useContacts(search = "") {
   return useQuery({
     queryFn: () => listContacts(search),
-    queryKey: ["core", "contact", "list", search]
+    queryKey: [...contactsQueryKey, search]
+  });
+}
+
+export function useContactLookups() {
+  return useQuery({
+    queryFn: listContactLookups,
+    queryKey: contactLookupsQueryKey
   });
 }

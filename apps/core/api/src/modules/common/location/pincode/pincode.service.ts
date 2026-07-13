@@ -62,16 +62,25 @@ export class PincodeService {
     try {
       return await work();
     } catch (error) {
-      if (isDuplicate(error)) throw AppError.conflict("Pincode name already exists for this city.");
+      if (isDuplicate(error))
+        throw AppError.conflict("Pincode and area already exist for this city.");
       throw error;
     }
   }
 }
 
 function normalize(input: PincodeSavePayload): PincodeSavePayload {
+  const name = input.name.trim();
+  const area = input.area.trim();
+  if (name.length < 2 || name.length > 20)
+    throw AppError.validation("Postal code must contain between 2 and 20 characters.");
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9 -]*[A-Za-z0-9])?$/.test(name))
+    throw AppError.validation("Postal code may contain letters, numbers, spaces, and hyphens.");
+  if (!area) throw AppError.validation("Area is required.");
   return {
     cityId: Number(input.cityId),
-    name: input.name.trim(),
+    name,
+    area,
     sortOrder: Number.isFinite(input.sortOrder) ? Number(input.sortOrder) : 1000,
     status: input.status === "inactive" ? "inactive" : "active"
   };

@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.27
+Current version: 1.0.28
 
-Release tag: v-1.0.27
+Release tag: v-1.0.28
 
-Changelog label: v 1.0.27
+Changelog label: v 1.0.28
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,31 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.28
+
+### [v 1.0.28] 2026-07-13 9:52 am - Common List Serial Columns
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Consolidated the fresh Contact migration around the Contact master and its five owned child tables: emails, phones, addresses, bank accounts, and social links.
+- Added concrete foreign keys for Contact type/group, address type, location hierarchy, and bank-name references; existing databases require the normal fresh migration path to receive the consolidated schema exactly.
+
+#### App Codebase Changes
+
+- Standardized all 29 Core Common frontend lists so the module-owned `sortOrder` field appears first as a centered `#` serial column with a fixed 64 px width and tabular numeric alignment.
+- Preserved strict leaf ownership by keeping the serial-column definition inside each Common list rather than introducing shared or centralized business-column configuration.
+- Refactored Core Master Contact into a complete module-owned backend and frontend implementation with exact migration, repository, service, routes, seed, types, list, form, hooks, services, workspace, and index responsibilities.
+- Added the animated `Details`, `Tax Details`, `Communication`, `Addresses`, `Finance`, and `More` Contact form tabs with repeatable emails, phones, addresses, bank accounts, and social links.
+- Wired Contact Type, Contact Group, Address Type, Bank Name, Country, State, District, City, and Pincode as searchable foreign-reference lookups with in-context creation and dependent location filtering.
+- Replaced Contact child JSON read behavior with transactional persistence and hydration through the five Contact-owned child tables, including parent-reference and location-hierarchy validation.
+- Verified Contact create-and-read persistence against a disposable freshly migrated tenant database, including one persisted row in every Contact child table.
+- Fixed Contact address persistence so a selected country or postal code is retained even when the optional Address line 1 is empty; changing country now persists the new country while clearing stale State, District, City, and Postal Code references in sequence.
+- Replaced the India-only six-digit Pincode validation with an international 2-20 character postal-code contract supporting letters, numbers, spaces, and hyphens in both the Common Pincode owner and Contact lookup creation popup.
+- Moved Contact next-code generation to the Contact backend using all persisted codes, recognizing both `C-0000` and legacy `C_0001` sequences while returning the canonical next `C-####` value independently of frontend search filters.
+- Aligned the Contact postal-code creation popup with the Common Country upsert tone using a compact dialog width, padded header and fields, descriptive copy, footer divider, and consistent primary/cancel action spacing.
+- Bumped workspace version to 1.0.28.
 
 ## v-1.0.27
 

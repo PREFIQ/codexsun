@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { listMonths } from "./months.services";
-export function useMonthsQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listMonths(path), queryKey: ["core", "common", key] });
+import type { MonthsListFilters } from "./months.types";
+
+export const monthsQueryKey = ["core", "common", "others", "months"] as const;
+export function useMonths(filters: MonthsListFilters = {}) {
+  return useQuery({
+    queryFn: () => listMonths(filters),
+    queryKey: [...monthsQueryKey, filters.search ?? ""]
+  });
 }

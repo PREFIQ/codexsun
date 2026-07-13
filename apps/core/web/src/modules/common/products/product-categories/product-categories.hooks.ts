@@ -1,8 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { listProductCategories } from "./product-categories.services";
-export function useProductCategoriesQuery(key: string, path: string) {
+import type { ProductCategoriesListFilters } from "./product-categories.types";
+
+export const productCategoriesQueryKey = [
+  "core",
+  "common",
+  "products",
+  "product-categories"
+] as const;
+export function useProductCategories(filters: ProductCategoriesListFilters = {}) {
   return useQuery({
-    queryFn: () => listProductCategories(path),
-    queryKey: ["core", "common", key]
+    queryFn: () => listProductCategories(filters),
+    queryKey: [...productCategoriesQueryKey, filters.search ?? ""]
   });
 }

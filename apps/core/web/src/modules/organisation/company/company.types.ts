@@ -30,10 +30,3 @@ export type CompanySavePayload = Partial<Omit<CompanyRecord, "id" | "createdAt" 
   name: string;
 };
 export type CompanyIndustry = { id: number; code: string; name: string };
-export const companyDefinition = {
-  apiPath: "/core/organisation/companies",
-  description: "Company master with tax, communication, address, finance, and profile fields.",
-  label: "Companies",
-  search: "Search code, company, phone, email",
-  singular: "company"
-} as const;

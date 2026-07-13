@@ -1,53 +1,74 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { PaymentTermsService } from "./payment-terms.service.js";
-import type { PaymentTermsListFilters, PaymentTermsSavePayload } from "./payment-terms.types.js";
-
 export const PAYMENT_TERMS_COLLECTION_PATH = "/core/common/others/payment-terms";
 const service = new PaymentTermsService();
-
+const idParamsSchema = z.object({
+  id: z.string().regex(/^\d+$/, "PaymentTerms ID must be numeric.")
+});
+const paymentTermsSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  isActive: z.boolean(),
+  sortOrder: z.number().int()
+});
+const paymentTermsPayloadSchema = z.object({
+  name: z.string().trim(),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).default(1000)
+});
+const paymentTermsQuerySchema = z.object({ search: z.string().trim().optional() });
 export async function registerPaymentTermsRoutes(app: FastifyInstance) {
-  app.get(PAYMENT_TERMS_COLLECTION_PATH, async (request) =>
-    ok(await service.list(filters(request)), { requestId: request.id })
-  );
-  app.get(`/core/common/others/payment-terms/:id`, async (request, reply) => {
-    const record = await service.get(id(request));
-    return record
-      ? ok(record, { requestId: request.id })
-      : reply.code(404).send(notFound(request.id));
+  registerContractRoute(app, {
+    handler: ({ query }) => service.list(query.search ? { search: query.search } : {}),
+    method: "GET",
+    schemas: { querystring: paymentTermsQuerySchema, response: z.array(paymentTermsSchema) },
+    url: PAYMENT_TERMS_COLLECTION_PATH
   });
-  app.post(PAYMENT_TERMS_COLLECTION_PATH, async (request) =>
-    ok(await service.create(request.body as PaymentTermsSavePayload), {
-      requestId: request.id
-    })
-  );
-  app.put(`/core/common/others/payment-terms/:id`, async (request) =>
-    ok(await service.update(id(request), request.body as PaymentTermsSavePayload), {
-      requestId: request.id
-    })
-  );
-  app.post(`/core/common/others/payment-terms/:id/activate`, async (request) =>
-    ok(await service.setActive(id(request), true), { requestId: request.id })
-  );
-  app.post(`/core/common/others/payment-terms/:id/deactivate`, async (request) =>
-    ok(await service.setActive(id(request), false), { requestId: request.id })
-  );
-  app.delete(`/core/common/others/payment-terms/:id/force`, async (request) =>
-    ok(await service.forceDelete(id(request)), { requestId: request.id })
-  );
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.get(params.id)),
+    method: "GET",
+    schemas: { params: idParamsSchema, response: paymentTermsSchema },
+    url: `${PAYMENT_TERMS_COLLECTION_PATH}/:id`
+  });
+  registerContractRoute(app, {
+    handler: async ({ body }) => required(await service.create(body)),
+    method: "POST",
+    schemas: { body: paymentTermsPayloadSchema, response: paymentTermsSchema },
+    url: PAYMENT_TERMS_COLLECTION_PATH
+  });
+  registerContractRoute(app, {
+    handler: async ({ body, params }) => required(await service.update(params.id, body)),
+    method: "PUT",
+    schemas: {
+      body: paymentTermsPayloadSchema,
+      params: idParamsSchema,
+      response: paymentTermsSchema
+    },
+    url: `${PAYMENT_TERMS_COLLECTION_PATH}/:id`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.setActive(params.id, true)),
+    method: "POST",
+    schemas: { params: idParamsSchema, response: paymentTermsSchema },
+    url: `${PAYMENT_TERMS_COLLECTION_PATH}/:id/activate`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.setActive(params.id, false)),
+    method: "POST",
+    schemas: { params: idParamsSchema, response: paymentTermsSchema },
+    url: `${PAYMENT_TERMS_COLLECTION_PATH}/:id/deactivate`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.forceDelete(params.id)),
+    method: "DELETE",
+    schemas: { params: idParamsSchema, response: paymentTermsSchema },
+    url: `${PAYMENT_TERMS_COLLECTION_PATH}/:id/force`
+  });
 }
-
-function id(request: FastifyRequest) {
-  return (request.params as { id: string }).id;
-}
-function filters(request: FastifyRequest): PaymentTermsListFilters {
-  const search = (request.query as { search?: string } | undefined)?.search;
-  return search ? { search } : {};
-}
-function notFound(requestId: string) {
-  return {
-    error: { code: "PAYMENT_TERMS_NOT_FOUND", message: "Payment Terms record was not found." },
-    meta: { requestId, timestamp: new Date().toISOString() },
-    success: false as const
-  };
+function required<T>(record: T | null): T {
+  if (!record) throw AppError.notFound("PaymentTerms record was not found.");
+  return record;
 }

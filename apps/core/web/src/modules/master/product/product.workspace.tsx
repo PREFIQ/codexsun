@@ -14,7 +14,7 @@ import {
   setProductActive,
   updateProduct
 } from "./product.services";
-import { productDefinition, type ProductRecord, type ProductSavePayload } from "./product.types";
+import type { ProductRecord, ProductSavePayload } from "./product.types";
 export function ProductWorkspace() {
   const client = useQueryClient(),
     [search, setSearch] = useState(""),
@@ -52,8 +52,8 @@ export function ProductWorkspace() {
     );
   return (
     <WorkspacePage
-      title={productDefinition.label}
-      description={productDefinition.description}
+      title="Products"
+      description="Manage product classification, HSN, unit, tax, opening quantity, price, and lifecycle."
       actions={
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => void query.refetch()}>
@@ -68,7 +68,7 @@ export function ProductWorkspace() {
       }
     >
       <WorkspaceFilters
-        searchPlaceholder={productDefinition.search}
+        searchPlaceholder="Search products"
         searchValue={search}
         onSearchValueChange={setSearch}
       />

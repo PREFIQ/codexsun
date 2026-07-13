@@ -1,53 +1,72 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { CurrenciesService } from "./currencies.service.js";
-import type { CurrenciesListFilters, CurrenciesSavePayload } from "./currencies.types.js";
-
 export const CURRENCIES_COLLECTION_PATH = "/core/common/others/currencies";
 const service = new CurrenciesService();
-
+const idParamsSchema = z.object({
+  id: z.string().regex(/^\d+$/, "Currencies ID must be numeric.")
+});
+const currenciesSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string(),
+  symbol: z.string(),
+  isActive: z.boolean(),
+  sortOrder: z.number().int()
+});
+const currenciesPayloadSchema = z.object({
+  name: z.string().trim(),
+  symbol: z.string().trim(),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).default(1000)
+});
+const currenciesQuerySchema = z.object({ search: z.string().trim().optional() });
 export async function registerCurrenciesRoutes(app: FastifyInstance) {
-  app.get(CURRENCIES_COLLECTION_PATH, async (request) =>
-    ok(await service.list(filters(request)), { requestId: request.id })
-  );
-  app.get(`/core/common/others/currencies/:id`, async (request, reply) => {
-    const record = await service.get(id(request));
-    return record
-      ? ok(record, { requestId: request.id })
-      : reply.code(404).send(notFound(request.id));
+  registerContractRoute(app, {
+    handler: ({ query }) => service.list(query.search ? { search: query.search } : {}),
+    method: "GET",
+    schemas: { querystring: currenciesQuerySchema, response: z.array(currenciesSchema) },
+    url: CURRENCIES_COLLECTION_PATH
   });
-  app.post(CURRENCIES_COLLECTION_PATH, async (request) =>
-    ok(await service.create(request.body as CurrenciesSavePayload), {
-      requestId: request.id
-    })
-  );
-  app.put(`/core/common/others/currencies/:id`, async (request) =>
-    ok(await service.update(id(request), request.body as CurrenciesSavePayload), {
-      requestId: request.id
-    })
-  );
-  app.post(`/core/common/others/currencies/:id/activate`, async (request) =>
-    ok(await service.setActive(id(request), true), { requestId: request.id })
-  );
-  app.post(`/core/common/others/currencies/:id/deactivate`, async (request) =>
-    ok(await service.setActive(id(request), false), { requestId: request.id })
-  );
-  app.delete(`/core/common/others/currencies/:id/force`, async (request) =>
-    ok(await service.forceDelete(id(request)), { requestId: request.id })
-  );
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.get(params.id)),
+    method: "GET",
+    schemas: { params: idParamsSchema, response: currenciesSchema },
+    url: `${CURRENCIES_COLLECTION_PATH}/:id`
+  });
+  registerContractRoute(app, {
+    handler: async ({ body }) => required(await service.create(body)),
+    method: "POST",
+    schemas: { body: currenciesPayloadSchema, response: currenciesSchema },
+    url: CURRENCIES_COLLECTION_PATH
+  });
+  registerContractRoute(app, {
+    handler: async ({ body, params }) => required(await service.update(params.id, body)),
+    method: "PUT",
+    schemas: { body: currenciesPayloadSchema, params: idParamsSchema, response: currenciesSchema },
+    url: `${CURRENCIES_COLLECTION_PATH}/:id`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.setActive(params.id, true)),
+    method: "POST",
+    schemas: { params: idParamsSchema, response: currenciesSchema },
+    url: `${CURRENCIES_COLLECTION_PATH}/:id/activate`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.setActive(params.id, false)),
+    method: "POST",
+    schemas: { params: idParamsSchema, response: currenciesSchema },
+    url: `${CURRENCIES_COLLECTION_PATH}/:id/deactivate`
+  });
+  registerContractRoute(app, {
+    handler: async ({ params }) => required(await service.forceDelete(params.id)),
+    method: "DELETE",
+    schemas: { params: idParamsSchema, response: currenciesSchema },
+    url: `${CURRENCIES_COLLECTION_PATH}/:id/force`
+  });
 }
-
-function id(request: FastifyRequest) {
-  return (request.params as { id: string }).id;
-}
-function filters(request: FastifyRequest): CurrenciesListFilters {
-  const search = (request.query as { search?: string } | undefined)?.search;
-  return search ? { search } : {};
-}
-function notFound(requestId: string) {
-  return {
-    error: { code: "CURRENCIES_NOT_FOUND", message: "Currencies record was not found." },
-    meta: { requestId, timestamp: new Date().toISOString() },
-    success: false as const
-  };
+function required<T>(record: T | null): T {
+  if (!record) throw AppError.notFound("Currencies record was not found.");
+  return record;
 }

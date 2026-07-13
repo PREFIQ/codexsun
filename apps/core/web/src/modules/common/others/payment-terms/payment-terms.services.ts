@@ -1,49 +1,58 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { PaymentTermsRecord, PaymentTermsValue } from "./payment-terms.types";
+import type {
+  PaymentTermsListFilters,
+  PaymentTermsRecord,
+  PaymentTermsSavePayload
+} from "./payment-terms.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const paymentTermsPath = "/core/common/others/payment-terms";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function paymentTermsRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${paymentTermsPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(envelope.success ? "PaymentTerms request failed." : envelope.error.message);
+  }
+  return envelope.data;
 }
 
-export function listPaymentTerms(path: string) {
-  return request<PaymentTermsRecord[]>(path);
+export function listPaymentTerms(filters: PaymentTermsListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return paymentTermsRequest<PaymentTermsRecord[]>(query.size ? `?${query.toString()}` : "");
 }
-export function createPaymentTerms(path: string, payload: Record<string, PaymentTermsValue>) {
-  return request<PaymentTermsRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createPaymentTerms(payload: PaymentTermsSavePayload) {
+  return paymentTermsRequest<PaymentTermsRecord>("", {
+    body: JSON.stringify(payload),
+    method: "POST"
+  });
 }
-export function updatePaymentTerms(
-  path: string,
-  id: number,
-  payload: Record<string, PaymentTermsValue>
-) {
-  return request<PaymentTermsRecord>(`${path}/${id}`, {
+export function updatePaymentTerms(id: number, payload: PaymentTermsSavePayload) {
+  return paymentTermsRequest<PaymentTermsRecord>(`/${id}`, {
     body: JSON.stringify(payload),
     method: "PUT"
   });
 }
-export function setPaymentTermsActive(path: string, id: number, active: boolean) {
-  return request<PaymentTermsRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activatePaymentTerms(id: number) {
+  return paymentTermsRequest<PaymentTermsRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeletePaymentTerms(path: string, id: number) {
-  return request<PaymentTermsRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivatePaymentTerms(id: number) {
+  return paymentTermsRequest<PaymentTermsRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeletePaymentTerms(id: number) {
+  return paymentTermsRequest<PaymentTermsRecord>(`/${id}/force`, { method: "DELETE" });
 }

@@ -1,2 +1,5 @@
+export * from "./transports.hooks";
+export * from "./transports.schema";
+export * from "./transports.services";
 export * from "./transports.types";
-export * from "./transports.workspace";
+export { TransportsWorkspace } from "./transports.workspace";

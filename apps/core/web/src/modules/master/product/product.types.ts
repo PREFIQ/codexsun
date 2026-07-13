@@ -18,10 +18,3 @@ export type ProductRecord = {
 export type ProductSavePayload = Partial<
   Omit<ProductRecord, "id" | "uuid" | "createdAt" | "updatedAt" | "deletedAt">
 > & { name: string };
-export const productDefinition = {
-  description:
-    "Product master with owned classification, HSN, unit, tax, opening quantity, price, and lifecycle.",
-  label: "Products",
-  search: "Search product",
-  singular: "product"
-} as const;

@@ -4,6 +4,7 @@ export type Pincode = {
   id: number;
   cityId: number;
   name: string;
+  area: string;
   sortOrder: number;
   status: PincodeStatus;
 };
@@ -21,6 +22,7 @@ export type PincodeWithRelations = Pincode & {
 export type PincodeSavePayload = {
   cityId: number;
   name: string;
+  area: string;
   sortOrder: number;
   status: PincodeStatus;
 };

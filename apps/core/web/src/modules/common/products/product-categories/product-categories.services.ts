@@ -1,52 +1,62 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { ProductCategoriesRecord, ProductCategoriesValue } from "./product-categories.types";
+import type {
+  ProductCategoriesListFilters,
+  ProductCategoriesRecord,
+  ProductCategoriesSavePayload
+} from "./product-categories.types";
 
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
-type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const productCategoriesPath = "/core/common/products/product-categories";
+type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function productCategoriesRequest<T>(suffix = "", options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${coreApiBaseUrl}${productCategoriesPath}${suffix}`, {
     ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...options.headers
     }
   });
-  const body = (await response.json()) as Envelope<T>;
-  if (!response.ok || !body.success)
-    throw new Error(body.success ? "Request failed." : body.error.message);
-  return body.data;
+  const envelope = (await response.json()) as ApiEnvelope<T>;
+  if (!response.ok || !envelope.success) {
+    throw new Error(
+      envelope.success ? "ProductCategories request failed." : envelope.error.message
+    );
+  }
+  return envelope.data;
 }
 
-export function listProductCategories(path: string) {
-  return request<ProductCategoriesRecord[]>(path);
+export function listProductCategories(filters: ProductCategoriesListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return productCategoriesRequest<ProductCategoriesRecord[]>(
+    query.size ? `?${query.toString()}` : ""
+  );
 }
-export function createProductCategories(
-  path: string,
-  payload: Record<string, ProductCategoriesValue>
-) {
-  return request<ProductCategoriesRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function createProductCategories(payload: ProductCategoriesSavePayload) {
+  return productCategoriesRequest<ProductCategoriesRecord>("", {
+    body: JSON.stringify(payload),
+    method: "POST"
+  });
 }
-export function updateProductCategories(
-  path: string,
-  id: number,
-  payload: Record<string, ProductCategoriesValue>
-) {
-  return request<ProductCategoriesRecord>(`${path}/${id}`, {
+export function updateProductCategories(id: number, payload: ProductCategoriesSavePayload) {
+  return productCategoriesRequest<ProductCategoriesRecord>(`/${id}`, {
     body: JSON.stringify(payload),
     method: "PUT"
   });
 }
-export function setProductCategoriesActive(path: string, id: number, active: boolean) {
-  return request<ProductCategoriesRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, {
-    method: "POST"
-  });
+export function activateProductCategories(id: number) {
+  return productCategoriesRequest<ProductCategoriesRecord>(`/${id}/activate`, { method: "POST" });
 }
-export function forceDeleteProductCategories(path: string, id: number) {
-  return request<ProductCategoriesRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function deactivateProductCategories(id: number) {
+  return productCategoriesRequest<ProductCategoriesRecord>(`/${id}/deactivate`, { method: "POST" });
+}
+export function forceDeleteProductCategories(id: number) {
+  return productCategoriesRequest<ProductCategoriesRecord>(`/${id}/force`, { method: "DELETE" });
 }

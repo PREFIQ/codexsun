@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { listStyles } from "./styles.services";
-export function useStylesQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listStyles(path), queryKey: ["core", "common", key] });
+import type { StylesListFilters } from "./styles.types";
+
+export const stylesQueryKey = ["core", "common", "products", "styles"] as const;
+export function useStyles(filters: StylesListFilters = {}) {
+  return useQuery({
+    queryFn: () => listStyles(filters),
+    queryKey: [...stylesQueryKey, filters.search ?? ""]
+  });
 }
