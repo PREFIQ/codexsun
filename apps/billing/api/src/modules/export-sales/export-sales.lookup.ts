@@ -1,127 +1,132 @@
 import { env } from "../../env.js";
 
-const lookupPaths = {
-  addressTypes: "/core/common/contacts/address-types",
-  colours: "/core/common/products/colours",
-  contacts: "/core/master/contacts",
-  countries: "/core/common/location/countries",
-  states: "/core/common/location/states",
-  districts: "/core/common/location/districts",
-  cities: "/core/common/location/cities",
-  pincodes: "/core/common/location/pincodes",
-  products: "/core/master/products",
-  productCategories: "/core/common/products/product-categories",
-  hsnCodes: "/core/common/products/hsn-codes",
-  units: "/core/common/products/units",
-  taxes: "/core/common/products/taxes",
-  sizes: "/core/common/products/sizes",
-  workOrders: "/core/master/work-orders"
-} as const;
+export type ExportSaleLookupHeaders = {
+  authorization?: string | string[] | undefined;
+  tenantDatabase?: string | string[] | undefined;
+  tenantId?: string | string[] | undefined;
+};
 
-export type ExportSalesLookupKind = keyof typeof lookupPaths;
-export type ExportSalesLocationKind = "cities" | "districts" | "pincodes" | "states";
-
-export class ExportSalesLookupService {
-  async list(
-    kind: ExportSalesLookupKind,
-    headers: { authorization?: string | string[]; tenantId?: string | string[] }
-  ) {
-    const response = await this.request(lookupPaths[kind], headers);
-    const payload = (await response.json()) as {
-      data?: unknown;
-      error?: { message?: string };
-      success?: boolean;
-    };
-    if (!response.ok || payload.success === false)
-      throw new Error(payload.error?.message || "ExportSales lookup could not be loaded.");
-    return payload.data ?? [];
+export class ExportSaleLookupService {
+  contacts(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/master/contacts", headers);
+  }
+  createContact(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/master/contacts", headers, input);
+  }
+  updateContact(headers: ExportSaleLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/contacts/${encodeURIComponent(id)}`, headers, input);
+  }
+  countries(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/location/countries", headers);
+  }
+  states(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/location/states", headers);
+  }
+  createState(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/states", headers, input);
+  }
+  districts(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/location/districts", headers);
+  }
+  createDistrict(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/districts", headers, input);
+  }
+  cities(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/location/cities", headers);
+  }
+  createCity(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/cities", headers, input);
+  }
+  pincodes(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/location/pincodes", headers);
+  }
+  createPincode(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/pincodes", headers, input);
+  }
+  addressTypes(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/contacts/address-types", headers);
+  }
+  createAddressType(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/contacts/address-types", headers, input);
+  }
+  products(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/master/products", headers);
+  }
+  createProduct(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/master/products", headers, input);
+  }
+  updateProduct(headers: ExportSaleLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/products/${encodeURIComponent(id)}`, headers, input);
+  }
+  workOrders(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/master/work-orders", headers);
+  }
+  createWorkOrder(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/master/work-orders", headers, input);
+  }
+  updateWorkOrder(headers: ExportSaleLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/work-orders/${encodeURIComponent(id)}`, headers, input);
+  }
+  colours(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/products/colours", headers);
+  }
+  createColour(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/colours", headers, input);
+  }
+  sizes(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/products/sizes", headers);
+  }
+  createSize(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/sizes", headers, input);
+  }
+  productCategories(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/products/product-categories", headers);
+  }
+  createProductCategory(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/product-categories", headers, input);
+  }
+  hsnCodes(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/products/hsn-codes", headers);
+  }
+  createHsnCode(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/hsn-codes", headers, input);
+  }
+  units(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/products/units", headers);
+  }
+  createUnit(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/units", headers, input);
+  }
+  taxes(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/products/taxes", headers);
+  }
+  createTax(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/taxes", headers, input);
+  }
+  transports(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/workorder/transports", headers);
+  }
+  createTransport(headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/workorder/transports", headers, input);
+  }
+  ledgers(headers: ExportSaleLookupHeaders) {
+    return this.get("/core/common/accounts/ledgers", headers);
   }
 
-  async createContact(
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(lookupPaths.contacts, headers, {
-      body: JSON.stringify(input),
-      method: "POST"
-    });
-    return responseData(response);
+  private get(path: string, headers: ExportSaleLookupHeaders) {
+    return this.request(path, headers).then(responseData);
   }
-
-  async updateContact(
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    id: string,
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(
-      `${lookupPaths.contacts}/${encodeURIComponent(id)}`,
-      headers,
-      { body: JSON.stringify(input), method: "PUT" }
+  private post(path: string, headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.request(path, headers, { body: JSON.stringify(input), method: "POST" }).then(
+      responseData
     );
-    return responseData(response);
   }
-
-  async createLocation(
-    kind: ExportSalesLocationKind,
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(lookupPaths[kind], headers, {
-      body: JSON.stringify(input),
-      method: "POST"
-    });
-    return responseData(response);
+  private put(path: string, headers: ExportSaleLookupHeaders, input: unknown) {
+    return this.request(path, headers, { body: JSON.stringify(input), method: "PUT" }).then(
+      responseData
+    );
   }
-
-  async createAddressType(
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(lookupPaths.addressTypes, headers, {
-      body: JSON.stringify(input),
-      method: "POST"
-    });
-    return responseData(response);
-  }
-
-  async createLookup(
-    kind:
-      | "colours"
-      | "products"
-      | "sizes"
-      | "workOrders"
-      | "productCategories"
-      | "hsnCodes"
-      | "units"
-      | "taxes",
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(lookupPaths[kind], headers, {
-      body: JSON.stringify(input),
-      method: "POST"
-    });
-    return responseData(response);
-  }
-
-  async updateLookup(
-    kind: "products" | "workOrders",
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    id: string,
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(`${lookupPaths[kind]}/${encodeURIComponent(id)}`, headers, {
-      body: JSON.stringify(input),
-      method: "PUT"
-    });
-    return responseData(response);
-  }
-
-  private request(
-    path: string,
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    init?: RequestInit
-  ) {
+  private request(path: string, headers: ExportSaleLookupHeaders, init?: RequestInit) {
     return fetch(`${env.CORE_API_URL}${path}`, {
       ...init,
       headers: {
@@ -129,6 +134,9 @@ export class ExportSalesLookupService {
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
         ...(headerValue(headers.authorization)
           ? { Authorization: headerValue(headers.authorization)! }
+          : {}),
+        ...(headerValue(headers.tenantDatabase)
+          ? { "x-tenant-db": headerValue(headers.tenantDatabase)! }
           : {}),
         ...(headerValue(headers.tenantId) ? { "x-tenant-id": headerValue(headers.tenantId)! } : {})
       }
@@ -143,12 +151,8 @@ async function responseData(response: Response) {
     success?: boolean;
   };
   if (!response.ok || payload.success === false)
-    throw new Error(payload.error?.message || "ExportSales lookup could not be loaded.");
+    throw new Error(payload.error?.message || "Export Sales lookup could not be loaded.");
   return payload.data ?? [];
-}
-
-export function isExportSalesLookupKind(value: string): value is ExportSalesLookupKind {
-  return value in lookupPaths;
 }
 
 function headerValue(value: string | string[] | undefined) {

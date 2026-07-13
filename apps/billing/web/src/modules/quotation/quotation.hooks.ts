@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getQuotation, listQuotations } from "./quotation.services";
+import { getQuotation, getQuotationContext, listQuotations } from "./quotation.services";
 
 export function useQuotationList() {
   return useQuery({
@@ -13,5 +13,12 @@ export function useQuotationRecord(id: string | null, enabled = true) {
     enabled: Boolean(id) && enabled,
     queryFn: () => getQuotation(id!),
     queryKey: ["billing", "quotations", id]
+  });
+}
+
+export function useQuotationContext() {
+  return useQuery({
+    queryFn: getQuotationContext,
+    queryKey: ["billing", "quotations", "context"]
   });
 }

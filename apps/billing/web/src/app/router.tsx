@@ -8,8 +8,11 @@ import { ReceiptPage } from "../modules/receipt";
 import { QuotationPage } from "../modules/quotation";
 import { SalesPage } from "../modules/sales/sales.page";
 import { SalesPrintRoutePage } from "../modules/sales/sales.print";
-import { SalesSettingsPage } from "../modules/settings";
-import { BillingSettingsWorkspace, DocumentSettingsWorkspace } from "../modules/billing-settings";
+import {
+  BillingSettingsWorkspace,
+  DocumentSettingsWorkspace,
+  SalesSettingsPage
+} from "../modules/settings";
 
 const rootRoute = createRootRoute();
 

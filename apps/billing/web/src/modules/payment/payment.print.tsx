@@ -10,7 +10,7 @@ export function PaymentPrint({ payment }: { payment: Payment }) {
         <p>
           <b>Paid to</b>
           <br />
-          {payment.partyName}
+          {payment.supplierName}
         </p>
         <p>
           <b>Date</b>
@@ -43,7 +43,7 @@ export function PaymentPrint({ payment }: { payment: Payment }) {
         </div>
       </div>
       <div className="mt-20 grid grid-cols-2 gap-8 border-t border-slate-300 pt-3 text-sm">
-        <span>Receiver signature</span>
+        <span>Received by</span>
         <span>Authorised signatory</span>
       </div>
     </div>

@@ -1,16 +1,22 @@
 import { AppError } from "@codexsun/framework/errors";
+import {
+  BillingSettingsRepository,
+  formatBillingDocumentNumber,
+  nextBillingDocumentNumber
+} from "../settings/index.js";
 import { ExportSalesRepository } from "./export-sales.repository.js";
 import type {
   ExportSale,
+  ExportSaleEinvoiceDetails,
+  ExportSaleEwayDetails,
   ExportSaleLineItem,
   ExportSaleLineItemInput,
   ExportSaleSavePayload
 } from "./export-sales.types.js";
-import { BillingSettingsRepository } from "../settings/settings.repository.js";
 import {
-  formatBillingDocumentNumber,
-  nextBillingDocumentNumber
-} from "../settings/settings.types.js";
+  generateExportSaleEinvoice,
+  generateExportSaleEway
+} from "./export-sales-whitebooks.client.js";
 
 export class ExportSalesService {
   constructor(
@@ -18,80 +24,163 @@ export class ExportSalesService {
     private readonly settings = new BillingSettingsRepository()
   ) {}
 
-  async listExportSales(databaseName: string) {
+  listExportSales(databaseName: string) {
     return this.repository.list(databaseName);
   }
 
-  async getExportSale(databaseName: string, id: string) {
+  getExportSale(databaseName: string, id: string) {
     return this.repository.get(databaseName, id);
   }
 
+  async getContext(databaseName: string) {
+    const context = await this.repository.context(databaseName);
+    if (!context) {
+      throw AppError.validation(
+        "Configure an active Default Company, Financial Year, and INR currency before creating export sales."
+      );
+    }
+    return context;
+  }
+
   async createExportSale(databaseName: string, input: ExportSaleSavePayload) {
+    const normalized = normalizeExportSaleInput(
+      await this.repository.resolveMissingReferences(databaseName, input)
+    );
+    await this.validateReferences(databaseName, normalized);
     const billingSettings = await this.settings.getBillingSettings(databaseName);
     const numbering = billingSettings.numbering.exportSales;
-    const generatedNumber = formatBillingDocumentNumber(numbering);
-    const enteredNumber = input.invoiceNumber.trim();
-    const generated =
-      numbering.automatic &&
-      (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
-    const normalizedInput = enteredNumber ? input : { ...input, invoiceNumber: generatedNumber };
-    const duplicate = await this.repository.findByInvoiceNumber(
+    const numbered = await resolveNextExportSaleNumber(
       databaseName,
-      normalizedInput.invoiceNumber.trim().toUpperCase()
+      normalized,
+      numbering,
+      this.repository
     );
-    if (duplicate)
-      throw AppError.conflict("Export sales invoice number already exists. Enter a unique number.");
-    const sale = await this.repository.create(
-      databaseName,
-      normalizeExportSaleInput(normalizedInput)
-    );
-    const nextNumber = nextBillingDocumentNumber(numbering, normalizedInput.invoiceNumber);
-    if (numbering.automatic && (generated || nextNumber > numbering.nextNumber)) {
+    const totals = buildExportSaleTotals(numbered.input);
+    const exportSale = await this.repository.create(databaseName, numbered.input, totals);
+    if (!exportSale) throw AppError.validation("Export sales invoice could not be created.");
+    if (numbering.automatic && (numbered.generated || numbered.nextNumber > numbering.nextNumber)) {
       await this.settings.saveBillingSettings(databaseName, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
-          exportSales: { ...numbering, nextNumber }
+          exportSales: { ...numbering, nextNumber: numbered.nextNumber }
         }
       });
     }
-    return sale;
+    return exportSale;
   }
 
   async updateExportSale(databaseName: string, id: string, input: ExportSaleSavePayload) {
-    const duplicate = await this.repository.findByInvoiceNumber(
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.status !== "draft")
+      throw AppError.conflict("Only draft export sales can be edited.");
+    const normalized = normalizeExportSaleInput(input);
+    await this.validateReferences(databaseName, normalized);
+    const duplicateId = await this.repository.findByInvoiceNumber(
       databaseName,
-      input.invoiceNumber.trim().toUpperCase()
+      normalized.companyId,
+      normalized.financialYearId,
+      normalized.invoiceNumber
     );
-    if (duplicate && duplicate.id !== id)
-      throw AppError.conflict("Export sales invoice number already exists. Enter a unique number.");
-    const sale = await this.repository.update(databaseName, id, normalizeExportSaleInput(input));
-    return sale;
+    if (duplicateId && duplicateId !== id)
+      throw AppError.conflict(
+        "Export sales invoice number already exists for this company and year."
+      );
+    return this.repository.update(databaseName, id, normalized, buildExportSaleTotals(normalized));
   }
 
   async confirmExportSale(databaseName: string, id: string) {
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.status !== "draft")
+      throw AppError.conflict("Only draft export sales can be confirmed.");
     return this.repository.setStatus(databaseName, id, "confirmed");
   }
 
   async cancelExportSale(databaseName: string, id: string) {
-    const sale = await this.repository.setStatus(databaseName, id, "cancelled");
-    return sale;
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.status === "cancelled")
+      throw AppError.conflict("Export sale is already cancelled.");
+    return this.repository.setStatus(databaseName, id, "cancelled");
   }
 
   async revokeExportSale(databaseName: string, id: string) {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
-    if (current.status !== "confirmed")
-      throw AppError.conflict("Only confirmed export sales can be revoked.");
-    return this.repository.revoke(databaseName, id);
+    if (current.status === "draft")
+      throw AppError.conflict("A draft export sale does not need to be revoked.");
+    if (current.einvoice.status === "generated")
+      throw AppError.conflict("Cancel the generated E-invoice before revoking this export sale.");
+    return this.repository.setStatus(databaseName, id, "draft");
   }
 
   async deleteExportSale(databaseName: string, id: string) {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
-    if (current.status !== "draft")
-      throw AppError.conflict("Only draft export sales can be deleted.");
-    return this.repository.delete(databaseName, id);
+    if (current.status !== "draft" || current.einvoice.status === "generated")
+      throw AppError.conflict(
+        "Only draft export sales without generated compliance can be deleted."
+      );
+    await this.repository.softDelete(databaseName, id);
+    return current;
+  }
+
+  async generateEinvoice(databaseName: string, id: string, details?: ExportSaleEinvoiceDetails) {
+    let exportSale = await this.repository.get(databaseName, id);
+    if (!exportSale) return null;
+    if (exportSale.status !== "confirmed")
+      throw AppError.conflict("Confirm the export sale before generating an E-invoice.");
+    if (details)
+      exportSale =
+        (await this.repository.updateCompliance(databaseName, id, { einvoice: details })) ??
+        exportSale;
+    const result = await generateExportSaleEinvoice(exportSale);
+    return this.repository.updateCompliance(databaseName, id, {
+      einvoice: { ...exportSale.einvoice, ...result.einvoice, status: "generated" }
+    });
+  }
+
+  async generateEway(databaseName: string, id: string, details?: ExportSaleEwayDetails) {
+    let exportSale = await this.repository.get(databaseName, id);
+    if (!exportSale) return null;
+    if (exportSale.status !== "confirmed")
+      throw AppError.conflict("Confirm the export sale before generating an E-way bill.");
+    if (details)
+      exportSale =
+        (await this.repository.updateCompliance(databaseName, id, { eway: details })) ?? exportSale;
+    const result = await generateExportSaleEway(exportSale);
+    return this.repository.updateCompliance(databaseName, id, {
+      eway: { ...exportSale.eway, ...result.eway, status: "generated" }
+    });
+  }
+
+  private async validateReferences(databaseName: string, input: ExportSaleSavePayload) {
+    const references = await this.repository.referenceState(databaseName, input);
+    const failures = [
+      !references.company && "Company is inactive or missing.",
+      !references.financialYear && "Invoice date is outside the selected active Financial Year.",
+      !references.customer && "Customer is inactive or missing.",
+      !references.billingAddress && "Billing address does not belong to the selected customer.",
+      !references.shippingAddress && "Shipping address does not belong to the selected customer.",
+      !references.workOrder && "Work order is inactive or missing.",
+      !references.ledger && "Export sales ledger is inactive or missing.",
+      !references.currency && "Currency is inactive or missing."
+    ].filter((message): message is string => Boolean(message));
+    if (failures.length) throw AppError.validation(failures[0]!);
+
+    const itemReferences = await this.repository.validItemReferenceIds(databaseName, input);
+    const invalid = (requested: number[], existing: Set<number>, label: string): string | null =>
+      requested.some((id) => !existing.has(id)) ? `${label} is inactive or missing.` : null;
+    const itemFailure =
+      invalid(itemReferences.requested.products, itemReferences.products, "Product") ??
+      invalid(itemReferences.requested.hsnCodes, itemReferences.hsnCodes, "HSN code") ??
+      invalid(itemReferences.requested.colours, itemReferences.colours, "Colour") ??
+      invalid(itemReferences.requested.sizes, itemReferences.sizes, "Size") ??
+      invalid(itemReferences.requested.units, itemReferences.units, "Unit") ??
+      invalid(itemReferences.requested.taxes, itemReferences.taxes, "Tax");
+    if (itemFailure) throw AppError.validation(itemFailure);
   }
 }
 
@@ -99,54 +188,144 @@ export function normalizeExportSaleInput(input: ExportSaleSavePayload): ExportSa
   const items = input.items
     .map(normalizeExportSaleLineItem)
     .filter((item) => item.description.length > 0 && item.quantity > 0);
-
-  if (!input.customerName.trim()) {
-    throw AppError.validation("Customer name is required.");
-  }
-  if (!input.invoiceNumber.trim()) {
-    throw AppError.validation("Invoice number is required.");
-  }
-  if (!input.issuedOn.trim()) {
+  if (!Number.isInteger(input.companyId) || input.companyId <= 0)
+    throw AppError.validation("Default Company is required.");
+  if (!Number.isInteger(input.financialYearId) || input.financialYearId <= 0)
+    throw AppError.validation("Financial Year is required.");
+  if (!Number.isInteger(input.customerId) || input.customerId <= 0)
+    throw AppError.validation("Select a persisted customer.");
+  if (!Number.isInteger(input.billingAddressId) || input.billingAddressId <= 0)
+    throw AppError.validation("Select a persisted billing address.");
+  if (!Number.isInteger(input.shippingAddressId) || input.shippingAddressId <= 0)
+    throw AppError.validation("Select a persisted shipping address.");
+  if (!Number.isInteger(input.currencyId) || input.currencyId <= 0)
+    throw AppError.validation("Select a persisted currency.");
+  if (!input.invoiceNumber.trim()) throw AppError.validation("Invoice number is required.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.issuedOn.trim()))
     throw AppError.validation("Invoice date is required.");
-  }
-  if (items.length === 0) {
-    throw AppError.validation("Add at least one export sales item with a product or description.");
-  }
+  if (items.length === 0)
+    throw AppError.validation("Add at least one export sale item with a persisted unit.");
+  if (items.some((item) => !Number.isInteger(item.unitId) || item.unitId <= 0))
+    throw AppError.validation("Every export sale item requires a persisted unit.");
 
   return {
     billingAddress: input.billingAddress.trim(),
+    billingAddressId: input.billingAddressId,
+    companyId: input.companyId,
     currencyCode: input.currencyCode.trim().toUpperCase() || "INR",
+    currencyId: input.currencyId,
     customerEmail: input.customerEmail.trim().toLowerCase(),
+    customerId: input.customerId,
     customerName: input.customerName.trim(),
-    customerPhone: input.customerPhone.trim(),
+    einvoice: normalizeEinvoice(input.einvoice),
+    eway: normalizeEway(input.eway),
+    financialYearId: input.financialYearId,
     invoiceNumber: input.invoiceNumber.trim().toUpperCase(),
     issuedOn: input.issuedOn.trim(),
     items,
+    ledgerId: positiveOrNull(input.ledgerId),
     notes: input.notes.trim(),
-    roundOff: Number(input.roundOff ?? 0) || 0,
+    roundOff: roundMoney(Number(input.roundOff ?? 0) || 0),
+    salesLedger: input.salesLedger?.trim() ?? "",
     shippingAddress: input.shippingAddress.trim(),
+    shippingAddressId: input.shippingAddressId,
     status: input.status,
-    taxType: input.taxType?.trim() || "IGST",
-    workOrderNo: input.workOrderNo?.trim() ?? ""
+    taxType: input.taxType ?? "cgst-sgst",
+    terms: input.terms?.trim() ?? "",
+    workOrderId: positiveOrNull(input.workOrderId),
+    workOrderNo: input.workOrderNo?.trim().toUpperCase() ?? "",
+    customerPhone: input.customerPhone.trim()
   };
 }
 
-export const normalizeSaleInput = normalizeExportSaleInput;
-
 function normalizeExportSaleLineItem(item: ExportSaleLineItemInput): ExportSaleLineItemInput {
+  const productName = item.productName?.trim() ?? "";
   return {
     colour: item.colour?.trim() ?? "",
+    colourId: positiveOrNull(item.colourId),
     dcNo: item.dcNo?.trim().toUpperCase() ?? "",
-    description: item.description.trim() || item.productName.trim(),
+    description: item.description.trim() || productName,
     hsnCode: item.hsnCode.trim().toUpperCase(),
+    hsnCodeId: positiveOrNull(item.hsnCodeId),
     poNo: item.poNo?.trim().toUpperCase() ?? "",
-    productName: item.productName.trim(),
-    quantity: roundMoney(Number(item.quantity) || 0),
-    rate: roundMoney(Number(item.rate) || 0),
+    productId: positiveOrNull(item.productId),
+    productName,
+    quantity: quantity(item.quantity),
+    rate: quantity(item.rate),
     size: item.size?.trim() ?? "",
-    taxRate: roundMoney(Number(item.taxRate) || 0),
-    unit: item.unit.trim().toUpperCase() || "NOS"
+    sizeId: positiveOrNull(item.sizeId),
+    taxId: positiveOrNull(item.taxId),
+    taxRate: quantity(item.taxRate),
+    unit: item.unit.trim().toUpperCase(),
+    unitId: Number(item.unitId)
   };
+}
+
+function normalizeEway(value?: ExportSaleEwayDetails): ExportSaleEwayDetails {
+  return {
+    billDate: value?.billDate?.trim() ?? "",
+    billNo: value?.billNo?.trim().toUpperCase() ?? "",
+    notes: value?.notes?.trim() ?? "",
+    part: value?.part === "Part A" ? "Part A" : "Part B",
+    status: value?.status === "generated" ? "generated" : "not-generated",
+    transport: value?.transport?.trim() ?? "",
+    transportGst: value?.transportGst?.trim().toUpperCase() ?? "",
+    transportId: positiveOrNull(value?.transportId ?? null),
+    vehicleNo: value?.vehicleNo?.trim().toUpperCase() ?? ""
+  };
+}
+
+function normalizeEinvoice(value?: ExportSaleEinvoiceDetails): ExportSaleEinvoiceDetails {
+  return {
+    ackDate: value?.ackDate?.trim() ?? "",
+    ackNo: value?.ackNo?.trim() ?? "",
+    irn: value?.irn?.trim().toUpperCase() ?? "",
+    signedQr: value?.signedQr?.trim() ?? "",
+    status: value?.status === "generated" ? "generated" : "not-generated"
+  };
+}
+
+async function resolveNextExportSaleNumber(
+  databaseName: string,
+  input: ExportSaleSavePayload,
+  numbering: Parameters<typeof formatBillingDocumentNumber>[0],
+  repository: ExportSalesRepository
+) {
+  const enteredNumber = input.invoiceNumber.trim();
+  const configuredNumber = formatBillingDocumentNumber(numbering);
+  const generated =
+    numbering.automatic &&
+    (!enteredNumber || enteredNumber.toUpperCase() === configuredNumber.toUpperCase());
+  if (!generated) {
+    const duplicate = await repository.findByInvoiceNumber(
+      databaseName,
+      input.companyId,
+      input.financialYearId,
+      enteredNumber.toUpperCase()
+    );
+    if (duplicate)
+      throw AppError.conflict(
+        "Export sales invoice number already exists for this company and year."
+      );
+    return {
+      generated: false,
+      input,
+      nextNumber: nextBillingDocumentNumber(numbering, enteredNumber)
+    };
+  }
+  let nextNumber = Math.max(1, numbering.nextNumber);
+  while (true) {
+    const invoiceNumber = formatBillingDocumentNumber({ ...numbering, nextNumber });
+    const duplicate = await repository.findByInvoiceNumber(
+      databaseName,
+      input.companyId,
+      input.financialYearId,
+      invoiceNumber
+    );
+    if (!duplicate)
+      return { generated: true, input: { ...input, invoiceNumber }, nextNumber: nextNumber + 1 };
+    nextNumber += 1;
+  }
 }
 
 export function buildExportSaleTotals(
@@ -155,25 +334,34 @@ export function buildExportSaleTotals(
   const items: ExportSaleLineItem[] = input.items.map((item, index) => {
     const taxableAmount = roundMoney(item.quantity * item.rate);
     const taxAmount = roundMoney((taxableAmount * item.taxRate) / 100);
+    const cgstAmount = input.taxType === "igst" ? 0 : roundMoney(taxAmount / 2);
+    const sgstAmount = input.taxType === "igst" ? 0 : roundMoney(taxAmount / 2);
+    const igstAmount = input.taxType === "igst" ? taxAmount : 0;
     return {
       ...item,
-      id: `item-${index + 1}`,
+      cgstAmount,
+      id: "",
+      igstAmount,
+      lineNumber: index + 1,
       lineTotal: roundMoney(taxableAmount + taxAmount),
+      sgstAmount,
       taxableAmount,
       taxAmount
     };
   });
-
   const subtotal = roundMoney(items.reduce((total, item) => total + item.taxableAmount, 0));
   const taxAmount = roundMoney(items.reduce((total, item) => total + item.taxAmount, 0));
   const amount = roundMoney(subtotal + taxAmount + Number(input.roundOff ?? 0));
+  return { amount, items, subtotal, taxAmount };
+}
 
-  return {
-    amount,
-    items,
-    subtotal,
-    taxAmount
-  };
+function positiveOrNull(value: number | null | undefined) {
+  const number = Number(value ?? 0);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function quantity(value: number) {
+  return Math.round((Number(value) || 0) * 10_000) / 10_000;
 }
 
 function roundMoney(value: number) {

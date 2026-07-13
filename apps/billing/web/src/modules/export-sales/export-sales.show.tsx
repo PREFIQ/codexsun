@@ -90,11 +90,11 @@ export function ExportSaleShowPage({
         {
           createdAt: exportSale.updatedAt,
           id: "updated",
-          message: `ExportSale updated${exportSale.generatedSalesInvoiceNo ? ` and linked to ${exportSale.generatedSalesInvoiceNo}` : ""}`
+          message: "Export sale updated"
         },
-        { createdAt: exportSale.createdAt, id: "created", message: "ExportSale entry created" }
+        { createdAt: exportSale.createdAt, id: "created", message: "Export sale entry created" }
       ].sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
-    [exportSale.createdAt, exportSale.generatedSalesInvoiceNo, exportSale.updatedAt, toolActivities]
+    [exportSale.createdAt, exportSale.updatedAt, toolActivities]
   );
 
   function togglePrintCopy(copy: ExportSalePrintCopy) {
@@ -191,7 +191,7 @@ export function ExportSaleShowPage({
               </Button>
               <Button
                 disabled={!canEdit}
-                title={canEdit ? "Edit exportSale" : "Submitted exportSales cannot be edited"}
+                title={canEdit ? "Edit export sale" : "Submitted export sales cannot be edited"}
                 type="button"
                 variant="outline"
                 className="rounded-xl"
@@ -370,7 +370,7 @@ export function ExportSaleShowPage({
                           onSend={() => {
                             const value = emailAddress.trim();
                             if (!value) return;
-                            recordActivity(`Queued exportSale email to ${value}`);
+                            recordActivity(`Queued export sale email to ${value}`);
                             setEmailAddress("");
                           }}
                         />
@@ -386,7 +386,7 @@ export function ExportSaleShowPage({
                                 assigneeInput,
                                 setAssigneeInput,
                                 setAssignees,
-                                (value) => `Assigned exportSale to ${value}`
+                                (value) => `Assigned export sale to ${value}`
                               );
                             }
                           }}

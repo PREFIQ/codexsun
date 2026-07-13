@@ -29,6 +29,7 @@ export type QuotationAddressDraft = Omit<
 >;
 
 export type QuotationAddressChoice = {
+  addressId: number;
   description: string;
   draft: QuotationAddressDraft;
   label: string;
@@ -81,10 +82,11 @@ export function buildQuotationAddressChoices(record?: QuotationLookupRecord | nu
       index === 0 ? "Billing" : `Address ${index + 1}`
     );
     return {
+      addressId: Number(address.id ?? 0),
       description: formatQuotationAddress(draft),
       draft,
       label: draft.addressTypeName || `Address ${index + 1}`,
-      value: `${draft.addressTypeName || "address"}-${index}`
+      value: String(address.id ?? `${draft.addressTypeName || "address"}-${index}`)
     } satisfies QuotationAddressChoice;
   });
 }

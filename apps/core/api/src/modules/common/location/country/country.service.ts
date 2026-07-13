@@ -47,8 +47,8 @@ export class CountryService {
   private async mutable(id: string): Promise<Country> {
     const country = await this.repository.find(id);
     if (!country) throw AppError.notFound("Country was not found.");
-    if (isIndia(country)) {
-      throw AppError.forbidden("India is a protected country and cannot be modified.");
+    if (isProtectedCountry(country)) {
+      throw AppError.forbidden("Default countries cannot be modified.");
     }
     return country;
   }
@@ -72,8 +72,11 @@ function normalize(input: CountrySavePayload): CountrySavePayload {
   };
 }
 
-function isIndia(country: Country) {
-  return country.code === "IN" || country.name.toLowerCase() === "india";
+function isProtectedCountry(country: Country) {
+  return (
+    ["UNKNOWN", "IN"].includes(country.code.trim().toUpperCase()) ||
+    ["-", "india"].includes(country.name.trim().toLowerCase())
+  );
 }
 
 function isDuplicate(error: unknown): error is { code: string } {

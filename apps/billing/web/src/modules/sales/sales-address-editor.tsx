@@ -29,6 +29,7 @@ export type SaleAddressDraft = Omit<
 >;
 
 export type SaleAddressChoice = {
+  addressId: number;
   description: string;
   draft: SaleAddressDraft;
   label: string;
@@ -78,10 +79,11 @@ export function buildSaleAddressChoices(record?: SaleLookupRecord | null) {
       index === 0 ? "Billing" : `Address ${index + 1}`
     );
     return {
+      addressId: Number(address.id ?? 0),
       description: formatSaleAddress(draft),
       draft,
       label: draft.addressTypeName || `Address ${index + 1}`,
-      value: `${draft.addressTypeName || "address"}-${index}`
+      value: String(address.id ?? `${draft.addressTypeName || "address"}-${index}`)
     } satisfies SaleAddressChoice;
   });
 }

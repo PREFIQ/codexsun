@@ -1,6 +1,7 @@
 import { LedgerGroupsRepository } from "./ledger-groups.repository.js";
 export async function seedLedgerGroups() {
   const repository = new LedgerGroupsRepository();
-  if (!(await repository.findByName("General")))
-    await repository.create({ name: "General", status: "active" });
+  for (const name of ["-", "General"]) {
+    if (!(await repository.findByName(name))) await repository.create({ name, status: "active" });
+  }
 }

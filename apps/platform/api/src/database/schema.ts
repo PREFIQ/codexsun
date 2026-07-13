@@ -275,6 +275,7 @@ export type TenantUsersTable = {
   created_at: TimestampColumn;
   email: string;
   id: Generated<number>;
+  is_protected: boolean | number;
   name: string;
   password_hash: string;
   role: string;
@@ -285,7 +286,9 @@ export type TenantUsersTable = {
 
 export type TenantRolesTable = {
   created_at: TimestampColumn;
+  description: string;
   id: Generated<number>;
+  is_protected: boolean | number;
   key: string;
   label: string;
   status: "active" | "inactive";
@@ -295,7 +298,9 @@ export type TenantRolesTable = {
 
 export type TenantPermissionsTable = {
   created_at: TimestampColumn;
+  description: string;
   id: Generated<number>;
+  is_protected: boolean | number;
   key: string;
   label: string;
   status: "active" | "inactive";
@@ -304,11 +309,23 @@ export type TenantPermissionsTable = {
 };
 
 export type TenantRolePermissionsTable = {
+  created_at: TimestampColumn;
+  id: Generated<number>;
+  is_protected: boolean | number;
   permission_id: number;
   role_id: number;
+  status: "active" | "inactive";
+  updated_at: TimestampColumn;
+  uuid: string;
 };
 
 export type TenantUserRolesTable = {
+  created_at: TimestampColumn;
+  id: Generated<number>;
+  is_protected: boolean | number;
   role_id: number;
+  status: "active" | "inactive";
+  updated_at: TimestampColumn;
   user_id: number;
+  uuid: string;
 };

@@ -10,7 +10,7 @@ export function ReceiptPrint({ receipt }: { receipt: Receipt }) {
         <p>
           <b>Received from</b>
           <br />
-          {receipt.partyName}
+          {receipt.customerName}
         </p>
         <p>
           <b>Date</b>

@@ -1,12 +1,14 @@
-export const salesWorker = {
-  jobs: ["sales.post"],
-  maxAttempts: 5
-} as const;
+export type PurchaseWorkerJob = {
+  id: string;
+  name: "purchase.confirmation-sync" | "purchase.activity-sync";
+  payload: { action: string; id: string; salesInvoiceNo?: string };
+};
 
-export async function processSalesPosting(
-  job: { saleId: string; tenantId: string },
-  post: (saleId: string, tenantId: string) => Promise<void>
-) {
-  await post(job.saleId, job.tenantId);
-  return { saleId: job.saleId, status: "posted" as const, tenantId: job.tenantId };
+export async function processPurchaseJob(job: PurchaseWorkerJob) {
+  return {
+    action: job.payload.action,
+    purchaseId: job.payload.id,
+    processed: true,
+    processedAt: new Date().toISOString()
+  };
 }

@@ -1,11 +1,29 @@
 import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
-import { AdminDesk } from "../desks/admin/AdminDesk";
-import { SaDesk } from "../desks/sa/SaDesk";
-import { AppDesk } from "../desks/tenant/AppDesk";
-import { HealthPage } from "../routes/public/HealthPage";
-import { HomePage } from "../routes/public/HomePage";
-import { LoginPage } from "../routes/public/LoginPage";
-import { DataBridgeDesk } from "../desks/data-bridge/DataBridgeDesk";
+import { lazy } from "react";
+
+const AdminDesk = lazy(() =>
+  import("../desks/admin/AdminDesk").then((module) => ({ default: module.AdminDesk }))
+);
+const SaDesk = lazy(() =>
+  import("../desks/sa/SaDesk").then((module) => ({ default: module.SaDesk }))
+);
+const AppDesk = lazy(() =>
+  import("../desks/tenant/AppDesk").then((module) => ({ default: module.AppDesk }))
+);
+const HealthPage = lazy(() =>
+  import("../routes/public/HealthPage").then((module) => ({ default: module.HealthPage }))
+);
+const HomePage = lazy(() =>
+  import("../routes/public/HomePage").then((module) => ({ default: module.HomePage }))
+);
+const LoginPage = lazy(() =>
+  import("../routes/public/LoginPage").then((module) => ({ default: module.LoginPage }))
+);
+const DataBridgeDesk = lazy(() =>
+  import("../desks/data-bridge/DataBridgeDesk").then((module) => ({
+    default: module.DataBridgeDesk
+  }))
+);
 
 const rootRoute = createRootRoute();
 

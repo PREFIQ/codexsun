@@ -5,6 +5,11 @@ import { registerAuthRoutes } from "./auth/auth.routes.js";
 import { appRegistryModule } from "./modules/app-registry/index.js";
 import { tenantDomainModule } from "./modules/tenant-domain/index.js";
 import { tenantModule } from "./modules/tenant/index.js";
+import { tenantUserModule } from "./modules/tenant-user/index.js";
+import { tenantRoleModule } from "./modules/tenant-role/index.js";
+import { tenantPermissionModule } from "./modules/tenant-permission/index.js";
+import { tenantUserRoleModule } from "./modules/tenant-user-role/index.js";
+import { tenantRolePermissionModule } from "./modules/tenant-role-permission/index.js";
 import { planModule } from "./modules/plan/index.js";
 import { subscriptionModule } from "./modules/subscription/index.js";
 import { industryModule } from "./modules/industry/index.js";
@@ -53,6 +58,11 @@ export async function createApp() {
           modules: [
             appRegistryModule.key,
             tenantModule.key,
+            tenantUserModule.key,
+            tenantRoleModule.key,
+            tenantPermissionModule.key,
+            tenantUserRoleModule.key,
+            tenantRolePermissionModule.key,
             tenantDomainModule.key,
             planModule.key,
             subscriptionModule.key,
@@ -83,6 +93,11 @@ export async function createApp() {
     [
       appRegistryModule,
       tenantModule,
+      tenantUserModule,
+      tenantRoleModule,
+      tenantPermissionModule,
+      tenantUserRoleModule,
+      tenantRolePermissionModule,
       tenantDomainModule,
       planModule,
       subscriptionModule,

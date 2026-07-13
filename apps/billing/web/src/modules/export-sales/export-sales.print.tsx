@@ -1,12 +1,19 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { WorkspacePrintSheet } from "@codexsun/ui/workspace/print";
 import { ArrowLeft, Printer, RefreshCw } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@codexsun/ui/components/card";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { PageTitle } from "../../shared/document/PageTitle";
+import { useBillingSettings } from "../settings";
 import { useExportSaleRecord } from "./export-sales.hooks";
-import { formatDate, formatMoney } from "./export-sales.services";
+import {
+  formatDate,
+  formatMoney,
+  listExportSaleLocations,
+  type ExportSaleLocationRecord
+} from "./export-sales.services";
 import type { ExportSale } from "./export-sales.types";
 
 export type ExportSalePrintCopy = "duplicate" | "office-copy" | "original";
@@ -28,8 +35,8 @@ export function ExportSalesPrintRoutePage() {
   return (
     <WorkspacePage
       className="billing-document-print-page"
-      title={exportSale ? `${exportSale.invoiceNumber} print` : "ExportSales print"}
-      description="Printable exportSales document."
+      title={exportSale ? `${exportSale.invoiceNumber} print` : "Export Sales print"}
+      description="Printable export sales document."
       actions={
         <div className="flex gap-2 print:hidden">
           <Button type="button" variant="outline" onClick={() => window.history.back()}>
@@ -48,7 +55,7 @@ export function ExportSalesPrintRoutePage() {
       }
     >
       <div className="print:hidden">
-        <PageTitle title="ExportSales Print" />
+        <PageTitle title="Export Sales Print" />
       </div>
       {exportSale ? (
         <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_15rem]">
@@ -86,8 +93,8 @@ export function ExportSalesPrintRoutePage() {
       ) : (
         <div className="px-4 py-8 text-sm text-muted-foreground">
           {exportSaleQuery.isLoading
-            ? "Loading exportSale print view..."
-            : "ExportSale print record was not found."}
+            ? "Loading export sale print view..."
+            : "Export sale print record was not found."}
         </div>
       )}
     </WorkspacePage>
@@ -107,6 +114,16 @@ export function ExportSalePrintDocument({
   copy: ExportSalePrintCopy;
   exportSale: ExportSale;
 }) {
+  const addressMode = useBillingSettings().data?.printing.addressMode ?? "billing_and_shipping";
+  const statesQuery = useQuery({
+    queryFn: () => listExportSaleLocations("states"),
+    queryKey: ["billing", "exportSale", "print", "states"]
+  });
+  const billingAddress = formatPrintAddress(exportSale.billingAddress, statesQuery.data ?? []);
+  const shippingAddress = formatPrintAddress(
+    exportSale.shippingAddress || exportSale.billingAddress,
+    statesQuery.data ?? []
+  );
   const pages = chunkItems(exportSale.items, 12);
 
   return (
@@ -120,6 +137,9 @@ export function ExportSalePrintDocument({
           isMultiPage={pages.length > 1}
           pageIndex={pageIndex}
           pageCount={pages.length}
+          addressMode={addressMode}
+          billingAddress={billingAddress}
+          shippingAddress={shippingAddress}
           exportSale={exportSale}
         />
       ))}
@@ -147,6 +167,9 @@ function ExportSalePrintPage({
   isMultiPage,
   pageIndex,
   pageCount,
+  addressMode,
+  billingAddress,
+  shippingAddress,
   exportSale
 }: {
   copy: ExportSalePrintCopy;
@@ -155,6 +178,9 @@ function ExportSalePrintPage({
   isMultiPage: boolean;
   pageIndex: number;
   pageCount: number;
+  addressMode: "billing_only" | "billing_and_shipping";
+  billingAddress: { address: string; state: string };
+  shippingAddress: { address: string; state: string };
   exportSale: ExportSale;
 }) {
   const splitTax = exportSale.taxType === "cgst-sgst";
@@ -200,40 +226,52 @@ function ExportSalePrintPage({
           </div>
         </section>
 
-        <section className="space-y-1 border-b border-slate-300 px-2 py-2 text-[10px]">
-          <PrintPair label="Invoice No:">
-            {exportSale.invoiceNumber || exportSale.invoiceNumber}
-          </PrintPair>
-          <PrintPair label="Date:">{formatDate(exportSale.issuedOn)}</PrintPair>
-          <PrintPair label="Work Order:">{exportSale.workOrderNo || "-"}</PrintPair>
-        </section>
+        {addressMode === "billing_and_shipping" ? (
+          <section className="space-y-1 border-b border-slate-300 px-2 py-2 text-[10px]">
+            <PrintPair label="Invoice No:">
+              {exportSale.invoiceNumber || exportSale.invoiceNumber}
+            </PrintPair>
+            <PrintPair label="Date:">{formatDate(exportSale.issuedOn)}</PrintPair>
+            <PrintPair label="Work Order:">{exportSale.workOrderNo || "-"}</PrintPair>
+          </section>
+        ) : null}
 
         <section className="grid border-b border-slate-300 text-[10px] sm:grid-cols-2">
           <div className="min-h-[7.75rem] px-2 py-2">
             <div className="font-medium">Buyer (Bill to)</div>
             <div className="mt-1 font-semibold">M/s. {exportSale.customerName}</div>
             <div className="mt-1 whitespace-pre-wrap">
-              {exportSale.billingAddress || "Address not set"}
+              {billingAddress.address || "Address not set"}
             </div>
             <div className="mt-1 grid grid-cols-[7rem_1fr] gap-x-2">
               <span>GSTIN/UIN</span>
-              <span>:</span>
+              <span>-</span>
               <span>State Name</span>
-              <span>:</span>
+              <span>{billingAddress.state || "-"}</span>
             </div>
           </div>
-          <div className="min-h-[7.75rem] border-t border-slate-300 px-2 py-2 sm:border-l sm:border-t-0 sm:border-slate-300">
-            <div className="font-medium">Buyer (Ship to)</div>
-            <div className="mt-1 font-semibold">M/s. {exportSale.customerName}</div>
-            <div className="mt-1 whitespace-pre-wrap">
-              {exportSale.shippingAddress || exportSale.billingAddress || "Address not set"}
-            </div>
-            <div className="mt-1 grid grid-cols-[7rem_1fr] gap-x-2">
-              <span>GSTIN/UIN</span>
-              <span>:</span>
-              <span>State Name</span>
-              <span>:</span>
-            </div>
+          <div className="min-h-[7.75rem] border-l border-slate-300 px-2 py-2">
+            {addressMode === "billing_only" ? (
+              <DocumentDetails
+                number={exportSale.invoiceNumber}
+                date={formatDate(exportSale.issuedOn)}
+                workOrder={exportSale.workOrderNo}
+              />
+            ) : (
+              <>
+                <div className="font-medium">Buyer (Ship to)</div>
+                <div className="mt-1 font-semibold">M/s. {exportSale.customerName}</div>
+                <div className="mt-1 whitespace-pre-wrap">
+                  {shippingAddress.address || "Address not set"}
+                </div>
+                <div className="mt-1 grid grid-cols-[7rem_1fr] gap-x-2">
+                  <span>GSTIN/UIN</span>
+                  <span>-</span>
+                  <span>State Name</span>
+                  <span>{shippingAddress.state || "-"}</span>
+                </div>
+              </>
+            )}
           </div>
         </section>
 
@@ -291,8 +329,8 @@ function ExportSalePrintPage({
                 <div className="font-medium">E&amp;OE</div>
                 <div className="mt-1">
                   We hereby certify that our registration under the GST Act 2017 is in force on the
-                  date on which exportSale of goods specified in this invoice is made by us and the
-                  exportSale is effected in the regular course of business.
+                  date on which export sale of goods specified in this invoice is made by us and the
+                  export sale is effected in the regular course of business.
                 </div>
                 <div className="mt-1 font-semibold">
                   * Goods once sold will not be taken back unless agreed in writing.
@@ -436,6 +474,51 @@ function PrintPair({ children, label }: { children: string; label: string }) {
       <span className="font-semibold">{children}</span>
     </div>
   );
+}
+
+function DocumentDetails({
+  date,
+  number,
+  workOrder
+}: {
+  date: string;
+  number: string;
+  workOrder: string;
+}) {
+  return (
+    <>
+      <div className="font-medium">Document details</div>
+      <div className="mt-2 grid grid-cols-[5rem_1fr] gap-x-2">
+        <span>Invoice No</span>
+        <span className="font-semibold">{number}</span>
+        <span>Date</span>
+        <span>{date}</span>
+        <span>Work Order</span>
+        <span>{workOrder || "-"}</span>
+      </div>
+    </>
+  );
+}
+
+function formatPrintAddress(value: string, states: ExportSaleLocationRecord[]) {
+  const lines = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const stateAndPin = [...lines].reverse().find((line) => line.includes(" - ")) ?? "";
+  const [stateName = "", ...pinParts] = stateAndPin
+    .split(" - ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const state = states.find(
+    (record) => record.name.trim().toLowerCase() === stateName.toLowerCase()
+  );
+  const addressLines = lines.filter(
+    (line) => line !== stateAndPin && line.toLowerCase() !== "india"
+  );
+  const address = [...addressLines, ...pinParts].filter(Boolean).join(" - ");
+  const stateLabel = stateName ? `${stateName}${state?.code ? ` (${state.code})` : ""}` : "";
+  return { address, state: stateLabel };
 }
 
 function PrintTotal({ label, strong, value }: { label: string; strong?: boolean; value: string }) {

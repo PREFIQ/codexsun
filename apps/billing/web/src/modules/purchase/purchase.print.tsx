@@ -153,7 +153,7 @@ function PurchasePrintPage({
         <section className="grid border-b border-slate-300 text-[10px] sm:grid-cols-2">
           <div className="px-2 py-2">
             <div className="font-medium">Supplier (Bill to)</div>
-            <div className="mt-1 font-semibold">M/s. {purchase.customerName}</div>
+            <div className="mt-1 font-semibold">M/s. {purchase.supplierName}</div>
             <div className="mt-1 whitespace-pre-wrap">
               {purchase.billingAddress || "Address not set"}
             </div>
@@ -167,6 +167,10 @@ function PurchasePrintPage({
           <div className="space-y-1 border-t border-slate-300 px-2 py-2 sm:border-l sm:border-slate-300 sm:border-t-0">
             <PrintPair label="Purchase No:">{purchase.invoiceNumber}</PrintPair>
             <PrintPair label="Date:">{formatDate(purchase.issuedOn)}</PrintPair>
+            <PrintPair label="Supplier Bill No:">{purchase.supplierBillNo || "-"}</PrintPair>
+            <PrintPair label="Supplier Bill Date:">
+              {purchase.supplierBillDate ? formatDate(purchase.supplierBillDate) : "-"}
+            </PrintPair>
             <PrintPair label="Work Order:">{purchase.workOrderNo || "-"}</PrintPair>
           </div>
         </section>

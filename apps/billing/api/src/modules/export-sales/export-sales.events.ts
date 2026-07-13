@@ -1,15 +1,15 @@
-export const salesEvents = {
-  cancelled: "billing.sales.cancelled",
-  confirmed: "billing.sales.confirmed",
-  created: "billing.sales.created",
-  updated: "billing.sales.updated"
+export const exportSalesEvents = {
+  cancelled: "billing.export-sales.cancelled",
+  confirmed: "billing.export-sales.confirmed",
+  created: "billing.export-sales.created",
+  updated: "billing.export-sales.updated"
 } as const;
 
-export type SalesEventName = (typeof salesEvents)[keyof typeof salesEvents];
+export type ExportSalesEventName = (typeof exportSalesEvents)[keyof typeof exportSalesEvents];
 
-export function createSalesEvent(
-  name: SalesEventName,
-  payload: { saleId: string; tenantId: string },
+export function createExportSalesEvent(
+  name: ExportSalesEventName,
+  payload: { exportSaleId: string; tenantId: string },
   correlationId: string
 ) {
   return {

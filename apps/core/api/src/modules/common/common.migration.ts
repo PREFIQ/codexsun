@@ -30,7 +30,7 @@ import { migrateLedgers } from "./accounts/ledgers/ledgers.migration.js";
 
 export const commonMigration = {
   description: "Common module aggregator migrations.",
-  key: "core.common"
+  key: "core.common.foundation-v1"
 };
 export async function migrateCommonModule(database: Kysely<CoreDatabase>) {
   await migrateLocationModules(database);

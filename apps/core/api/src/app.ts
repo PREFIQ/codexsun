@@ -1,4 +1,9 @@
-import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
+import {
+  createApiApp,
+  registerHealthRoute,
+  registerRequestLogging,
+  requireTenantAccess
+} from "@codexsun/framework/api";
 import type { HealthCheck } from "@codexsun/framework/health";
 import {
   bootstrapCoreDatabase,
@@ -61,7 +66,14 @@ export async function createApp() {
   app.addHook("preHandler", async (request) => {
     if (request.url === "/health" || request.url === "/") return;
     const value = request.headers["x-tenant-db"];
-    await bootstrapCoreDatabase(resolveCoreDatabaseName(Array.isArray(value) ? value[0] : value));
+    const tenantDatabase = resolveCoreDatabaseName(Array.isArray(value) ? value[0] : value);
+    requireTenantAccess({
+      authorization: request.headers.authorization,
+      secret: env.JWT_SECRET,
+      tenantDatabase,
+      tenantId: request.headers["x-tenant-id"]
+    });
+    await bootstrapCoreDatabase(tenantDatabase);
   });
   await commonModule.register(app);
   await organisationModule.register(app);

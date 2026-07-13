@@ -1,8 +1,14 @@
-import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
+import {
+  createApiApp,
+  registerHealthRoute,
+  registerRequestLogging,
+  requireTenantAccess
+} from "@codexsun/framework/api";
 import type { HealthCheck } from "@codexsun/framework/health";
 import {
   bootstrapRegisteredBillingDatabases,
-  closeAllBillingDatabases
+  closeAllBillingDatabases,
+  resolveBillingDatabaseName
 } from "./database/billing-database.js";
 import { env } from "./env.js";
 import { exportSalesModule } from "./modules/export-sales/index.js";
@@ -51,6 +57,19 @@ export async function createApp() {
   registerRequestLogging(app);
   registerHealthRoute(app, healthChecks);
   await bootstrapRegisteredBillingDatabases();
+  app.addHook("preHandler", async (request) => {
+    if (!request.url.startsWith("/billing/")) return;
+    const requestedDatabase = request.headers["x-tenant-db"];
+    const tenantDatabase = resolveBillingDatabaseName(
+      Array.isArray(requestedDatabase) ? requestedDatabase[0] : requestedDatabase
+    );
+    requireTenantAccess({
+      authorization: request.headers.authorization,
+      secret: env.JWT_SECRET,
+      tenantDatabase,
+      tenantId: request.headers["x-tenant-id"]
+    });
+  });
   await salesModule.register(app);
   await purchaseModule.register(app);
   await exportSalesModule.register(app);

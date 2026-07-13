@@ -7,16 +7,32 @@ export const districtSeed = {
 };
 
 export async function seedDistrictModule() {
+  const defaultStates = await sql<{ id: number }>`SELECT states.id FROM states
+    INNER JOIN countries ON countries.id = states.country_id
+    WHERE countries.code='UNKNOWN' AND states.code='UNKNOWN' LIMIT 1`.execute(getCoreDatabase());
+  const defaultStateId = defaultStates.rows[0]?.id;
   const states = await sql<{ id: number }>`SELECT states.id FROM states
     INNER JOIN countries ON countries.id = states.country_id
     WHERE countries.code = 'IN' AND states.name = 'Tamil Nadu' LIMIT 1`.execute(getCoreDatabase());
-  const stateId = states.rows[0]?.id;
-  if (!stateId)
-    throw new Error("Tamil Nadu state seed must exist before district seeds are applied.");
+  const tamilNaduId = states.rows[0]?.id;
+  if (!defaultStateId || !tamilNaduId)
+    throw new Error(
+      "Default and Tamil Nadu state seeds must exist before district seeds are applied."
+    );
+
+  const fallback = await sql<{ id: number }>`SELECT id FROM districts
+    WHERE name='-' ORDER BY id LIMIT 1`.execute(getCoreDatabase());
+  if (fallback.rows[0]?.id) {
+    await sql`UPDATE districts SET state_id=${defaultStateId},name='-',sort_order=0,status='active'
+      WHERE id=${fallback.rows[0].id}`.execute(getCoreDatabase());
+  } else {
+    await sql`INSERT INTO districts (state_id,name,sort_order,status)
+      VALUES (${defaultStateId},'-',0,'active')`.execute(getCoreDatabase());
+  }
 
   for (const district of districtSeeds) {
     await sql`INSERT INTO districts (state_id, name, sort_order, status)
-      VALUES (${stateId}, ${district.name}, ${district.sortOrder}, ${district.status})
+      VALUES (${tamilNaduId}, ${district.name}, ${district.sortOrder}, ${district.status})
       ON DUPLICATE KEY UPDATE state_id=VALUES(state_id), name=VALUES(name), sort_order=VALUES(sort_order), status=VALUES(status)`.execute(
       getCoreDatabase()
     );
@@ -24,7 +40,6 @@ export async function seedDistrictModule() {
 }
 
 const districtSeeds = [
-  { name: "-", sortOrder: 0, status: "active" as const },
   ...[
     "Ariyalur",
     "Chengalpattu",

@@ -1,1 +1,2 @@
-export { ReceiptPage, ReceiptWorkspace } from "./receipt.page";
+export { ReceiptPage } from "./receipt.page";
+export { ReceiptWorkspace } from "./receipt.workspace";

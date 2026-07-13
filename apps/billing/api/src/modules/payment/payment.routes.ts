@@ -1,84 +1,198 @@
-import type { FastifyInstance } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { resolveBillingDatabaseName } from "../../database/billing-database.js";
+import { PaymentLookupService } from "./payment.lookup.js";
 import { PaymentService } from "./payment.service.js";
-import type { PaymentInput, PaymentStatus } from "./payment.types.js";
+
 const service = new PaymentService();
-const dbName = (value: string | string[] | undefined) =>
-  resolveBillingDatabaseName(Array.isArray(value) ? value[0] : value);
+const lookups = new PaymentLookupService();
+const idSchema = z.object({
+  id: z.string().regex(/^[0-9a-f]{8}$/, "Payment ID must be 8 hex characters.")
+});
+const supplierSchema = z.object({ supplierId: z.coerce.number().int().positive() });
+const modeSchema = z.enum(["cash", "bank", "upi", "transfer"]);
+const statusSchema = z.enum(["draft", "posted", "cancelled"]);
+const allocationInputSchema = z.object({
+  allocatedAmount: z.number().positive(),
+  purchaseId: z.string().regex(/^[0-9a-f]{8}$/)
+});
+const payloadSchema = z.object({
+  allocations: z.array(allocationInputSchema),
+  amount: z.number().positive(),
+  companyId: z.number().int().positive(),
+  currencyId: z.number().int().positive(),
+  supplierId: z.number().int().positive(),
+  discountAmount: z.number().nonnegative(),
+  financialYearId: z.number().int().positive(),
+  ledgerId: z.number().int().positive(),
+  notes: z.string(),
+  paymentDate: z.iso.date(),
+  paymentMode: modeSchema,
+  paymentNumber: z.string(),
+  referenceDate: z.union([z.iso.date(), z.literal("")]),
+  referenceNo: z.string(),
+  roundOff: z.number(),
+  tdsAmount: z.number().nonnegative()
+});
+const allocationSchema = allocationInputSchema.extend({
+  documentDate: z.string(),
+  documentNo: z.string(),
+  documentTotal: z.number(),
+  id: z.string(),
+  previousBalance: z.number()
+});
+const paymentSchema = z.object({
+  allocatedAmount: z.number(),
+  allocations: z.array(allocationSchema),
+  amount: z.number(),
+  companyId: z.number().int().positive(),
+  companyName: z.string(),
+  createdAt: z.string(),
+  currencyCode: z.string(),
+  currencyId: z.number().int().positive(),
+  supplierId: z.number().int().positive(),
+  supplierName: z.string(),
+  discountAmount: z.number(),
+  financialYearId: z.number().int().positive(),
+  financialYearName: z.string(),
+  id: z.string(),
+  ledgerId: z.number().int().positive(),
+  ledgerName: z.string(),
+  lineNumber: z.number().int().positive(),
+  notes: z.string(),
+  paymentDate: z.string(),
+  paymentMode: modeSchema,
+  paymentNumber: z.string(),
+  referenceDate: z.string(),
+  referenceNo: z.string(),
+  roundOff: z.number(),
+  status: statusSchema,
+  tdsAmount: z.number(),
+  totalAmount: z.number(),
+  unallocatedAmount: z.number(),
+  updatedAt: z.string()
+});
+const contextSchema = z.object({
+  companyId: z.number().int().positive(),
+  companyName: z.string(),
+  currencyCode: z.string(),
+  currencyId: z.number().int().positive(),
+  financialYearId: z.number().int().positive(),
+  financialYearName: z.string(),
+  suggestedPaymentNumber: z.string()
+});
+const candidateSchema = z.object({
+  supplierId: z.number().int().positive(),
+  documentDate: z.string(),
+  documentNo: z.string(),
+  documentTotal: z.number(),
+  outstandingAmount: z.number(),
+  purchaseId: z.string()
+});
+const activitySchema = z.object({
+  action: z.string(),
+  createdAt: z.string(),
+  description: z.string(),
+  id: z.string().regex(/^[0-9a-f]{8}$/),
+  newStatus: statusSchema.nullable(),
+  previousStatus: statusSchema.nullable()
+});
+
 export async function registerPaymentRoutes(app: FastifyInstance) {
-  app.get("/billing/payments", async (request) =>
-    ok(await service.list(dbName(request.headers["x-tenant-db"])), { requestId: request.id })
-  );
-  app.get("/billing/payments/:id", async (request, reply) => {
-    const record = await service.get(
-      dbName(request.headers["x-tenant-db"]),
-      (request.params as { id: string }).id
-    );
-    if (!record)
-      return reply
-        .code(404)
-        .send({
-          error: { code: "PAYMENT_NOT_FOUND", message: "Payment was not found." },
-          success: false
-        });
-    return ok(record, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/payments",
+    schemas: { response: z.array(paymentSchema) },
+    handler: ({ request }) => service.list(databaseName(request))
   });
-  app.post("/billing/payments", async (request) =>
-    ok(await service.create(dbName(request.headers["x-tenant-db"]), request.body as PaymentInput), {
-      requestId: request.id
-    })
-  );
-  app.put("/billing/payments/:id", async (request, reply) => {
-    const record = await service.update(
-      dbName(request.headers["x-tenant-db"]),
-      (request.params as { id: string }).id,
-      request.body as PaymentInput
-    );
-    if (!record)
-      return reply
-        .code(404)
-        .send({
-          error: { code: "PAYMENT_NOT_FOUND", message: "Payment was not found." },
-          success: false
-        });
-    return ok(record, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/payments/context",
+    schemas: { response: contextSchema },
+    handler: ({ request }) => service.context(databaseName(request))
   });
-  app.post("/billing/payments/:id/status", async (request, reply) => {
-    const body = request.body as { status?: PaymentStatus };
-    if (!body.status)
-      return reply
-        .code(400)
-        .send({
-          error: { code: "INVALID_STATUS", message: "Payment status is required." },
-          success: false
-        });
-    const record = await service.setStatus(
-      dbName(request.headers["x-tenant-db"]),
-      (request.params as { id: string }).id,
-      body.status
-    );
-    if (!record)
-      return reply
-        .code(404)
-        .send({
-          error: { code: "PAYMENT_NOT_FOUND", message: "Payment was not found." },
-          success: false
-        });
-    return ok(record, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/payments/allocations",
+    schemas: { querystring: supplierSchema, response: z.array(candidateSchema) },
+    handler: ({ query, request }) =>
+      service.allocationCandidates(databaseName(request), query.supplierId)
   });
-  app.delete("/billing/payments/:id", async (request, reply) => {
-    const record = await service.deleteDraft(
-      dbName(request.headers["x-tenant-db"]),
-      (request.params as { id: string }).id
-    );
-    if (!record)
-      return reply
-        .code(404)
-        .send({
-          error: { code: "PAYMENT_NOT_FOUND", message: "Payment was not found." },
-          success: false
-        });
-    return ok(record, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/payments/lookups/contacts",
+    schemas: { response: z.unknown() },
+    handler: ({ request }) => lookups.contacts(lookupHeaders(request))
   });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/payments/lookups/ledgers",
+    schemas: { response: z.unknown() },
+    handler: ({ request }) => lookups.ledgers(lookupHeaders(request))
+  });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/payments/:id",
+    schemas: { params: idSchema, response: paymentSchema },
+    handler: async ({ params, request }) =>
+      required(await service.get(databaseName(request), params.id))
+  });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/payments/:id/activity",
+    schemas: { params: idSchema, response: z.array(activitySchema) },
+    handler: async ({ params, request }) =>
+      required(await service.activity(databaseName(request), params.id))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/payments",
+    schemas: { body: payloadSchema, response: paymentSchema },
+    handler: ({ body, request }) => service.create(databaseName(request), body)
+  });
+  registerContractRoute(app, {
+    method: "PUT",
+    url: "/billing/payments/:id",
+    schemas: { body: payloadSchema, params: idSchema, response: paymentSchema },
+    handler: async ({ body, params, request }) =>
+      required(await service.update(databaseName(request), params.id, body))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/payments/:id/post",
+    schemas: { params: idSchema, response: paymentSchema },
+    handler: async ({ params, request }) =>
+      required(await service.post(databaseName(request), params.id))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/payments/:id/cancel",
+    schemas: { params: idSchema, response: paymentSchema },
+    handler: async ({ params, request }) =>
+      required(await service.cancel(databaseName(request), params.id))
+  });
+  registerContractRoute(app, {
+    method: "DELETE",
+    url: "/billing/payments/:id",
+    schemas: { params: idSchema, response: paymentSchema },
+    handler: async ({ params, request }) =>
+      required(await service.deleteDraft(databaseName(request), params.id))
+  });
+}
+
+function databaseName(request: FastifyRequest) {
+  return resolveBillingDatabaseName(request.headers["x-tenant-db"]);
+}
+function lookupHeaders(request: FastifyRequest) {
+  return {
+    authorization: request.headers.authorization,
+    tenantDatabase: request.headers["x-tenant-db"],
+    tenantId: request.headers["x-tenant-id"]
+  };
+}
+function required<T>(record: T | null): T {
+  if (!record) throw AppError.notFound("Payment was not found.");
+  return record;
 }

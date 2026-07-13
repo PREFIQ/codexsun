@@ -3,10 +3,12 @@ import { sql, type Kysely } from "kysely";
 export const salesMigration = {
   key: "billing.sales.relational-v2",
   description:
-    "Sales invoices with module-owned items, compliance, collaboration, tool, and receipt-allocation tables."
+    "Sales invoices with module-owned items, compliance, collaboration, and entry-tool tables."
 };
 
 export async function migrateSalesModule<Database>(database: Kysely<Database>) {
+  await assertSalesParentSchema(database);
+
   await sql
     .raw(
       `
@@ -259,39 +261,89 @@ export async function migrateSalesModule<Database>(database: Kysely<Database>) {
   `
     )
     .execute(database);
+}
 
-  await sql
-    .raw(
-      `
-    CREATE TABLE IF NOT EXISTS billing_sales_receipt_allocations (
-      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-      uuid CHAR(8) NOT NULL,
-      sales_id INT NOT NULL,
-      receipt_id INT NOT NULL,
-      allocation_date DATE NOT NULL,
-      allocated_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
-      discount_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
-      tds_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
-      write_off_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
-      exchange_difference DECIMAL(18,2) NOT NULL DEFAULT 0,
-      status VARCHAR(24) NOT NULL DEFAULT 'active',
-      notes TEXT NULL,
-      created_by INT NOT NULL,
-      updated_by INT NULL,
-      created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-      updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-      deleted_at DATETIME(3) NULL,
-      UNIQUE KEY billing_sales_receipt_alloc_uuid_unique (uuid),
-      UNIQUE KEY billing_sales_receipt_alloc_pair_unique (sales_id, receipt_id),
-      INDEX billing_sales_receipt_alloc_receipt (receipt_id),
-      INDEX billing_sales_receipt_alloc_status (sales_id, status),
-      CONSTRAINT billing_sales_receipt_alloc_sale_fk FOREIGN KEY (sales_id) REFERENCES billing_sales (id) ON DELETE RESTRICT,
-      CONSTRAINT billing_sales_receipt_alloc_created_fk FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE RESTRICT,
-      CONSTRAINT billing_sales_receipt_alloc_updated_fk FOREIGN KEY (updated_by) REFERENCES users (id) ON DELETE RESTRICT
-    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
-  `
+const salesParentTables = [
+  "colours",
+  "companies",
+  "contacts",
+  "contacts_addresses",
+  "currencies",
+  "financial_years",
+  "hsn_codes",
+  "ledgers",
+  "products",
+  "sizes",
+  "taxes",
+  "transports",
+  "units",
+  "users",
+  "work_orders"
+] as const;
+
+async function assertSalesParentSchema<Database>(database: Kysely<Database>) {
+  const result = await sql<{
+    column_type: string;
+    data_type: string;
+    engine: string;
+    table_name: string;
+  }>`
+    SELECT
+      tables.TABLE_NAME AS table_name,
+      tables.ENGINE AS engine,
+      columns.DATA_TYPE AS data_type,
+      columns.COLUMN_TYPE AS column_type
+    FROM information_schema.TABLES AS tables
+    INNER JOIN information_schema.COLUMNS AS columns
+      ON columns.TABLE_SCHEMA = tables.TABLE_SCHEMA
+      AND columns.TABLE_NAME = tables.TABLE_NAME
+      AND columns.COLUMN_NAME = 'id'
+    WHERE tables.TABLE_SCHEMA = DATABASE()
+      AND tables.TABLE_NAME IN (
+        'colours',
+        'companies',
+        'contacts',
+        'contacts_addresses',
+        'currencies',
+        'financial_years',
+        'hsn_codes',
+        'ledgers',
+        'products',
+        'sizes',
+        'taxes',
+        'transports',
+        'units',
+        'users',
+        'work_orders'
+      )
+  `.execute(database);
+
+  const parents = new Map(result.rows.map((row) => [row.table_name, row]));
+  const missing = salesParentTables.filter((tableName) => !parents.has(tableName));
+  const incompatible = result.rows
+    .filter(
+      ({ column_type, data_type, engine }) =>
+        engine.toLowerCase() !== "innodb" ||
+        data_type.toLowerCase() !== "int" ||
+        column_type.toLowerCase().includes("unsigned")
     )
-    .execute(database);
+    .map(({ table_name: tableName }) => tableName)
+    .sort();
+
+  if (missing.length === 0 && incompatible.length === 0) return;
+
+  const details = [
+    missing.length > 0 ? `missing tables: ${missing.join(", ")}` : "",
+    incompatible.length > 0
+      ? `tables without a signed INT InnoDB primary identity: ${incompatible.join(", ")}`
+      : ""
+  ]
+    .filter(Boolean)
+    .join("; ");
+
+  throw new Error(
+    `Sales migration requires Core-owned parent schemas before Billing starts (${details}). Start and finish Core API database bootstrap first.`
+  );
 }
 
 async function assertRelationalSalesSchema<Database>(database: Kysely<Database>) {

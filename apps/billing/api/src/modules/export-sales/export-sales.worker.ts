@@ -1,12 +1,12 @@
-export const salesWorker = {
-  jobs: ["sales.post"],
+export const exportSalesWorker = {
+  jobs: ["export-sales.post"],
   maxAttempts: 5
 } as const;
 
-export async function processSalesPosting(
-  job: { saleId: string; tenantId: string },
-  post: (saleId: string, tenantId: string) => Promise<void>
+export async function processExportSalesPosting(
+  job: { exportSaleId: string; tenantId: string },
+  post: (exportSaleId: string, tenantId: string) => Promise<void>
 ) {
-  await post(job.saleId, job.tenantId);
-  return { saleId: job.saleId, status: "posted" as const, tenantId: job.tenantId };
+  await post(job.exportSaleId, job.tenantId);
+  return { exportSaleId: job.exportSaleId, status: "posted" as const, tenantId: job.tenantId };
 }

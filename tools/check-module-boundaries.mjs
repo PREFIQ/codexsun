@@ -38,6 +38,22 @@ const requiredBackendRoles = [
   "sync",
   "types"
 ];
+const reducedPlatformBackendModules = new Set([
+  "tenant-user",
+  "tenant-role",
+  "tenant-permission",
+  "tenant-user-role",
+  "tenant-role-permission"
+]);
+const reducedBackendRoles = [
+  "module",
+  "service",
+  "repository",
+  "routes",
+  "migration",
+  "seed",
+  "types"
+];
 
 const webModuleRoots = [
   {
@@ -95,7 +111,11 @@ for (const root of moduleRoots) {
   );
   for (const moduleDir of modules) {
     const modulePath = join(root.path, moduleDir.name);
-    for (const role of requiredBackendRoles) {
+    const moduleRoles =
+      root.app === "platform-api" && reducedPlatformBackendModules.has(moduleDir.name)
+        ? reducedBackendRoles
+        : requiredBackendRoles;
+    for (const role of moduleRoles) {
       const filePath = join(modulePath, `${moduleDir.name}.${role}.ts`);
       if (!existsSync(filePath)) {
         missing.push(`${root.app}/${moduleDir.name}: missing ${moduleDir.name}.${role}.ts`);

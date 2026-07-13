@@ -1,45 +1,101 @@
 export type PaymentStatus = "draft" | "posted" | "cancelled";
+export type PaymentMode = "cash" | "bank" | "upi" | "transfer";
 
-export type PaymentAllocation = {
-  documentNo: string;
-  documentDate: string;
-  documentTotal: number;
-  previousBalance: number;
+export type PaymentContext = {
+  companyId: number;
+  companyName: string;
+  currencyCode: string;
+  currencyId: number;
+  financialYearId: number;
+  financialYearName: string;
+  suggestedPaymentNumber: string;
+};
+
+export type PaymentAllocationInput = {
   allocatedAmount: number;
+  purchaseId: string;
+};
+
+export type PaymentAllocation = PaymentAllocationInput & {
+  documentDate: string;
+  documentNo: string;
+  documentTotal: number;
+  id: string;
+  previousBalance: number;
 };
 
 export type Payment = {
-  id: string;
-  paymentNumber: string;
-  paymentDate: string;
-  partyName: string;
-  partyId: string;
-  partyType: string;
-  paymentMode: string;
-  bankAccount: string;
-  referenceNo: string;
-  referenceDate: string;
-  amount: number;
-  tdsAmount: number;
-  discountAmount: number;
-  roundOff: number;
-  totalAmount: number;
   allocatedAmount: number;
-  unallocatedAmount: number;
-  status: PaymentStatus;
-  notes: string;
   allocations: PaymentAllocation[];
+  amount: number;
+  companyId: number;
+  companyName: string;
   createdAt: string;
+  currencyCode: string;
+  currencyId: number;
+  supplierId: number;
+  supplierName: string;
+  discountAmount: number;
+  financialYearId: number;
+  financialYearName: string;
+  id: string;
+  ledgerId: number;
+  ledgerName: string;
+  lineNumber: number;
+  notes: string;
+  paymentDate: string;
+  paymentMode: PaymentMode;
+  paymentNumber: string;
+  referenceDate: string;
+  referenceNo: string;
+  roundOff: number;
+  status: PaymentStatus;
+  tdsAmount: number;
+  totalAmount: number;
+  unallocatedAmount: number;
   updatedAt: string;
 };
 
-export type PaymentInput = Omit<
-  Partial<Payment>,
-  "id" | "createdAt" | "updatedAt" | "totalAmount" | "allocatedAmount" | "unallocatedAmount"
-> & {
-  paymentNumber?: string;
-  paymentDate: string;
-  partyName: string;
+export type PaymentSavePayload = {
+  allocations: PaymentAllocationInput[];
   amount: number;
-  allocations?: PaymentAllocation[];
+  companyId: number;
+  currencyId: number;
+  supplierId: number;
+  discountAmount: number;
+  financialYearId: number;
+  ledgerId: number;
+  notes: string;
+  paymentDate: string;
+  paymentMode: PaymentMode;
+  paymentNumber: string;
+  referenceDate: string;
+  referenceNo: string;
+  roundOff: number;
+  tdsAmount: number;
+};
+
+export type PaymentAllocationCandidate = {
+  supplierId: number;
+  documentDate: string;
+  documentNo: string;
+  documentTotal: number;
+  outstandingAmount: number;
+  purchaseId: string;
+};
+
+export type PaymentActivity = {
+  action: string;
+  createdAt: string;
+  description: string;
+  id: string;
+  newStatus: PaymentStatus | null;
+  previousStatus: PaymentStatus | null;
+};
+
+export type PaymentJob = {
+  correlationId: string;
+  name: "payment.activity-sync" | "payment.posting-sync";
+  paymentId: string;
+  tenantDatabase: string;
 };

@@ -71,7 +71,9 @@ function authHeaders(desk?: Desk): Record<string, string> {
   if (token) headers.Authorization = `Bearer ${token}`;
   if (desk === "tenant") {
     const tenantId = getTenantId();
+    const tenantDbName = getTenantDbName();
     if (tenantId) headers["x-tenant-id"] = tenantId;
+    if (tenantDbName) headers["x-tenant-db"] = tenantDbName;
   }
   return headers;
 }

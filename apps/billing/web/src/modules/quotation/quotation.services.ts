@@ -4,8 +4,12 @@ import {
   billingApiPost,
   billingApiPut
 } from "../../shared/api/billing-api";
-import type { Quotation, QuotationSavePayload, QuotationStatus } from "./quotation.types";
-import type { Sale } from "../sales/sales.types";
+import {
+  type Quotation,
+  type QuotationContext,
+  type QuotationSavePayload,
+  type QuotationStatus
+} from "./quotation.types";
 
 export type QuotationLookupOption = {
   description?: string;
@@ -19,6 +23,7 @@ export type QuotationLookupRecord = {
   addresses?: Array<Record<string, unknown>>;
   code?: string | null;
   description?: string | null;
+  gst?: string | null;
   gstin?: string | null;
   hsnCode?: string | null;
   id: string;
@@ -99,19 +104,29 @@ export type QuotationMasterSavePayload = {
 };
 
 export async function listQuotations() {
-  return billingApiGet<Quotation[]>("/billing/quotations");
+  return billingApiGet<Quotation[]>("/billing/quotations").then((records) =>
+    records.map(fromApiQuotation)
+  );
 }
 
 export async function getQuotation(id: string) {
-  return billingApiGet<Quotation>(`/billing/quotations/${id}`);
+  return billingApiGet<Quotation>(`/billing/quotations/${id}`).then(fromApiQuotation);
+}
+
+export function getQuotationContext() {
+  return billingApiGet<QuotationContext>("/billing/quotations/context");
 }
 
 export async function createQuotation(payload: QuotationSavePayload) {
-  return billingApiPost<Quotation>("/billing/quotations", payload);
+  return billingApiPost<Quotation>("/billing/quotations", toApiPayload(payload)).then(
+    fromApiQuotation
+  );
 }
 
 export async function updateQuotation(id: string, payload: QuotationSavePayload) {
-  return billingApiPut<Quotation>(`/billing/quotations/${id}`, payload);
+  return billingApiPut<Quotation>(`/billing/quotations/${id}`, toApiPayload(payload)).then(
+    fromApiQuotation
+  );
 }
 
 export async function deleteQuotation(id: string) {
@@ -121,23 +136,23 @@ export async function deleteQuotation(id: string) {
 export async function setQuotationStatus(id: string, status: Exclude<QuotationStatus, "draft">) {
   return billingApiPost<Quotation>(
     `/billing/quotations/${id}/${status === "confirmed" ? "confirm" : "cancel"}`
-  );
+  ).then(fromApiQuotation);
 }
 
 export async function revokeQuotation(id: string) {
-  return billingApiPost<Quotation>(`/billing/quotations/${id}/revoke`);
+  return billingApiPost<Quotation>(`/billing/quotations/${id}/revoke`).then(fromApiQuotation);
 }
 
-export async function convertQuotationToSale(id: string) {
-  return billingApiPost<{ quotation: Quotation; sale: Sale }>(
+export function convertQuotationToSale(id: string) {
+  return billingApiPost<{ quotation: Quotation; sale: { invoiceNumber: string } }>(
     `/billing/quotations/${id}/convert-to-sale`
   );
 }
 
-export async function convertQuotationsToSale(ids: string[]) {
-  return billingApiPost<{ quotations: Quotation[]; sale: Sale }>(
+export function convertQuotationsToSale(quotationIds: string[]) {
+  return billingApiPost<{ quotations: Quotation[]; sale: { invoiceNumber: string } }>(
     "/billing/quotations/convert-to-sale",
-    { quotationIds: ids }
+    { quotationIds }
   );
 }
 
@@ -158,21 +173,31 @@ export function updateQuotationContact(id: string, payload: QuotationContactSave
 export function listQuotationLocations(
   kind: "cities" | "countries" | "districts" | "pincodes" | "states"
 ) {
-  return billingApiGet<QuotationLocationRecord[]>(`/billing/quotations/lookups/${kind}`);
+  const paths = {
+    cities: "/billing/quotations/lookups/cities",
+    countries: "/billing/quotations/lookups/countries",
+    districts: "/billing/quotations/lookups/districts",
+    pincodes: "/billing/quotations/lookups/pincodes",
+    states: "/billing/quotations/lookups/states"
+  } as const;
+  return billingApiGet<QuotationLocationRecord[]>(paths[kind]);
 }
 
 export function createQuotationLocation(
   kind: QuotationLocationKind,
   payload: Record<string, unknown>
 ) {
-  return billingApiPost<QuotationLocationRecord>(
-    `/billing/quotations/lookups/locations/${kind}`,
-    payload
-  );
+  const paths = {
+    cities: "/billing/quotations/lookups/cities",
+    districts: "/billing/quotations/lookups/districts",
+    pincodes: "/billing/quotations/lookups/pincodes",
+    states: "/billing/quotations/lookups/states"
+  } as const;
+  return billingApiPost<QuotationLocationRecord>(paths[kind], payload);
 }
 
 export function listQuotationAddressTypes() {
-  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/addressTypes");
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/address-types");
 }
 
 export function createQuotationAddressType(name: string) {
@@ -194,15 +219,25 @@ export function createQuotationLookup(
     | "taxes",
   payload: Record<string, unknown>
 ) {
-  return billingApiPost<QuotationLookupRecord>(`/billing/quotations/lookups/${kind}`, payload);
+  const paths = {
+    colours: "/billing/quotations/lookups/colours",
+    hsnCodes: "/billing/quotations/lookups/hsn-codes",
+    productCategories: "/billing/quotations/lookups/product-categories",
+    products: "/billing/quotations/lookups/products",
+    sizes: "/billing/quotations/lookups/sizes",
+    taxes: "/billing/quotations/lookups/taxes",
+    units: "/billing/quotations/lookups/units",
+    workOrders: "/billing/quotations/lookups/work-orders"
+  } as const;
+  return billingApiPost<QuotationLookupRecord>(paths[kind], payload);
 }
 
 export function listQuotationProductCategories() {
-  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/productCategories");
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/product-categories");
 }
 
 export function listQuotationHsnCodes() {
-  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/hsnCodes");
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/hsn-codes");
 }
 
 export function listQuotationUnits() {
@@ -218,7 +253,12 @@ export function updateQuotationLookup(
   id: string,
   payload: Record<string, unknown>
 ) {
-  return billingApiPut<QuotationLookupRecord>(`/billing/quotations/lookups/${kind}/${id}`, payload);
+  return billingApiPut<QuotationLookupRecord>(
+    kind === "products"
+      ? `/billing/quotations/lookups/products/${id}`
+      : `/billing/quotations/lookups/work-orders/${id}`,
+    payload
+  );
 }
 
 export function listQuotationContacts() {
@@ -236,7 +276,7 @@ export function listQuotationContacts() {
 }
 
 export function listQuotationWorkOrders() {
-  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/workOrders").then(
+  return billingApiGet<QuotationLookupRecord[]>("/billing/quotations/lookups/work-orders").then(
     (records) =>
       records.filter(isActiveRecord).map((record) => {
         const workOrderNo = record.code || record.workOrderNo || record.name || record.id;
@@ -273,29 +313,46 @@ export function listQuotationSizes() {
 export function quotationToPayload(quotation: Quotation): QuotationSavePayload {
   return {
     billingAddress: quotation.billingAddress,
+    billingAddressId: quotation.billingAddressId,
+    companyId: quotation.companyId,
+    currencyCode: quotation.currencyCode,
+    currencyId: quotation.currencyId,
+    customerEmail: quotation.customerEmail,
+    customerId: quotation.customerId,
     customerName: quotation.customerName,
+    customerPhone: quotation.customerPhone,
     date: quotation.date,
+    financialYearId: quotation.financialYearId,
     items: quotation.items.map((item) => ({
       colour: item.colour,
+      colourId: item.colourId,
       dcNo: item.dcNo,
       description: item.description,
       hsnCode: item.hsnCode,
+      hsnCodeId: item.hsnCodeId,
       poNo: item.poNo,
       productName: item.productName,
+      productId: item.productId,
       quantity: item.quantity,
       rate: item.rate,
       size: item.size,
+      sizeId: item.sizeId,
+      taxId: item.taxId,
       taxRate: item.taxRate,
-      unit: item.unit
+      unit: item.unit,
+      unitId: item.unitId
     })),
     notes: quotation.notes,
+    ledgerId: quotation.ledgerId,
     quotationNumber: quotation.quotationNumber,
     roundOff: quotation.roundOff,
     salesLedger: quotation.salesLedger,
     shippingAddress: quotation.shippingAddress,
+    shippingAddressId: quotation.shippingAddressId,
     status: quotation.status,
     taxType: quotation.taxType,
     terms: quotation.terms,
+    workOrderId: quotation.workOrderId,
     workOrderNo: quotation.workOrderNo
   };
 }
@@ -350,6 +407,49 @@ function lookupOption(
 
 function isActiveRecord(record: QuotationLookupRecord) {
   return record.isActive !== false;
+}
+
+function toApiPayload(payload: QuotationSavePayload) {
+  return {
+    billingAddress: payload.billingAddress,
+    billingAddressId: payload.billingAddressId,
+    companyId: payload.companyId,
+    currencyCode: payload.currencyCode || "INR",
+    currencyId: payload.currencyId,
+    customerEmail: payload.customerEmail,
+    customerId: payload.customerId,
+    customerName: payload.customerName,
+    customerPhone: payload.customerPhone,
+    quotationNumber: payload.quotationNumber,
+    financialYearId: payload.financialYearId,
+    date: payload.date,
+    items: payload.items,
+    notes: payload.notes,
+    ledgerId: payload.ledgerId,
+    roundOff: payload.roundOff,
+    salesLedger: payload.salesLedger,
+    shippingAddress: payload.shippingAddress,
+    shippingAddressId: payload.shippingAddressId,
+    status: payload.status,
+    taxType: payload.taxType,
+    terms: payload.terms,
+    workOrderId: payload.workOrderId,
+    workOrderNo: payload.workOrderNo
+  };
+}
+
+function fromApiQuotation(record: Quotation): Quotation {
+  return {
+    ...record,
+    currencyCode: record.currencyCode || "INR",
+    customerEmail: record.customerEmail || "",
+    customerPhone: record.customerPhone || "",
+    quotationNumber: record.quotationNumber || "",
+    salesLedger: record.salesLedger || "",
+    taxType: record.taxType || "cgst-sgst",
+    terms: record.terms || "",
+    workOrderNo: record.workOrderNo || ""
+  };
 }
 
 function contactPayload(payload: QuotationContactSavePayload) {

@@ -29,6 +29,7 @@ export type ExportSaleAddressDraft = Omit<
 >;
 
 export type ExportSaleAddressChoice = {
+  addressId: number;
   description: string;
   draft: ExportSaleAddressDraft;
   label: string;
@@ -81,10 +82,11 @@ export function buildExportSaleAddressChoices(record?: ExportSaleLookupRecord | 
       index === 0 ? "Billing" : `Address ${index + 1}`
     );
     return {
+      addressId: Number(address.id ?? 0),
       description: formatExportSaleAddress(draft),
       draft,
       label: draft.addressTypeName || `Address ${index + 1}`,
-      value: `${draft.addressTypeName || "address"}-${index}`
+      value: String(address.id ?? `${draft.addressTypeName || "address"}-${index}`)
     } satisfies ExportSaleAddressChoice;
   });
 }

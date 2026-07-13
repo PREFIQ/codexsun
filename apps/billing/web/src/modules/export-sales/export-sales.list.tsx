@@ -1,179 +1,237 @@
-import { Eye, Printer } from "lucide-react";
-import { Button } from "@codexsun/ui/components/button";
+import { Eye, RotateCcw, Trash2 } from "lucide-react";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
-import {
-  WorkspaceTableEmptyState,
-  WorkspaceTableHeaderCell,
-  WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
-} from "@codexsun/ui/workspace/table";
+import { WorkspaceTableEmptyState, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
 import { cn } from "@codexsun/ui/lib/utils";
 import { formatDate, formatMoney, totalExportSaleQuantity } from "./export-sales.services";
 import type { ExportSale } from "./export-sales.types";
 
 export function ExportSalesList({
-  currentPage: _currentPage,
+  canAdminRevoke,
   entries,
   loading,
   onEdit,
-  onPrint,
+  onForceDelete,
+  onRevoke,
   onSetStatus,
   onView,
+  page: _page,
+  pageSelected,
+  pageSelectableCount,
   rowsPerPage: _rowsPerPage,
+  selectedExportSaleIds,
+  onTogglePageSelection,
+  onToggleSelection,
   visibleColumns
 }: {
-  currentPage: number;
+  canAdminRevoke: boolean;
   entries: ExportSale[];
   loading: boolean;
-  onEdit: (sale: ExportSale) => void;
-  onPrint: (sale: ExportSale) => void;
-  onSetStatus: (sale: ExportSale, status: "cancelled" | "confirmed") => void;
-  onView: (sale: ExportSale) => void;
+  onEdit: (exportSale: ExportSale) => void;
+  onForceDelete: (exportSale: ExportSale) => void;
+  onRevoke: (exportSale: ExportSale) => void;
+  onSetStatus: (exportSale: ExportSale, status: "cancelled" | "confirmed") => void;
+  onView: (exportSale: ExportSale) => void;
+  page: number;
+  pageSelected: boolean;
+  pageSelectableCount: number;
   rowsPerPage: number;
+  selectedExportSaleIds: Set<string>;
+  onTogglePageSelection: (checked: boolean) => void;
+  onToggleSelection: (exportSale: ExportSale, checked: boolean) => void;
   visibleColumns: Record<string, boolean>;
 }) {
   return (
     <WorkspaceTablePanel>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1080px] border-collapse text-sm">
+        <table className="w-full min-w-[980px] border-collapse text-sm">
           <thead className="bg-muted/50">
             <tr>
-              {visibleColumns.invoice ? (
-                <WorkspaceTableHeaderCell>Invoice</WorkspaceTableHeaderCell>
-              ) : null}
-              {visibleColumns.date ? (
-                <WorkspaceTableHeaderCell>Date</WorkspaceTableHeaderCell>
-              ) : null}
-              {visibleColumns.customer ? (
-                <WorkspaceTableHeaderCell>Customer</WorkspaceTableHeaderCell>
-              ) : null}
-              {visibleColumns.items ? (
-                <WorkspaceTableHeaderCell>Items</WorkspaceTableHeaderCell>
-              ) : null}
-              {visibleColumns.subtotal ? (
-                <WorkspaceTableHeaderCell className="text-right">Subtotal</WorkspaceTableHeaderCell>
-              ) : null}
-              {visibleColumns.tax ? (
-                <WorkspaceTableHeaderCell className="text-right">Tax</WorkspaceTableHeaderCell>
-              ) : null}
-              {visibleColumns.total ? (
-                <WorkspaceTableHeaderCell className="text-right">
-                  Grand Total
-                </WorkspaceTableHeaderCell>
-              ) : null}
-              {visibleColumns.status ? (
-                <WorkspaceTableHeaderCell>Status</WorkspaceTableHeaderCell>
-              ) : null}
-              <WorkspaceTableHeaderCell className="text-center">Print</WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell className="text-right">Action</WorkspaceTableHeaderCell>
+              <th className="w-12 border-b border-border/70 px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <input
+                  aria-label="Select export sales on this page"
+                  checked={pageSelected}
+                  className="size-4 accent-primary disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={pageSelectableCount === 0}
+                  onChange={(event) => onTogglePageSelection(event.target.checked)}
+                  type="checkbox"
+                />
+              </th>
+              {[
+                "Export Sale",
+                ...(visibleColumns.customer ? ["Customer"] : []),
+                ...(visibleColumns.issuedOn ? ["Date"] : []),
+                ...(visibleColumns.items ? ["Items"] : []),
+                ...(visibleColumns.taxable ? ["Taxable"] : []),
+                ...(visibleColumns.gst ? ["GST"] : []),
+                ...(visibleColumns.total ? ["Total"] : []),
+                ...(visibleColumns.status ? ["Status"] : []),
+                ...(visibleColumns.invoice ? ["Invoice"] : []),
+                ...(visibleColumns.action ? ["Action"] : [])
+              ].map((heading) => (
+                <th
+                  key={heading}
+                  className="border-b border-border/70 px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  {heading}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {entries.map((sale, _index) => (
+            {entries.map((exportSale) => (
               <tr
-                key={sale.id}
-                className={cn(
-                  "border-b border-border/70 last:border-b-0",
-                  sale.status === "cancelled" && "bg-muted/20 text-muted-foreground"
-                )}
+                key={exportSale.id}
+                className="border-b border-border/70 transition-colors last:border-b-0 hover:bg-muted/20"
               >
-                {visibleColumns.invoice ? (
+                <td className="px-4 py-2.5 text-center">
+                  <input
+                    aria-label={`Select ${exportSale.invoiceNumber}`}
+                    checked={selectedExportSaleIds.has(exportSale.id)}
+                    className="size-4 accent-primary disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={!canSelectExportSale(exportSale)}
+                    onChange={(event) => onToggleSelection(exportSale, event.target.checked)}
+                    type="checkbox"
+                  />
+                </td>
+                <td className="px-4 py-2.5">
+                  <button
+                    className="font-semibold text-foreground underline-offset-4 hover:underline"
+                    onClick={() => onView(exportSale)}
+                    title="View export sale"
+                    type="button"
+                  >
+                    {exportSale.invoiceNumber}
+                  </button>
+                </td>
+                {visibleColumns.customer ? (
                   <td className="px-4 py-2.5">
                     <button
-                      className="font-medium hover:underline"
+                      className={cn(
+                        "font-medium underline-offset-4",
+                        exportSale.status === "draft"
+                          ? "hover:underline"
+                          : "cursor-not-allowed text-muted-foreground"
+                      )}
+                      disabled={exportSale.status !== "draft"}
+                      onClick={() => onEdit(exportSale)}
+                      title={
+                        exportSale.status === "draft"
+                          ? "Edit export sale"
+                          : "Submitted export sales cannot be edited"
+                      }
                       type="button"
-                      onClick={() => onView(sale)}
                     >
-                      {sale.invoiceNumber}
+                      {exportSale.customerName}
                     </button>
                   </td>
                 ) : null}
-                {visibleColumns.date ? (
-                  <td className="px-4 py-2.5 text-muted-foreground">{formatDate(sale.issuedOn)}</td>
-                ) : null}
-                {visibleColumns.customer ? (
-                  <td className="px-4 py-2.5">
-                    <div className="font-medium">{sale.customerName}</div>
-                    <div className="text-xs text-muted-foreground">{sale.customerEmail}</div>
-                  </td>
+                {visibleColumns.issuedOn ? (
+                  <td className="px-4 py-2.5">{formatDate(exportSale.issuedOn)}</td>
                 ) : null}
                 {visibleColumns.items ? (
-                  <td className="px-4 py-2.5 tabular-nums">{totalExportSaleQuantity(sale)}</td>
+                  <td className="px-4 py-2.5">{totalExportSaleQuantity(exportSale)}</td>
                 ) : null}
-                {visibleColumns.subtotal ? (
-                  <td className="px-4 py-2.5 text-right tabular-nums">
-                    {formatMoney(sale.subtotal, sale.currencyCode)}
-                  </td>
+                {visibleColumns.taxable ? (
+                  <td className="px-4 py-2.5">{formatMoney(exportSale.subtotal)}</td>
                 ) : null}
-                {visibleColumns.tax ? (
-                  <td className="px-4 py-2.5 text-right tabular-nums">
-                    {formatMoney(sale.taxAmount, sale.currencyCode)}
-                  </td>
+                {visibleColumns.gst ? (
+                  <td className="px-4 py-2.5">{formatMoney(exportSale.taxAmount)}</td>
                 ) : null}
                 {visibleColumns.total ? (
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums">
-                    {formatMoney(sale.amount, sale.currencyCode)}
-                  </td>
+                  <td className="px-4 py-2.5 font-semibold">{formatMoney(exportSale.amount)}</td>
                 ) : null}
                 {visibleColumns.status ? (
                   <td className="px-4 py-2.5">
-                    <WorkspaceStatusBadge label={sale.status} tone={statusTone(sale.status)} />
+                    <StatusPill exportSale={exportSale} />
                   </td>
                 ) : null}
-                <td className="px-4 py-2.5 text-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-8 rounded-md"
-                    onClick={() => onPrint(sale)}
-                  >
-                    <Printer className="size-4" />
-                    Print
-                  </Button>
-                </td>
-                <td className="px-4 py-1.5 text-right">
-                  <WorkspaceRowActions
-                    title={sale.invoiceNumber}
-                    onEdit={() => onEdit(sale)}
-                    onView={() => onView(sale)}
-                    actions={[
-                      {
-                        id: "print",
-                        icon: <Printer className="size-4" />,
-                        label: "Open print",
-                        onSelect: () => onPrint(sale)
-                      },
-                      {
-                        id: sale.status === "confirmed" ? "cancel" : "confirm",
-                        icon:
-                          sale.status === "confirmed" ? (
-                            <Eye className="size-4" />
-                          ) : (
-                            <Eye className="size-4" />
-                          ),
-                        label: sale.status === "confirmed" ? "Mark cancelled" : "Mark confirmed",
-                        onSelect: () =>
-                          onSetStatus(sale, sale.status === "confirmed" ? "cancelled" : "confirmed")
-                      }
-                    ]}
-                  />
-                </td>
+                {visibleColumns.invoice ? (
+                  <td className="px-4 py-2.5 font-semibold text-sky-700">
+                    {exportSale.invoiceNumber}
+                  </td>
+                ) : null}
+                {visibleColumns.action ? (
+                  <td className="px-4 py-2.5">
+                    <WorkspaceRowActions
+                      actions={[
+                        ...(exportSale.status === "draft"
+                          ? [
+                              {
+                                id: "confirm",
+                                label: "Confirm",
+                                icon: <Eye className="size-4" />,
+                                onSelect: () => onSetStatus(exportSale, "confirmed")
+                              }
+                            ]
+                          : []),
+                        ...(canAdminRevoke && exportSale.status === "confirmed"
+                          ? [
+                              {
+                                id: "revoke",
+                                label: "Revoke by admin",
+                                icon: <RotateCcw className="size-4" />,
+                                onSelect: () => onRevoke(exportSale)
+                              }
+                            ]
+                          : []),
+                        ...(exportSale.status !== "cancelled"
+                          ? [
+                              {
+                                id: "suspend",
+                                label: "Suspend",
+                                icon: <Trash2 className="size-4" />,
+                                tone: "destructive" as const,
+                                onSelect: () => onSetStatus(exportSale, "cancelled")
+                              }
+                            ]
+                          : []),
+                        ...(exportSale.status === "draft"
+                          ? [
+                              {
+                                id: "force-delete",
+                                label: "Force delete",
+                                icon: <Trash2 className="size-4" />,
+                                tone: "destructive" as const,
+                                onSelect: () => onForceDelete(exportSale)
+                              }
+                            ]
+                          : [])
+                      ]}
+                      {...(exportSale.status === "draft"
+                        ? { onEdit: () => onEdit(exportSale) }
+                        : {})}
+                      onView={() => onView(exportSale)}
+                      title={exportSale.invoiceNumber}
+                    />
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {loading ? <WorkspaceTableSkeletonRows columns={10} /> : null}
-      {!loading && entries.length === 0 ? (
-        <WorkspaceTableEmptyState>No sales records found.</WorkspaceTableEmptyState>
+      {entries.length === 0 ? (
+        <WorkspaceTableEmptyState>
+          {loading ? "Loading export sales..." : "No export sales found."}
+        </WorkspaceTableEmptyState>
       ) : null}
     </WorkspaceTablePanel>
   );
 }
 
-function statusTone(status: ExportSale["status"]) {
-  if (status === "confirmed") return "success";
-  if (status === "cancelled") return "danger";
-  return "warning";
+function StatusPill({
+  exportSale,
+  status
+}: {
+  exportSale?: ExportSale;
+  status?: ExportSale["status"];
+}) {
+  const label = status ?? exportSale?.status ?? "draft";
+  const tone = label === "confirmed" ? "success" : label === "cancelled" ? "danger" : "warning";
+  return <WorkspaceStatusBadge label={label} tone={tone} />;
+}
+
+export function canSelectExportSale(exportSale: ExportSale) {
+  return exportSale.status !== "cancelled";
 }

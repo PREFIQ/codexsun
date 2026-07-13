@@ -9,13 +9,27 @@ export const stateSeed = {
 export async function seedStateModule() {
   const countries = await sql<{
     id: number;
-  }>`SELECT id FROM countries WHERE code = 'IN' LIMIT 1`.execute(getCoreDatabase());
-  const countryId = countries.rows[0]?.id;
-  if (!countryId) throw new Error("India country seed must exist before state seeds are applied.");
+    code: string;
+  }>`SELECT id,code FROM countries WHERE code IN ('UNKNOWN','IN')`.execute(getCoreDatabase());
+  const countryIds = new Map(countries.rows.map((country) => [country.code, country.id]));
+  const defaultCountryId = countryIds.get("UNKNOWN");
+  const indiaId = countryIds.get("IN");
+  if (!defaultCountryId || !indiaId)
+    throw new Error("Default and India country seeds must exist before state seeds are applied.");
+
+  const fallback = await sql<{ id: number }>`SELECT id FROM states
+    WHERE code='UNKNOWN' OR name='-' ORDER BY id LIMIT 1`.execute(getCoreDatabase());
+  if (fallback.rows[0]?.id) {
+    await sql`UPDATE states SET country_id=${defaultCountryId},code='UNKNOWN',name='-',sort_order=0,status='active'
+      WHERE id=${fallback.rows[0].id}`.execute(getCoreDatabase());
+  } else {
+    await sql`INSERT INTO states (country_id,code,name,sort_order,status)
+      VALUES (${defaultCountryId},'UNKNOWN','-',0,'active')`.execute(getCoreDatabase());
+  }
 
   for (const state of stateSeeds) {
     await sql`INSERT INTO states (country_id, code, name, sort_order, status)
-      VALUES (${countryId}, ${state.code}, ${state.name}, ${state.sortOrder}, ${state.status})
+      VALUES (${indiaId}, ${state.code}, ${state.name}, ${state.sortOrder}, ${state.status})
       ON DUPLICATE KEY UPDATE country_id=VALUES(country_id), code=VALUES(code), name=VALUES(name), sort_order=VALUES(sort_order), status=VALUES(status)`.execute(
       getCoreDatabase()
     );
@@ -23,7 +37,6 @@ export async function seedStateModule() {
 }
 
 const stateSeeds = [
-  { code: "UNKNOWN", name: "-", sortOrder: 0, status: "active" as const },
   { code: "01", name: "Jammu and Kashmir", sortOrder: 1, status: "active" as const },
   { code: "02", name: "Himachal Pradesh", sortOrder: 2, status: "active" as const },
   { code: "03", name: "Punjab", sortOrder: 3, status: "active" as const },

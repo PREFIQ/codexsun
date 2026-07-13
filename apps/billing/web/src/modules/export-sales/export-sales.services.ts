@@ -4,7 +4,14 @@ import {
   billingApiPost,
   billingApiPut
 } from "../../shared/api/billing-api";
-import type { ExportSale, ExportSaleSavePayload, ExportSaleStatus } from "./export-sales.types";
+import {
+  createEmptyExportSaleEinvoice,
+  createEmptyExportSaleEway,
+  type ExportSale,
+  type ExportSaleContext,
+  type ExportSaleSavePayload,
+  type ExportSaleStatus
+} from "./export-sales.types";
 
 export type ExportSaleLookupOption = {
   description?: string;
@@ -18,6 +25,7 @@ export type ExportSaleLookupRecord = {
   addresses?: Array<Record<string, unknown>>;
   code?: string | null;
   description?: string | null;
+  gst?: string | null;
   gstin?: string | null;
   hsnCode?: string | null;
   id: string;
@@ -38,6 +46,7 @@ export type ExportSaleLookupRecord = {
   taxId?: string | null;
   typeName?: string | null;
   unitName?: string | null;
+  vehicleNo?: string | null;
   workOrderNo?: string | null;
 };
 
@@ -97,6 +106,15 @@ export type ExportSaleMasterSavePayload = {
   unitName: string;
 };
 
+export type ExportSaleTransportSavePayload = {
+  address: string;
+  contactNo: string;
+  contactPerson: string;
+  gst: string;
+  name: string;
+  vehicleNo: string;
+};
+
 export async function listExportSales() {
   return billingApiGet<ExportSale[]>("/billing/export-sales").then((records) =>
     records.map(fromApiExportSale)
@@ -105,6 +123,10 @@ export async function listExportSales() {
 
 export async function getExportSale(id: string) {
   return billingApiGet<ExportSale>(`/billing/export-sales/${id}`).then(fromApiExportSale);
+}
+
+export function getExportSaleContext() {
+  return billingApiGet<ExportSaleContext>("/billing/export-sales/context");
 }
 
 export async function createExportSale(payload: ExportSaleSavePayload) {
@@ -133,6 +155,18 @@ export async function revokeExportSale(id: string) {
   return billingApiPost<ExportSale>(`/billing/export-sales/${id}/revoke`).then(fromApiExportSale);
 }
 
+export async function generateExportSaleEinvoice(id: string, einvoice?: ExportSale["einvoice"]) {
+  return billingApiPost<ExportSale>(`/billing/export-sales/${id}/einvoice/generate`, {
+    einvoice
+  }).then(fromApiExportSale);
+}
+
+export async function generateExportSaleEway(id: string, eway?: ExportSale["eway"]) {
+  return billingApiPost<ExportSale>(`/billing/export-sales/${id}/eway/generate`, { eway }).then(
+    fromApiExportSale
+  );
+}
+
 export function createExportSaleContact(payload: ExportSaleContactSavePayload) {
   return billingApiPost<ExportSaleLookupRecord>(
     "/billing/export-sales/lookups/contacts",
@@ -150,21 +184,31 @@ export function updateExportSaleContact(id: string, payload: ExportSaleContactSa
 export function listExportSaleLocations(
   kind: "cities" | "countries" | "districts" | "pincodes" | "states"
 ) {
-  return billingApiGet<ExportSaleLocationRecord[]>(`/billing/export-sales/lookups/${kind}`);
+  const paths = {
+    cities: "/billing/export-sales/lookups/cities",
+    countries: "/billing/export-sales/lookups/countries",
+    districts: "/billing/export-sales/lookups/districts",
+    pincodes: "/billing/export-sales/lookups/pincodes",
+    states: "/billing/export-sales/lookups/states"
+  } as const;
+  return billingApiGet<ExportSaleLocationRecord[]>(paths[kind]);
 }
 
 export function createExportSaleLocation(
   kind: ExportSaleLocationKind,
   payload: Record<string, unknown>
 ) {
-  return billingApiPost<ExportSaleLocationRecord>(
-    `/billing/export-sales/lookups/locations/${kind}`,
-    payload
-  );
+  const paths = {
+    cities: "/billing/export-sales/lookups/cities",
+    districts: "/billing/export-sales/lookups/districts",
+    pincodes: "/billing/export-sales/lookups/pincodes",
+    states: "/billing/export-sales/lookups/states"
+  } as const;
+  return billingApiPost<ExportSaleLocationRecord>(paths[kind], payload);
 }
 
 export function listExportSaleAddressTypes() {
-  return billingApiGet<ExportSaleLookupRecord[]>("/billing/export-sales/lookups/addressTypes");
+  return billingApiGet<ExportSaleLookupRecord[]>("/billing/export-sales/lookups/address-types");
 }
 
 export function createExportSaleAddressType(name: string) {
@@ -183,18 +227,32 @@ export function createExportSaleLookup(
     | "productCategories"
     | "hsnCodes"
     | "units"
-    | "taxes",
+    | "taxes"
+    | "transports",
   payload: Record<string, unknown>
 ) {
-  return billingApiPost<ExportSaleLookupRecord>(`/billing/export-sales/lookups/${kind}`, payload);
+  const paths = {
+    colours: "/billing/export-sales/lookups/colours",
+    hsnCodes: "/billing/export-sales/lookups/hsn-codes",
+    productCategories: "/billing/export-sales/lookups/product-categories",
+    products: "/billing/export-sales/lookups/products",
+    sizes: "/billing/export-sales/lookups/sizes",
+    taxes: "/billing/export-sales/lookups/taxes",
+    transports: "/billing/export-sales/lookups/transports",
+    units: "/billing/export-sales/lookups/units",
+    workOrders: "/billing/export-sales/lookups/work-orders"
+  } as const;
+  return billingApiPost<ExportSaleLookupRecord>(paths[kind], payload);
 }
 
 export function listExportSaleProductCategories() {
-  return billingApiGet<ExportSaleLookupRecord[]>("/billing/export-sales/lookups/productCategories");
+  return billingApiGet<ExportSaleLookupRecord[]>(
+    "/billing/export-sales/lookups/product-categories"
+  );
 }
 
 export function listExportSaleHsnCodes() {
-  return billingApiGet<ExportSaleLookupRecord[]>("/billing/export-sales/lookups/hsnCodes");
+  return billingApiGet<ExportSaleLookupRecord[]>("/billing/export-sales/lookups/hsn-codes");
 }
 
 export function listExportSaleUnits() {
@@ -211,7 +269,9 @@ export function updateExportSaleLookup(
   payload: Record<string, unknown>
 ) {
   return billingApiPut<ExportSaleLookupRecord>(
-    `/billing/export-sales/lookups/${kind}/${id}`,
+    kind === "products"
+      ? `/billing/export-sales/lookups/products/${id}`
+      : `/billing/export-sales/lookups/work-orders/${id}`,
     payload
   );
 }
@@ -231,7 +291,7 @@ export function listExportSaleContacts() {
 }
 
 export function listExportSaleWorkOrders() {
-  return billingApiGet<ExportSaleLookupRecord[]>("/billing/export-sales/lookups/workOrders").then(
+  return billingApiGet<ExportSaleLookupRecord[]>("/billing/export-sales/lookups/work-orders").then(
     (records) =>
       records.filter(isActiveRecord).map((record) => {
         const workOrderNo = record.code || record.workOrderNo || record.name || record.id;
@@ -265,41 +325,76 @@ export function listExportSaleSizes() {
   return listExportSaleCommonOptions("sizes");
 }
 
+export function listExportSaleTransports() {
+  return billingApiGet<ExportSaleLookupRecord[]>("/billing/export-sales/lookups/transports").then(
+    (records) =>
+      records.filter(isActiveRecord).map((record) =>
+        lookupOption(record, {
+          description: record.gst || record.vehicleNo || "",
+          label: record.name || record.code || record.id,
+          meta: record.gst || "",
+          value: record.name || record.code || record.id
+        })
+      )
+  );
+}
+
+export function createExportSaleTransport(payload: ExportSaleTransportSavePayload) {
+  return createExportSaleLookup("transports", { ...payload, isActive: true });
+}
+
 export function exportSaleToPayload(exportSale: ExportSale): ExportSaleSavePayload {
   return {
     billingAddress: exportSale.billingAddress,
+    billingAddressId: exportSale.billingAddressId,
+    companyId: exportSale.companyId,
+    currencyCode: exportSale.currencyCode,
+    currencyId: exportSale.currencyId,
     customerEmail: exportSale.customerEmail,
+    customerId: exportSale.customerId,
     customerName: exportSale.customerName,
     customerPhone: exportSale.customerPhone,
+    einvoice: exportSale.einvoice ?? createEmptyExportSaleEinvoice(),
     issuedOn: exportSale.issuedOn,
+    financialYearId: exportSale.financialYearId,
     items: exportSale.items.map((item) => ({
       colour: item.colour,
+      colourId: item.colourId,
       dcNo: item.dcNo,
       description: item.description,
       hsnCode: item.hsnCode,
+      hsnCodeId: item.hsnCodeId,
       poNo: item.poNo,
       productName: item.productName,
+      productId: item.productId,
       quantity: item.quantity,
       rate: item.rate,
       size: item.size,
+      sizeId: item.sizeId,
+      taxId: item.taxId,
       taxRate: item.taxRate,
-      unit: item.unit
+      unit: item.unit,
+      unitId: item.unitId
     })),
     notes: exportSale.notes,
-    invoiceNumber: exportSale.invoiceNumber || exportSale.invoiceNumber,
+    ledgerId: exportSale.ledgerId,
+    invoiceNumber: exportSale.invoiceNumber,
     roundOff: exportSale.roundOff,
     salesLedger: exportSale.salesLedger,
     shippingAddress: exportSale.shippingAddress,
+    shippingAddressId: exportSale.shippingAddressId,
     status: exportSale.status,
     taxType: exportSale.taxType,
     terms: exportSale.terms,
-    workOrderNo: exportSale.workOrderNo
+    workOrderId: exportSale.workOrderId,
+    workOrderNo: exportSale.workOrderNo,
+    eway: exportSale.eway ?? createEmptyExportSaleEway()
   };
 }
 
-export function formatMoney(value: number, currencyCode = "INR") {
+export function formatMoney(value: number) {
   return new Intl.NumberFormat("en-IN", {
-    currency: currencyCode,
+    currency: "INR",
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
     style: "currency"
@@ -352,36 +447,47 @@ function isActiveRecord(record: ExportSaleLookupRecord) {
 function toApiPayload(payload: ExportSaleSavePayload) {
   return {
     billingAddress: payload.billingAddress,
+    billingAddressId: payload.billingAddressId,
+    companyId: payload.companyId,
     currencyCode: payload.currencyCode || "INR",
+    currencyId: payload.currencyId,
     customerEmail: payload.customerEmail,
+    customerId: payload.customerId,
     customerName: payload.customerName,
     customerPhone: payload.customerPhone,
-    invoiceNumber: payload.invoiceNumber || payload.invoiceNumber || "",
+    einvoice: payload.einvoice,
+    invoiceNumber: payload.invoiceNumber,
+    financialYearId: payload.financialYearId,
     issuedOn: payload.issuedOn,
     items: payload.items,
     notes: payload.notes,
+    ledgerId: payload.ledgerId,
     roundOff: payload.roundOff,
     salesLedger: payload.salesLedger,
     shippingAddress: payload.shippingAddress,
+    shippingAddressId: payload.shippingAddressId,
     status: payload.status,
     taxType: payload.taxType,
     terms: payload.terms,
-    workOrderNo: payload.workOrderNo
+    workOrderId: payload.workOrderId,
+    workOrderNo: payload.workOrderNo,
+    eway: payload.eway
   };
 }
 
 function fromApiExportSale(record: ExportSale): ExportSale {
-  const invoiceNumber = record.invoiceNumber || "";
   return {
     ...record,
     currencyCode: record.currencyCode || "INR",
     customerEmail: record.customerEmail || "",
     customerPhone: record.customerPhone || "",
-    invoiceNumber,
+    einvoice: record.einvoice ?? createEmptyExportSaleEinvoice(),
+    invoiceNumber: record.invoiceNumber || "",
     salesLedger: record.salesLedger || "",
     taxType: record.taxType || "cgst-sgst",
     terms: record.terms || "",
-    workOrderNo: record.workOrderNo || ""
+    workOrderNo: record.workOrderNo || "",
+    eway: record.eway ?? createEmptyExportSaleEway()
   };
 }
 

@@ -1,4 +1,282 @@
-import { ReceiptWorkspace } from "./receipt.page";
-export function ReceiptWorkspaceBoundary() {
-  return <ReceiptWorkspace />;
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Pencil, Plus, Printer, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@codexsun/ui/components/button";
+import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
+import { WorkspacePage } from "@codexsun/ui/workspace/page";
+import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
+import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
+import { useReceiptContext, useReceiptList, receiptQueryKey } from "./receipt.hooks";
+import { ReceiptForm } from "./receipt.form";
+import { ReceiptList } from "./receipt.list";
+import { ReceiptPrint } from "./receipt.print";
+import {
+  cancelReceipt,
+  createReceipt,
+  deleteReceipt,
+  formatReceiptMoney,
+  postReceipt,
+  updateReceipt
+} from "./receipt.services";
+import type { Receipt, ReceiptSavePayload, ReceiptView } from "./receipt.types";
+
+const statusFilters = [
+  { id: "all", label: "All receipts" },
+  { id: "draft", label: "Draft" },
+  { id: "posted", label: "Posted" },
+  { id: "cancelled", label: "Cancelled" }
+];
+
+export function ReceiptWorkspace() {
+  const queryClient = useQueryClient();
+  const receiptsQuery = useReceiptList();
+  const contextQuery = useReceiptContext();
+  const [view, setView] = useState<ReceiptView>({ mode: "list" });
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const save = useMutation({
+    mutationFn: ({ id, payload }: { id?: string; payload: ReceiptSavePayload }) =>
+      id ? updateReceipt(id, payload) : createReceipt(payload),
+    onSuccess: async (receipt) => {
+      await queryClient.invalidateQueries({ queryKey: receiptQueryKey });
+      toast.success("Receipt saved", { description: receipt.receiptNumber });
+      setView({ mode: "show", receipt });
+    }
+  });
+  const lifecycle = useMutation({
+    mutationFn: ({ action, id }: { action: "post" | "cancel"; id: string }) =>
+      action === "post" ? postReceipt(id) : cancelReceipt(id),
+    onSuccess: async (receipt) => {
+      await queryClient.invalidateQueries({ queryKey: receiptQueryKey });
+      toast.success(`Receipt ${receipt.status}`);
+      setView({ mode: "show", receipt });
+    },
+    onError: (error) => toast.error("Receipt action failed", { description: message(error) })
+  });
+  const remove = useMutation({
+    mutationFn: deleteReceipt,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: receiptQueryKey });
+      toast.success("Draft receipt deleted");
+      setView({ mode: "list" });
+    },
+    onError: (error) => toast.error("Receipt could not be deleted", { description: message(error) })
+  });
+  const entries = receiptsQuery.data ?? [];
+  const filtered = useMemo(
+    () =>
+      entries.filter(
+        (receipt) =>
+          (statusFilter === "all" || receipt.status === statusFilter) &&
+          [
+            receipt.receiptNumber,
+            receipt.customerName,
+            receipt.ledgerName,
+            receipt.receiptMode,
+            receipt.status
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(search.toLowerCase())
+      ),
+    [entries, search, statusFilter]
+  );
+  const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+  const pageEntries = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  if (view.mode === "upsert")
+    return (
+      <ReceiptForm
+        context={contextQuery.data ?? null}
+        error={save.error ? message(save.error) : undefined}
+        receipt={view.receipt}
+        saving={save.isPending}
+        onCancel={() =>
+          setView(
+            view.returnTo === "show" && view.receipt
+              ? { mode: "show", receipt: view.receipt }
+              : { mode: "list" }
+          )
+        }
+        onSave={(payload) =>
+          save.mutate({ ...(view.receipt ? { id: view.receipt.id } : {}), payload })
+        }
+      />
+    );
+  if (view.mode === "show")
+    return (
+      <ReceiptShow
+        receipt={view.receipt}
+        onBack={() => setView({ mode: "list" })}
+        onEdit={() => setView({ mode: "upsert", receipt: view.receipt, returnTo: "show" })}
+        onPost={() => lifecycle.mutate({ action: "post", id: view.receipt.id })}
+        onCancel={() => lifecycle.mutate({ action: "cancel", id: view.receipt.id })}
+      />
+    );
+  return (
+    <WorkspacePage
+      action={
+        <div className="flex gap-2">
+          <Button onClick={() => void receiptsQuery.refetch()} type="button" variant="outline">
+            <RefreshCw className="size-4" />
+            Refresh
+          </Button>
+          <Button
+            onClick={() => {
+              void contextQuery.refetch();
+              setView({ mode: "upsert", receipt: null, returnTo: "list" });
+            }}
+            type="button"
+          >
+            <Plus className="size-4" />
+            New receipt
+          </Button>
+        </div>
+      }
+      description="Create, review, allocate, post, and print tenant-isolated receipt vouchers."
+      title="Receipts"
+    >
+      <WorkspaceFilters
+        filterOptions={statusFilters}
+        filterValue={statusFilter}
+        onFilterValueChange={(value) => {
+          setStatusFilter(value);
+          setPage(1);
+        }}
+        onSearchValueChange={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        searchPlaceholder="Search receipt, customer, ledger, mode, or status"
+        searchValue={search}
+      />
+      {receiptsQuery.isError ? (
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          {message(receiptsQuery.error)}
+        </p>
+      ) : null}
+      <ReceiptList
+        entries={pageEntries}
+        loading={receiptsQuery.isLoading}
+        onView={(receipt) => setView({ mode: "show", receipt })}
+        onEdit={(receipt) => setView({ mode: "upsert", receipt, returnTo: "list" })}
+        onPost={(receipt) =>
+          confirmAction(`Post ${receipt.receiptNumber}?`, () =>
+            lifecycle.mutate({ action: "post", id: receipt.id })
+          )
+        }
+        onCancel={(receipt) =>
+          confirmAction(`Cancel ${receipt.receiptNumber}?`, () =>
+            lifecycle.mutate({ action: "cancel", id: receipt.id })
+          )
+        }
+        onDelete={(receipt) =>
+          confirmAction(`Delete draft ${receipt.receiptNumber}?`, () => remove.mutate(receipt.id))
+        }
+      />
+      <WorkspacePagination
+        onNextPage={() => setPage((current) => Math.min(totalPages, current + 1))}
+        onPageChange={setPage}
+        onPreviousPage={() => setPage((current) => Math.max(1, current - 1))}
+        onRowsPerPageChange={(value) => {
+          setRowsPerPage(value);
+          setPage(1);
+        }}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        showingLabel={showingLabel(filtered.length, page, rowsPerPage)}
+        singularLabel="receipt"
+        totalCount={filtered.length}
+        totalPages={totalPages}
+      />
+    </WorkspacePage>
+  );
+}
+
+function ReceiptShow({
+  receipt,
+  onBack,
+  onCancel,
+  onEdit,
+  onPost
+}: {
+  receipt: Receipt;
+  onBack: () => void;
+  onCancel: () => void;
+  onEdit: () => void;
+  onPost: () => void;
+}) {
+  return (
+    <WorkspacePage
+      action={
+        <div className="flex gap-2">
+          {receipt.status === "draft" ? (
+            <>
+              <Button onClick={onEdit} type="button" variant="outline">
+                <Pencil className="size-4" />
+                Edit
+              </Button>
+              <Button onClick={onPost} type="button">
+                Post
+              </Button>
+            </>
+          ) : null}
+          {receipt.status === "posted" ? (
+            <Button onClick={onCancel} type="button" variant="destructive">
+              Cancel
+            </Button>
+          ) : null}
+          <Button onClick={() => window.print()} type="button" variant="outline">
+            <Printer className="size-4" />
+            Print
+          </Button>
+        </div>
+      }
+      description={`${receipt.customerName} · ${receipt.receiptDate}`}
+      onBack={onBack}
+      title={receipt.receiptNumber}
+    >
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <ReceiptPrint receipt={receipt} />
+        <div className="rounded-md border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Receipt summary</h2>
+            <WorkspaceStatusBadge status={receipt.status} />
+          </div>
+          <dl className="mt-4 grid gap-3 text-sm">
+            <Summary label="Company" value={receipt.companyName} />
+            <Summary label="Financial year" value={receipt.financialYearName} />
+            <Summary label="Ledger" value={receipt.ledgerName} />
+            <Summary label="Amount" value={formatReceiptMoney(receipt.amount)} />
+            <Summary label="Allocated" value={formatReceiptMoney(receipt.allocatedAmount)} />
+            <Summary label="Unallocated" value={formatReceiptMoney(receipt.unallocatedAmount)} />
+            <Summary label="Total" value={formatReceiptMoney(receipt.totalAmount)} />
+          </dl>
+        </div>
+      </div>
+    </WorkspacePage>
+  );
+}
+function Summary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium">{value}</dd>
+    </div>
+  );
+}
+function showingLabel(total: number, page: number, rows: number) {
+  if (!total) return "Showing 0 receipts";
+  return `Showing ${(page - 1) * rows + 1}-${Math.min(page * rows, total)} of ${total}`;
+}
+function confirmAction(question: string, action: () => void) {
+  if (window.confirm(question)) action();
+}
+function message(error: unknown) {
+  return error instanceof Error ? error.message : "An unexpected Receipt error occurred.";
 }

@@ -3,6 +3,12 @@ import type { CoreDatabase } from "../../database/core-database.js";
 import { migrateContactModule } from "./contact/index.js";
 import { migrateProductModule } from "./product/index.js";
 import { migrateWorkOrderModule } from "./work-order/index.js";
+
+export const masterMigration = {
+  description: "Contact, product, and work-order master foundation.",
+  key: "core.master.foundation-v1"
+} as const;
+
 export async function migrateMasterModule(database: Kysely<CoreDatabase>) {
   await migrateContactModule(database);
   await migrateProductModule(database);

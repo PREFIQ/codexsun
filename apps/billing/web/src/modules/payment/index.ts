@@ -1,1 +1,2 @@
-export { PaymentPage, PaymentWorkspace } from "./payment.page";
+export { PaymentPage } from "./payment.page";
+export { PaymentWorkspace } from "./payment.workspace";

@@ -29,6 +29,7 @@ export type PurchaseAddressDraft = Omit<
 >;
 
 export type PurchaseAddressChoice = {
+  addressId: number;
   description: string;
   draft: PurchaseAddressDraft;
   label: string;
@@ -81,10 +82,11 @@ export function buildPurchaseAddressChoices(record?: PurchaseLookupRecord | null
       index === 0 ? "Billing" : `Address ${index + 1}`
     );
     return {
+      addressId: Number(address.id ?? 0),
       description: formatPurchaseAddress(draft),
       draft,
       label: draft.addressTypeName || `Address ${index + 1}`,
-      value: `${draft.addressTypeName || "address"}-${index}`
+      value: String(address.id ?? `${draft.addressTypeName || "address"}-${index}`)
     } satisfies PurchaseAddressChoice;
   });
 }
@@ -134,10 +136,10 @@ export function PurchaseAddressField({
           <WorkspaceLookup
             allowTextValue={false}
             emptyLabel={
-              disabled ? "Select customer first." : "No saved addresses found on this contact."
+              disabled ? "Select supplier first." : "No saved addresses found on this contact."
             }
             options={options}
-            placeholder={disabled ? "Search customer first" : `Search ${label.toLowerCase()}`}
+            placeholder={disabled ? "Search supplier first" : `Search ${label.toLowerCase()}`}
             value={selectedValue}
             {...(disabled !== undefined ? { disabled } : {})}
             onValueChange={(value) => {

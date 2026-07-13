@@ -1,5 +1,10 @@
 import { sql, type Kysely } from "kysely";
 import type { PlatformDatabase, TenantDatabase } from "../../database/schema.js";
+import { migrateTenantPermissionModule } from "../tenant-permission/index.js";
+import { migrateTenantRolePermissionModule } from "../tenant-role-permission/index.js";
+import { migrateTenantRoleModule } from "../tenant-role/index.js";
+import { migrateTenantUserRoleModule } from "../tenant-user-role/index.js";
+import { migrateTenantUserModule } from "../tenant-user/index.js";
 
 export const tenantMigration = {
   key: "platform.tenant.foundation",
@@ -15,11 +20,7 @@ export const tenantRuntimeMigrations = [
       "RENAME legacy tenant_* tables to module-owned names when present",
       "CREATE TABLE IF NOT EXISTS schema_migrations (...)",
       "CREATE TABLE IF NOT EXISTS module_settings (...)",
-      "CREATE TABLE IF NOT EXISTS users (...)",
-      "CREATE TABLE IF NOT EXISTS roles (...)",
-      "CREATE TABLE IF NOT EXISTS permissions (...)",
-      "CREATE TABLE IF NOT EXISTS role_permissions (...)",
-      "CREATE TABLE IF NOT EXISTS user_roles (...)",
+      "RUN module-owned tenant access migrations in dependency order",
       "INSERT IGNORE INTO schema_migrations (name) VALUES ('001_tenant_foundation'), ('002_runtime_table_names'), ('004_flatten_access_table_names')"
     ]
   }
@@ -93,59 +94,11 @@ export async function migrateTenantRuntimeModule(database: Kysely<TenantDatabase
     .addColumn("updated_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .execute();
 
-  await database.schema
-    .createTable("users")
-    .ifNotExists()
-    .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
-    .addColumn("uuid", "varchar(8)", (col) => col.notNull().unique())
-    .addColumn("name", "varchar(180)", (col) => col.notNull())
-    .addColumn("email", "varchar(180)", (col) => col.notNull().unique())
-    .addColumn("password_hash", "varchar(255)", (col) => col.notNull())
-    .addColumn("role", "varchar(80)", (col) => col.notNull())
-    .addColumn("status", "varchar(24)", (col) => col.notNull().defaultTo("active"))
-    .addColumn("created_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-    .addColumn("updated_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-    .execute();
-
-  await database.schema
-    .createTable("roles")
-    .ifNotExists()
-    .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
-    .addColumn("uuid", "varchar(8)", (col) => col.notNull().unique())
-    .addColumn("key", "varchar(120)", (col) => col.notNull().unique())
-    .addColumn("label", "varchar(160)", (col) => col.notNull())
-    .addColumn("status", "varchar(24)", (col) => col.notNull().defaultTo("active"))
-    .addColumn("created_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-    .addColumn("updated_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-    .execute();
-
-  await database.schema
-    .createTable("permissions")
-    .ifNotExists()
-    .addColumn("id", "integer", (col) => col.primaryKey().autoIncrement())
-    .addColumn("uuid", "varchar(8)", (col) => col.notNull().unique())
-    .addColumn("key", "varchar(160)", (col) => col.notNull().unique())
-    .addColumn("label", "varchar(160)", (col) => col.notNull())
-    .addColumn("status", "varchar(24)", (col) => col.notNull().defaultTo("active"))
-    .addColumn("created_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-    .addColumn("updated_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
-    .execute();
-
-  await database.schema
-    .createTable("role_permissions")
-    .ifNotExists()
-    .addColumn("role_id", "integer", (col) => col.notNull())
-    .addColumn("permission_id", "integer", (col) => col.notNull())
-    .addPrimaryKeyConstraint("role_permissions_pk", ["role_id", "permission_id"])
-    .execute();
-
-  await database.schema
-    .createTable("user_roles")
-    .ifNotExists()
-    .addColumn("user_id", "integer", (col) => col.notNull())
-    .addColumn("role_id", "integer", (col) => col.notNull())
-    .addPrimaryKeyConstraint("user_roles_pk", ["user_id", "role_id"])
-    .execute();
+  await migrateTenantUserModule(database);
+  await migrateTenantRoleModule(database);
+  await migrateTenantPermissionModule(database);
+  await migrateTenantUserRoleModule(database);
+  await migrateTenantRolePermissionModule(database);
 
   await database
     .insertInto("schema_migrations")

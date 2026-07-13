@@ -1,5 +1,15 @@
 export type SaleStatus = "draft" | "confirmed" | "cancelled";
+export type SaleTaxType = "cgst-sgst" | "igst";
 export type GstDocumentStatus = "not-generated" | "generated";
+
+export type SaleContext = {
+  companyId: number;
+  companyName: string;
+  currencyCode: string;
+  currencyId: number;
+  financialYearId: number;
+  financialYearName: string;
+};
 
 export type SaleEwayDetails = {
   billDate: string;
@@ -9,6 +19,7 @@ export type SaleEwayDetails = {
   status: GstDocumentStatus;
   transport: string;
   transportGst: string;
+  transportId: number | null;
   vehicleNo: string;
 };
 
@@ -21,23 +32,30 @@ export type SaleEinvoiceDetails = {
 };
 
 export type SaleLineItemInput = {
-  colour?: string;
-  dcNo?: string;
+  colour?: string | undefined;
+  colourId: number | null;
+  dcNo?: string | undefined;
   description: string;
   hsnCode: string;
-  poNo?: string;
-  productName?: string;
+  hsnCodeId: number | null;
+  poNo?: string | undefined;
+  productId: number | null;
+  productName?: string | undefined;
   quantity: number;
   rate: number;
-  size?: string;
+  size?: string | undefined;
+  sizeId: number | null;
+  taxId: number | null;
   taxRate: number;
   unit: string;
+  unitId: number;
 };
 
 export type SaleLineItem = SaleLineItemInput & {
   cgstAmount: number;
   id: string;
   igstAmount: number;
+  lineNumber: number;
   lineTotal: number;
   sgstAmount: number;
   taxableAmount: number;
@@ -47,47 +65,66 @@ export type SaleLineItem = SaleLineItemInput & {
 export type Sale = {
   amount: number;
   billingAddress: string;
+  billingAddressId: number;
+  companyId: number;
+  companyName: string;
   createdAt: string;
   currencyCode: string;
+  currencyId: number;
   customerEmail: string;
+  customerId: number;
   customerName: string;
   customerPhone: string;
   einvoice: SaleEinvoiceDetails;
   eway: SaleEwayDetails;
+  financialYearId: number;
+  financialYearName: string;
   id: string;
   invoiceNumber: string;
   issuedOn: string;
   items: SaleLineItem[];
+  ledgerId: number | null;
+  lineNumber: number;
   notes: string;
   roundOff: number;
-  shippingAddress: string;
   salesLedger: string;
+  shippingAddress: string;
+  shippingAddressId: number;
   status: SaleStatus;
   subtotal: number;
   taxAmount: number;
-  taxType: "cgst-sgst" | "igst";
+  taxType: SaleTaxType;
   terms: string;
   updatedAt: string;
+  workOrderId: number | null;
   workOrderNo: string;
 };
 
 export type SaleSavePayload = {
   billingAddress: string;
+  billingAddressId: number;
+  companyId: number;
   currencyCode: string;
+  currencyId: number;
   customerEmail: string;
+  customerId: number;
   customerName: string;
   customerPhone: string;
-  einvoice?: SaleEinvoiceDetails;
-  eway?: SaleEwayDetails;
+  einvoice?: SaleEinvoiceDetails | undefined;
+  eway?: SaleEwayDetails | undefined;
+  financialYearId: number;
   invoiceNumber: string;
   issuedOn: string;
   items: SaleLineItemInput[];
+  ledgerId: number | null;
   notes: string;
-  roundOff?: number;
+  roundOff?: number | undefined;
+  salesLedger?: string | undefined;
   shippingAddress: string;
-  salesLedger?: string;
+  shippingAddressId: number;
   status: SaleStatus;
-  taxType?: "cgst-sgst" | "igst";
-  terms?: string;
-  workOrderNo?: string;
+  taxType?: SaleTaxType | undefined;
+  terms?: string | undefined;
+  workOrderId: number | null;
+  workOrderNo?: string | undefined;
 };

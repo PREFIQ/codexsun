@@ -83,8 +83,13 @@ if (stackServices.includes("platform-api")) {
   const env = loadDotEnv();
   await waitForPort(requiredPort(env.PLATFORM_API_PORT, "PLATFORM_API_PORT"));
 }
+if (stackServices.includes("core-api")) {
+  startService("core-api");
+  const env = loadDotEnv();
+  await waitForPort(requiredPort(env.CORE_API_PORT, "CORE_API_PORT"));
+}
 for (const serviceName of stackServices) {
-  if (serviceName !== "platform-api") startService(serviceName);
+  if (serviceName !== "platform-api" && serviceName !== "core-api") startService(serviceName);
 }
 
 for (const signal of ["SIGINT", "SIGTERM"]) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { Save, X } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
@@ -8,17 +8,29 @@ import {
   type WorkspaceAnimatedTab
 } from "@codexsun/ui/workspace/animated-tabs";
 import { WorkspaceDatePicker } from "@codexsun/ui/workspace/date-picker";
-import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
+import { WorkspaceLookup } from "@codexsun/ui/workspace/lookup";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
+import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import {
   WorkspaceFormActions,
+  WorkspaceFormBanner,
   WorkspaceFormField,
   WorkspaceFormGrid,
   WorkspaceFormPanel
 } from "@codexsun/ui/workspace/upsert";
-import { getBillingSettings } from "../billing-settings/billing-settings.services";
-import { formatDocumentNumber } from "../settings/settings.types";
-import type { Receipt, ReceiptInput } from "./receipt.types";
+import { useReceiptFormLookups } from "./receipt.hooks";
+import { validateReceipt, type ReceiptFormErrors } from "./receipt.schema";
+import { formatReceiptMoney } from "./receipt.services";
+import {
+  emptyReceipt,
+  receiptToPayload,
+  type Receipt,
+  type ReceiptAllocationCandidate,
+  type ReceiptContext,
+  type ReceiptLookupOption,
+  type ReceiptMode,
+  type ReceiptSavePayload
+} from "./receipt.types";
 
 const modes = [
   { label: "Cash", value: "cash" },
@@ -28,169 +40,317 @@ const modes = [
 ];
 
 export function ReceiptForm({
-  value,
+  context,
+  error,
+  receipt,
   saving,
   onCancel,
   onSave
 }: {
-  value?: Receipt | undefined;
+  context: ReceiptContext | null;
+  error?: string | undefined;
+  receipt?: Receipt | null | undefined;
   saving: boolean;
   onCancel: () => void;
-  onSave: (value: ReceiptInput) => void;
+  onSave: (value: ReceiptSavePayload) => void;
 }) {
-  const [form, setForm] = useState<ReceiptInput>(() =>
-    value
-      ? { ...value }
-      : {
-          receiptDate: new Date().toISOString().slice(0, 10),
-          partyName: "",
-          amount: 0,
-          receiptMode: "cash",
-          status: "draft",
-          allocations: []
-        }
+  const [form, setForm] = useState<ReceiptSavePayload>(() =>
+    receipt ? receiptToPayload(receipt) : emptyReceipt(context)
   );
+  const [errors, setErrors] = useState<ReceiptFormErrors>({});
   const [tab, setTab] = useState("details");
-  useEffect(() => {
-    if (value?.receiptNumber) return;
-    void getBillingSettings().then((settings) =>
-      setForm((current) =>
-        current.receiptNumber
-          ? current
-          : { ...current, receiptNumber: formatDocumentNumber(settings.numbering.receipt) }
-      )
-    );
-  }, [value?.receiptNumber]);
-  const patch = (key: keyof ReceiptInput, next: string | number) =>
-    setForm((current) => ({ ...current, [key]: next }));
+  const lookups = useReceiptFormLookups(form.customerId);
+  const candidates = useMemo(
+    () => mergeCandidates(lookups.allocations.data ?? [], receipt),
+    [lookups.allocations.data, receipt]
+  );
+  const total = form.amount + form.tdsAmount - form.discountAmount + form.roundOff;
+  const allocated = form.allocations.reduce(
+    (sum, item) => sum + Number(item.allocatedAmount || 0),
+    0
+  );
+  const patch = <Key extends keyof ReceiptSavePayload>(key: Key, value: ReceiptSavePayload[Key]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+  function changeCustomer(value: string, option?: ReceiptLookupOption | null) {
+    patch("customerId", Number(option?.record.id ?? value ?? 0));
+    patch("allocations", []);
+  }
+  function allocationAmount(saleId: string) {
+    return form.allocations.find((item) => item.saleId === saleId)?.allocatedAmount ?? 0;
+  }
+  function setAllocation(saleId: string, amount: number) {
+    setForm((current) => ({
+      ...current,
+      allocations:
+        amount > 0
+          ? [
+              ...current.allocations.filter((item) => item.saleId !== saleId),
+              { saleId, allocatedAmount: amount }
+            ]
+          : current.allocations.filter((item) => item.saleId !== saleId)
+    }));
+  }
   const details = (
     <WorkspaceFormGrid>
-      <WorkspaceFormField label="Customer name *">
-        <Input
+      <WorkspaceFormField label="Customer name" required>
+        <WorkspaceLookup
+          allowTextValue={false}
+          invalid={Boolean(errors.customerId)}
+          loading={lookups.contacts.isLoading}
+          options={lookups.contacts.data ?? []}
+          placeholder="Search customer"
           required
-          value={form.partyName}
-          onChange={(event) => patch("partyName", event.target.value)}
-          placeholder="Search or enter customer"
+          value={form.customerId ? String(form.customerId) : ""}
+          onValueChange={(value, option) =>
+            changeCustomer(value, option as ReceiptLookupOption | null | undefined)
+          }
         />
+        {errors.customerId ? <FieldError>{errors.customerId}</FieldError> : null}
       </WorkspaceFormField>
       <WorkspaceFormField label="Receipt no">
         <Input
-          value={form.receiptNumber ?? ""}
+          value={form.receiptNumber}
           onChange={(event) => patch("receiptNumber", event.target.value)}
         />
       </WorkspaceFormField>
-      <WorkspaceFormField label="Amount *">
+      <WorkspaceFormField label="Amount" required>
         <Input
-          required
-          type="number"
+          className={invalidClass(errors.amount)}
           min="0"
           step="0.01"
+          type="number"
           value={form.amount}
           onChange={(event) => patch("amount", Number(event.target.value))}
         />
+        {errors.amount ? <FieldError>{errors.amount}</FieldError> : null}
       </WorkspaceFormField>
-      <WorkspaceFormField label="Date *">
+      <WorkspaceFormField label="Date" required>
         <WorkspaceDatePicker
           required
           value={form.receiptDate}
           onValueChange={(value) => patch("receiptDate", value)}
         />
-      </WorkspaceFormField>
-      <WorkspaceFormField label="Work order no">
-        <Input
-          value={form.referenceNo ?? ""}
-          onChange={(event) => patch("referenceNo", event.target.value)}
-          placeholder="Optional"
-        />
+        {errors.receiptDate ? <FieldError>{errors.receiptDate}</FieldError> : null}
       </WorkspaceFormField>
       <WorkspaceFormField label="Mode of payment">
         <WorkspaceSelect
           ariaLabel="Mode of payment"
           options={modes}
-          value={String(form.receiptMode ?? "cash")}
-          onValueChange={(value) => patch("receiptMode", value)}
+          value={form.receiptMode}
+          onValueChange={(value) => patch("receiptMode", value as ReceiptMode)}
         />
       </WorkspaceFormField>
       <WorkspaceFormField
-        className="md:col-start-2"
-        label={form.receiptMode === "cash" ? "Cash ledger *" : "Bank ledger *"}
+        label={form.receiptMode === "cash" ? "Cash ledger" : "Bank ledger"}
+        required
       >
-        <WorkspaceSelect
-          ariaLabel="Ledger"
-          options={
-            form.receiptMode === "cash"
-              ? [{ label: "Cash", value: "Cash" }]
-              : [{ label: "Primary bank account", value: "Primary bank account" }]
+        <WorkspaceLookup
+          allowTextValue={false}
+          invalid={Boolean(errors.ledgerId)}
+          loading={lookups.ledgers.isLoading}
+          options={lookups.ledgers.data ?? []}
+          placeholder="Search ledger"
+          required
+          value={form.ledgerId ? String(form.ledgerId) : ""}
+          onValueChange={(value, option) =>
+            patch(
+              "ledgerId",
+              Number((option as ReceiptLookupOption | undefined)?.record.id ?? value ?? 0)
+            )
           }
-          value={String(
-            form.bankAccount || (form.receiptMode === "cash" ? "Cash" : "Primary bank account")
-          )}
-          onValueChange={(value) => patch("bankAccount", value)}
+        />
+        {errors.ledgerId ? <FieldError>{errors.ledgerId}</FieldError> : null}
+      </WorkspaceFormField>
+      <WorkspaceFormField label="Reference no">
+        <Input
+          value={form.referenceNo}
+          onChange={(event) => patch("referenceNo", event.target.value)}
         />
       </WorkspaceFormField>
-      <WorkspaceFormField className="md:col-start-2" label="Notes">
+      <WorkspaceFormField label="Reference date">
+        <WorkspaceDatePicker
+          value={form.referenceDate}
+          onValueChange={(value) => patch("referenceDate", value)}
+        />
+      </WorkspaceFormField>
+      <WorkspaceFormField label="TDS amount">
+        <Input
+          min="0"
+          step="0.01"
+          type="number"
+          value={form.tdsAmount}
+          onChange={(event) => patch("tdsAmount", Number(event.target.value))}
+        />
+      </WorkspaceFormField>
+      <WorkspaceFormField label="Discount amount">
+        <Input
+          min="0"
+          step="0.01"
+          type="number"
+          value={form.discountAmount}
+          onChange={(event) => patch("discountAmount", Number(event.target.value))}
+        />
+      </WorkspaceFormField>
+      <WorkspaceFormField label="Round off">
+        <Input
+          step="0.01"
+          type="number"
+          value={form.roundOff}
+          onChange={(event) => patch("roundOff", Number(event.target.value))}
+        />
+      </WorkspaceFormField>
+      <WorkspaceFormField label="Notes">
         <Textarea
-          value={form.notes ?? ""}
+          rows={3}
+          value={form.notes}
           onChange={(event) => patch("notes", event.target.value)}
-          placeholder="Add receipt notes"
-          rows={4}
         />
       </WorkspaceFormField>
     </WorkspaceFormGrid>
   );
-  const allocation = (
+  const allocations = (
     <div className="space-y-4">
-      <div className="rounded-md border border-dashed p-5 text-sm text-muted-foreground">
-        Allocate this receipt against sales bills in the next step.
+      {!form.customerId ? (
+        <p className="rounded-md border border-dashed p-5 text-sm text-muted-foreground">
+          Select a customer to load confirmed sales invoices.
+        </p>
+      ) : null}
+      {form.customerId && !candidates.length ? (
+        <p className="rounded-md border border-dashed p-5 text-sm text-muted-foreground">
+          No outstanding confirmed sales invoices were found.
+        </p>
+      ) : null}
+      {candidates.length ? (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full min-w-[700px] text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                {["Invoice", "Date", "Invoice total", "Outstanding", "Allocate"].map((label) => (
+                  <th
+                    className="border-b px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground"
+                    key={label}
+                  >
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {candidates.map((candidate) => (
+                <tr className="border-b last:border-0" key={candidate.saleId}>
+                  <td className="px-4 py-3 font-medium">{candidate.documentNo}</td>
+                  <td className="px-4 py-3">{candidate.documentDate}</td>
+                  <td className="px-4 py-3">{formatReceiptMoney(candidate.documentTotal)}</td>
+                  <td className="px-4 py-3">{formatReceiptMoney(candidate.outstandingAmount)}</td>
+                  <td className="px-4 py-3">
+                    <Input
+                      className="w-36"
+                      max={candidate.outstandingAmount}
+                      min="0"
+                      step="0.01"
+                      type="number"
+                      value={allocationAmount(candidate.saleId)}
+                      onChange={(event) =>
+                        setAllocation(candidate.saleId, Number(event.target.value))
+                      }
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      <div className="ml-auto grid max-w-sm gap-2 rounded-md border bg-muted/20 p-4 text-sm">
+        <Summary label="Receipt total" value={formatReceiptMoney(total)} />
+        <Summary label="Allocated" value={formatReceiptMoney(allocated)} />
+        <Summary label="Unallocated" value={formatReceiptMoney(total - allocated)} />
       </div>
-      <WorkspaceFormGrid>
-        <WorkspaceFormField label="Bill no">
-          <Input placeholder="Select sales bill" />
-        </WorkspaceFormField>
-        <WorkspaceFormField label="Allocated amount">
-          <Input type="number" min="0" step="0.01" placeholder="0.00" />
-        </WorkspaceFormField>
-      </WorkspaceFormGrid>
     </div>
   );
   const tabs: WorkspaceAnimatedTab[] = [
     { value: "details", label: "Details", content: details },
-    { value: "allocations", label: "Allocations", content: allocation }
+    { value: "allocations", label: "Allocations", content: allocations }
   ];
   return (
     <WorkspacePage
-      title={value ? "Edit receipt" : "New receipt"}
-      description="Create a tabbed incoming receipt with allocation details."
+      description="Create an incoming receipt with sales invoice allocations."
       onBack={onCancel}
+      title={receipt ? "Edit receipt" : "New receipt"}
     >
       <form
+        noValidate
         onSubmit={(event) => {
           event.preventDefault();
-          onSave(form);
+          const result = validateReceipt(form);
+          setErrors(result.errors);
+          if (!result.data) return;
+          if (
+            result.data.allocations.reduce((sum, item) => sum + item.allocatedAmount, 0) > total
+          ) {
+            setErrors({ allocations: "Allocated amount cannot exceed the receipt total." });
+            setTab("allocations");
+            return;
+          }
+          onSave(result.data);
         }}
       >
         <WorkspaceFormPanel
           footer={
             <WorkspaceFormActions>
-              <Button type="submit" disabled={saving}>
+              <Button disabled={saving} type="submit">
                 <Save className="size-4" />
-                {saving ? "Saving..." : "Save"}
+                {saving ? "Saving..." : receipt ? "Update" : "Save"}
               </Button>
-              <Button type="button" variant="outline" onClick={onCancel}>
+              <Button onClick={onCancel} type="button" variant="outline">
                 <X className="size-4" />
                 Cancel
               </Button>
             </WorkspaceFormActions>
           }
         >
+          {Object.keys(errors).length || error ? (
+            <WorkspaceFormBanner title="Receipt could not be saved">
+              {error || Object.values(errors)[0]}
+            </WorkspaceFormBanner>
+          ) : null}
           <WorkspaceAnimatedTabs
+            contentClassName="min-h-[25rem]"
+            onValueChange={setTab}
             tabs={tabs}
             value={tab}
-            onValueChange={setTab}
-            contentClassName="min-h-[25rem]"
           />
         </WorkspaceFormPanel>
       </form>
     </WorkspacePage>
+  );
+}
+
+function mergeCandidates(candidates: ReceiptAllocationCandidate[], receipt?: Receipt | null) {
+  const merged = new Map(candidates.map((item) => [item.saleId, item]));
+  for (const item of receipt?.allocations ?? [])
+    if (!merged.has(item.saleId))
+      merged.set(item.saleId, {
+        customerId: receipt!.customerId,
+        documentDate: item.documentDate,
+        documentNo: item.documentNo,
+        documentTotal: item.documentTotal,
+        outstandingAmount: item.previousBalance,
+        saleId: item.saleId
+      });
+  return [...merged.values()];
+}
+function invalidClass(error?: string) {
+  return error ? "border-destructive focus-visible:ring-destructive" : undefined;
+}
+function FieldError({ children }: { children: string }) {
+  return <p className="text-xs text-destructive">{children}</p>;
+}
+function Summary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <span className="text-muted-foreground">{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }

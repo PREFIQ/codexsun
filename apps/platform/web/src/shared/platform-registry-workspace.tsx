@@ -1,6 +1,15 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { ArrowLeft, Pencil, Plus, RefreshCw, Save } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@codexsun/ui/components/alert-dialog";
 import { Input } from "@codexsun/ui/components/input";
 import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
@@ -25,7 +34,12 @@ import {
 } from "@codexsun/ui/workspace/upsert";
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 
-export type RegistryRecord = { id: number; status?: string; uuid: string };
+export type RegistryRecord = {
+  id: number;
+  isProtected?: boolean;
+  status?: string;
+  uuid: string;
+};
 export type RegistryField<T> = {
   createFromSearch?: (
     value: string
@@ -37,7 +51,7 @@ export type RegistryField<T> = {
   options?: Array<{ label: string; value: string }>;
   parse?: (value: string) => unknown;
   required?: boolean | undefined;
-  type?: "number" | "reference" | "select" | "text";
+  type?: "number" | "password" | "reference" | "select" | "text";
 };
 
 export function RegistryWorkspace<T extends RegistryRecord>({
@@ -53,6 +67,9 @@ export function RegistryWorkspace<T extends RegistryRecord>({
   technicalName,
   title,
   onCreate,
+  onActivate,
+  onDeactivate,
+  onForceDelete,
   onRefresh,
   onUpdate
 }: {
@@ -67,9 +84,12 @@ export function RegistryWorkspace<T extends RegistryRecord>({
   singular: string;
   technicalName: string;
   title: string;
-  onCreate: (value: Omit<T, "id" | "uuid">) => void;
+  onCreate: (value: Omit<T, "id" | "uuid">) => boolean | void | Promise<boolean | void>;
+  onActivate?: ((record: T) => boolean | void | Promise<boolean | void>) | undefined;
+  onDeactivate?: ((record: T) => boolean | void | Promise<boolean | void>) | undefined;
+  onForceDelete?: ((record: T) => boolean | void | Promise<boolean | void>) | undefined;
   onRefresh: () => void;
-  onUpdate: (id: number, value: Omit<T, "id" | "uuid">) => void;
+  onUpdate: (id: number, value: Omit<T, "id" | "uuid">) => boolean | void | Promise<boolean | void>;
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -77,6 +97,11 @@ export function RegistryWorkspace<T extends RegistryRecord>({
   const [view, setView] = useState<
     { mode: "list" } | { mode: "show"; record: T } | { mode: "form"; record: T | null }
   >({ mode: "list" });
+  const [destructiveAction, setDestructiveAction] = useState<{
+    kind: "deactivate" | "force-delete";
+    record: T;
+  } | null>(null);
+  const [destructivePending, setDestructivePending] = useState(false);
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return term
@@ -103,10 +128,12 @@ export function RegistryWorkspace<T extends RegistryRecord>({
               <ArrowLeft className="size-4" />
               Back
             </Button>
-            <Button onClick={() => setView({ mode: "form", record: view.record })}>
-              <Pencil className="size-4" />
-              Edit
-            </Button>
+            {!view.record.isProtected ? (
+              <Button onClick={() => setView({ mode: "form", record: view.record })}>
+                <Pencil className="size-4" />
+                Edit
+              </Button>
+            ) : null}
           </div>
         }
       >
@@ -138,73 +165,143 @@ export function RegistryWorkspace<T extends RegistryRecord>({
         onBack={() =>
           setView(view.record ? { mode: "show", record: view.record } : { mode: "list" })
         }
-        onSubmit={(value) => (view.record ? onUpdate(view.record.id, value) : onCreate(value))}
+        onSubmit={async (value) => {
+          const saved = view.record ? await onUpdate(view.record.id, value) : await onCreate(value);
+          if (saved === true) setView({ mode: "list" });
+        }}
       />
     );
   }
 
   return (
-    <WorkspacePage
-      title={title}
-      description={description}
-      technicalName={technicalName}
-      actions={
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onRefresh}>
-            <RefreshCw className="size-4" />
-            Refresh
-          </Button>
-          <Button onClick={() => setView({ mode: "form", record: null })}>
-            <Plus className="size-4" />
-            {createLabel}
-          </Button>
-        </div>
-      }
-    >
-      <WorkspaceFilters
-        searchValue={search}
-        searchPlaceholder={`Search ${title.toLowerCase()}`}
-        onSearchValueChange={(value) => {
-          setSearch(value);
-          setPage(1);
+    <>
+      <WorkspacePage
+        title={title}
+        description={description}
+        technicalName={technicalName}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onRefresh}>
+              <RefreshCw className="size-4" />
+              Refresh
+            </Button>
+            <Button onClick={() => setView({ mode: "form", record: null })}>
+              <Plus className="size-4" />
+              {createLabel}
+            </Button>
+          </div>
+        }
+      >
+        <WorkspaceFilters
+          searchValue={search}
+          searchPlaceholder={`Search ${title.toLowerCase()}`}
+          onSearchValueChange={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
+        />
+        <RegistryList
+          fields={fields}
+          loading={loading}
+          records={pageRecords}
+          onActivate={onActivate ? (record) => void onActivate(record) : undefined}
+          onDeactivate={
+            onDeactivate
+              ? (record) => setDestructiveAction({ kind: "deactivate", record })
+              : undefined
+          }
+          onEdit={(record) => setView({ mode: "form", record })}
+          onForceDelete={
+            onForceDelete
+              ? (record) => setDestructiveAction({ kind: "force-delete", record })
+              : undefined
+          }
+          onView={(record) => setView({ mode: "show", record })}
+        />
+        <WorkspacePagination
+          page={page}
+          rowsPerPage={rowsPerPage}
+          showingLabel={buildShowingLabel(page, rowsPerPage, filtered.length)}
+          singularLabel={title.toLowerCase()}
+          totalCount={filtered.length}
+          totalPages={totalPages}
+          onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
+          onPageChange={setPage}
+          onPreviousPage={() => setPage((value) => Math.max(1, value - 1))}
+          onRowsPerPageChange={(value) => {
+            setRowsPerPage(value);
+            setPage(1);
+          }}
+        />
+      </WorkspacePage>
+      <AlertDialog
+        open={destructiveAction !== null}
+        onOpenChange={(open) => {
+          if (!open && !destructivePending) setDestructiveAction(null);
         }}
-      />
-      <RegistryList
-        fields={fields}
-        loading={loading}
-        records={pageRecords}
-        onEdit={(record) => setView({ mode: "form", record })}
-        onView={(record) => setView({ mode: "show", record })}
-      />
-      <WorkspacePagination
-        page={page}
-        rowsPerPage={rowsPerPage}
-        showingLabel={buildShowingLabel(page, rowsPerPage, filtered.length)}
-        singularLabel={title.toLowerCase()}
-        totalCount={filtered.length}
-        totalPages={totalPages}
-        onNextPage={() => setPage((value) => Math.min(totalPages, value + 1))}
-        onPageChange={setPage}
-        onPreviousPage={() => setPage((value) => Math.max(1, value - 1))}
-        onRowsPerPageChange={(value) => {
-          setRowsPerPage(value);
-          setPage(1);
-        }}
-      />
-    </WorkspacePage>
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {destructiveAction?.kind === "force-delete"
+                ? `Permanently delete ${singular.toLowerCase()}?`
+                : `Deactivate ${singular.toLowerCase()}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {destructiveAction?.kind === "force-delete"
+                ? "This action cannot be undone. Related assignments may block deletion."
+                : "The record will become unavailable for new assignments until it is restored."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={destructivePending}>Cancel</AlertDialogCancel>
+            <Button
+              disabled={destructivePending}
+              variant={destructiveAction?.kind === "force-delete" ? "destructive" : "default"}
+              onClick={() => {
+                if (!destructiveAction) return;
+                const action = destructiveAction;
+                setDestructivePending(true);
+                void Promise.resolve(
+                  action.kind === "force-delete"
+                    ? onForceDelete?.(action.record)
+                    : onDeactivate?.(action.record)
+                )
+                  .then((completed) => {
+                    if (completed !== false) setDestructiveAction(null);
+                  })
+                  .finally(() => setDestructivePending(false));
+              }}
+            >
+              {destructivePending
+                ? "Working..."
+                : destructiveAction?.kind === "force-delete"
+                  ? "Force delete"
+                  : "Deactivate"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
 export function RegistryList<T extends RegistryRecord>({
   fields,
   loading,
+  onActivate,
+  onDeactivate,
   onEdit,
+  onForceDelete,
   onView,
   records
 }: {
   fields: RegistryField<T>[];
   loading: boolean;
+  onActivate?: ((record: T) => void) | undefined;
+  onDeactivate?: ((record: T) => void) | undefined;
   onEdit: (record: T) => void;
+  onForceDelete?: ((record: T) => void) | undefined;
   onView: (record: T) => void;
   records: T[];
 }) {
@@ -243,8 +340,27 @@ export function RegistryList<T extends RegistryRecord>({
                 <td className="px-4 py-1.5 text-right">
                   <WorkspaceRowActions
                     title={String(record[fields[0]?.key ?? "uuid"])}
-                    onEdit={() => onEdit(record)}
+                    {...(!record.isProtected ? { onEdit: () => onEdit(record) } : {})}
                     onView={() => onView(record)}
+                    {...(!record.isProtected && onDeactivate
+                      ? { onDelete: () => onDeactivate(record) }
+                      : {})}
+                    {...(!record.isProtected && onActivate
+                      ? { onRestore: () => onActivate(record) }
+                      : {})}
+                    {...(!record.isProtected && onForceDelete
+                      ? {
+                          actions: [
+                            {
+                              id: "force-delete",
+                              label: "Force delete",
+                              onSelect: () => onForceDelete(record),
+                              tone: "destructive" as const
+                            }
+                          ]
+                        }
+                      : {})}
+                    isSuspended={record.status !== "active"}
                   />
                 </td>
               </tr>
@@ -276,7 +392,7 @@ export function RegistryForm<T extends RegistryRecord>({
   initialValue: Omit<T, "id" | "uuid">;
   loading: boolean;
   onBack: () => void;
-  onSubmit: (value: Omit<T, "id" | "uuid">) => void;
+  onSubmit: (value: Omit<T, "id" | "uuid">) => void | Promise<void>;
   title: string;
 }) {
   const [value, setValue] = useState(initialValue);
@@ -291,7 +407,7 @@ export function RegistryForm<T extends RegistryRecord>({
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
-          onSubmit(value);
+          void onSubmit(value);
         }}
       >
         <WorkspaceFormPanel
@@ -346,7 +462,13 @@ export function RegistryForm<T extends RegistryRecord>({
                 ) : (
                   <Input
                     required={field.required}
-                    type={field.type === "number" ? "number" : "text"}
+                    type={
+                      field.type === "number"
+                        ? "number"
+                        : field.type === "password"
+                          ? "password"
+                          : "text"
+                    }
                     value={String(values[field.key] ?? "")}
                     onChange={(event) =>
                       setValue((current) => ({

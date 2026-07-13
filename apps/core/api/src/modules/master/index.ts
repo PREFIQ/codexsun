@@ -1,5 +1,5 @@
 export { masterModule } from "./master.module.js";
-export { migrateMasterModule } from "./master.migration.js";
+export { masterMigration, migrateMasterModule } from "./master.migration.js";
 export { seedMasterModule } from "./master.seed.js";
 export * from "./contact/index.js";
 export * from "./product/index.js";

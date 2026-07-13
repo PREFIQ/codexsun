@@ -145,7 +145,7 @@ export function PurchaseShowPage({
   return (
     <WorkspacePage
       className="billing-document-print-page max-w-[100rem]"
-      title={purchase.customerName}
+      title={purchase.supplierName}
       description={purchase.invoiceNumber}
       actions={
         <Button type="button" className="h-9 rounded-md" onClick={onNew}>

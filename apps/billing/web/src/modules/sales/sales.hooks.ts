@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getSale, listSales } from "./sales.services";
+import { getSale, getSaleContext, listSales } from "./sales.services";
 
 export function useSalesList() {
   return useQuery({
@@ -15,5 +15,12 @@ export function useSaleRecord(id: string | null, enabled = true) {
     enabled: Boolean(id) && enabled,
     queryFn: () => getSale(id!),
     queryKey: ["billing", "sales", id]
+  });
+}
+
+export function useSaleContext() {
+  return useQuery({
+    queryFn: getSaleContext,
+    queryKey: ["billing", "sales", "context"]
   });
 }

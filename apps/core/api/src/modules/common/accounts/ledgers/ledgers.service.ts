@@ -34,8 +34,8 @@ export class LedgersService {
   private async mutable(id: string): Promise<LedgerRecord> {
     const record = await this.repository.find(id);
     if (!record) throw AppError.notFound("Ledger was not found.");
-    if (record.name.trim().toLowerCase() === "general ledger")
-      throw AppError.forbidden("General Ledger is protected and cannot be modified.");
+    if (["-", "general ledger"].includes(record.name.trim().toLowerCase()))
+      throw AppError.forbidden("Default ledgers cannot be modified.");
     return record;
   }
   private async validate(input: LedgerSavePayload): Promise<LedgerSavePayload> {

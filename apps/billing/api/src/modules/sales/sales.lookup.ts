@@ -1,53 +1,132 @@
 import { env } from "../../env.js";
 
-const lookupPaths = {
-  addressTypes: "/core/common/contacts/address-types",
-  colours: "/core/common/products/colours",
-  contacts: "/core/master/contacts",
-  countries: "/core/common/location/countries",
-  states: "/core/common/location/states",
-  districts: "/core/common/location/districts",
-  cities: "/core/common/location/cities",
-  pincodes: "/core/common/location/pincodes",
-  products: "/core/master/products",
-  productCategories: "/core/common/products/product-categories",
-  hsnCodes: "/core/common/products/hsn-codes",
-  units: "/core/common/products/units",
-  taxes: "/core/common/products/taxes",
-  transports: "/core/common/workorder/transports",
-  sizes: "/core/common/products/sizes",
-  workOrders: "/core/master/work-orders"
-} as const;
-
-export type SaleLookupKind = keyof typeof lookupPaths;
-export type SaleLocationKind = "cities" | "districts" | "pincodes" | "states";
+export type SaleLookupHeaders = {
+  authorization?: string | string[] | undefined;
+  tenantDatabase?: string | string[] | undefined;
+  tenantId?: string | string[] | undefined;
+};
 
 export class SaleLookupService {
-  async list(kind: SaleLookupKind, headers: LookupHeaders) {
-    const response = await this.request(lookupPaths[kind], headers);
-    return responseData(response);
+  contacts(headers: SaleLookupHeaders) {
+    return this.get("/core/master/contacts", headers);
+  }
+  createContact(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/master/contacts", headers, input);
+  }
+  updateContact(headers: SaleLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/contacts/${encodeURIComponent(id)}`, headers, input);
+  }
+  countries(headers: SaleLookupHeaders) {
+    return this.get("/core/common/location/countries", headers);
+  }
+  states(headers: SaleLookupHeaders) {
+    return this.get("/core/common/location/states", headers);
+  }
+  createState(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/states", headers, input);
+  }
+  districts(headers: SaleLookupHeaders) {
+    return this.get("/core/common/location/districts", headers);
+  }
+  createDistrict(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/districts", headers, input);
+  }
+  cities(headers: SaleLookupHeaders) {
+    return this.get("/core/common/location/cities", headers);
+  }
+  createCity(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/cities", headers, input);
+  }
+  pincodes(headers: SaleLookupHeaders) {
+    return this.get("/core/common/location/pincodes", headers);
+  }
+  createPincode(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/pincodes", headers, input);
+  }
+  addressTypes(headers: SaleLookupHeaders) {
+    return this.get("/core/common/contacts/address-types", headers);
+  }
+  createAddressType(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/contacts/address-types", headers, input);
+  }
+  products(headers: SaleLookupHeaders) {
+    return this.get("/core/master/products", headers);
+  }
+  createProduct(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/master/products", headers, input);
+  }
+  updateProduct(headers: SaleLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/products/${encodeURIComponent(id)}`, headers, input);
+  }
+  workOrders(headers: SaleLookupHeaders) {
+    return this.get("/core/master/work-orders", headers);
+  }
+  createWorkOrder(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/master/work-orders", headers, input);
+  }
+  updateWorkOrder(headers: SaleLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/work-orders/${encodeURIComponent(id)}`, headers, input);
+  }
+  colours(headers: SaleLookupHeaders) {
+    return this.get("/core/common/products/colours", headers);
+  }
+  createColour(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/colours", headers, input);
+  }
+  sizes(headers: SaleLookupHeaders) {
+    return this.get("/core/common/products/sizes", headers);
+  }
+  createSize(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/sizes", headers, input);
+  }
+  productCategories(headers: SaleLookupHeaders) {
+    return this.get("/core/common/products/product-categories", headers);
+  }
+  createProductCategory(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/product-categories", headers, input);
+  }
+  hsnCodes(headers: SaleLookupHeaders) {
+    return this.get("/core/common/products/hsn-codes", headers);
+  }
+  createHsnCode(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/hsn-codes", headers, input);
+  }
+  units(headers: SaleLookupHeaders) {
+    return this.get("/core/common/products/units", headers);
+  }
+  createUnit(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/units", headers, input);
+  }
+  taxes(headers: SaleLookupHeaders) {
+    return this.get("/core/common/products/taxes", headers);
+  }
+  createTax(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/taxes", headers, input);
+  }
+  transports(headers: SaleLookupHeaders) {
+    return this.get("/core/common/workorder/transports", headers);
+  }
+  createTransport(headers: SaleLookupHeaders, input: unknown) {
+    return this.post("/core/common/workorder/transports", headers, input);
+  }
+  ledgers(headers: SaleLookupHeaders) {
+    return this.get("/core/common/accounts/ledgers", headers);
   }
 
-  create(kind: SaleLookupKind, headers: LookupHeaders, input: Record<string, unknown>) {
-    return this.request(lookupPaths[kind], headers, {
-      body: JSON.stringify(input),
-      method: "POST"
-    }).then(responseData);
+  private get(path: string, headers: SaleLookupHeaders) {
+    return this.request(path, headers).then(responseData);
   }
-
-  update(
-    kind: "contacts" | "products" | "workOrders",
-    headers: LookupHeaders,
-    id: string,
-    input: Record<string, unknown>
-  ) {
-    return this.request(`${lookupPaths[kind]}/${encodeURIComponent(id)}`, headers, {
-      body: JSON.stringify(input),
-      method: "PUT"
-    }).then(responseData);
+  private post(path: string, headers: SaleLookupHeaders, input: unknown) {
+    return this.request(path, headers, { body: JSON.stringify(input), method: "POST" }).then(
+      responseData
+    );
   }
-
-  private request(path: string, headers: LookupHeaders, init?: RequestInit) {
+  private put(path: string, headers: SaleLookupHeaders, input: unknown) {
+    return this.request(path, headers, { body: JSON.stringify(input), method: "PUT" }).then(
+      responseData
+    );
+  }
+  private request(path: string, headers: SaleLookupHeaders, init?: RequestInit) {
     return fetch(`${env.CORE_API_URL}${path}`, {
       ...init,
       headers: {
@@ -56,13 +135,14 @@ export class SaleLookupService {
         ...(headerValue(headers.authorization)
           ? { Authorization: headerValue(headers.authorization)! }
           : {}),
+        ...(headerValue(headers.tenantDatabase)
+          ? { "x-tenant-db": headerValue(headers.tenantDatabase)! }
+          : {}),
         ...(headerValue(headers.tenantId) ? { "x-tenant-id": headerValue(headers.tenantId)! } : {})
       }
     });
   }
 }
-
-type LookupHeaders = { authorization?: string | string[]; tenantId?: string | string[] };
 
 async function responseData(response: Response) {
   const payload = (await response.json()) as {
@@ -73,10 +153,6 @@ async function responseData(response: Response) {
   if (!response.ok || payload.success === false)
     throw new Error(payload.error?.message || "Sales lookup could not be loaded.");
   return payload.data ?? [];
-}
-
-export function isSaleLookupKind(value: string): value is SaleLookupKind {
-  return value in lookupPaths;
 }
 
 function headerValue(value: string | string[] | undefined) {

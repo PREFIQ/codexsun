@@ -9,6 +9,8 @@ export * from "./quotation.service.js";
 export * from "./quotation.sync.js";
 export type {
   Quotation,
+  QuotationContext,
+  QuotationLineItem,
   QuotationLineItemInput,
   QuotationSavePayload,
   QuotationStatus,

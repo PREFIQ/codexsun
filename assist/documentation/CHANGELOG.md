@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.29
+Current version: 1.0.30
 
-Release tag: v-1.0.29
+Release tag: v-1.0.30
 
-Changelog label: v 1.0.29
+Changelog label: v 1.0.30
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,27 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.30
+
+### [v 1.0.30] 2026-07-13 11:22 pm - Fresh Database Startup Verification
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Verified migration preflight against the freshly reinstalled `cxsun_master_db` and its registered `codexsun_db` tenant target with no missing or invalid database mapping.
+- Ran the complete Platform -> Core -> Billing migration stack successfully and confirmed one applied master migration plus all 19 tenant migration markers, including the five tenant access-control owners and the seven Billing foundations.
+- Ran the live seed stack twice without duplicate records or failures, confirming repeatable app-registry, default tenant, domain, subscription, tenant-module, Core, and Billing seed behavior.
+- Verified the disposable fresh-start and restart path produces identical persisted state: three platform apps, two plans, one tenant/domain/subscription, two tenant module settings, one `codexsun` company, one current financial year, one default-company setting, one demo supplier, one Billing setting, and all seven Billing root tables.
+- Confirmed the default-company seed resolves the first `codexsun` company and current financial year through persisted database identities after a clean installation.
+
+#### App Codebase Changes
+
+- Added independently owned tenant User, Role, Permission, User Role, and Role Permission backend/frontend modules with tenant-bound authorization, migrations, seeders, lifecycle APIs, application-desk pages, and Access Control sidebar composition.
+- Added mutation confirmations, success/error notifications, API-aware automatic list return, protected-record handling, and password masking across the tenant access workspaces.
+- Split application routes and tenant business workspaces into lazy production chunks; the tenant desk entry chunk decreased from 801.95 kB (139.64 kB gzip) to 37.33 kB (8.80 kB gzip).
+- Verified the fresh database startup with `db:migrations:preflight`, `db:migrations:run`, two `db:seed` passes, migration-ledger inspection, and the restart-safe Platform/Core/Billing bootstrap E2E.
+- Bumped workspace version to 1.0.30.
 
 ## v-1.0.29
 

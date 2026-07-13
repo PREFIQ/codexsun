@@ -2,7 +2,7 @@ import { sql } from "kysely";
 import { getCoreDatabase } from "../../../../database/core-database.js";
 
 export const countrySeed = {
-  description: "Seed country records with India first.",
+  description: "Seed country records with the unknown fallback first.",
   key: "core.common.location.country.seed"
 };
 
@@ -17,6 +17,7 @@ export async function seedCountryModule() {
 }
 
 const countrySeeds = [
+  { code: "UNKNOWN", name: "-", sortOrder: 0, status: "active" as const },
   { code: "IN", name: "India", sortOrder: 1, status: "active" as const },
   { code: "US", name: "United States", sortOrder: 20, status: "active" as const },
   { code: "GB", name: "United Kingdom", sortOrder: 30, status: "active" as const },

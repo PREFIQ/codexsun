@@ -1,24 +1,40 @@
 export type PurchaseStatus = "draft" | "confirmed" | "cancelled";
 export type PurchaseTaxType = "cgst-sgst" | "igst";
 
+export type PurchaseContext = {
+  companyId: number;
+  companyName: string;
+  currencyCode: string;
+  currencyId: number;
+  financialYearId: number;
+  financialYearName: string;
+};
+
 export type PurchaseLineItemInput = {
   colour: string;
+  colourId: number | null;
   dcNo: string;
   description: string;
   hsnCode: string;
+  hsnCodeId: number | null;
   poNo: string;
+  productId: number | null;
   productName: string;
   quantity: number;
   rate: number;
   size: string;
+  sizeId: number | null;
+  taxId: number | null;
   taxRate: number;
   unit: string;
+  unitId: number;
 };
 
 export type PurchaseLineItem = PurchaseLineItemInput & {
   cgstAmount: number;
   id: string;
   igstAmount: number;
+  lineNumber: number;
   lineTotal: number;
   sgstAmount: number;
   taxableAmount: number;
@@ -28,47 +44,68 @@ export type PurchaseLineItem = PurchaseLineItemInput & {
 export type Purchase = {
   amount: number;
   billingAddress: string;
+  billingAddressId: number;
+  companyId: number;
+  companyName: string;
   createdAt: string;
   currencyCode: string;
-  generatedSalesInvoiceNo?: string;
-  customerEmail: string;
-  customerName: string;
-  customerPhone: string;
-  id: string;
-  invoiceNumber: string;
-  issuedOn: string;
-  items: PurchaseLineItem[];
-  notes: string;
-  roundOff: number;
-  shippingAddress: string;
-  status: PurchaseStatus;
-  subtotal: number;
+  currencyId: number;
+  supplierEmail: string;
+  supplierId: number;
+  supplierName: string;
+  supplierPhone: string;
   supplierBillDate: string;
   supplierBillNo: string;
+  issuedOn: string;
+  financialYearId: number;
+  financialYearName: string;
+  generatedSalesInvoiceNo: string;
+  id: string;
+  items: PurchaseLineItem[];
+  ledgerId: number | null;
+  lineNumber: number;
+  notes: string;
+  invoiceNumber: string;
+  roundOff: number;
+  salesLedger: string;
+  shippingAddress: string;
+  shippingAddressId: number;
+  status: PurchaseStatus;
+  subtotal: number;
   taxAmount: number;
   taxType: PurchaseTaxType;
   terms: string;
   updatedAt: string;
+  workOrderId: number | null;
   workOrderNo: string;
 };
 
 export type PurchaseSavePayload = {
   billingAddress: string;
+  billingAddressId: number;
+  companyId: number;
   currencyCode?: string;
-  customerEmail: string;
-  customerName: string;
-  customerPhone: string;
-  invoiceNumber: string;
-  issuedOn: string;
-  items: PurchaseLineItemInput[];
-  notes: string;
-  roundOff?: number;
-  shippingAddress: string;
-  status: PurchaseStatus;
+  currencyId: number;
+  supplierEmail: string;
+  supplierId: number;
+  supplierName: string;
+  supplierPhone: string;
   supplierBillDate?: string;
   supplierBillNo?: string;
+  issuedOn: string;
+  financialYearId: number;
+  items: PurchaseLineItemInput[];
+  ledgerId: number | null;
+  notes: string;
+  invoiceNumber: string;
+  roundOff?: number;
+  salesLedger: string;
+  shippingAddress: string;
+  shippingAddressId: number;
+  status: PurchaseStatus;
   taxType: PurchaseTaxType;
   terms: string;
+  workOrderId: number | null;
   workOrderNo: string;
 };
 
@@ -80,20 +117,30 @@ export type PurchaseView =
 export function createEmptyPurchase(): PurchaseSavePayload {
   return {
     billingAddress: "",
-    customerEmail: "",
-    customerName: "",
-    customerPhone: "",
-    invoiceNumber: "",
-    issuedOn: new Date().toISOString().slice(0, 10),
-    items: [],
-    notes: "",
-    roundOff: 0,
-    shippingAddress: "",
-    status: "draft",
+    billingAddressId: 0,
+    companyId: 0,
+    currencyCode: "INR",
+    currencyId: 0,
+    supplierEmail: "",
+    supplierId: 0,
+    supplierName: "",
+    supplierPhone: "",
     supplierBillDate: "",
     supplierBillNo: "",
+    issuedOn: new Date().toISOString().slice(0, 10),
+    financialYearId: 0,
+    items: [],
+    ledgerId: null,
+    notes: "",
+    invoiceNumber: "",
+    roundOff: 0,
+    salesLedger: "",
+    shippingAddress: "",
+    shippingAddressId: 0,
+    status: "draft",
     taxType: "cgst-sgst",
     terms: "",
+    workOrderId: null,
     workOrderNo: ""
   };
 }
@@ -101,15 +148,21 @@ export function createEmptyPurchase(): PurchaseSavePayload {
 export function createEmptyPurchaseItem(): PurchaseLineItemInput {
   return {
     colour: "",
+    colourId: null,
     dcNo: "",
     description: "",
     hsnCode: "",
+    hsnCodeId: null,
     poNo: "",
+    productId: null,
     productName: "",
     quantity: 1,
     rate: 0,
     size: "",
+    sizeId: null,
+    taxId: null,
     taxRate: 18,
-    unit: "Nos"
+    unit: "Nos",
+    unitId: 0
   };
 }

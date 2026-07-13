@@ -1,6 +1,7 @@
 import React from "react";
 import { RouterProvider } from "@tanstack/react-router";
-import { GlobalLoader, Toaster } from "@codexsun/ui";
+import { GlobalLoader } from "@codexsun/ui/components/global-loader";
+import { Toaster } from "@codexsun/ui/components/sonner";
 import { AppProviders, GlobalQueryLoader } from "./providers";
 import { router } from "./router";
 import { applyDesignSystemPreference } from "./design-system";

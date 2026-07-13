@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, useEffect, useMemo, useState, type ComponentType } from "react";
 import {
   Building2Icon,
   ClipboardListIcon,
@@ -35,69 +35,246 @@ import {
   type PlatformAppId
 } from "../../app/app-registry";
 import { getTenantRuntime } from "../../modules/tenant/tenant.services";
-import { AddressTypesWorkspace } from "@codexsun/core-web/modules/common/contacts/address-types";
-import { BankNamesWorkspace } from "@codexsun/core-web/modules/common/contacts/bank-names";
-import { ContactGroupsWorkspace } from "@codexsun/core-web/modules/common/contacts/contact-groups";
-import { ContactTypesWorkspace } from "@codexsun/core-web/modules/common/contacts/contact-types";
-import { CityWorkspace } from "@codexsun/core-web/modules/common/location/city";
-import { CountryWorkspace } from "@codexsun/core-web/modules/common/location/country";
-import { DistrictWorkspace } from "@codexsun/core-web/modules/common/location/district";
-import { PincodeWorkspace } from "@codexsun/core-web/modules/common/location/pincode";
-import { StateWorkspace } from "@codexsun/core-web/modules/common/location/state";
-import { LedgerGroupsWorkspace } from "@codexsun/core-web/modules/common/accounts/ledger-groups";
-import { LedgersWorkspace } from "@codexsun/core-web/modules/common/accounts/ledgers";
-import { CurrenciesWorkspace } from "@codexsun/core-web/modules/common/others/currencies";
-import { MonthsWorkspace } from "@codexsun/core-web/modules/common/others/months";
-import { PaymentTermsWorkspace } from "@codexsun/core-web/modules/common/others/payment-terms";
-import { PrioritiesWorkspace } from "@codexsun/core-web/modules/common/others/priorities";
-import { SalesTypesWorkspace } from "@codexsun/core-web/modules/common/others/sales-types";
-import { BrandsWorkspace } from "@codexsun/core-web/modules/common/products/brands";
-import { ColoursWorkspace } from "@codexsun/core-web/modules/common/products/colours";
-import { HsnCodesWorkspace } from "@codexsun/core-web/modules/common/products/hsn-codes";
-import { ProductCategoriesWorkspace } from "@codexsun/core-web/modules/common/products/product-categories";
-import { ProductGroupsWorkspace } from "@codexsun/core-web/modules/common/products/product-groups";
-import { ProductTypesWorkspace } from "@codexsun/core-web/modules/common/products/product-types";
-import { SizesWorkspace } from "@codexsun/core-web/modules/common/products/sizes";
-import { StylesWorkspace } from "@codexsun/core-web/modules/common/products/styles";
-import { TaxesWorkspace } from "@codexsun/core-web/modules/common/products/taxes";
-import { UnitsWorkspace } from "@codexsun/core-web/modules/common/products/units";
-import { DestinationsWorkspace } from "@codexsun/core-web/modules/common/workorder/destinations";
-import { StockRejectionTypesWorkspace } from "@codexsun/core-web/modules/common/workorder/stock-rejection-types";
-import { TransportsWorkspace } from "@codexsun/core-web/modules/common/workorder/transports";
-import { WarehousesWorkspace } from "@codexsun/core-web/modules/common/workorder/warehouses";
-import { WorkOrderTypesWorkspace } from "@codexsun/core-web/modules/common/workorder/work-order-types";
-import { ContactWorkspace } from "@codexsun/core-web/modules/master/contact";
-import { ProductWorkspace } from "@codexsun/core-web/modules/master/product";
-import { WorkOrderWorkspace } from "@codexsun/core-web/modules/master/work-order";
-import { CompanyWorkspace, listCompanies } from "@codexsun/core-web/modules/organisation/company";
+import { listCompanies } from "@codexsun/core-web/modules/organisation/company";
 import {
-  DefaultCompanyWorkspace,
   defaultCompanyQueryKey,
   getDefaultCompany,
   saveDefaultCompany,
   type LandingAppOption
 } from "@codexsun/core-web/modules/organisation/default-company";
-import {
-  FinancialYearWorkspace,
-  listFinancialYears
-} from "@codexsun/core-web/modules/organisation/financial-year";
-import { QuotationWorkspace } from "../../modules/quotation/quotation.workspace";
-import { SalesWorkspace } from "../../modules/sales/sales.workspace";
-import { PurchaseWorkspace } from "../../modules/purchase/purchase.workspace";
-import { ExportSalesWorkspace } from "../../modules/export-sales/export-sales.workspace";
-import { PaymentWorkspace } from "../../modules/payment/payment.workspace";
-import { ReceiptWorkspace } from "../../modules/receipt/receipt.workspace";
-import {
-  BillingSettingsWorkspace,
-  DocumentSettingsWorkspace
-} from "../../modules/billing-settings";
+import { listFinancialYears } from "@codexsun/core-web/modules/organisation/financial-year";
 import { getToken, setTenantDbName, setTenantId } from "../../shared/api/platform-api";
+
+function lazyWorkspace<Props>(loader: () => Promise<ComponentType<Props>>) {
+  return lazy(async () => ({ default: await loader() }));
+}
+
+const AddressTypesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/contacts/address-types").then(
+    (module) => module.AddressTypesWorkspace
+  )
+);
+const BankNamesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/contacts/bank-names").then(
+    (module) => module.BankNamesWorkspace
+  )
+);
+const ContactGroupsWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/contacts/contact-groups").then(
+    (module) => module.ContactGroupsWorkspace
+  )
+);
+const ContactTypesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/contacts/contact-types").then(
+    (module) => module.ContactTypesWorkspace
+  )
+);
+const CityWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/location/city").then((module) => module.CityWorkspace)
+);
+const CountryWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/location/country").then(
+    (module) => module.CountryWorkspace
+  )
+);
+const DistrictWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/location/district").then(
+    (module) => module.DistrictWorkspace
+  )
+);
+const PincodeWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/location/pincode").then(
+    (module) => module.PincodeWorkspace
+  )
+);
+const StateWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/location/state").then((module) => module.StateWorkspace)
+);
+const LedgerGroupsWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/accounts/ledger-groups").then(
+    (module) => module.LedgerGroupsWorkspace
+  )
+);
+const LedgersWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/accounts/ledgers").then(
+    (module) => module.LedgersWorkspace
+  )
+);
+const CurrenciesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/others/currencies").then(
+    (module) => module.CurrenciesWorkspace
+  )
+);
+const MonthsWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/others/months").then((module) => module.MonthsWorkspace)
+);
+const PaymentTermsWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/others/payment-terms").then(
+    (module) => module.PaymentTermsWorkspace
+  )
+);
+const PrioritiesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/others/priorities").then(
+    (module) => module.PrioritiesWorkspace
+  )
+);
+const SalesTypesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/others/sales-types").then(
+    (module) => module.SalesTypesWorkspace
+  )
+);
+const BrandsWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/products/brands").then(
+    (module) => module.BrandsWorkspace
+  )
+);
+const ColoursWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/products/colours").then(
+    (module) => module.ColoursWorkspace
+  )
+);
+const HsnCodesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/products/hsn-codes").then(
+    (module) => module.HsnCodesWorkspace
+  )
+);
+const ProductCategoriesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/products/product-categories").then(
+    (module) => module.ProductCategoriesWorkspace
+  )
+);
+const ProductGroupsWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/products/product-groups").then(
+    (module) => module.ProductGroupsWorkspace
+  )
+);
+const ProductTypesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/products/product-types").then(
+    (module) => module.ProductTypesWorkspace
+  )
+);
+const SizesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/products/sizes").then((module) => module.SizesWorkspace)
+);
+const StylesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/products/styles").then(
+    (module) => module.StylesWorkspace
+  )
+);
+const TaxesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/products/taxes").then((module) => module.TaxesWorkspace)
+);
+const UnitsWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/products/units").then((module) => module.UnitsWorkspace)
+);
+const DestinationsWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/workorder/destinations").then(
+    (module) => module.DestinationsWorkspace
+  )
+);
+const StockRejectionTypesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/workorder/stock-rejection-types").then(
+    (module) => module.StockRejectionTypesWorkspace
+  )
+);
+const TransportsWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/workorder/transports").then(
+    (module) => module.TransportsWorkspace
+  )
+);
+const WarehousesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/workorder/warehouses").then(
+    (module) => module.WarehousesWorkspace
+  )
+);
+const WorkOrderTypesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/common/workorder/work-order-types").then(
+    (module) => module.WorkOrderTypesWorkspace
+  )
+);
+const ContactWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/master/contact").then((module) => module.ContactWorkspace)
+);
+const ProductWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/master/product").then((module) => module.ProductWorkspace)
+);
+const WorkOrderWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/master/work-order").then((module) => module.WorkOrderWorkspace)
+);
+const CompanyWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/organisation/company").then(
+    (module) => module.CompanyWorkspace
+  )
+);
+const DefaultCompanyWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/organisation/default-company").then(
+    (module) => module.DefaultCompanyWorkspace
+  )
+);
+const FinancialYearWorkspace = lazyWorkspace(() =>
+  import("@codexsun/core-web/modules/organisation/financial-year").then(
+    (module) => module.FinancialYearWorkspace
+  )
+);
+const QuotationWorkspace = lazyWorkspace(() =>
+  import("@codexsun/billing-web/modules/quotation").then((module) => module.QuotationWorkspace)
+);
+const SalesWorkspace = lazyWorkspace(() =>
+  import("@codexsun/billing-web/modules/sales").then((module) => module.SalesWorkspace)
+);
+const BillingSettingsWorkspace = lazyWorkspace(() =>
+  import("@codexsun/billing-web").then((module) => module.BillingSettingsWorkspace)
+);
+const DocumentSettingsWorkspace = lazyWorkspace(() =>
+  import("@codexsun/billing-web").then((module) => module.DocumentSettingsWorkspace)
+);
+const PurchaseWorkspace = lazyWorkspace(() =>
+  import("../../modules/purchase/purchase.workspace").then((module) => module.PurchaseWorkspace)
+);
+const ExportSalesWorkspace = lazyWorkspace(() =>
+  import("../../modules/export-sales/export-sales.workspace").then(
+    (module) => module.ExportSalesWorkspace
+  )
+);
+const PaymentWorkspace = lazyWorkspace(() =>
+  import("../../modules/payment/payment.workspace").then((module) => module.PaymentWorkspace)
+);
+const ReceiptWorkspace = lazyWorkspace(() =>
+  import("../../modules/receipt/receipt.workspace").then((module) => module.ReceiptWorkspace)
+);
+
+const TenantUserWorkspace = lazy(() =>
+  import("../../modules/tenant-user").then((module) => ({ default: module.TenantUserWorkspace }))
+);
+const TenantRoleWorkspace = lazy(() =>
+  import("../../modules/tenant-role").then((module) => ({ default: module.TenantRoleWorkspace }))
+);
+const TenantPermissionWorkspace = lazy(() =>
+  import("../../modules/tenant-permission").then((module) => ({
+    default: module.TenantPermissionWorkspace
+  }))
+);
+const TenantUserRoleWorkspace = lazy(() =>
+  import("../../modules/tenant-user-role").then((module) => ({
+    default: module.TenantUserRoleWorkspace
+  }))
+);
+const TenantRolePermissionWorkspace = lazy(() =>
+  import("../../modules/tenant-role-permission").then((module) => ({
+    default: module.TenantRolePermissionWorkspace
+  }))
+);
 
 type AppPage =
   | "application.overview"
   | "application.landing"
   | "application.profile"
   | "application.settings"
+  | "application.access.users"
+  | "application.access.roles"
+  | "application.access.permissions"
+  | "application.access.user-roles"
+  | "application.access.role-permissions"
   | "billing.overview"
   | "billing.quotation"
   | "billing.sales"
@@ -336,6 +513,13 @@ export function AppDesk() {
           ) : null}
           {safePage === "application.profile" ? <ApplicationProfile /> : null}
           {safePage === "application.settings" ? <ApplicationSettings /> : null}
+          {safePage === "application.access.users" ? <TenantUserWorkspace /> : null}
+          {safePage === "application.access.roles" ? <TenantRoleWorkspace /> : null}
+          {safePage === "application.access.permissions" ? <TenantPermissionWorkspace /> : null}
+          {safePage === "application.access.user-roles" ? <TenantUserRoleWorkspace /> : null}
+          {safePage === "application.access.role-permissions" ? (
+            <TenantRolePermissionWorkspace />
+          ) : null}
           {safePage === "billing.overview" ? <BillingOverview /> : null}
           {safePage === "billing.quotation" ? <QuotationWorkspace /> : null}
           {safePage === "billing.sales" ? <BillingSales /> : null}
@@ -400,6 +584,11 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "application.landing" ||
     key === "application.profile" ||
     key === "application.settings" ||
+    key === "application.access.users" ||
+    key === "application.access.roles" ||
+    key === "application.access.permissions" ||
+    key === "application.access.user-roles" ||
+    key === "application.access.role-permissions" ||
     key === "billing.overview" ||
     key === "billing.quotation" ||
     key === "billing.desk" ||
@@ -978,6 +1167,11 @@ function titleForPage(page: AppPage) {
     "application.landing": "Landing Desk",
     "application.profile": "Application Profile",
     "application.settings": "Application Settings",
+    "application.access.users": "Users",
+    "application.access.roles": "Roles",
+    "application.access.permissions": "Permissions",
+    "application.access.user-roles": "User Roles",
+    "application.access.role-permissions": "Role Permissions",
     "billing.overview": "Overview",
     "billing.quotation": "Quotation",
     "billing.sales": "Sales",

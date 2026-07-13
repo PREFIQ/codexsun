@@ -1,42 +1,100 @@
 export type ReceiptStatus = "draft" | "posted" | "cancelled";
-export type ReceiptAllocation = {
-  documentNo: string;
-  documentDate: string;
-  documentTotal: number;
-  previousBalance: number;
-  allocatedAmount: number;
+export type ReceiptMode = "cash" | "bank" | "upi" | "transfer";
+
+export type ReceiptContext = {
+  companyId: number;
+  companyName: string;
+  currencyCode: string;
+  currencyId: number;
+  financialYearId: number;
+  financialYearName: string;
+  suggestedReceiptNumber: string;
 };
-export type Receipt = {
-  id: string;
-  receiptNumber: string;
-  receiptDate: string;
-  partyName: string;
-  partyId: string;
-  partyType: string;
-  receiptMode: string;
-  bankAccount: string;
-  referenceNo: string;
-  referenceDate: string;
-  amount: number;
-  tdsAmount: number;
-  discountAmount: number;
-  roundOff: number;
-  totalAmount: number;
+
+export type ReceiptAllocationInput = {
   allocatedAmount: number;
-  unallocatedAmount: number;
-  status: ReceiptStatus;
-  notes: string;
+  saleId: string;
+};
+
+export type ReceiptAllocation = ReceiptAllocationInput & {
+  documentDate: string;
+  documentNo: string;
+  documentTotal: number;
+  id: string;
+  previousBalance: number;
+};
+
+export type Receipt = {
+  allocatedAmount: number;
   allocations: ReceiptAllocation[];
+  amount: number;
+  companyId: number;
+  companyName: string;
   createdAt: string;
+  currencyCode: string;
+  currencyId: number;
+  customerId: number;
+  customerName: string;
+  discountAmount: number;
+  financialYearId: number;
+  financialYearName: string;
+  id: string;
+  ledgerId: number;
+  ledgerName: string;
+  lineNumber: number;
+  notes: string;
+  receiptDate: string;
+  receiptMode: ReceiptMode;
+  receiptNumber: string;
+  referenceDate: string;
+  referenceNo: string;
+  roundOff: number;
+  status: ReceiptStatus;
+  tdsAmount: number;
+  totalAmount: number;
+  unallocatedAmount: number;
   updatedAt: string;
 };
-export type ReceiptInput = Omit<
-  Partial<Receipt>,
-  "id" | "createdAt" | "updatedAt" | "totalAmount" | "allocatedAmount" | "unallocatedAmount"
-> & {
-  receiptNumber?: string;
-  receiptDate: string;
-  partyName: string;
+
+export type ReceiptSavePayload = {
+  allocations: ReceiptAllocationInput[];
   amount: number;
-  allocations?: ReceiptAllocation[];
+  companyId: number;
+  currencyId: number;
+  customerId: number;
+  discountAmount: number;
+  financialYearId: number;
+  ledgerId: number;
+  notes: string;
+  receiptDate: string;
+  receiptMode: ReceiptMode;
+  receiptNumber: string;
+  referenceDate: string;
+  referenceNo: string;
+  roundOff: number;
+  tdsAmount: number;
+};
+
+export type ReceiptAllocationCandidate = {
+  customerId: number;
+  documentDate: string;
+  documentNo: string;
+  documentTotal: number;
+  outstandingAmount: number;
+  saleId: string;
+};
+
+export type ReceiptEvent = {
+  correlationId: string;
+  occurredAt: string;
+  receiptId: string;
+  tenantDatabase: string;
+  type: "billing.receipt.created" | "billing.receipt.posted" | "billing.receipt.cancelled";
+};
+
+export type ReceiptJob = {
+  correlationId: string;
+  name: "receipt.post";
+  receiptId: string;
+  tenantDatabase: string;
 };

@@ -8,6 +8,7 @@ import {
   createEmptySaleEinvoice,
   createEmptySaleEway,
   type Sale,
+  type SaleContext,
   type SaleSavePayload,
   type SaleStatus
 } from "./sales.types";
@@ -122,6 +123,10 @@ export async function getSale(id: string) {
   return billingApiGet<Sale>(`/billing/sales/${id}`).then(fromApiSale);
 }
 
+export function getSaleContext() {
+  return billingApiGet<SaleContext>("/billing/sales/context");
+}
+
 export async function createSale(payload: SaleSavePayload) {
   return billingApiPost<Sale>("/billing/sales", toApiPayload(payload)).then(fromApiSale);
 }
@@ -171,15 +176,28 @@ export function updateSaleContact(id: string, payload: SaleContactSavePayload) {
 export function listSaleLocations(
   kind: "cities" | "countries" | "districts" | "pincodes" | "states"
 ) {
-  return billingApiGet<SaleLocationRecord[]>(`/billing/sales/lookups/${kind}`);
+  const paths = {
+    cities: "/billing/sales/lookups/cities",
+    countries: "/billing/sales/lookups/countries",
+    districts: "/billing/sales/lookups/districts",
+    pincodes: "/billing/sales/lookups/pincodes",
+    states: "/billing/sales/lookups/states"
+  } as const;
+  return billingApiGet<SaleLocationRecord[]>(paths[kind]);
 }
 
 export function createSaleLocation(kind: SaleLocationKind, payload: Record<string, unknown>) {
-  return billingApiPost<SaleLocationRecord>(`/billing/sales/lookups/locations/${kind}`, payload);
+  const paths = {
+    cities: "/billing/sales/lookups/cities",
+    districts: "/billing/sales/lookups/districts",
+    pincodes: "/billing/sales/lookups/pincodes",
+    states: "/billing/sales/lookups/states"
+  } as const;
+  return billingApiPost<SaleLocationRecord>(paths[kind], payload);
 }
 
 export function listSaleAddressTypes() {
-  return billingApiGet<SaleLookupRecord[]>("/billing/sales/lookups/addressTypes");
+  return billingApiGet<SaleLookupRecord[]>("/billing/sales/lookups/address-types");
 }
 
 export function createSaleAddressType(name: string) {
@@ -202,15 +220,26 @@ export function createSaleLookup(
     | "transports",
   payload: Record<string, unknown>
 ) {
-  return billingApiPost<SaleLookupRecord>(`/billing/sales/lookups/${kind}`, payload);
+  const paths = {
+    colours: "/billing/sales/lookups/colours",
+    hsnCodes: "/billing/sales/lookups/hsn-codes",
+    productCategories: "/billing/sales/lookups/product-categories",
+    products: "/billing/sales/lookups/products",
+    sizes: "/billing/sales/lookups/sizes",
+    taxes: "/billing/sales/lookups/taxes",
+    transports: "/billing/sales/lookups/transports",
+    units: "/billing/sales/lookups/units",
+    workOrders: "/billing/sales/lookups/work-orders"
+  } as const;
+  return billingApiPost<SaleLookupRecord>(paths[kind], payload);
 }
 
 export function listSaleProductCategories() {
-  return billingApiGet<SaleLookupRecord[]>("/billing/sales/lookups/productCategories");
+  return billingApiGet<SaleLookupRecord[]>("/billing/sales/lookups/product-categories");
 }
 
 export function listSaleHsnCodes() {
-  return billingApiGet<SaleLookupRecord[]>("/billing/sales/lookups/hsnCodes");
+  return billingApiGet<SaleLookupRecord[]>("/billing/sales/lookups/hsn-codes");
 }
 
 export function listSaleUnits() {
@@ -226,7 +255,12 @@ export function updateSaleLookup(
   id: string,
   payload: Record<string, unknown>
 ) {
-  return billingApiPut<SaleLookupRecord>(`/billing/sales/lookups/${kind}/${id}`, payload);
+  return billingApiPut<SaleLookupRecord>(
+    kind === "products"
+      ? `/billing/sales/lookups/products/${id}`
+      : `/billing/sales/lookups/work-orders/${id}`,
+    payload
+  );
 }
 
 export function listSaleContacts() {
@@ -243,7 +277,7 @@ export function listSaleContacts() {
 }
 
 export function listSaleWorkOrders() {
-  return billingApiGet<SaleLookupRecord[]>("/billing/sales/lookups/workOrders").then((records) =>
+  return billingApiGet<SaleLookupRecord[]>("/billing/sales/lookups/work-orders").then((records) =>
     records.filter(isActiveRecord).map((record) => {
       const workOrderNo = record.code || record.workOrderNo || record.name || record.id;
       return lookupOption(record, {
@@ -295,32 +329,47 @@ export function createSaleTransport(payload: SaleTransportSavePayload) {
 export function saleToPayload(sale: Sale): SaleSavePayload {
   return {
     billingAddress: sale.billingAddress,
+    billingAddressId: sale.billingAddressId,
+    companyId: sale.companyId,
+    currencyCode: sale.currencyCode,
+    currencyId: sale.currencyId,
     customerEmail: sale.customerEmail,
+    customerId: sale.customerId,
     customerName: sale.customerName,
     customerPhone: sale.customerPhone,
     einvoice: sale.einvoice ?? createEmptySaleEinvoice(),
     issuedOn: sale.issuedOn,
+    financialYearId: sale.financialYearId,
     items: sale.items.map((item) => ({
       colour: item.colour,
+      colourId: item.colourId,
       dcNo: item.dcNo,
       description: item.description,
       hsnCode: item.hsnCode,
+      hsnCodeId: item.hsnCodeId,
       poNo: item.poNo,
       productName: item.productName,
+      productId: item.productId,
       quantity: item.quantity,
       rate: item.rate,
       size: item.size,
+      sizeId: item.sizeId,
+      taxId: item.taxId,
       taxRate: item.taxRate,
-      unit: item.unit
+      unit: item.unit,
+      unitId: item.unitId
     })),
     notes: sale.notes,
+    ledgerId: sale.ledgerId,
     saleNumber: sale.saleNumber || sale.invoiceNumber,
     roundOff: sale.roundOff,
     salesLedger: sale.salesLedger,
     shippingAddress: sale.shippingAddress,
+    shippingAddressId: sale.shippingAddressId,
     status: sale.status,
     taxType: sale.taxType,
     terms: sale.terms,
+    workOrderId: sale.workOrderId,
     workOrderNo: sale.workOrderNo,
     eway: sale.eway ?? createEmptySaleEway()
   };
@@ -380,21 +429,29 @@ function isActiveRecord(record: SaleLookupRecord) {
 function toApiPayload(payload: SaleSavePayload) {
   return {
     billingAddress: payload.billingAddress,
+    billingAddressId: payload.billingAddressId,
+    companyId: payload.companyId,
     currencyCode: payload.currencyCode || "INR",
+    currencyId: payload.currencyId,
     customerEmail: payload.customerEmail,
+    customerId: payload.customerId,
     customerName: payload.customerName,
     customerPhone: payload.customerPhone,
     einvoice: payload.einvoice,
     invoiceNumber: payload.invoiceNumber || payload.saleNumber || "",
+    financialYearId: payload.financialYearId,
     issuedOn: payload.issuedOn,
     items: payload.items,
     notes: payload.notes,
+    ledgerId: payload.ledgerId,
     roundOff: payload.roundOff,
     salesLedger: payload.salesLedger,
     shippingAddress: payload.shippingAddress,
+    shippingAddressId: payload.shippingAddressId,
     status: payload.status,
     taxType: payload.taxType,
     terms: payload.terms,
+    workOrderId: payload.workOrderId,
     workOrderNo: payload.workOrderNo,
     eway: payload.eway
   };

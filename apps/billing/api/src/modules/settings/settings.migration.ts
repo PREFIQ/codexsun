@@ -1,6 +1,11 @@
 import { sql, type Kysely } from "kysely";
 
-export async function migrateBillingSettingsModule(database: Kysely<any>) {
+export const billingSettingsMigration = {
+  description: "Tenant-owned Billing document and numbering settings.",
+  key: "billing.settings.foundation-v1"
+} as const;
+
+export async function migrateBillingSettingsModule<Database>(database: Kysely<Database>) {
   await sql
     .raw(
       `

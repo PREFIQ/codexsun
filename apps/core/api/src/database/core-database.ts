@@ -3,11 +3,12 @@ import { Kysely, MysqlDialect, sql } from "kysely";
 import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
 import { env } from "../env.js";
-import { migrateCommonModule } from "../modules/common/common.migration.js";
+import { commonMigration, migrateCommonModule } from "../modules/common/common.migration.js";
 import { seedCommonModule } from "../modules/common/common.seed.js";
-import { migrateMasterModule, seedMasterModule } from "../modules/master/index.js";
+import { masterMigration, migrateMasterModule, seedMasterModule } from "../modules/master/index.js";
 import {
   migrateOrganisationModule,
+  organisationMigration,
   seedOrganisationModule
 } from "../modules/organisation/index.js";
 
@@ -61,11 +62,16 @@ export async function bootstrapCoreDatabase(databaseName: string) {
     const database = getCoreDatabase(name);
     await flattenLegacyCoreTableNames(database);
     await migrateCommonModule(database);
+    await recordCoreMigration(database, commonMigration.key);
     await migrateOrganisationModule(database);
+    await recordCoreMigration(database, organisationMigration.key);
     await migrateMasterModule(database);
+    await recordCoreMigration(database, masterMigration.key);
+    // Seed dependency order mirrors the schema dependency order: shared lookup
+    // records first, tenant organisation defaults second, transactional masters last.
+    await seedCommonModule();
     await seedOrganisationModule();
     await seedMasterModule();
-    await seedCommonModule();
     migrated.add(name);
   });
   bootstrapping.set(name, promise);
@@ -74,6 +80,10 @@ export async function bootstrapCoreDatabase(databaseName: string) {
   } finally {
     bootstrapping.delete(name);
   }
+}
+
+async function recordCoreMigration(database: Kysely<CoreDatabase>, name: string) {
+  await sql`INSERT IGNORE INTO schema_migrations (name) VALUES (${name})`.execute(database);
 }
 
 async function flattenLegacyCoreTableNames(database: Kysely<CoreDatabase>) {

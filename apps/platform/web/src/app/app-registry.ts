@@ -11,6 +11,7 @@ import {
   ClipboardListIcon,
   LayoutDashboardIcon,
   ReceiptTextIcon,
+  ShieldCheckIcon,
   type LucideIcon
 } from "lucide-react";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
@@ -237,6 +238,38 @@ export function appMenuFor(
         ]
       },
       {
+        icon: ShieldCheckIcon,
+        title: "Access Control",
+        isActive: activePage.startsWith("application.access"),
+        items: [
+          {
+            title: "Users",
+            isActive: activePage === "application.access.users",
+            onSelect: () => onSelect("application.access.users")
+          },
+          {
+            title: "Roles",
+            isActive: activePage === "application.access.roles",
+            onSelect: () => onSelect("application.access.roles")
+          },
+          {
+            title: "Permissions",
+            isActive: activePage === "application.access.permissions",
+            onSelect: () => onSelect("application.access.permissions")
+          },
+          {
+            title: "User Roles",
+            isActive: activePage === "application.access.user-roles",
+            onSelect: () => onSelect("application.access.user-roles")
+          },
+          {
+            title: "Role Permissions",
+            isActive: activePage === "application.access.role-permissions",
+            onSelect: () => onSelect("application.access.role-permissions")
+          }
+        ]
+      },
+      {
         icon: Building2Icon,
         title: "Organisation",
         isActive: activePage.startsWith("core.organisation"),
@@ -409,6 +442,38 @@ export function appMenuItemsFor(
       isActive: activePage === "application.overview",
       onSelect: () => onSelect("application.overview"),
       title: "Overview"
+    },
+    {
+      icon: ShieldCheckIcon,
+      isActive: activePage.startsWith("application.access"),
+      title: "Access Control",
+      items: [
+        {
+          title: "Users",
+          isActive: activePage === "application.access.users",
+          onSelect: () => onSelect("application.access.users")
+        },
+        {
+          title: "Roles",
+          isActive: activePage === "application.access.roles",
+          onSelect: () => onSelect("application.access.roles")
+        },
+        {
+          title: "Permissions",
+          isActive: activePage === "application.access.permissions",
+          onSelect: () => onSelect("application.access.permissions")
+        },
+        {
+          title: "User Roles",
+          isActive: activePage === "application.access.user-roles",
+          onSelect: () => onSelect("application.access.user-roles")
+        },
+        {
+          title: "Role Permissions",
+          isActive: activePage === "application.access.role-permissions",
+          onSelect: () => onSelect("application.access.role-permissions")
+        }
+      ]
     },
     {
       icon: Building2Icon,

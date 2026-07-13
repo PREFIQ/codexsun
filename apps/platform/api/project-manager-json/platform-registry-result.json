@@ -20179,13 +20179,6 @@
                           },
                           {
                             "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-billing-files-16",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/settings/settings.page.tsx"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
                             "id": "module-settings-billing-files-17",
                             "key": "File",
                             "updatedAt": "2026-07-11T11:15:26.838Z",
@@ -20221,73 +20214,17 @@
                           },
                           {
                             "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-billing-files-22",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.form.tsx"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-billing-files-23",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.hooks.ts"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-billing-files-24",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.list.tsx"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-billing-files-25",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.schema.ts"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-billing-files-26",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.services.ts"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-billing-files-27",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.spec.ts"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-billing-files-28",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.types.ts"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
                             "id": "module-settings-billing-files-29",
                             "key": "File",
                             "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.workspace.tsx"
+                            "value": "apps/billing/web/src/modules/settings/settings.billing-workspace.tsx"
                           },
                           {
                             "createdAt": "2026-07-11T11:15:26.838Z",
                             "id": "module-settings-billing-files-30",
                             "key": "File",
                             "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/document-settings.workspace.tsx"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-billing-files-31",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/index.ts"
+                            "value": "apps/billing/web/src/modules/settings/settings.document-workspace.tsx"
                           }
                         ],
                         "actions": [
@@ -20573,13 +20510,6 @@
                           },
                           {
                             "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-document-files-16",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/settings/settings.page.tsx"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
                             "id": "module-settings-document-files-17",
                             "key": "File",
                             "updatedAt": "2026-07-11T11:15:26.838Z",
@@ -20615,73 +20545,17 @@
                           },
                           {
                             "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-document-files-22",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.form.tsx"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-document-files-23",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.hooks.ts"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-document-files-24",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.list.tsx"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-document-files-25",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.schema.ts"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-document-files-26",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.services.ts"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-document-files-27",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.spec.ts"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-document-files-28",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.types.ts"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
                             "id": "module-settings-document-files-29",
                             "key": "File",
                             "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/billing-settings.workspace.tsx"
+                            "value": "apps/billing/web/src/modules/settings/settings.billing-workspace.tsx"
                           },
                           {
                             "createdAt": "2026-07-11T11:15:26.838Z",
                             "id": "module-settings-document-files-30",
                             "key": "File",
                             "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/document-settings.workspace.tsx"
-                          },
-                          {
-                            "createdAt": "2026-07-11T11:15:26.838Z",
-                            "id": "module-settings-document-files-31",
-                            "key": "File",
-                            "updatedAt": "2026-07-11T11:15:26.838Z",
-                            "value": "apps/billing/web/src/modules/billing-settings/index.ts"
+                            "value": "apps/billing/web/src/modules/settings/settings.document-workspace.tsx"
                           }
                         ],
                         "actions": [

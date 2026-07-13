@@ -1,23 +1,22 @@
-export const salesEvents = {
-  cancelled: "billing.sales.cancelled",
-  confirmed: "billing.sales.confirmed",
-  created: "billing.sales.created",
-  updated: "billing.sales.updated"
+import type { DomainEvent } from "@codexsun/framework/events";
+import type { PurchaseStatus } from "./purchase.types.js";
+
+export const purchaseEvents = {
+  changed: "billing.purchase.changed",
+  confirmed: "billing.purchase.confirmed"
 } as const;
 
-export type SalesEventName = (typeof salesEvents)[keyof typeof salesEvents];
-
-export function createSalesEvent(
-  name: SalesEventName,
-  payload: { saleId: string; tenantId: string },
-  correlationId: string
-) {
+export function createPurchaseEvent(
+  action: "created" | "updated" | "confirmed" | "cancelled" | "converted",
+  payload: { id: string; status: PurchaseStatus; salesInvoiceNo?: string },
+  databaseName: string
+): DomainEvent<typeof payload & { action: typeof action }> {
   return {
-    correlationId,
-    name,
+    eventName: action === "confirmed" ? purchaseEvents.confirmed : purchaseEvents.changed,
+    eventVersion: 1,
     occurredAt: new Date().toISOString(),
-    payload,
-    tenantId: payload.tenantId,
-    version: 1
-  } as const;
+    payload: { action, ...payload },
+    sourceModule: "billing.purchase",
+    tenant: { tenantId: databaseName }
+  };
 }

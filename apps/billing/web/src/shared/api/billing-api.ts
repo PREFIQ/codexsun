@@ -40,7 +40,7 @@ async function billingApiRequest<T>(path: string, init?: RequestInit) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json",
+      ...(init?.body !== undefined ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantId ? { "x-tenant-id": tenantId } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),

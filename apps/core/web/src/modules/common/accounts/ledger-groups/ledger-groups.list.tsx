@@ -95,5 +95,5 @@ export function LedgerGroupsList({
   );
 }
 function protectedRecord(record: LedgerGroupRecord) {
-  return record.name.trim().toLowerCase() === "general";
+  return ["-", "general"].includes(record.name.trim().toLowerCase());
 }

@@ -1,4 +1,9 @@
 import { AppError } from "@codexsun/framework/errors";
+import { BillingSettingsRepository } from "../settings/settings.repository.js";
+import {
+  formatBillingDocumentNumber,
+  nextBillingDocumentNumber
+} from "../settings/settings.types.js";
 import { SalesRepository } from "./sales.repository.js";
 import type {
   Sale,
@@ -8,11 +13,6 @@ import type {
   SaleLineItemInput,
   SaleSavePayload
 } from "./sales.types.js";
-import { BillingSettingsRepository } from "../settings/settings.repository.js";
-import {
-  formatBillingDocumentNumber,
-  nextBillingDocumentNumber
-} from "../settings/settings.types.js";
 import { generateSaleEinvoice, generateSaleEway } from "./whitebooks.client.js";
 
 export class SalesService {
@@ -21,30 +21,46 @@ export class SalesService {
     private readonly settings = new BillingSettingsRepository()
   ) {}
 
-  async listSales(databaseName: string) {
+  listSales(databaseName: string) {
     return this.repository.list(databaseName);
   }
 
-  async getSale(databaseName: string, id: string) {
+  getSale(databaseName: string, id: string) {
     return this.repository.get(databaseName, id);
   }
 
+  async getContext(databaseName: string) {
+    const context = await this.repository.context(databaseName);
+    if (!context) {
+      throw AppError.validation(
+        "Configure an active Default Company, Financial Year, and INR currency before creating sales."
+      );
+    }
+    return context;
+  }
+
   async createSale(databaseName: string, input: SaleSavePayload) {
+    const normalized = normalizeSaleInput(
+      await this.repository.resolveMissingReferences(databaseName, input)
+    );
+    await this.validateReferences(databaseName, normalized);
     const billingSettings = await this.settings.getBillingSettings(databaseName);
     const numbering = billingSettings.numbering.sales;
-    const {
-      generated,
-      input: numberedInput,
-      nextNumber
-    } = await resolveNextSaleNumber(databaseName, input, numbering, this.repository);
-    const normalizedInput = numberedInput;
-    const sale = await this.repository.create(databaseName, normalizeSaleInput(normalizedInput));
-    if (numbering.automatic && (generated || nextNumber > numbering.nextNumber)) {
+    const numbered = await resolveNextSaleNumber(
+      databaseName,
+      normalized,
+      numbering,
+      this.repository
+    );
+    const totals = buildSaleTotals(numbered.input);
+    const sale = await this.repository.create(databaseName, numbered.input, totals);
+    if (!sale) throw AppError.validation("Sales invoice could not be created.");
+    if (numbering.automatic && (numbered.generated || numbered.nextNumber > numbering.nextNumber)) {
       await this.settings.saveBillingSettings(databaseName, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
-          sales: { ...numbering, nextNumber }
+          sales: { ...numbering, nextNumber: numbered.nextNumber }
         }
       });
     }
@@ -52,28 +68,60 @@ export class SalesService {
   }
 
   async updateSale(databaseName: string, id: string, input: SaleSavePayload) {
-    const duplicate = await this.repository.findByInvoiceNumber(
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.status !== "draft") throw AppError.conflict("Only draft sales can be edited.");
+    const normalized = normalizeSaleInput(input);
+    await this.validateReferences(databaseName, normalized);
+    const duplicateId = await this.repository.findByInvoiceNumber(
       databaseName,
-      input.invoiceNumber.trim().toUpperCase()
+      normalized.companyId,
+      normalized.financialYearId,
+      normalized.invoiceNumber
     );
-    if (duplicate && duplicate.id !== id)
-      throw AppError.conflict("Sales invoice number already exists. Enter a unique number.");
-    const sale = await this.repository.update(databaseName, id, normalizeSaleInput(input));
-    return sale;
+    if (duplicateId && duplicateId !== id)
+      throw AppError.conflict("Sales invoice number already exists for this company and year.");
+    return this.repository.update(databaseName, id, normalized, buildSaleTotals(normalized));
   }
 
   async confirmSale(databaseName: string, id: string) {
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.status !== "draft") throw AppError.conflict("Only draft sales can be confirmed.");
     return this.repository.setStatus(databaseName, id, "confirmed");
   }
 
   async cancelSale(databaseName: string, id: string) {
-    const sale = await this.repository.setStatus(databaseName, id, "cancelled");
-    return sale;
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.status === "cancelled") throw AppError.conflict("Sale is already cancelled.");
+    return this.repository.setStatus(databaseName, id, "cancelled");
+  }
+
+  async revokeSale(databaseName: string, id: string) {
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.einvoice.status === "generated")
+      throw AppError.conflict("Cancel the generated E-invoice before revoking this sale.");
+    if (current.status === "draft")
+      throw AppError.conflict("A draft sale does not need to be revoked.");
+    return this.repository.setStatus(databaseName, id, "draft");
+  }
+
+  async deleteSale(databaseName: string, id: string) {
+    const current = await this.repository.get(databaseName, id);
+    if (!current) return null;
+    if (current.status !== "draft" || current.einvoice.status === "generated")
+      throw AppError.conflict("Only draft sales without generated compliance can be deleted.");
+    await this.repository.softDelete(databaseName, id);
+    return current;
   }
 
   async generateEinvoice(databaseName: string, id: string, details?: SaleEinvoiceDetails) {
     let sale = await this.repository.get(databaseName, id);
     if (!sale) return null;
+    if (sale.status !== "confirmed")
+      throw AppError.conflict("Confirm the sale before generating an E-invoice.");
     if (details)
       sale =
         (await this.repository.updateCompliance(databaseName, id, { einvoice: details })) ?? sale;
@@ -86,6 +134,8 @@ export class SalesService {
   async generateEway(databaseName: string, id: string, details?: SaleEwayDetails) {
     let sale = await this.repository.get(databaseName, id);
     if (!sale) return null;
+    if (sale.status !== "confirmed")
+      throw AppError.conflict("Confirm the sale before generating an E-way bill.");
     if (details)
       sale = (await this.repository.updateCompliance(databaseName, id, { eway: details })) ?? sale;
     const result = await generateSaleEway(sale);
@@ -93,45 +143,109 @@ export class SalesService {
       eway: { ...sale.eway, ...result.eway, status: "generated" }
     });
   }
+
+  private async validateReferences(databaseName: string, input: SaleSavePayload) {
+    const references = await this.repository.referenceState(databaseName, input);
+    const failures = [
+      !references.company && "Company is inactive or missing.",
+      !references.financialYear && "Invoice date is outside the selected active Financial Year.",
+      !references.customer && "Customer is inactive or missing.",
+      !references.billingAddress && "Billing address does not belong to the selected customer.",
+      !references.shippingAddress && "Shipping address does not belong to the selected customer.",
+      !references.workOrder && "Work order is inactive or missing.",
+      !references.ledger && "Sales ledger is inactive or missing.",
+      !references.currency && "Currency is inactive or missing."
+    ].filter((message): message is string => Boolean(message));
+    if (failures.length) throw AppError.validation(failures[0]!);
+
+    const itemReferences = await this.repository.validItemReferenceIds(databaseName, input);
+    const invalid = (requested: number[], existing: Set<number>, label: string): string | null =>
+      requested.some((id) => !existing.has(id)) ? `${label} is inactive or missing.` : null;
+    const itemFailure =
+      invalid(itemReferences.requested.products, itemReferences.products, "Product") ??
+      invalid(itemReferences.requested.hsnCodes, itemReferences.hsnCodes, "HSN code") ??
+      invalid(itemReferences.requested.colours, itemReferences.colours, "Colour") ??
+      invalid(itemReferences.requested.sizes, itemReferences.sizes, "Size") ??
+      invalid(itemReferences.requested.units, itemReferences.units, "Unit") ??
+      invalid(itemReferences.requested.taxes, itemReferences.taxes, "Tax");
+    if (itemFailure) throw AppError.validation(itemFailure);
+  }
 }
 
 export function normalizeSaleInput(input: SaleSavePayload): SaleSavePayload {
   const items = input.items
     .map(normalizeSaleLineItem)
     .filter((item) => item.description.length > 0 && item.quantity > 0);
-
-  if (!input.customerName.trim()) {
-    throw AppError.validation("Customer name is required.");
-  }
-  if (!input.invoiceNumber.trim()) {
-    throw AppError.validation("Invoice number is required.");
-  }
-  if (!input.issuedOn.trim()) {
+  if (!Number.isInteger(input.companyId) || input.companyId <= 0)
+    throw AppError.validation("Default Company is required.");
+  if (!Number.isInteger(input.financialYearId) || input.financialYearId <= 0)
+    throw AppError.validation("Financial Year is required.");
+  if (!Number.isInteger(input.customerId) || input.customerId <= 0)
+    throw AppError.validation("Select a persisted customer.");
+  if (!Number.isInteger(input.billingAddressId) || input.billingAddressId <= 0)
+    throw AppError.validation("Select a persisted billing address.");
+  if (!Number.isInteger(input.shippingAddressId) || input.shippingAddressId <= 0)
+    throw AppError.validation("Select a persisted shipping address.");
+  if (!Number.isInteger(input.currencyId) || input.currencyId <= 0)
+    throw AppError.validation("Select a persisted currency.");
+  if (!input.invoiceNumber.trim()) throw AppError.validation("Invoice number is required.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.issuedOn.trim()))
     throw AppError.validation("Invoice date is required.");
-  }
-  if (items.length === 0) {
-    throw AppError.validation("Add at least one sale item with a product or description.");
-  }
+  if (items.length === 0)
+    throw AppError.validation("Add at least one sale item with a persisted unit.");
+  if (items.some((item) => !Number.isInteger(item.unitId) || item.unitId <= 0))
+    throw AppError.validation("Every sale item requires a persisted unit.");
 
   return {
     billingAddress: input.billingAddress.trim(),
+    billingAddressId: input.billingAddressId,
+    companyId: input.companyId,
     currencyCode: input.currencyCode.trim().toUpperCase() || "INR",
+    currencyId: input.currencyId,
     customerEmail: input.customerEmail.trim().toLowerCase(),
+    customerId: input.customerId,
     customerName: input.customerName.trim(),
-    customerPhone: input.customerPhone.trim(),
     einvoice: normalizeEinvoice(input.einvoice),
+    eway: normalizeEway(input.eway),
+    financialYearId: input.financialYearId,
     invoiceNumber: input.invoiceNumber.trim().toUpperCase(),
     issuedOn: input.issuedOn.trim(),
     items,
+    ledgerId: positiveOrNull(input.ledgerId),
     notes: input.notes.trim(),
-    roundOff: Number(input.roundOff ?? 0) || 0,
+    roundOff: roundMoney(Number(input.roundOff ?? 0) || 0),
     salesLedger: input.salesLedger?.trim() ?? "",
     shippingAddress: input.shippingAddress.trim(),
+    shippingAddressId: input.shippingAddressId,
     status: input.status,
     taxType: input.taxType ?? "cgst-sgst",
     terms: input.terms?.trim() ?? "",
-    workOrderNo: input.workOrderNo?.trim() ?? "",
-    eway: normalizeEway(input.eway)
+    workOrderId: positiveOrNull(input.workOrderId),
+    workOrderNo: input.workOrderNo?.trim().toUpperCase() ?? "",
+    customerPhone: input.customerPhone.trim()
+  };
+}
+
+function normalizeSaleLineItem(item: SaleLineItemInput): SaleLineItemInput {
+  const productName = item.productName?.trim() ?? "";
+  return {
+    colour: item.colour?.trim() ?? "",
+    colourId: positiveOrNull(item.colourId),
+    dcNo: item.dcNo?.trim().toUpperCase() ?? "",
+    description: item.description.trim() || productName,
+    hsnCode: item.hsnCode.trim().toUpperCase(),
+    hsnCodeId: positiveOrNull(item.hsnCodeId),
+    poNo: item.poNo?.trim().toUpperCase() ?? "",
+    productId: positiveOrNull(item.productId),
+    productName,
+    quantity: quantity(item.quantity),
+    rate: quantity(item.rate),
+    size: item.size?.trim() ?? "",
+    sizeId: positiveOrNull(item.sizeId),
+    taxId: positiveOrNull(item.taxId),
+    taxRate: quantity(item.taxRate),
+    unit: item.unit.trim().toUpperCase(),
+    unitId: Number(item.unitId)
   };
 }
 
@@ -144,6 +258,7 @@ function normalizeEway(value?: SaleEwayDetails): SaleEwayDetails {
     status: value?.status === "generated" ? "generated" : "not-generated",
     transport: value?.transport?.trim() ?? "",
     transportGst: value?.transportGst?.trim().toUpperCase() ?? "",
+    transportId: positiveOrNull(value?.transportId ?? null),
     vehicleNo: value?.vehicleNo?.trim().toUpperCase() ?? ""
   };
 }
@@ -158,70 +273,45 @@ function normalizeEinvoice(value?: SaleEinvoiceDetails): SaleEinvoiceDetails {
   };
 }
 
-export function resolveSaleNumber(
-  input: SaleSavePayload,
-  numbering: Parameters<typeof formatBillingDocumentNumber>[0]
-): SaleSavePayload & { generated: boolean } {
-  const generatedNumber = formatBillingDocumentNumber(numbering);
-  const enteredNumber = input.invoiceNumber.trim();
-  const generated =
-    numbering.automatic &&
-    (!enteredNumber || enteredNumber.toUpperCase() === generatedNumber.toUpperCase());
-  return { ...(enteredNumber ? input : { ...input, invoiceNumber: generatedNumber }), generated };
-}
-
 async function resolveNextSaleNumber(
   databaseName: string,
   input: SaleSavePayload,
   numbering: Parameters<typeof formatBillingDocumentNumber>[0],
-  repository: Pick<SalesRepository, "findByInvoiceNumber">
+  repository: SalesRepository
 ) {
   const enteredNumber = input.invoiceNumber.trim();
   const configuredNumber = formatBillingDocumentNumber(numbering);
   const generated =
     numbering.automatic &&
     (!enteredNumber || enteredNumber.toUpperCase() === configuredNumber.toUpperCase());
-
   if (!generated) {
     const duplicate = await repository.findByInvoiceNumber(
       databaseName,
+      input.companyId,
+      input.financialYearId,
       enteredNumber.toUpperCase()
     );
     if (duplicate)
-      throw AppError.conflict("Sales invoice number already exists. Enter a unique number.");
+      throw AppError.conflict("Sales invoice number already exists for this company and year.");
     return {
       generated: false,
       input,
       nextNumber: nextBillingDocumentNumber(numbering, enteredNumber)
     };
   }
-
   let nextNumber = Math.max(1, numbering.nextNumber);
   while (true) {
     const invoiceNumber = formatBillingDocumentNumber({ ...numbering, nextNumber });
-    const duplicate = await repository.findByInvoiceNumber(databaseName, invoiceNumber);
-    if (!duplicate) {
+    const duplicate = await repository.findByInvoiceNumber(
+      databaseName,
+      input.companyId,
+      input.financialYearId,
+      invoiceNumber
+    );
+    if (!duplicate)
       return { generated: true, input: { ...input, invoiceNumber }, nextNumber: nextNumber + 1 };
-    }
     nextNumber += 1;
   }
-}
-
-function normalizeSaleLineItem(item: SaleLineItemInput): SaleLineItemInput {
-  const productName = item.productName?.trim() ?? "";
-  return {
-    colour: item.colour?.trim() ?? "",
-    dcNo: item.dcNo?.trim().toUpperCase() ?? "",
-    description: item.description.trim() || productName,
-    hsnCode: item.hsnCode.trim().toUpperCase(),
-    poNo: item.poNo?.trim().toUpperCase() ?? "",
-    productName,
-    quantity: roundMoney(Number(item.quantity) || 0),
-    rate: roundMoney(Number(item.rate) || 0),
-    size: item.size?.trim() ?? "",
-    taxRate: roundMoney(Number(item.taxRate) || 0),
-    unit: item.unit.trim().toUpperCase() || "NOS"
-  };
 }
 
 export function buildSaleTotals(
@@ -236,25 +326,28 @@ export function buildSaleTotals(
     return {
       ...item,
       cgstAmount,
-      id: `item-${index + 1}`,
+      id: "",
       igstAmount,
+      lineNumber: index + 1,
       lineTotal: roundMoney(taxableAmount + taxAmount),
       sgstAmount,
       taxableAmount,
       taxAmount
     };
   });
-
   const subtotal = roundMoney(items.reduce((total, item) => total + item.taxableAmount, 0));
   const taxAmount = roundMoney(items.reduce((total, item) => total + item.taxAmount, 0));
   const amount = roundMoney(subtotal + taxAmount + Number(input.roundOff ?? 0));
+  return { amount, items, subtotal, taxAmount };
+}
 
-  return {
-    amount,
-    items,
-    subtotal,
-    taxAmount
-  };
+function positiveOrNull(value: number | null | undefined) {
+  const number = Number(value ?? 0);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function quantity(value: number) {
+  return Math.round((Number(value) || 0) * 10_000) / 10_000;
 }
 
 function roundMoney(value: number) {

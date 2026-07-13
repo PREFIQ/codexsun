@@ -40,8 +40,8 @@ export class LedgerGroupsService {
   private async mutable(id: string): Promise<LedgerGroupRecord> {
     const record = await this.repository.find(id);
     if (!record) throw AppError.notFound("Ledger group was not found.");
-    if (record.name.trim().toLowerCase() === "general")
-      throw AppError.forbidden("General is a protected ledger group and cannot be modified.");
+    if (["-", "general"].includes(record.name.trim().toLowerCase()))
+      throw AppError.forbidden("Default ledger groups cannot be modified.");
     return record;
   }
   private async save<T>(work: () => Promise<T>) {

@@ -7,6 +7,12 @@ export const citySeed = {
 };
 
 export async function seedCityModule() {
+  const defaultDistricts = await sql<{ id: number }>`SELECT districts.id FROM districts
+    INNER JOIN states ON states.id=districts.state_id
+    INNER JOIN countries ON countries.id=states.country_id
+    WHERE countries.code='UNKNOWN' AND states.code='UNKNOWN' AND districts.name='-'
+    LIMIT 1`.execute(getCoreDatabase());
+  const defaultDistrictId = defaultDistricts.rows[0]?.id;
   const rows = await sql<{
     id: number;
     name: string;
@@ -15,6 +21,18 @@ export async function seedCityModule() {
     INNER JOIN countries ON countries.id = states.country_id
     WHERE countries.code = 'IN' AND states.name = 'Tamil Nadu'`.execute(getCoreDatabase());
   const districtIds = new Map(rows.rows.map((row) => [row.name, row.id]));
+  if (!defaultDistrictId)
+    throw new Error("Default district seed must exist before city seeds are applied.");
+
+  const fallback = await sql<{ id: number }>`SELECT id FROM cities
+    WHERE name='-' ORDER BY id LIMIT 1`.execute(getCoreDatabase());
+  if (fallback.rows[0]?.id) {
+    await sql`UPDATE cities SET district_id=${defaultDistrictId},name='-',sort_order=0,status='active'
+      WHERE id=${fallback.rows[0].id}`.execute(getCoreDatabase());
+  } else {
+    await sql`INSERT INTO cities (district_id,name,sort_order,status)
+      VALUES (${defaultDistrictId},'-',0,'active')`.execute(getCoreDatabase());
+  }
 
   for (const city of citySeeds) {
     const districtId = districtIds.get(city.districtName);
@@ -29,7 +47,6 @@ export async function seedCityModule() {
 }
 
 const citySeeds = [
-  { name: "-", districtName: "-", sortOrder: 0, status: "active" as const },
   { name: "Chennai", districtName: "Chennai", sortOrder: 1, status: "active" as const },
   { name: "Coimbatore", districtName: "Coimbatore", sortOrder: 2, status: "active" as const },
   { name: "Tiruppur", districtName: "Tiruppur", sortOrder: 3, status: "active" as const },

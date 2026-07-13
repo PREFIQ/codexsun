@@ -1,2 +1,8 @@
 export { exportSalesModule } from "./export-sales.module.js";
-export type { ExportSale, ExportSaleSavePayload, ExportSaleStatus } from "./export-sales.types.js";
+export { ExportSalesService } from "./export-sales.service.js";
+export type {
+  ExportSale,
+  ExportSaleLineItemInput,
+  ExportSaleSavePayload,
+  ExportSaleStatus
+} from "./export-sales.types.js";

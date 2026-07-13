@@ -1,30 +1,69 @@
-import { Kysely, MysqlDialect } from "kysely";
+import { Kysely, MysqlDialect, sql } from "kysely";
 import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
+import { AppError } from "@codexsun/framework/errors";
 import { env } from "../env.js";
-import { migrateQuotationModule } from "../modules/quotation/quotation.migration.js";
-import { migrateExportSalesModule } from "../modules/export-sales/export-sales.migration.js";
-import { migratePaymentModule } from "../modules/payment/payment.migration.js";
-import { migratePurchaseModule } from "../modules/purchase/purchase.migration.js";
-import { migrateSalesModule } from "../modules/sales/sales.migration.js";
-import { migrateReceiptModule } from "../modules/receipt/receipt.migration.js";
+import {
+  migrateQuotationModule,
+  quotationMigration
+} from "../modules/quotation/quotation.migration.js";
+import {
+  exportSalesMigration,
+  migrateExportSalesModule
+} from "../modules/export-sales/export-sales.migration.js";
+import { seedExportSalesModule } from "../modules/export-sales/export-sales.seed.js";
+import { migratePaymentModule, paymentMigration } from "../modules/payment/payment.migration.js";
+import { seedPaymentModule } from "../modules/payment/payment.seed.js";
+import {
+  migratePurchaseModule,
+  purchaseMigration
+} from "../modules/purchase/purchase.migration.js";
+import { migrateSalesModule, salesMigration } from "../modules/sales/sales.migration.js";
+import { migrateReceiptModule, receiptMigration } from "../modules/receipt/receipt.migration.js";
+import { seedReceiptModule } from "../modules/receipt/receipt.seed.js";
 import { SalesRepository } from "../modules/sales/sales.repository.js";
 import { seedSalesModule } from "../modules/sales/sales.seed.js";
-import { migrateBillingSettingsModule } from "../modules/settings/settings.migration.js";
+import {
+  billingSettingsMigration,
+  migrateBillingSettingsModule
+} from "../modules/settings/settings.migration.js";
 import { BillingSettingsRepository } from "../modules/settings/settings.repository.js";
 
 export type BillingDatabase = {
+  billing_quotations: BillingQuotationTable;
   billing_sales: BillingSalesTable;
+};
+
+export type BillingQuotationTable = {
+  amount: number;
+  billing_address_id: number;
+  company_id: number;
+  currency_id: number;
+  customer_id: number;
+  financial_year_id: number;
+  id: number;
+  quotation_date: string;
+  quotation_number: string;
+  line_number: number;
+  shipping_address_id: number;
+  status: "draft" | "confirmed" | "cancelled";
+  uuid: string;
 };
 
 export type BillingSalesTable = {
   amount: number;
-  currency_code: string;
-  customer_name: string;
-  id: string;
+  billing_address_id: number;
+  company_id: number;
+  currency_id: number;
+  customer_id: number;
+  financial_year_id: number;
+  id: number;
   invoice_number: string;
   issued_on: string;
+  line_number: number;
+  shipping_address_id: number;
   status: "draft" | "confirmed" | "cancelled";
+  uuid: string;
 };
 
 const connections = new Map<string, Kysely<BillingDatabase>>();
@@ -34,10 +73,12 @@ const bootstrapTimeoutMs = 5_000;
 
 export function resolveBillingDatabaseName(value: unknown) {
   const requested = typeof value === "string" ? value.trim() : "";
-  if (!requested) throw new Error("x-tenant-db is required for Billing database access.");
-  const name = assertDatabaseName(requested);
+  if (!requested) throw AppError.validation("x-tenant-db is required for Billing database access.");
+  if (!/^[a-zA-Z0-9_]+$/.test(requested))
+    throw AppError.validation("Invalid tenant database name.");
+  const name = requested;
   if (name === env.DB_MASTER_NAME)
-    throw new Error("Billing tables cannot use the Platform master database.");
+    throw AppError.validation("Billing tables cannot use the Platform master database.");
   return name;
 }
 
@@ -80,15 +121,25 @@ async function bootstrapBillingDatabaseOnce(name: string) {
   await ensureDatabase(name);
   const db = openBillingDatabase(name);
   await migrateSalesModule(db);
+  await recordBillingMigration(db, salesMigration.key);
   await migratePurchaseModule(db);
+  await recordBillingMigration(db, purchaseMigration.key);
   await migrateExportSalesModule(db);
+  await recordBillingMigration(db, exportSalesMigration.key);
   await migrateQuotationModule(db);
+  await recordBillingMigration(db, quotationMigration.key);
   await migratePaymentModule(db);
+  await recordBillingMigration(db, paymentMigration.key);
   await migrateReceiptModule(db);
+  await recordBillingMigration(db, receiptMigration.key);
   await migrateBillingSettingsModule(db);
+  await recordBillingMigration(db, billingSettingsMigration.key);
   migrated.add(name);
   try {
     await seedSalesModule(db);
+    await seedExportSalesModule(db);
+    await seedPaymentModule(db);
+    await seedReceiptModule(db);
     const settingsRepository = new BillingSettingsRepository();
     const settings = await settingsRepository.getSalesSettings(name);
     const sales = await new SalesRepository().list(name);
@@ -107,6 +158,10 @@ async function bootstrapBillingDatabaseOnce(name: string) {
     migrated.delete(name);
     throw error;
   }
+}
+
+async function recordBillingMigration(database: Kysely<BillingDatabase>, name: string) {
+  await sql`INSERT IGNORE INTO schema_migrations (name) VALUES (${name})`.execute(database);
 }
 
 export async function bootstrapRegisteredBillingDatabases() {

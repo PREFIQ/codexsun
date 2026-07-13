@@ -1,127 +1,126 @@
 import { env } from "../../env.js";
 
-const lookupPaths = {
-  addressTypes: "/core/common/contacts/address-types",
-  colours: "/core/common/products/colours",
-  contacts: "/core/master/contacts",
-  countries: "/core/common/location/countries",
-  states: "/core/common/location/states",
-  districts: "/core/common/location/districts",
-  cities: "/core/common/location/cities",
-  pincodes: "/core/common/location/pincodes",
-  products: "/core/master/products",
-  productCategories: "/core/common/products/product-categories",
-  hsnCodes: "/core/common/products/hsn-codes",
-  units: "/core/common/products/units",
-  taxes: "/core/common/products/taxes",
-  sizes: "/core/common/products/sizes",
-  workOrders: "/core/master/work-orders"
-} as const;
-
-export type QuotationLookupKind = keyof typeof lookupPaths;
-export type QuotationLocationKind = "cities" | "districts" | "pincodes" | "states";
+export type QuotationLookupHeaders = {
+  authorization?: string | string[] | undefined;
+  tenantDatabase?: string | string[] | undefined;
+  tenantId?: string | string[] | undefined;
+};
 
 export class QuotationLookupService {
-  async list(
-    kind: QuotationLookupKind,
-    headers: { authorization?: string | string[]; tenantId?: string | string[] }
-  ) {
-    const response = await this.request(lookupPaths[kind], headers);
-    const payload = (await response.json()) as {
-      data?: unknown;
-      error?: { message?: string };
-      success?: boolean;
-    };
-    if (!response.ok || payload.success === false)
-      throw new Error(payload.error?.message || "Quotation lookup could not be loaded.");
-    return payload.data ?? [];
+  contacts(headers: QuotationLookupHeaders) {
+    return this.get("/core/master/contacts", headers);
+  }
+  createContact(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/master/contacts", headers, input);
+  }
+  updateContact(headers: QuotationLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/contacts/${encodeURIComponent(id)}`, headers, input);
+  }
+  countries(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/location/countries", headers);
+  }
+  states(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/location/states", headers);
+  }
+  createState(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/states", headers, input);
+  }
+  districts(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/location/districts", headers);
+  }
+  createDistrict(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/districts", headers, input);
+  }
+  cities(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/location/cities", headers);
+  }
+  createCity(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/cities", headers, input);
+  }
+  pincodes(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/location/pincodes", headers);
+  }
+  createPincode(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/pincodes", headers, input);
+  }
+  addressTypes(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/contacts/address-types", headers);
+  }
+  createAddressType(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/common/contacts/address-types", headers, input);
+  }
+  products(headers: QuotationLookupHeaders) {
+    return this.get("/core/master/products", headers);
+  }
+  createProduct(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/master/products", headers, input);
+  }
+  updateProduct(headers: QuotationLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/products/${encodeURIComponent(id)}`, headers, input);
+  }
+  workOrders(headers: QuotationLookupHeaders) {
+    return this.get("/core/master/work-orders", headers);
+  }
+  createWorkOrder(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/master/work-orders", headers, input);
+  }
+  updateWorkOrder(headers: QuotationLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/work-orders/${encodeURIComponent(id)}`, headers, input);
+  }
+  colours(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/products/colours", headers);
+  }
+  createColour(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/colours", headers, input);
+  }
+  sizes(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/products/sizes", headers);
+  }
+  createSize(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/sizes", headers, input);
+  }
+  productCategories(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/products/product-categories", headers);
+  }
+  createProductCategory(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/product-categories", headers, input);
+  }
+  hsnCodes(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/products/hsn-codes", headers);
+  }
+  createHsnCode(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/hsn-codes", headers, input);
+  }
+  units(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/products/units", headers);
+  }
+  createUnit(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/units", headers, input);
+  }
+  taxes(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/products/taxes", headers);
+  }
+  createTax(headers: QuotationLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/taxes", headers, input);
+  }
+  ledgers(headers: QuotationLookupHeaders) {
+    return this.get("/core/common/accounts/ledgers", headers);
   }
 
-  async createContact(
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(lookupPaths.contacts, headers, {
-      body: JSON.stringify(input),
-      method: "POST"
-    });
-    return responseData(response);
+  private get(path: string, headers: QuotationLookupHeaders) {
+    return this.request(path, headers).then(responseData);
   }
-
-  async updateContact(
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    id: string,
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(
-      `${lookupPaths.contacts}/${encodeURIComponent(id)}`,
-      headers,
-      { body: JSON.stringify(input), method: "PUT" }
+  private post(path: string, headers: QuotationLookupHeaders, input: unknown) {
+    return this.request(path, headers, { body: JSON.stringify(input), method: "POST" }).then(
+      responseData
     );
-    return responseData(response);
   }
-
-  async createLocation(
-    kind: QuotationLocationKind,
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(lookupPaths[kind], headers, {
-      body: JSON.stringify(input),
-      method: "POST"
-    });
-    return responseData(response);
+  private put(path: string, headers: QuotationLookupHeaders, input: unknown) {
+    return this.request(path, headers, { body: JSON.stringify(input), method: "PUT" }).then(
+      responseData
+    );
   }
-
-  async createAddressType(
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(lookupPaths.addressTypes, headers, {
-      body: JSON.stringify(input),
-      method: "POST"
-    });
-    return responseData(response);
-  }
-
-  async createLookup(
-    kind:
-      | "colours"
-      | "products"
-      | "sizes"
-      | "workOrders"
-      | "productCategories"
-      | "hsnCodes"
-      | "units"
-      | "taxes",
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(lookupPaths[kind], headers, {
-      body: JSON.stringify(input),
-      method: "POST"
-    });
-    return responseData(response);
-  }
-
-  async updateLookup(
-    kind: "products" | "workOrders",
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    id: string,
-    input: Record<string, unknown>
-  ) {
-    const response = await this.request(`${lookupPaths[kind]}/${encodeURIComponent(id)}`, headers, {
-      body: JSON.stringify(input),
-      method: "PUT"
-    });
-    return responseData(response);
-  }
-
-  private request(
-    path: string,
-    headers: { authorization?: string | string[]; tenantId?: string | string[] },
-    init?: RequestInit
-  ) {
+  private request(path: string, headers: QuotationLookupHeaders, init?: RequestInit) {
     return fetch(`${env.CORE_API_URL}${path}`, {
       ...init,
       headers: {
@@ -129,6 +128,9 @@ export class QuotationLookupService {
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
         ...(headerValue(headers.authorization)
           ? { Authorization: headerValue(headers.authorization)! }
+          : {}),
+        ...(headerValue(headers.tenantDatabase)
+          ? { "x-tenant-db": headerValue(headers.tenantDatabase)! }
           : {}),
         ...(headerValue(headers.tenantId) ? { "x-tenant-id": headerValue(headers.tenantId)! } : {})
       }
@@ -145,10 +147,6 @@ async function responseData(response: Response) {
   if (!response.ok || payload.success === false)
     throw new Error(payload.error?.message || "Quotation lookup could not be loaded.");
   return payload.data ?? [];
-}
-
-export function isQuotationLookupKind(value: string): value is QuotationLookupKind {
-  return value in lookupPaths;
 }
 
 function headerValue(value: string | string[] | undefined) {

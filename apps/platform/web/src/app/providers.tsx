@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider, useIsFetching } from "@tanstack/react-query";
-import { GlobalLoader } from "@codexsun/ui";
+import { GlobalLoader } from "@codexsun/ui/components/global-loader";
 
 const queryClient = new QueryClient();
 

@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { sql, type Kysely } from "kysely";
-import { hashPassword } from "../../auth/password-hash.js";
 import { getPlatformDatabase } from "../../database/platform-database.js";
 import {
   createTenantDatabase,
@@ -20,6 +19,11 @@ import {
   tenantStorageRoot
 } from "../storage-manager/storage-manager.paths.js";
 import type { Tenant, TenantSavePayload } from "./tenant.types.js";
+import { seedTenantPermissionModule } from "../tenant-permission/index.js";
+import { seedTenantRolePermissionModule } from "../tenant-role-permission/index.js";
+import { seedTenantRoleModule } from "../tenant-role/index.js";
+import { seedTenantUserRoleModule } from "../tenant-user-role/index.js";
+import { seedTenantUserModule } from "../tenant-user/index.js";
 
 export const tenantSeed = {
   records: []
@@ -66,7 +70,9 @@ export async function seedDefaultTenant() {
   console.info(`[seeder] default tenant seed started for "${input.tenantCode}"`);
   const repository = new TenantRepository();
   const existing = await repository.findByIdOrCode(input.tenantCode);
-  const tenant = existing ?? (await repository.create(input));
+  const tenant = existing
+    ? await reconcileDefaultTenantModules(repository, existing)
+    : await repository.create(input);
   if (!tenant) {
     throw new Error("Default tenant seed failed.");
   }
@@ -122,7 +128,11 @@ export async function seedTenantRuntimeModule(database: Kysely<TenantDatabase>, 
     console.info(`[seeder] tenant app module ready: ${moduleKey}`);
   }
 
-  await seedTenantAdmin(database);
+  await seedTenantRoleModule(database);
+  await seedTenantPermissionModule(database);
+  await seedTenantUserModule(database);
+  await seedTenantUserRoleModule(database);
+  await seedTenantRolePermissionModule(database);
   console.info(`[seeder] tenant runtime seed completed for "${tenant.tenantCode}"`);
 }
 
@@ -138,11 +148,11 @@ function defaultTenant(): TenantSavePayload {
     dbType: env.DB_DRIVER,
     dbUser: env.DB_USER,
     defaultLandingApp: "application",
-    enabledModuleKeys: ["platform.application"],
+    enabledModuleKeys: ["platform.application", "billing.sales"],
     mobile: null,
     payloadSettings: {
       apps: {
-        enabled: ["platform.application"]
+        enabled: ["platform.application", "billing.sales"]
       },
       landing: {
         app: "application",
@@ -165,70 +175,46 @@ function defaultTenant(): TenantSavePayload {
   };
 }
 
-async function seedTenantAdmin(database: Kysely<TenantDatabase>) {
-  const email = (env.DEFAULT_TENANT_ADMIN_EMAIL || env.TENANT_ADMIN_EMAIL).trim().toLowerCase();
-  const password = (env.DEFAULT_TENANT_ADMIN_PASSWORD || env.TENANT_ADMIN_PASSWORD).trim();
-  const name = (env.DEFAULT_TENANT_ADMIN_NAME || env.TENANT_ADMIN_NAME).trim() || email;
-  if (!email || !password) {
-    console.info(
-      "[seeder] tenant admin seed skipped because admin email or password is not configured"
-    );
-    return;
+async function reconcileDefaultTenantModules(repository: TenantRepository, tenant: Tenant) {
+  const seed = isRecord(tenant.payloadSettings.seed) ? tenant.payloadSettings.seed : {};
+  if (seed.source !== "default-tenant") return tenant;
+
+  const apps = isRecord(tenant.payloadSettings.apps) ? tenant.payloadSettings.apps : {};
+  const configuredApps = stringArray(apps.enabled);
+  if (
+    tenant.enabledModuleKeys.includes("billing.sales") &&
+    configuredApps.includes("billing.sales")
+  ) {
+    return tenant;
   }
 
-  await database
-    .insertInto("roles")
-    .values({
-      key: "admin",
-      label: "Tenant Administrator",
-      status: "active",
-      uuid: stableUuid("tenant-role:admin")
-    })
-    .onDuplicateKeyUpdate({ label: "Tenant Administrator", status: "active" })
-    .execute();
-  const adminRole = await database
-    .selectFrom("roles")
-    .select("id")
-    .where("key", "=", "admin")
-    .executeTakeFirstOrThrow();
-  const existing = await database
-    .selectFrom("users")
-    .select("id")
-    .where("email", "=", email)
-    .executeTakeFirst();
-  const row = {
-    email,
-    name,
-    password_hash: hashPassword(password),
-    role: "admin",
-    status: "active" as const,
-    updated_at: new Date(),
-    uuid: stableUuid(email)
-  };
+  return (
+    (await repository.update(String(tenant.id), {
+      ...tenant,
+      enabledModuleKeys: Array.from(
+        new Set(["platform.application", "billing.sales", ...tenant.enabledModuleKeys])
+      ).sort(),
+      payloadSettings: {
+        ...tenant.payloadSettings,
+        apps: {
+          ...apps,
+          enabled: Array.from(
+            new Set(["platform.application", "billing.sales", ...configuredApps])
+          ).sort()
+        }
+      }
+    })) ?? tenant
+  );
+}
 
-  if (existing) {
-    await database.updateTable("users").set(row).where("id", "=", existing.id).execute();
-    await database
-      .insertInto("user_roles")
-      .values({ role_id: adminRole.id, user_id: existing.id })
-      .ignore()
-      .execute();
-    console.info(`[seeder] tenant admin updated: ${email}`);
-    return;
-  }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-  const inserted = await database
-    .insertInto("users")
-    .values({
-      ...row
-    })
-    .executeTakeFirstOrThrow();
-  await database
-    .insertInto("user_roles")
-    .values({ role_id: adminRole.id, user_id: Number(inserted.insertId) })
-    .ignore()
-    .execute();
-  console.info(`[seeder] tenant admin created: ${email}`);
+function stringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    : [];
 }
 
 async function seedDefaultTenantSubscription(tenant: Tenant) {

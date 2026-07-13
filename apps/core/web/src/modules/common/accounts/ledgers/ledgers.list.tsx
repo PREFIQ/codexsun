@@ -96,5 +96,5 @@ export function LedgersList({
   );
 }
 function protectedRecord(record: LedgerRecord) {
-  return record.name.trim().toLowerCase() === "general ledger";
+  return ["-", "general ledger"].includes(record.name.trim().toLowerCase());
 }

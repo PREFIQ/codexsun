@@ -1,84 +1,183 @@
-import type { FastifyInstance } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { resolveBillingDatabaseName } from "../../database/billing-database.js";
+import { ReceiptLookupService } from "./receipt.lookup.js";
 import { ReceiptService } from "./receipt.service.js";
-import type { ReceiptInput, ReceiptStatus } from "./receipt.types.js";
+
 const service = new ReceiptService();
-const dbName = (value: string | string[] | undefined) =>
-  resolveBillingDatabaseName(Array.isArray(value) ? value[0] : value);
+const lookups = new ReceiptLookupService();
+const idSchema = z.object({
+  id: z.string().regex(/^[0-9a-f]{8}$/, "Receipt ID must be 8 hex characters.")
+});
+const customerSchema = z.object({ customerId: z.coerce.number().int().positive() });
+const modeSchema = z.enum(["cash", "bank", "upi", "transfer"]);
+const statusSchema = z.enum(["draft", "posted", "cancelled"]);
+const allocationInputSchema = z.object({
+  allocatedAmount: z.number().positive(),
+  saleId: z.string().regex(/^[0-9a-f]{8}$/)
+});
+const payloadSchema = z.object({
+  allocations: z.array(allocationInputSchema),
+  amount: z.number().positive(),
+  companyId: z.number().int().positive(),
+  currencyId: z.number().int().positive(),
+  customerId: z.number().int().positive(),
+  discountAmount: z.number().nonnegative(),
+  financialYearId: z.number().int().positive(),
+  ledgerId: z.number().int().positive(),
+  notes: z.string(),
+  receiptDate: z.iso.date(),
+  receiptMode: modeSchema,
+  receiptNumber: z.string(),
+  referenceDate: z.union([z.iso.date(), z.literal("")]),
+  referenceNo: z.string(),
+  roundOff: z.number(),
+  tdsAmount: z.number().nonnegative()
+});
+const allocationSchema = allocationInputSchema.extend({
+  documentDate: z.string(),
+  documentNo: z.string(),
+  documentTotal: z.number(),
+  id: z.string(),
+  previousBalance: z.number()
+});
+const receiptSchema = z.object({
+  allocatedAmount: z.number(),
+  allocations: z.array(allocationSchema),
+  amount: z.number(),
+  companyId: z.number().int().positive(),
+  companyName: z.string(),
+  createdAt: z.string(),
+  currencyCode: z.string(),
+  currencyId: z.number().int().positive(),
+  customerId: z.number().int().positive(),
+  customerName: z.string(),
+  discountAmount: z.number(),
+  financialYearId: z.number().int().positive(),
+  financialYearName: z.string(),
+  id: z.string(),
+  ledgerId: z.number().int().positive(),
+  ledgerName: z.string(),
+  lineNumber: z.number().int().positive(),
+  notes: z.string(),
+  receiptDate: z.string(),
+  receiptMode: modeSchema,
+  receiptNumber: z.string(),
+  referenceDate: z.string(),
+  referenceNo: z.string(),
+  roundOff: z.number(),
+  status: statusSchema,
+  tdsAmount: z.number(),
+  totalAmount: z.number(),
+  unallocatedAmount: z.number(),
+  updatedAt: z.string()
+});
+const contextSchema = z.object({
+  companyId: z.number().int().positive(),
+  companyName: z.string(),
+  currencyCode: z.string(),
+  currencyId: z.number().int().positive(),
+  financialYearId: z.number().int().positive(),
+  financialYearName: z.string(),
+  suggestedReceiptNumber: z.string()
+});
+const candidateSchema = z.object({
+  customerId: z.number().int().positive(),
+  documentDate: z.string(),
+  documentNo: z.string(),
+  documentTotal: z.number(),
+  outstandingAmount: z.number(),
+  saleId: z.string()
+});
+
 export async function registerReceiptRoutes(app: FastifyInstance) {
-  app.get("/billing/receipts", async (request) =>
-    ok(await service.list(dbName(request.headers["x-tenant-db"])), { requestId: request.id })
-  );
-  app.get("/billing/receipts/:id", async (request, reply) => {
-    const record = await service.get(
-      dbName(request.headers["x-tenant-db"]),
-      (request.params as { id: string }).id
-    );
-    if (!record)
-      return reply
-        .code(404)
-        .send({
-          error: { code: "RECEIPT_NOT_FOUND", message: "Receipt was not found." },
-          success: false
-        });
-    return ok(record, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts",
+    schemas: { response: z.array(receiptSchema) },
+    handler: ({ request }) => service.list(databaseName(request))
   });
-  app.post("/billing/receipts", async (request) =>
-    ok(await service.create(dbName(request.headers["x-tenant-db"]), request.body as ReceiptInput), {
-      requestId: request.id
-    })
-  );
-  app.put("/billing/receipts/:id", async (request, reply) => {
-    const record = await service.update(
-      dbName(request.headers["x-tenant-db"]),
-      (request.params as { id: string }).id,
-      request.body as ReceiptInput
-    );
-    if (!record)
-      return reply
-        .code(404)
-        .send({
-          error: { code: "RECEIPT_NOT_FOUND", message: "Receipt was not found." },
-          success: false
-        });
-    return ok(record, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/context",
+    schemas: { response: contextSchema },
+    handler: ({ request }) => service.context(databaseName(request))
   });
-  app.post("/billing/receipts/:id/status", async (request, reply) => {
-    const body = request.body as { status?: ReceiptStatus };
-    if (!body.status)
-      return reply
-        .code(400)
-        .send({
-          error: { code: "INVALID_STATUS", message: "Receipt status is required." },
-          success: false
-        });
-    const record = await service.setStatus(
-      dbName(request.headers["x-tenant-db"]),
-      (request.params as { id: string }).id,
-      body.status
-    );
-    if (!record)
-      return reply
-        .code(404)
-        .send({
-          error: { code: "RECEIPT_NOT_FOUND", message: "Receipt was not found." },
-          success: false
-        });
-    return ok(record, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/allocations",
+    schemas: { querystring: customerSchema, response: z.array(candidateSchema) },
+    handler: ({ query, request }) =>
+      service.allocationCandidates(databaseName(request), query.customerId)
   });
-  app.delete("/billing/receipts/:id", async (request, reply) => {
-    const record = await service.deleteDraft(
-      dbName(request.headers["x-tenant-db"]),
-      (request.params as { id: string }).id
-    );
-    if (!record)
-      return reply
-        .code(404)
-        .send({
-          error: { code: "RECEIPT_NOT_FOUND", message: "Receipt was not found." },
-          success: false
-        });
-    return ok(record, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/lookups/contacts",
+    schemas: { response: z.unknown() },
+    handler: ({ request }) => lookups.contacts(lookupHeaders(request))
   });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/lookups/ledgers",
+    schemas: { response: z.unknown() },
+    handler: ({ request }) => lookups.ledgers(lookupHeaders(request))
+  });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/:id",
+    schemas: { params: idSchema, response: receiptSchema },
+    handler: async ({ params, request }) =>
+      required(await service.get(databaseName(request), params.id))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/receipts",
+    schemas: { body: payloadSchema, response: receiptSchema },
+    handler: ({ body, request }) => service.create(databaseName(request), body)
+  });
+  registerContractRoute(app, {
+    method: "PUT",
+    url: "/billing/receipts/:id",
+    schemas: { body: payloadSchema, params: idSchema, response: receiptSchema },
+    handler: async ({ body, params, request }) =>
+      required(await service.update(databaseName(request), params.id, body))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/receipts/:id/post",
+    schemas: { params: idSchema, response: receiptSchema },
+    handler: async ({ params, request }) =>
+      required(await service.post(databaseName(request), params.id))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/receipts/:id/cancel",
+    schemas: { params: idSchema, response: receiptSchema },
+    handler: async ({ params, request }) =>
+      required(await service.cancel(databaseName(request), params.id))
+  });
+  registerContractRoute(app, {
+    method: "DELETE",
+    url: "/billing/receipts/:id",
+    schemas: { params: idSchema, response: receiptSchema },
+    handler: async ({ params, request }) =>
+      required(await service.deleteDraft(databaseName(request), params.id))
+  });
+}
+
+function databaseName(request: FastifyRequest) {
+  return resolveBillingDatabaseName(request.headers["x-tenant-db"]);
+}
+function lookupHeaders(request: FastifyRequest) {
+  return {
+    authorization: request.headers.authorization,
+    tenantDatabase: request.headers["x-tenant-db"],
+    tenantId: request.headers["x-tenant-id"]
+  };
+}
+function required<T>(record: T | null): T {
+  if (!record) throw AppError.notFound("Receipt was not found.");
+  return record;
 }

@@ -1,219 +1,335 @@
-import type { FastifyInstance } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { resolveBillingDatabaseName } from "../../database/billing-database.js";
+import { QuotationLookupService } from "./quotation.lookup.js";
 import { QuotationService } from "./quotation.service.js";
-import { isQuotationLookupKind, QuotationLookupService } from "./quotation.lookup.js";
-import type { QuotationSavePayload } from "./quotation.types.js";
 
 const service = new QuotationService();
 const lookups = new QuotationLookupService();
-
-function notFound(requestId: string) {
-  return {
-    error: {
-      code: "QUOTATION_NOT_FOUND",
-      message: "Quotation was not found."
-    },
-    meta: {
-      requestId,
-      timestamp: new Date().toISOString()
-    },
-    success: false as const
-  };
-}
+const idSchema = z.object({
+  id: z.string().regex(/^[0-9a-f]{8}$/, "Quotation ID must be 8 hex characters.")
+});
+const lookupIdSchema = z.object({ id: z.string().regex(/^\d+$/, "Lookup ID must be numeric.") });
+const lookupBodySchema = z.record(z.string(), z.unknown());
+const lookupResponseSchema = z.unknown();
+const statusSchema = z.enum(["draft", "confirmed", "cancelled"]);
+const taxTypeSchema = z.enum(["cgst-sgst", "igst"]);
+const itemInputSchema = z.object({
+  colour: z.string().optional(),
+  colourId: z.number().int().positive().nullable(),
+  dcNo: z.string().optional(),
+  description: z.string().trim().min(1),
+  hsnCode: z.string(),
+  hsnCodeId: z.number().int().positive().nullable(),
+  poNo: z.string().optional(),
+  productId: z.number().int().positive().nullable(),
+  productName: z.string().optional(),
+  quantity: z.number().positive(),
+  rate: z.number().nonnegative(),
+  size: z.string().optional(),
+  sizeId: z.number().int().positive().nullable(),
+  taxId: z.number().int().positive().nullable(),
+  taxRate: z.number().min(0),
+  unit: z.string().trim().min(1),
+  unitId: z.number().int().positive()
+});
+const itemSchema = itemInputSchema.extend({
+  cgstAmount: z.number(),
+  id: z.string(),
+  igstAmount: z.number(),
+  lineNumber: z.number().int().positive(),
+  lineTotal: z.number(),
+  sgstAmount: z.number(),
+  taxableAmount: z.number(),
+  taxAmount: z.number()
+});
+const quotationPayloadSchema = z.object({
+  billingAddress: z.string(),
+  billingAddressId: z.number().int().positive(),
+  companyId: z.number().int().positive(),
+  currencyCode: z.string().trim().length(3),
+  currencyId: z.number().int().positive(),
+  customerEmail: z.string(),
+  customerId: z.number().int().positive(),
+  customerName: z.string(),
+  customerPhone: z.string(),
+  financialYearId: z.number().int().positive(),
+  quotationNumber: z.string(),
+  date: z.iso.date(),
+  items: z.array(itemInputSchema).min(1),
+  ledgerId: z.number().int().positive().nullable(),
+  notes: z.string(),
+  roundOff: z.number().optional(),
+  salesLedger: z.string().optional(),
+  shippingAddress: z.string(),
+  shippingAddressId: z.number().int().positive(),
+  status: statusSchema,
+  taxType: taxTypeSchema.optional(),
+  terms: z.string().optional(),
+  workOrderId: z.number().int().positive().nullable(),
+  workOrderNo: z.string().optional()
+});
+const quotationSchema = z.object({
+  amount: z.number(),
+  billingAddress: z.string(),
+  billingAddressId: z.number().int().positive(),
+  companyId: z.number().int().positive(),
+  companyName: z.string(),
+  createdAt: z.string(),
+  currencyCode: z.string(),
+  currencyId: z.number().int().positive(),
+  customerEmail: z.string(),
+  customerId: z.number().int().positive(),
+  customerName: z.string(),
+  customerPhone: z.string(),
+  financialYearId: z.number().int().positive(),
+  financialYearName: z.string(),
+  generatedSalesInvoiceNo: z.string(),
+  id: z.string().regex(/^[0-9a-f]{8}$/),
+  quotationNumber: z.string(),
+  date: z.string(),
+  items: z.array(itemSchema),
+  ledgerId: z.number().int().positive().nullable(),
+  lineNumber: z.number().int().positive(),
+  notes: z.string(),
+  roundOff: z.number(),
+  salesLedger: z.string(),
+  shippingAddress: z.string(),
+  shippingAddressId: z.number().int().positive(),
+  status: statusSchema,
+  subtotal: z.number(),
+  taxAmount: z.number(),
+  taxType: taxTypeSchema,
+  terms: z.string(),
+  updatedAt: z.string(),
+  workOrderId: z.number().int().positive().nullable(),
+  workOrderNo: z.string()
+});
+const contextSchema = z.object({
+  companyId: z.number().int().positive(),
+  companyName: z.string(),
+  currencyCode: z.string(),
+  currencyId: z.number().int().positive(),
+  financialYearId: z.number().int().positive(),
+  financialYearName: z.string()
+});
 
 export async function registerQuotationRoutes(app: FastifyInstance) {
-  app.get("/billing/quotations/lookups/:kind", async (request, reply) => {
-    const { kind } = request.params as { kind: string };
-    if (!isQuotationLookupKind(kind)) return reply.code(404).send(notFound(request.id));
-    return ok(
-      await lookups.list(kind, {
-        ...(request.headers.authorization ? { authorization: request.headers.authorization } : {}),
-        ...(request.headers["x-tenant-id"] ? { tenantId: request.headers["x-tenant-id"] } : {})
-      }),
-      { requestId: request.id }
-    );
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/quotations",
+    schemas: { response: z.array(quotationSchema) },
+    handler: ({ request }) => service.list(databaseName(request))
   });
-
-  app.post("/billing/quotations/lookups/contacts", async (request) =>
-    ok(
-      await lookups.createContact(lookupHeaders(request), request.body as Record<string, unknown>),
-      { requestId: request.id }
-    )
-  );
-
-  app.put("/billing/quotations/lookups/contacts/:id", async (request) => {
-    const { id } = request.params as { id: string };
-    return ok(
-      await lookups.updateContact(
-        lookupHeaders(request),
-        id,
-        request.body as Record<string, unknown>
-      ),
-      { requestId: request.id }
-    );
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/quotations/context",
+    schemas: { response: contextSchema },
+    handler: ({ request }) => service.getContext(databaseName(request))
   });
-
-  app.post("/billing/quotations/lookups/locations/:kind", async (request, reply) => {
-    const { kind } = request.params as { kind: string };
-    if (!["states", "districts", "cities", "pincodes"].includes(kind))
-      return reply.code(404).send(notFound(request.id));
-    return ok(
-      await lookups.createLocation(
-        kind as "states" | "districts" | "cities" | "pincodes",
-        lookupHeaders(request),
-        request.body as Record<string, unknown>
-      ),
-      { requestId: request.id }
-    );
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/quotations/:id",
+    schemas: { params: idSchema, response: quotationSchema },
+    handler: async ({ params, request }) =>
+      required(await service.get(databaseName(request), params.id))
   });
-
-  app.post("/billing/quotations/lookups/address-types", async (request) =>
-    ok(
-      await lookups.createAddressType(
-        lookupHeaders(request),
-        request.body as Record<string, unknown>
-      ),
-      { requestId: request.id }
-    )
-  );
-
-  app.post("/billing/quotations/lookups/:kind", async (request, reply) => {
-    const { kind } = request.params as { kind: string };
-    if (
-      ![
-        "colours",
-        "products",
-        "sizes",
-        "workOrders",
-        "productCategories",
-        "hsnCodes",
-        "units",
-        "taxes"
-      ].includes(kind)
-    )
-      return reply.code(404).send(notFound(request.id));
-    return ok(
-      await lookups.createLookup(
-        kind as
-          | "colours"
-          | "products"
-          | "sizes"
-          | "workOrders"
-          | "productCategories"
-          | "hsnCodes"
-          | "units"
-          | "taxes",
-        lookupHeaders(request),
-        request.body as Record<string, unknown>
-      ),
-      { requestId: request.id }
-    );
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/quotations",
+    schemas: { body: quotationPayloadSchema, response: quotationSchema },
+    handler: ({ body, request }) => service.create(databaseName(request), body)
   });
-
-  app.put("/billing/quotations/lookups/:kind/:id", async (request, reply) => {
-    const { id, kind } = request.params as { id: string; kind: string };
-    if (!["products", "workOrders"].includes(kind))
-      return reply.code(404).send(notFound(request.id));
-    return ok(
-      await lookups.updateLookup(
-        kind as "products" | "workOrders",
-        lookupHeaders(request),
-        id,
-        request.body as Record<string, unknown>
-      ),
-      { requestId: request.id }
-    );
+  registerContractRoute(app, {
+    method: "PUT",
+    url: "/billing/quotations/:id",
+    schemas: { body: quotationPayloadSchema, params: idSchema, response: quotationSchema },
+    handler: async ({ body, params, request }) =>
+      required(await service.update(databaseName(request), params.id, body))
   });
-
-  app.get("/billing/quotations", async (request) =>
-    ok(await service.list(databaseName(request.headers["x-tenant-db"])), { requestId: request.id })
-  );
-
-  app.get("/billing/quotations/:id", async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const entry = await service.get(databaseName(request.headers["x-tenant-db"]), id);
-    if (!entry) return reply.code(404).send(notFound(request.id));
-    return ok(entry, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "DELETE",
+    url: "/billing/quotations/:id",
+    schemas: { params: idSchema, response: quotationSchema },
+    handler: async ({ params, request }) =>
+      required(await service.deleteDraft(databaseName(request), params.id))
   });
-
-  app.post("/billing/quotations", async (request) =>
-    ok(
-      await service.create(
-        databaseName(request.headers["x-tenant-db"]),
-        request.body as QuotationSavePayload
-      ),
-      { requestId: request.id }
-    )
-  );
-
-  app.put("/billing/quotations/:id", async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const entry = await service.update(
-      databaseName(request.headers["x-tenant-db"]),
-      id,
-      request.body as QuotationSavePayload
-    );
-    if (!entry) return reply.code(404).send(notFound(request.id));
-    return ok(entry, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/quotations/:id/confirm",
+    schemas: { params: idSchema, response: quotationSchema },
+    handler: async ({ params, request }) =>
+      required(await service.confirm(databaseName(request), params.id))
   });
-
-  app.post("/billing/quotations/:id/confirm", async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const entry = await service.confirm(databaseName(request.headers["x-tenant-db"]), id);
-    if (!entry) return reply.code(404).send(notFound(request.id));
-    return ok(entry, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/quotations/:id/cancel",
+    schemas: { params: idSchema, response: quotationSchema },
+    handler: async ({ params, request }) =>
+      required(await service.cancel(databaseName(request), params.id))
   });
-
-  app.post("/billing/quotations/:id/cancel", async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const entry = await service.cancel(databaseName(request.headers["x-tenant-db"]), id);
-    if (!entry) return reply.code(404).send(notFound(request.id));
-    return ok(entry, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/quotations/:id/revoke",
+    schemas: { params: idSchema, response: quotationSchema },
+    handler: async ({ params, request }) =>
+      required(await service.revoke(databaseName(request), params.id))
   });
-
-  app.post("/billing/quotations/:id/revoke", async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const entry = await service.revoke(databaseName(request.headers["x-tenant-db"]), id);
-    if (!entry) return reply.code(404).send(notFound(request.id));
-    return ok(entry, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/quotations/:id/convert-to-sale",
+    schemas: {
+      params: idSchema,
+      response: z.object({ quotation: quotationSchema, sale: z.unknown() })
+    },
+    handler: async ({ params, request }) =>
+      required(await service.convertToSale(databaseName(request), params.id))
   });
-
-  app.delete("/billing/quotations/:id", async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const entry = await service.deleteDraft(databaseName(request.headers["x-tenant-db"]), id);
-    if (!entry) return reply.code(404).send(notFound(request.id));
-    return ok(entry, { requestId: request.id });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/quotations/convert-to-sale",
+    schemas: {
+      body: z.object({ quotationIds: z.array(z.string().regex(/^[0-9a-f]{8}$/)).min(1) }),
+      response: z.object({ quotations: z.array(quotationSchema), sale: z.unknown() })
+    },
+    handler: ({ body, request }) =>
+      service.convertManyToSale(databaseName(request), body.quotationIds)
   });
-
-  app.post("/billing/quotations/:id/convert-to-sale", async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const result = await service.convertToSale(databaseName(request.headers["x-tenant-db"]), id);
-    if (!result) return reply.code(404).send(notFound(request.id));
-    return ok(result, { requestId: request.id });
-  });
-
-  app.post("/billing/quotations/convert-to-sale", async (request) => {
-    const body = request.body as { quotationIds?: unknown };
-    const quotationIds = Array.isArray(body?.quotationIds)
-      ? body.quotationIds.filter((id): id is string => typeof id === "string")
-      : [];
-    return ok(
-      await service.convertManyToSale(databaseName(request.headers["x-tenant-db"]), quotationIds),
-      { requestId: request.id }
-    );
-  });
+  registerLookupRoutes(app);
 }
 
-function databaseName(value: string | string[] | undefined) {
+function registerLookupRoutes(app: FastifyInstance) {
+  const get = (url: string, load: (request: FastifyRequest) => Promise<unknown>) =>
+    registerContractRoute(app, {
+      method: "GET",
+      url,
+      schemas: { response: lookupResponseSchema },
+      handler: ({ request }) => load(request)
+    });
+  const post = (
+    url: string,
+    create: (request: FastifyRequest, body: Record<string, unknown>) => Promise<unknown>
+  ) =>
+    registerContractRoute(app, {
+      method: "POST",
+      url,
+      schemas: { body: lookupBodySchema, response: lookupResponseSchema },
+      handler: ({ body, request }) => create(request, body)
+    });
+  const put = (
+    url: string,
+    update: (request: FastifyRequest, id: string, body: Record<string, unknown>) => Promise<unknown>
+  ) =>
+    registerContractRoute(app, {
+      method: "PUT",
+      url,
+      schemas: { body: lookupBodySchema, params: lookupIdSchema, response: lookupResponseSchema },
+      handler: ({ body, params, request }) => update(request, params.id, body)
+    });
+
+  get("/billing/quotations/lookups/contacts", (request) =>
+    lookups.contacts(lookupHeaders(request))
+  );
+  post("/billing/quotations/lookups/contacts", (request, body) =>
+    lookups.createContact(lookupHeaders(request), body)
+  );
+  put("/billing/quotations/lookups/contacts/:id", (request, id, body) =>
+    lookups.updateContact(lookupHeaders(request), id, body)
+  );
+  get("/billing/quotations/lookups/countries", (request) =>
+    lookups.countries(lookupHeaders(request))
+  );
+  get("/billing/quotations/lookups/states", (request) => lookups.states(lookupHeaders(request)));
+  post("/billing/quotations/lookups/states", (request, body) =>
+    lookups.createState(lookupHeaders(request), body)
+  );
+  get("/billing/quotations/lookups/districts", (request) =>
+    lookups.districts(lookupHeaders(request))
+  );
+  post("/billing/quotations/lookups/districts", (request, body) =>
+    lookups.createDistrict(lookupHeaders(request), body)
+  );
+  get("/billing/quotations/lookups/cities", (request) => lookups.cities(lookupHeaders(request)));
+  post("/billing/quotations/lookups/cities", (request, body) =>
+    lookups.createCity(lookupHeaders(request), body)
+  );
+  get("/billing/quotations/lookups/pincodes", (request) =>
+    lookups.pincodes(lookupHeaders(request))
+  );
+  post("/billing/quotations/lookups/pincodes", (request, body) =>
+    lookups.createPincode(lookupHeaders(request), body)
+  );
+  get("/billing/quotations/lookups/address-types", (request) =>
+    lookups.addressTypes(lookupHeaders(request))
+  );
+  post("/billing/quotations/lookups/address-types", (request, body) =>
+    lookups.createAddressType(lookupHeaders(request), body)
+  );
+  get("/billing/quotations/lookups/products", (request) =>
+    lookups.products(lookupHeaders(request))
+  );
+  post("/billing/quotations/lookups/products", (request, body) =>
+    lookups.createProduct(lookupHeaders(request), body)
+  );
+  put("/billing/quotations/lookups/products/:id", (request, id, body) =>
+    lookups.updateProduct(lookupHeaders(request), id, body)
+  );
+  get("/billing/quotations/lookups/work-orders", (request) =>
+    lookups.workOrders(lookupHeaders(request))
+  );
+  post("/billing/quotations/lookups/work-orders", (request, body) =>
+    lookups.createWorkOrder(lookupHeaders(request), body)
+  );
+  put("/billing/quotations/lookups/work-orders/:id", (request, id, body) =>
+    lookups.updateWorkOrder(lookupHeaders(request), id, body)
+  );
+  get("/billing/quotations/lookups/colours", (request) => lookups.colours(lookupHeaders(request)));
+  post("/billing/quotations/lookups/colours", (request, body) =>
+    lookups.createColour(lookupHeaders(request), body)
+  );
+  get("/billing/quotations/lookups/sizes", (request) => lookups.sizes(lookupHeaders(request)));
+  post("/billing/quotations/lookups/sizes", (request, body) =>
+    lookups.createSize(lookupHeaders(request), body)
+  );
+  get("/billing/quotations/lookups/product-categories", (request) =>
+    lookups.productCategories(lookupHeaders(request))
+  );
+  post("/billing/quotations/lookups/product-categories", (request, body) =>
+    lookups.createProductCategory(lookupHeaders(request), body)
+  );
+  get("/billing/quotations/lookups/hsn-codes", (request) =>
+    lookups.hsnCodes(lookupHeaders(request))
+  );
+  post("/billing/quotations/lookups/hsn-codes", (request, body) =>
+    lookups.createHsnCode(lookupHeaders(request), body)
+  );
+  get("/billing/quotations/lookups/units", (request) => lookups.units(lookupHeaders(request)));
+  post("/billing/quotations/lookups/units", (request, body) =>
+    lookups.createUnit(lookupHeaders(request), body)
+  );
+  get("/billing/quotations/lookups/taxes", (request) => lookups.taxes(lookupHeaders(request)));
+  post("/billing/quotations/lookups/taxes", (request, body) =>
+    lookups.createTax(lookupHeaders(request), body)
+  );
+  get("/billing/quotations/lookups/ledgers", (request) => lookups.ledgers(lookupHeaders(request)));
+}
+
+function databaseName(request: FastifyRequest) {
+  const value = request.headers["x-tenant-db"];
   return resolveBillingDatabaseName(Array.isArray(value) ? value[0] : value);
 }
 
-function lookupHeaders(request: {
-  headers: { authorization?: string | undefined; "x-tenant-id"?: string | string[] | undefined };
-}) {
+function lookupHeaders(request: FastifyRequest) {
   return {
-    ...(request.headers.authorization ? { authorization: request.headers.authorization } : {}),
-    ...(request.headers["x-tenant-id"] ? { tenantId: request.headers["x-tenant-id"] } : {})
+    authorization: request.headers.authorization,
+    tenantDatabase: request.headers["x-tenant-db"],
+    tenantId: request.headers["x-tenant-id"]
   };
+}
+
+function required<T>(value: T | null): T {
+  if (!value) throw AppError.notFound("Quotation was not found.");
+  return value;
 }

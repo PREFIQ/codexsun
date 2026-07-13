@@ -57,6 +57,27 @@ export class DefaultCompanyRepository {
     );
     return rows.rows[0] ?? null;
   }
+  async firstActiveCompany() {
+    const rows = await sql<{
+      id: number | string;
+      name: string;
+      code: string;
+    }>`SELECT id,name,code FROM companies WHERE status='active' AND name<>'-' ORDER BY id LIMIT 1`.execute(
+      getCoreDatabase()
+    );
+    const row = rows.rows[0];
+    return row ? { id: Number(row.id), label: row.name, code: row.code } : null;
+  }
+  async currentActiveFinancialYear() {
+    const rows = await sql<{
+      id: number | string;
+      name: string;
+    }>`SELECT id,name FROM financial_years WHERE status='active' ORDER BY is_current DESC,start_date DESC,id LIMIT 1`.execute(
+      getCoreDatabase()
+    );
+    const row = rows.rows[0];
+    return row ? { id: Number(row.id), label: row.name } : null;
+  }
   async companyLookups() {
     const rows = await sql<{
       id: number | string;

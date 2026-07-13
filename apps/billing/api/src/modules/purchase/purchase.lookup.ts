@@ -1,52 +1,126 @@
 import { env } from "../../env.js";
 
-const lookupPaths = {
-  addressTypes: "/core/common/contacts/address-types",
-  colours: "/core/common/products/colours",
-  contacts: "/core/master/contacts",
-  countries: "/core/common/location/countries",
-  states: "/core/common/location/states",
-  districts: "/core/common/location/districts",
-  cities: "/core/common/location/cities",
-  pincodes: "/core/common/location/pincodes",
-  products: "/core/master/products",
-  productCategories: "/core/common/products/product-categories",
-  hsnCodes: "/core/common/products/hsn-codes",
-  units: "/core/common/products/units",
-  taxes: "/core/common/products/taxes",
-  sizes: "/core/common/products/sizes",
-  workOrders: "/core/master/work-orders"
-} as const;
-
-export type PurchaseLookupKind = keyof typeof lookupPaths;
-export type PurchaseLocationKind = "cities" | "districts" | "pincodes" | "states";
+export type PurchaseLookupHeaders = {
+  authorization?: string | string[] | undefined;
+  tenantDatabase?: string | string[] | undefined;
+  tenantId?: string | string[] | undefined;
+};
 
 export class PurchaseLookupService {
-  async list(kind: PurchaseLookupKind, headers: LookupHeaders) {
-    const response = await this.request(lookupPaths[kind], headers);
-    return responseData(response);
+  contacts(headers: PurchaseLookupHeaders) {
+    return this.get("/core/master/contacts", headers);
+  }
+  createContact(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/master/contacts", headers, input);
+  }
+  updateContact(headers: PurchaseLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/contacts/${encodeURIComponent(id)}`, headers, input);
+  }
+  countries(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/location/countries", headers);
+  }
+  states(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/location/states", headers);
+  }
+  createState(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/states", headers, input);
+  }
+  districts(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/location/districts", headers);
+  }
+  createDistrict(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/districts", headers, input);
+  }
+  cities(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/location/cities", headers);
+  }
+  createCity(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/cities", headers, input);
+  }
+  pincodes(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/location/pincodes", headers);
+  }
+  createPincode(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/common/location/pincodes", headers, input);
+  }
+  addressTypes(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/contacts/address-types", headers);
+  }
+  createAddressType(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/common/contacts/address-types", headers, input);
+  }
+  products(headers: PurchaseLookupHeaders) {
+    return this.get("/core/master/products", headers);
+  }
+  createProduct(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/master/products", headers, input);
+  }
+  updateProduct(headers: PurchaseLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/products/${encodeURIComponent(id)}`, headers, input);
+  }
+  workOrders(headers: PurchaseLookupHeaders) {
+    return this.get("/core/master/work-orders", headers);
+  }
+  createWorkOrder(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/master/work-orders", headers, input);
+  }
+  updateWorkOrder(headers: PurchaseLookupHeaders, id: string, input: unknown) {
+    return this.put(`/core/master/work-orders/${encodeURIComponent(id)}`, headers, input);
+  }
+  colours(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/products/colours", headers);
+  }
+  createColour(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/colours", headers, input);
+  }
+  sizes(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/products/sizes", headers);
+  }
+  createSize(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/sizes", headers, input);
+  }
+  productCategories(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/products/product-categories", headers);
+  }
+  createProductCategory(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/product-categories", headers, input);
+  }
+  hsnCodes(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/products/hsn-codes", headers);
+  }
+  createHsnCode(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/hsn-codes", headers, input);
+  }
+  units(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/products/units", headers);
+  }
+  createUnit(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/units", headers, input);
+  }
+  taxes(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/products/taxes", headers);
+  }
+  createTax(headers: PurchaseLookupHeaders, input: unknown) {
+    return this.post("/core/common/products/taxes", headers, input);
+  }
+  ledgers(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/accounts/ledgers", headers);
   }
 
-  create(kind: PurchaseLookupKind, headers: LookupHeaders, input: Record<string, unknown>) {
-    return this.request(lookupPaths[kind], headers, {
-      body: JSON.stringify(input),
-      method: "POST"
-    }).then(responseData);
+  private get(path: string, headers: PurchaseLookupHeaders) {
+    return this.request(path, headers).then(responseData);
   }
-
-  update(
-    kind: "contacts" | "products" | "workOrders",
-    headers: LookupHeaders,
-    id: string,
-    input: Record<string, unknown>
-  ) {
-    return this.request(`${lookupPaths[kind]}/${encodeURIComponent(id)}`, headers, {
-      body: JSON.stringify(input),
-      method: "PUT"
-    }).then(responseData);
+  private post(path: string, headers: PurchaseLookupHeaders, input: unknown) {
+    return this.request(path, headers, { body: JSON.stringify(input), method: "POST" }).then(
+      responseData
+    );
   }
-
-  private request(path: string, headers: LookupHeaders, init?: RequestInit) {
+  private put(path: string, headers: PurchaseLookupHeaders, input: unknown) {
+    return this.request(path, headers, { body: JSON.stringify(input), method: "PUT" }).then(
+      responseData
+    );
+  }
+  private request(path: string, headers: PurchaseLookupHeaders, init?: RequestInit) {
     return fetch(`${env.CORE_API_URL}${path}`, {
       ...init,
       headers: {
@@ -55,13 +129,14 @@ export class PurchaseLookupService {
         ...(headerValue(headers.authorization)
           ? { Authorization: headerValue(headers.authorization)! }
           : {}),
+        ...(headerValue(headers.tenantDatabase)
+          ? { "x-tenant-db": headerValue(headers.tenantDatabase)! }
+          : {}),
         ...(headerValue(headers.tenantId) ? { "x-tenant-id": headerValue(headers.tenantId)! } : {})
       }
     });
   }
 }
-
-type LookupHeaders = { authorization?: string | string[]; tenantId?: string | string[] };
 
 async function responseData(response: Response) {
   const payload = (await response.json()) as {
@@ -70,12 +145,8 @@ async function responseData(response: Response) {
     success?: boolean;
   };
   if (!response.ok || payload.success === false)
-    throw new Error(payload.error?.message || "Purchases lookup could not be loaded.");
+    throw new Error(payload.error?.message || "Purchase lookup could not be loaded.");
   return payload.data ?? [];
-}
-
-export function isPurchaseLookupKind(value: string): value is PurchaseLookupKind {
-  return value in lookupPaths;
 }
 
 function headerValue(value: string | string[] | undefined) {
