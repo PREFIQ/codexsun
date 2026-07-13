@@ -22,12 +22,12 @@ export class CityService {
     const city = await this.mutable(id);
     const normalized = normalize(input);
     await this.requireDistrict(normalized.districtId);
-    return this.save(() => this.repository.update(city.id, normalized));
+    return (await this.save(() => this.repository.update(city.id, normalized)))!;
   }
 
   async setStatus(id: string, status: CityStatus) {
     const city = await this.mutable(id);
-    return this.repository.setStatus(city.id, status);
+    return (await this.repository.setStatus(city.id, status))!;
   }
 
   async forceDelete(id: string) {
@@ -39,12 +39,14 @@ export class CityService {
         { count }
       );
     }
-    return this.repository.forceDelete(city.id);
+    return (await this.repository.forceDelete(city.id))!;
   }
 
   private async mutable(id: string): Promise<City> {
     const city = await this.repository.find(id);
     if (!city) throw AppError.notFound("City was not found.");
+    if (city.name.trim() === "-")
+      throw AppError.forbidden("The default city is protected and cannot be modified.");
     return city;
   }
 

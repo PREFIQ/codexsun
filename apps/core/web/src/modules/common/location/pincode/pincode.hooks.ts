@@ -1,5 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { listPincodeRecords } from "./pincode.services";
-export function usePincodeQuery(key: string, path: string) {
-  return useQuery({ queryFn: () => listPincodeRecords(path), queryKey: ["core", "location", key] });
+import { listPincodes, listPincodeCityOptions } from "./pincode.services";
+export const pincodeQueryKey = ["core", "common", "location", "pincode"] as const;
+export function usePincodes() {
+  return useQuery({ queryFn: () => listPincodes(), queryKey: pincodeQueryKey });
+}
+export function usePincodeCityOptions() {
+  return useQuery({
+    queryFn: listPincodeCityOptions,
+    queryKey: [...pincodeQueryKey, "city-options"]
+  });
 }

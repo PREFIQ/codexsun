@@ -14,9 +14,9 @@ export async function seedStateModule() {
   if (!countryId) throw new Error("India country seed must exist before state seeds are applied.");
 
   for (const state of stateSeeds) {
-    await sql`INSERT INTO states (country_id, name, sort_order, status)
-      VALUES (${countryId}, ${state.name}, ${state.sortOrder}, ${state.status})
-      ON DUPLICATE KEY UPDATE country_id=VALUES(country_id), name=VALUES(name), sort_order=VALUES(sort_order), status=VALUES(status)`.execute(
+    await sql`INSERT INTO states (country_id, code, name, sort_order, status)
+      VALUES (${countryId}, ${state.code}, ${state.name}, ${state.sortOrder}, ${state.status})
+      ON DUPLICATE KEY UPDATE country_id=VALUES(country_id), code=VALUES(code), name=VALUES(name), sort_order=VALUES(sort_order), status=VALUES(status)`.execute(
       getCoreDatabase()
     );
   }

@@ -63,7 +63,6 @@ apps/{app}/src/modules/{module}/
   {module}.worker.ts       # Queue registration and background job processors
   {module}.seed.ts         # Default data and seed behavior
   {module}.sync.ts         # Offline and sync rules
-  {module}.test.ts         # Module tests or test helpers
   {module}.types.ts        # Public types and contracts
   index.ts                 # Public exports
 ```
@@ -81,7 +80,6 @@ apps/billing/src/modules/quotation/
   quotation.worker.ts
   quotation.seed.ts
   quotation.sync.ts
-  quotation.test.ts
   quotation.types.ts
   index.ts
 ```
@@ -92,7 +90,7 @@ Full modules must contain every role above. Do not add empty role files to make 
 
 ### Core Common Reduced Modules
 
-Core Common leaf masters deliberately use a reduced nine-file backend boundary:
+Core Common leaf masters deliberately use a reduced eight-file backend boundary:
 
 ```text
 {module}.migration.ts
@@ -101,12 +99,11 @@ Core Common leaf masters deliberately use a reduced nine-file backend boundary:
 {module}.routes.ts
 {module}.seed.ts
 {module}.service.ts
-{module}.test.ts
 {module}.types.ts
 index.ts
 ```
 
-Each reduced Common module must own concrete migration SQL, repository queries, service validation, HTTP routes, lifecycle behavior, seeds, types, and executable tests. Shared factories, generic inherited repositories/services, alias wrappers, and metadata definitions do not satisfy these roles. These synchronous CRUD masters must not carry separate metadata-only definition, event, sync, or worker files. If a Common module later gains real event, offline-sync, or background-job behavior, promote it to the full module contract when that behavior is implemented.
+Each reduced Common module must own concrete migration SQL, repository queries, service validation, HTTP routes, lifecycle behavior, seeds, and types. Shared factories, generic inherited repositories/services, alias wrappers, and metadata definitions do not satisfy these roles. These synchronous CRUD masters must not carry separate metadata-only definition, event, sync, or worker files. If a Common module later gains real event, offline-sync, or background-job behavior, promote it to the full module contract when that behavior is implemented.
 
 ### Mandatory Boundary Audit For Every Application
 
@@ -114,12 +111,12 @@ The same ownership discipline applies to Core, Platform, Billing, Accounts, Data
 
 Allowed shared infrastructure is narrow: API transport/session context, environment readers, observability, and reusable `@codexsun/ui` controls. Shared code must not know a business module's fields, validation, tables, lifecycle, routes, forms, lists, workspaces, settings, or print behavior.
 
-Run `node tools/check-module-boundaries.mjs <app>` for the changed application, followed by formatting, lint, TypeScript, owned tests, and Platform composition validation. A new application is incomplete until the boundary checker understands and enforces its approved full or reduced contract.
+Run `node tools/check-module-boundaries.mjs <app>` for the changed application, followed by formatting, lint, TypeScript, production composition/build validation, and any configured database/E2E checks. A new application is incomplete until the boundary checker understands and enforces its approved full or reduced contract.
 
 Strict naming rules:
 
 - Use the module name as the filename prefix, for example `quotation.service.ts`, not `service.ts`.
-- Use singular role names: `migration.ts`, `worker.ts`, `seed.ts`, `sync.ts`, `test.ts`, `types.ts`.
+- Use singular role names: `migration.ts`, `worker.ts`, `seed.ts`, `sync.ts`, and `types.ts`.
 - Keep public exports in `index.ts`.
 - Keep queue registration and worker processors together in `{module}.worker.ts` unless the module becomes large enough to justify a later explicit split.
 - Use `routes.ts` for HTTP/interface code. Do not use a vague `interface.ts` filename for routes.
@@ -128,7 +125,6 @@ Strict naming rules:
 - `worker.ts` defines supported jobs and executable dispatch/processor behavior. Empty queue arrays and future-reservation metadata are incomplete.
 - `sync.ts` defines scope, direction, conflict policy, cursor/checkpoint behavior, and a callable decision or normalization function. An `offline` boolean alone is incomplete.
 - `seed.ts` and `migration.ts` provide callable persistence behavior. Description-only objects are incomplete.
-- `test.ts` contains executable assertions for the module contract. Empty test files or metadata exports are incomplete.
 - `index.ts` is the only public barrel. Other modules import through it unless a composition root needs a specific lifecycle function.
 
 ### Role Behavior Contract
@@ -144,7 +140,6 @@ Strict naming rules:
 | `{module}.worker.ts`     | Typed job names, retry/idempotency policy, and executable dispatch                |
 | `{module}.seed.ts`       | Callable, repeatable seed behavior or an explicit tested no-data policy           |
 | `{module}.sync.ts`       | Explicit sync scope/direction/conflict policy and callable sync decision behavior |
-| `{module}.test.ts`       | Executable module contract tests                                                  |
 | `{module}.types.ts`      | Public DTOs, commands, results, event/job/sync contracts                          |
 | `index.ts`               | Intentional public API only                                                       |
 
@@ -219,7 +214,6 @@ apps/{app}/web/src/
       {module}.hooks.ts
       {module}.types.ts
       {module}.schema.ts
-      {module}.spec.ts
       {module}.settings.tsx
       {module}.print.tsx
   shared/
@@ -227,7 +221,7 @@ apps/{app}/web/src/
 
 Shared controls and layout primitives belong in `packages/ui`. Cross-module app-web code belongs in `web/src/shared`. Business-specific page state, forms, lists, document settings, print UI, and workflow composition stay in the owning app web module under `web/src/modules/{module}`.
 
-Within a frontend module, API calls go in `{module}.services.ts`, custom hooks go in `{module}.hooks.ts`, Zod schemas go in `{module}.schema.ts`, interfaces/types go in `{module}.types.ts`, and focused Playwright tests go in `{module}.spec.ts`. Billing web modules share `web/playwright.config.ts`; per-module Playwright config files are not allowed. Page components should consume those files instead of calling shared APIs directly when the behavior belongs to that module.
+Within a frontend module, API calls go in `{module}.services.ts`, custom hooks go in `{module}.hooks.ts`, Zod schemas go in `{module}.schema.ts`, and interfaces/types go in `{module}.types.ts`. Page components should consume those files instead of calling shared APIs directly when the behavior belongs to that module.
 
 Frontend role behavior is strict:
 
@@ -237,7 +231,6 @@ Frontend role behavior is strict:
 - `{module}.services.ts` owns all module API calls.
 - `{module}.hooks.ts` owns TanStack Query/mutation integration and cache keys.
 - `{module}.schema.ts` owns executable input validation and inferred form types.
-- `{module}.spec.ts` owns executable UI flow coverage.
 - `{module}.types.ts` owns frontend contracts and view models.
 - `index.ts` exposes the intentional module surface.
 

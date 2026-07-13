@@ -23,12 +23,12 @@ export class StateService {
     const state = await this.mutable(id);
     const normalized = normalize(input);
     await this.requireCountry(normalized.countryId);
-    return this.save(() => this.repository.update(state.id, normalized));
+    return (await this.save(() => this.repository.update(state.id, normalized)))!;
   }
 
   async setStatus(id: string, status: StateStatus) {
     const state = await this.mutable(id);
-    return this.repository.setStatus(state.id, status);
+    return (await this.repository.setStatus(state.id, status))!;
   }
 
   async forceDelete(id: string) {
@@ -40,12 +40,15 @@ export class StateService {
         { count }
       );
     }
-    return this.repository.forceDelete(state.id);
+    return (await this.repository.forceDelete(state.id))!;
   }
 
   private async mutable(id: string): Promise<State> {
     const state = await this.repository.find(id);
     if (!state) throw AppError.notFound("State was not found.");
+    if (isProtectedState(state)) {
+      throw AppError.forbidden("The default state is protected and cannot be modified.");
+    }
     return state;
   }
 
@@ -60,7 +63,7 @@ export class StateService {
       return await work();
     } catch (error) {
       if (isDuplicate(error))
-        throw AppError.conflict("State name already exists for this country.");
+        throw AppError.conflict("State code or name already exists for this country.");
       throw error;
     }
   }
@@ -69,10 +72,15 @@ export class StateService {
 function normalize(input: StateSavePayload): StateSavePayload {
   return {
     countryId: Number(input.countryId),
+    code: input.code.trim().toUpperCase(),
     name: input.name.trim(),
     sortOrder: Number.isFinite(input.sortOrder) ? Number(input.sortOrder) : 1000,
     status: input.status === "inactive" ? "inactive" : "active"
   };
+}
+
+function isProtectedState(state: State) {
+  return state.code === "UNKNOWN" || state.name.trim() === "-";
 }
 
 function isDuplicate(error: unknown): error is { code: string } {

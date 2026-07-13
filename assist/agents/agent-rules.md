@@ -6,6 +6,7 @@ These rules guide all AI agents working on CODEXSUN.
 
 ## General Rules
 
+- Read `assist/AGENT-GUIDE.md` first and use its routing table instead of loading all Assist documents.
 - Read relevant `assist/` docs before planning major work.
 - Preserve tenant isolation.
 - Respect module boundaries.
@@ -52,11 +53,13 @@ Reviewers should check:
 - Compliance records are auditable.
 - APIs do not leak data.
 - UI follows the design system.
-- Tests cover important behavior.
+- Verification covers important behavior, and unavailable checks are reported explicitly.
 
 ## Mandatory Application Boundary Audit
 
 Every AI agent that creates, refactors, reviews, or finalizes an application module must perform a full application boundary audit across its backend and frontend. This applies to every current application and every future application. It cannot be skipped because typecheck, lint, or tests pass.
+
+Before implementing CRUD, the agent must read and apply `Mandatory Module-Owned CRUD Pattern` in `assist/governance/rules.md`. Country, State, District, City, and Pincode are the reference ownership tone: one entity per leaf, fixed typed APIs, distinct form/list/workspace roles, public lookup relationships only, backend-enforced lifecycle rules, and no generic entity engine. A request to make modules “the same pattern” means consistent role behavior and interaction tone, not a shared business implementation, metadata registry, wrapper, or dynamic-path CRUD engine.
 
 Before changing code, inventory the application's module folders and identify each composition root, business module, owned entity, owned table, API surface, frontend workspace, and public export. After changing code, repeat the audit and fix every violation.
 
@@ -79,7 +82,7 @@ The task is not complete until the agent has:
 3. Scanned for wrappers, aliases, private cross-module imports, centralized CRUD, stale exports, and misplaced business files.
 4. Removed unused legacy folders and export proxies.
 5. Run `node tools/check-module-boundaries.mjs <app>` for the application key.
-6. Run formatting, lint, TypeScript, owned tests, and composing Platform validation.
+6. Run formatting, lint, TypeScript, application boundaries, production composition/build validation, and any configured database/E2E checks.
 7. Report skipped database/E2E checks explicitly; never describe skipped checks as passed.
 
 If the checker does not understand a new application's approved contract, update it when introducing that application. Never weaken or disable the checker merely to make violations pass.

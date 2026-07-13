@@ -33,22 +33,24 @@ export class PincodeService {
     const pincode = await this.mutable(id);
     const normalized = normalize(input);
     await this.requireCity(normalized.cityId);
-    return this.save(() => this.repository.update(pincode.id, normalized));
+    return (await this.save(() => this.repository.update(pincode.id, normalized)))!;
   }
 
   async setStatus(id: string, status: PincodeStatus) {
     const pincode = await this.mutable(id);
-    return this.repository.setStatus(pincode.id, status);
+    return (await this.repository.setStatus(pincode.id, status))!;
   }
 
   async forceDelete(id: string) {
     const pincode = await this.mutable(id);
-    return this.repository.forceDelete(pincode.id);
+    return (await this.repository.forceDelete(pincode.id))!;
   }
 
   private async mutable(id: string): Promise<Pincode> {
     const pincode = await this.repository.find(id);
     if (!pincode) throw AppError.notFound("Pincode was not found.");
+    if (pincode.name.trim() === "-")
+      throw AppError.forbidden("The default pincode is protected and cannot be modified.");
     return pincode;
   }
 

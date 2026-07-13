@@ -1,54 +1,85 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { CityService } from "./city.service.js";
-import type { CityListFilters, CitySavePayload } from "./city.types.js";
-
 export const CITY_COLLECTION_PATH = "/core/common/location/cities";
 const service = new CityService();
-
+const paramsSchema = z.object({ id: z.string().regex(/^\d+$/) });
+const statusSchema = z.enum(["active", "inactive"]);
+const recordSchema = z.object({
+  id: z.number().int().positive(),
+  districtId: z.number().int().positive(),
+  districtName: z.string(),
+  stateId: z.number().int().positive(),
+  stateName: z.string(),
+  countryId: z.number().int().positive(),
+  countryName: z.string(),
+  name: z.string(),
+  sortOrder: z.number().int(),
+  status: statusSchema
+});
+const payloadSchema = recordSchema.pick({
+  districtId: true,
+  name: true,
+  sortOrder: true,
+  status: true
+});
+const querySchema = z.object({
+  districtId: z.string().regex(/^\d+$/).optional(),
+  search: z.string().trim().optional()
+});
 export async function registerCityRoutes(app: FastifyInstance) {
-  app.get(CITY_COLLECTION_PATH, async (request) =>
-    ok(await service.list(filters(request)), { requestId: request.id })
-  );
-  app.get(`${CITY_COLLECTION_PATH}/:id`, async (request, reply) => {
-    const record = await service.get(id(request));
-    return record
-      ? ok(record, { requestId: request.id })
-      : reply.code(404).send(notFound(request.id));
+  registerContractRoute(app, {
+    method: "GET",
+    url: CITY_COLLECTION_PATH,
+    schemas: { querystring: querySchema, response: z.array(recordSchema) },
+    handler: ({ query }) =>
+      service.list({
+        ...(query.districtId ? { districtId: query.districtId } : {}),
+        ...(query.search ? { search: query.search } : {})
+      })
   });
-  app.post(CITY_COLLECTION_PATH, async (request) =>
-    ok(await service.create(request.body as CitySavePayload), { requestId: request.id })
-  );
-  app.put(`${CITY_COLLECTION_PATH}/:id`, async (request) =>
-    ok(await service.update(id(request), request.body as CitySavePayload), {
-      requestId: request.id
-    })
-  );
-  app.post(`${CITY_COLLECTION_PATH}/:id/activate`, async (request) =>
-    ok(await service.setStatus(id(request), "active"), { requestId: request.id })
-  );
-  app.post(`${CITY_COLLECTION_PATH}/:id/deactivate`, async (request) =>
-    ok(await service.setStatus(id(request), "inactive"), { requestId: request.id })
-  );
-  app.delete(`${CITY_COLLECTION_PATH}/:id/force`, async (request) =>
-    ok(await service.forceDelete(id(request)), { requestId: request.id })
-  );
+  registerContractRoute(app, {
+    method: "GET",
+    url: `${CITY_COLLECTION_PATH}/:id`,
+    schemas: { params: paramsSchema, response: recordSchema },
+    handler: async ({ params }) => {
+      const value = await service.get(params.id);
+      if (!value) throw AppError.notFound("City was not found.");
+      return value;
+    }
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: CITY_COLLECTION_PATH,
+    schemas: { body: payloadSchema, response: recordSchema },
+    handler: ({ body }) => service.create(body)
+  });
+  registerContractRoute(app, {
+    method: "PUT",
+    url: `${CITY_COLLECTION_PATH}/:id`,
+    schemas: { body: payloadSchema, params: paramsSchema, response: recordSchema },
+    handler: ({ body, params }) => service.update(params.id, body)
+  });
+  statusRoute(app, "activate", "active");
+  statusRoute(app, "deactivate", "inactive");
+  registerContractRoute(app, {
+    method: "DELETE",
+    url: `${CITY_COLLECTION_PATH}/:id/force`,
+    schemas: { params: paramsSchema, response: recordSchema },
+    handler: ({ params }) => service.forceDelete(params.id)
+  });
 }
-
-function id(request: FastifyRequest) {
-  return (request.params as { id: string }).id;
-}
-function filters(request: FastifyRequest): CityListFilters {
-  const query = request.query as CityListFilters | undefined;
-  return {
-    ...(query?.districtId ? { districtId: query.districtId } : {}),
-    ...(query?.search ? { search: query.search } : {})
-  };
-}
-function notFound(requestId: string) {
-  return {
-    error: { code: "CITY_NOT_FOUND", message: "City was not found." },
-    meta: { requestId, timestamp: new Date().toISOString() },
-    success: false as const
-  };
+function statusRoute(
+  app: FastifyInstance,
+  action: "activate" | "deactivate",
+  status: z.infer<typeof statusSchema>
+) {
+  registerContractRoute(app, {
+    method: "POST",
+    url: `${CITY_COLLECTION_PATH}/:id/${action}`,
+    schemas: { params: paramsSchema, response: recordSchema },
+    handler: ({ params }) => service.setStatus(params.id, status)
+  });
 }

@@ -1,54 +1,83 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { DistrictService } from "./district.service.js";
-import type { DistrictListFilters, DistrictSavePayload } from "./district.types.js";
-
 export const DISTRICT_COLLECTION_PATH = "/core/common/location/districts";
 const service = new DistrictService();
-
+const paramsSchema = z.object({ id: z.string().regex(/^\d+$/) });
+const statusSchema = z.enum(["active", "inactive"]);
+const recordSchema = z.object({
+  id: z.number().int().positive(),
+  stateId: z.number().int().positive(),
+  stateName: z.string(),
+  countryId: z.number().int().positive(),
+  countryName: z.string(),
+  name: z.string(),
+  sortOrder: z.number().int(),
+  status: statusSchema
+});
+const payloadSchema = recordSchema.pick({
+  stateId: true,
+  name: true,
+  sortOrder: true,
+  status: true
+});
+const querySchema = z.object({
+  stateId: z.string().regex(/^\d+$/).optional(),
+  search: z.string().trim().optional()
+});
 export async function registerDistrictRoutes(app: FastifyInstance) {
-  app.get(DISTRICT_COLLECTION_PATH, async (request) =>
-    ok(await service.list(filters(request)), { requestId: request.id })
-  );
-  app.get(`${DISTRICT_COLLECTION_PATH}/:id`, async (request, reply) => {
-    const record = await service.get(id(request));
-    return record
-      ? ok(record, { requestId: request.id })
-      : reply.code(404).send(notFound(request.id));
+  registerContractRoute(app, {
+    method: "GET",
+    url: DISTRICT_COLLECTION_PATH,
+    schemas: { querystring: querySchema, response: z.array(recordSchema) },
+    handler: ({ query }) =>
+      service.list({
+        ...(query.stateId ? { stateId: query.stateId } : {}),
+        ...(query.search ? { search: query.search } : {})
+      })
   });
-  app.post(DISTRICT_COLLECTION_PATH, async (request) =>
-    ok(await service.create(request.body as DistrictSavePayload), { requestId: request.id })
-  );
-  app.put(`${DISTRICT_COLLECTION_PATH}/:id`, async (request) =>
-    ok(await service.update(id(request), request.body as DistrictSavePayload), {
-      requestId: request.id
-    })
-  );
-  app.post(`${DISTRICT_COLLECTION_PATH}/:id/activate`, async (request) =>
-    ok(await service.setStatus(id(request), "active"), { requestId: request.id })
-  );
-  app.post(`${DISTRICT_COLLECTION_PATH}/:id/deactivate`, async (request) =>
-    ok(await service.setStatus(id(request), "inactive"), { requestId: request.id })
-  );
-  app.delete(`${DISTRICT_COLLECTION_PATH}/:id/force`, async (request) =>
-    ok(await service.forceDelete(id(request)), { requestId: request.id })
-  );
+  registerContractRoute(app, {
+    method: "GET",
+    url: `${DISTRICT_COLLECTION_PATH}/:id`,
+    schemas: { params: paramsSchema, response: recordSchema },
+    handler: async ({ params }) => {
+      const value = await service.get(params.id);
+      if (!value) throw AppError.notFound("District was not found.");
+      return value;
+    }
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: DISTRICT_COLLECTION_PATH,
+    schemas: { body: payloadSchema, response: recordSchema },
+    handler: ({ body }) => service.create(body)
+  });
+  registerContractRoute(app, {
+    method: "PUT",
+    url: `${DISTRICT_COLLECTION_PATH}/:id`,
+    schemas: { body: payloadSchema, params: paramsSchema, response: recordSchema },
+    handler: ({ body, params }) => service.update(params.id, body)
+  });
+  statusRoute(app, "activate", "active");
+  statusRoute(app, "deactivate", "inactive");
+  registerContractRoute(app, {
+    method: "DELETE",
+    url: `${DISTRICT_COLLECTION_PATH}/:id/force`,
+    schemas: { params: paramsSchema, response: recordSchema },
+    handler: ({ params }) => service.forceDelete(params.id)
+  });
 }
-
-function id(request: FastifyRequest) {
-  return (request.params as { id: string }).id;
-}
-function filters(request: FastifyRequest): DistrictListFilters {
-  const query = request.query as DistrictListFilters | undefined;
-  return {
-    ...(query?.stateId ? { stateId: query.stateId } : {}),
-    ...(query?.search ? { search: query.search } : {})
-  };
-}
-function notFound(requestId: string) {
-  return {
-    error: { code: "DISTRICT_NOT_FOUND", message: "District was not found." },
-    meta: { requestId, timestamp: new Date().toISOString() },
-    success: false as const
-  };
+function statusRoute(
+  app: FastifyInstance,
+  action: "activate" | "deactivate",
+  status: z.infer<typeof statusSchema>
+) {
+  registerContractRoute(app, {
+    method: "POST",
+    url: `${DISTRICT_COLLECTION_PATH}/:id/${action}`,
+    schemas: { params: paramsSchema, response: recordSchema },
+    handler: ({ params }) => service.setStatus(params.id, status)
+  });
 }

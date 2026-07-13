@@ -24,12 +24,12 @@ export class CountryService {
 
   async update(id: string, input: CountrySavePayload) {
     const country = await this.mutable(id);
-    return this.save(() => this.repository.update(country.id, normalize(input)));
+    return (await this.save(() => this.repository.update(country.id, normalize(input))))!;
   }
 
   async setStatus(id: string, status: CountryStatus) {
     const country = await this.mutable(id);
-    return this.repository.setStatus(country.id, status);
+    return (await this.repository.setStatus(country.id, status))!;
   }
 
   async forceDelete(id: string) {
@@ -41,12 +41,15 @@ export class CountryService {
         { count }
       );
     }
-    return this.repository.forceDelete(country.id);
+    return (await this.repository.forceDelete(country.id))!;
   }
 
   private async mutable(id: string): Promise<Country> {
     const country = await this.repository.find(id);
-    if (!country || isIndia(country)) throw AppError.notFound("Country was not found.");
+    if (!country) throw AppError.notFound("Country was not found.");
+    if (isIndia(country)) {
+      throw AppError.forbidden("India is a protected country and cannot be modified.");
+    }
     return country;
   }
 

@@ -1,12 +1,13 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { StateRecord, StateSavePayload } from "./state.types";
+import type { CountryOption, StateListFilters, StateRecord, StateSavePayload } from "./state.types";
 
 const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const statePath = "/core/common/location/states";
 
 type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 
-async function request<T>(path: string, options: RequestInit = {}) {
+async function coreRequest<T>(path: string, options: RequestInit = {}) {
   const token = getToken("tenant");
   const tenantDbName = getTenantDbName();
   const response = await fetch(`${coreApiBaseUrl}${path}`, {
@@ -21,27 +22,41 @@ async function request<T>(path: string, options: RequestInit = {}) {
   });
   const envelope = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok || !envelope.success) {
-    throw new Error(envelope.success ? "Core API request failed." : envelope.error.message);
+    throw new Error(envelope.success ? "State request failed." : envelope.error.message);
   }
   return envelope.data;
 }
 
-export function listStateRecords(path: string) {
-  return request<StateRecord[]>(path);
+export function listStates(filters: StateListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.countryId) query.set("countryId", String(filters.countryId));
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return coreRequest<StateRecord[]>(`${statePath}${query.size ? `?${query}` : ""}`);
 }
 
-export function createStateRecord(path: string, payload: StateSavePayload) {
-  return request<StateRecord>(path, { body: JSON.stringify(payload), method: "POST" });
+export function listStateCountryOptions() {
+  return coreRequest<CountryOption[]>("/core/common/location/countries");
 }
 
-export function updateStateRecord(path: string, id: number, payload: StateSavePayload) {
-  return request<StateRecord>(`${path}/${id}`, { body: JSON.stringify(payload), method: "PUT" });
+export function createState(payload: StateSavePayload) {
+  return coreRequest<StateRecord>(statePath, { body: JSON.stringify(payload), method: "POST" });
 }
 
-export function suspendStateRecord(path: string, id: number) {
-  return request<StateRecord>(`${path}/${id}/deactivate`, { method: "POST" });
+export function updateState(id: number, payload: StateSavePayload) {
+  return coreRequest<StateRecord>(`${statePath}/${id}`, {
+    body: JSON.stringify(payload),
+    method: "PUT"
+  });
 }
 
-export function forceDeleteStateRecord(path: string, id: number) {
-  return request<StateRecord>(`${path}/${id}/force`, { method: "DELETE" });
+export function activateState(id: number) {
+  return coreRequest<StateRecord>(`${statePath}/${id}/activate`, { method: "POST" });
+}
+
+export function deactivateState(id: number) {
+  return coreRequest<StateRecord>(`${statePath}/${id}/deactivate`, { method: "POST" });
+}
+
+export function forceDeleteState(id: number) {
+  return coreRequest<StateRecord>(`${statePath}/${id}/force`, { method: "DELETE" });
 }

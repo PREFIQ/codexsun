@@ -1,51 +1,72 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { CountryService } from "./country.service.js";
-import type { CountrySavePayload } from "./country.types.js";
 
 export const COUNTRY_COLLECTION_PATH = "/core/common/location/countries";
+
 const service = new CountryService();
+const idParamsSchema = z.object({ id: z.string().regex(/^\d+$/, "Country ID must be numeric.") });
+const countryStatusSchema = z.enum(["active", "inactive"]);
+const countrySchema = z.object({
+  id: z.number().int().positive(),
+  code: z.string(),
+  name: z.string(),
+  sortOrder: z.number().int(),
+  status: countryStatusSchema
+});
+const countryPayloadSchema = countrySchema.omit({ id: true });
+const countryQuerySchema = z.object({ search: z.string().trim().optional() });
 
 export async function registerCountryRoutes(app: FastifyInstance) {
-  app.get(COUNTRY_COLLECTION_PATH, async (request) =>
-    ok(await service.list(filters(request)), { requestId: request.id })
-  );
-  app.get(`${COUNTRY_COLLECTION_PATH}/:id`, async (request, reply) => {
-    const record = await service.get(id(request));
-    return record
-      ? ok(record, { requestId: request.id })
-      : reply.code(404).send(notFound(request.id));
+  registerContractRoute(app, {
+    handler: ({ query }) => service.list(query.search ? { search: query.search } : {}),
+    method: "GET",
+    schemas: { querystring: countryQuerySchema, response: z.array(countrySchema) },
+    url: COUNTRY_COLLECTION_PATH
   });
-  app.post(COUNTRY_COLLECTION_PATH, async (request) =>
-    ok(await service.create(request.body as CountrySavePayload), { requestId: request.id })
-  );
-  app.put(`${COUNTRY_COLLECTION_PATH}/:id`, async (request) =>
-    ok(await service.update(id(request), request.body as CountrySavePayload), {
-      requestId: request.id
-    })
-  );
-  app.post(`${COUNTRY_COLLECTION_PATH}/:id/activate`, async (request) =>
-    ok(await service.setStatus(id(request), "active"), { requestId: request.id })
-  );
-  app.post(`${COUNTRY_COLLECTION_PATH}/:id/deactivate`, async (request) =>
-    ok(await service.setStatus(id(request), "inactive"), { requestId: request.id })
-  );
-  app.delete(`${COUNTRY_COLLECTION_PATH}/:id/force`, async (request) =>
-    ok(await service.forceDelete(id(request)), { requestId: request.id })
-  );
+  registerContractRoute(app, {
+    handler: async ({ params }) => {
+      const record = await service.get(params.id);
+      if (!record) throw AppError.notFound("Country was not found.");
+      return record;
+    },
+    method: "GET",
+    schemas: { params: idParamsSchema, response: countrySchema },
+    url: `${COUNTRY_COLLECTION_PATH}/:id`
+  });
+  registerContractRoute(app, {
+    handler: ({ body }) => service.create(body),
+    method: "POST",
+    schemas: { body: countryPayloadSchema, response: countrySchema },
+    url: COUNTRY_COLLECTION_PATH
+  });
+  registerContractRoute(app, {
+    handler: ({ body, params }) => service.update(params.id, body),
+    method: "PUT",
+    schemas: { body: countryPayloadSchema, params: idParamsSchema, response: countrySchema },
+    url: `${COUNTRY_COLLECTION_PATH}/:id`
+  });
+  registerStatusRoute(app, "activate", "active");
+  registerStatusRoute(app, "deactivate", "inactive");
+  registerContractRoute(app, {
+    handler: ({ params }) => service.forceDelete(params.id),
+    method: "DELETE",
+    schemas: { params: idParamsSchema, response: countrySchema },
+    url: `${COUNTRY_COLLECTION_PATH}/:id/force`
+  });
 }
 
-function id(request: FastifyRequest) {
-  return (request.params as { id: string }).id;
-}
-function filters(request: FastifyRequest) {
-  const search = (request.query as { search?: string } | undefined)?.search;
-  return search ? { search } : {};
-}
-function notFound(requestId: string) {
-  return {
-    error: { code: "COUNTRY_NOT_FOUND", message: "Country was not found." },
-    meta: { requestId, timestamp: new Date().toISOString() },
-    success: false as const
-  };
+function registerStatusRoute(
+  app: FastifyInstance,
+  action: "activate" | "deactivate",
+  status: z.infer<typeof countryStatusSchema>
+) {
+  registerContractRoute(app, {
+    handler: ({ params }) => service.setStatus(params.id, status),
+    method: "POST",
+    schemas: { params: idParamsSchema, response: countrySchema },
+    url: `${COUNTRY_COLLECTION_PATH}/:id/${action}`
+  });
 }

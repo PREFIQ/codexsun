@@ -1,8 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { listDistrictRecords } from "./district.services";
-export function useDistrictQuery(key: string, path: string) {
+import { listDistricts, listDistrictStateOptions } from "./district.services";
+export const districtQueryKey = ["core", "common", "location", "district"] as const;
+export function useDistricts() {
+  return useQuery({ queryFn: () => listDistricts(), queryKey: districtQueryKey });
+}
+export function useDistrictStateOptions() {
   return useQuery({
-    queryFn: () => listDistrictRecords(path),
-    queryKey: ["core", "location", key]
+    queryFn: listDistrictStateOptions,
+    queryKey: [...districtQueryKey, "state-options"]
   });
 }

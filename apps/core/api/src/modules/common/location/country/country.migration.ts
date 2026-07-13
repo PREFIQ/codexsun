@@ -18,7 +18,8 @@ export function migrateCountryModule(database: Kysely<CoreDatabase>) {
       sort_order INT(11) NOT NULL DEFAULT 1000,
       status VARCHAR(24) NOT NULL DEFAULT 'active',
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY countries_name_unique (name)
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `
     )

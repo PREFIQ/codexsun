@@ -26,6 +26,8 @@ Agents must read and follow these standards before changing module UI, backend c
 - Governance rule book: `assist/governance/rules.md`
 - Changelog and version state: `assist/documentation/CHANGELOG.md`
 
+For every new, migrated, or refactored CRUD module, load `assist/SKILL.md` and follow the `Mandatory Module-Owned CRUD Pattern` in the governance rule book. Country, State, District, City, and Pincode are the reference implementation tone: consistent roles and interactions with independently owned business code, never a generic or centralized entity engine.
+
 Strict business app module folders:
 
 ```text
@@ -306,16 +308,17 @@ Good vibe coding means:
 - Small-focused edits.
 - Existing patterns first.
 - Tenant, permission, subscription, and offline impact checked.
-- Tests added around risky behavior.
+- Verification is proportional to risk and every skipped check is reported explicitly.
 - Docs updated when product meaning changes.
 - Clean summary after work.
 
-Use `assist/agents/vibe-coding.md`, `assist/agents/codeit-workflows.md`, `assist/governance/engineering-standards.md`,
-and `assist/governance/quality-gates.md` as the working standard for AI-assisted development.
+Use `assist/AGENT-GUIDE.md` as the working standard for AI-assisted development. Open specialized documents only when the task touches their subject.
 
 ## Folder Guide
 
-- `assist/readme.md`: Main product and architecture overview.
+- `assist/AGENT-GUIDE.md`: Authoritative execution and module-ownership notes for agents.
+- `assist/SKILL.md`: Portable CODEXSUN module-owner skill for agents on every computer.
+- `assist/README.md`: Product and architecture overview.
 - `assist/blueprint/`: Practical pre-coding blueprint and captured decisions.
 - `assist/documentation/`: Active release changelog, current project inventory, and future customer/developer documentation.
 - `assist/product/`: Product scope, domain map, industry model, and feature planning.
@@ -324,28 +327,16 @@ and `assist/governance/quality-gates.md` as the working standard for AI-assisted
 - `assist/industries/`: Industry-specific planning notes.
 - `assist/agents/`: Instructions for CODEIT, ZERO, and other future agents.
 - `assist/operations/`: Tech stack, versioning, releases, environment, deployment, and support notes.
-- `assist/governance/`: Rules, API guidelines, testing strategy, changelog, decisions, and quality gates.
+- `assist/governance/`: Active rules, API guidelines, engineering standards, decisions, glossary, and quality gates.
 
 ## Recommended Reading Order For Agents
 
-1. `assist/readme.md`
-2. `assist/documentation/project-inventory.md`
-3. `assist/blueprint/first-mvp.md`
-4. `assist/blueprint/framework-foundation.md`
-5. `assist/blueprint/platform-foundation.md`
-6. `assist/blueprint/decision-summary.md`
-7. `assist/blueprint/foundation-blueprint.md`
-8. `assist/product/product-scope.md`
-9. `assist/product/domain-map.md`
-10. `assist/architecture/architecture-principles.md`
-11. `assist/architecture/tenant-isolation.md`
-12. `assist/architecture/tenant-readiness-track.md`
-13. `assist/product/enterprise-scope.md` for enterprise-impacting work.
-14. Relevant module, industry, agent, or operation notes for the task.
-15. `assist/governance/rules.md`
-16. `assist/governance/engineering-standards.md`
-17. `assist/governance/testing-strategy.md`
-18. `assist/governance/quality-gates.md`
+1. `assist/AGENT-GUIDE.md`
+2. `assist/governance/rules.md`
+3. The owning module and its composition points.
+4. The specialized Assist document routed by the guide when relevant.
+
+Do not load every planning, product, architecture, and operations file for routine work. Read progressively from the authoritative guide to the documents required by the task.
 
 ## Working Principle
 

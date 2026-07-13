@@ -28,12 +28,12 @@ export class DistrictService {
     const district = await this.mutable(id);
     const normalized = normalize(input);
     await this.requireState(normalized.stateId);
-    return this.save(() => this.repository.update(district.id, normalized));
+    return (await this.save(() => this.repository.update(district.id, normalized)))!;
   }
 
   async setStatus(id: string, status: DistrictStatus) {
     const district = await this.mutable(id);
-    return this.repository.setStatus(district.id, status);
+    return (await this.repository.setStatus(district.id, status))!;
   }
 
   async forceDelete(id: string) {
@@ -45,12 +45,14 @@ export class DistrictService {
         { count }
       );
     }
-    return this.repository.forceDelete(district.id);
+    return (await this.repository.forceDelete(district.id))!;
   }
 
   private async mutable(id: string): Promise<District> {
     const district = await this.repository.find(id);
     if (!district) throw AppError.notFound("District was not found.");
+    if (district.name.trim() === "-")
+      throw AppError.forbidden("The default district is protected and cannot be modified.");
     return district;
   }
 

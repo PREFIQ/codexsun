@@ -1,47 +1,48 @@
 import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
-import type { CityRecord, CitySavePayload } from "./city.types";
-
-const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
-
-type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
-
-async function request<T>(path: string, options: RequestInit = {}) {
-  const token = getToken("tenant");
-  const tenantDbName = getTenantDbName();
-  const response = await fetch(`${coreApiBaseUrl}${path}`, {
+import type { DistrictOption, CityListFilters, CityRecord, CitySavePayload } from "./city.types";
+const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const path = "/core/common/location/cities";
+type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+async function request<T>(url: string, options: RequestInit = {}) {
+  const token = getToken("tenant"),
+    tenant = getTenantDbName();
+  const response = await fetch(`${baseUrl}${url}`, {
     ...options,
     headers: {
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
+      ...(tenant ? { "x-tenant-db": tenant } : {}),
       ...options.headers
     }
   });
-  const envelope = (await response.json()) as ApiEnvelope<T>;
-  if (!response.ok || !envelope.success) {
-    throw new Error(envelope.success ? "Core API request failed." : envelope.error.message);
-  }
+  const envelope = (await response.json()) as Envelope<T>;
+  if (!response.ok || !envelope.success)
+    throw new Error(envelope.success ? "City request failed." : envelope.error.message);
   return envelope.data;
 }
-
-export function listCityRecords(path: string) {
-  return request<CityRecord[]>(path);
+export function listCitys(filters: CityListFilters = {}) {
+  const query = new URLSearchParams();
+  if (filters.districtId) query.set("districtId", String(filters.districtId));
+  if (filters.search?.trim()) query.set("search", filters.search.trim());
+  return request<CityRecord[]>(`${path}${query.size ? `?${query}` : ""}`);
 }
-
-export function createCityRecord(path: string, payload: CitySavePayload) {
+export function listCityDistrictOptions() {
+  return request<DistrictOption[]>("/core/common/location/districts");
+}
+export function createCity(payload: CitySavePayload) {
   return request<CityRecord>(path, { body: JSON.stringify(payload), method: "POST" });
 }
-
-export function updateCityRecord(path: string, id: number, payload: CitySavePayload) {
+export function updateCity(id: number, payload: CitySavePayload) {
   return request<CityRecord>(`${path}/${id}`, { body: JSON.stringify(payload), method: "PUT" });
 }
-
-export function suspendCityRecord(path: string, id: number) {
+export function activateCity(id: number) {
+  return request<CityRecord>(`${path}/${id}/activate`, { method: "POST" });
+}
+export function deactivateCity(id: number) {
   return request<CityRecord>(`${path}/${id}/deactivate`, { method: "POST" });
 }
-
-export function forceDeleteCityRecord(path: string, id: number) {
+export function forceDeleteCity(id: number) {
   return request<CityRecord>(`${path}/${id}/force`, { method: "DELETE" });
 }

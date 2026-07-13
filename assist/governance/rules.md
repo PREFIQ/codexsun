@@ -11,13 +11,120 @@
 
 ## Architecture Rules
 
+### Mandatory Module-Owned CRUD Pattern
+
+Every new, migrated, or refactored CRUD module must follow the finalized Country, State, District, City, and Pincode ownership pattern. This rule applies to every current application and every future application.
+
+#### Ownership boundary
+
+- One business entity belongs to one leaf module folder on the backend and one matching leaf module folder on the frontend.
+- A leaf module owns its exact entity fields, persistence, validation, routes, lifecycle behavior, seeds, contracts, API calls, query keys, form, list, details view, workspace state, and public exports.
+- A parent or composition folder may order registration, migrations, and seeds. It must not own entity fields, generic CRUD behavior, forms, lists, schemas, repository methods, or record definitions.
+- A module must never implement sibling entities through a `kind`, `definition`, metadata registry, arbitrary path parameter, generic record union, shared module shell, or centralized CRUD factory.
+- Copying one complete implementation into multiple role files is prohibited. Form, list, and workspace files must have different responsibilities and different executable implementations.
+
+#### Backend leaf contract
+
+Each reduced synchronous CRUD backend module owns:
+
+```text
+{module}.migration.ts
+{module}.module.ts
+{module}.repository.ts
+{module}.routes.ts
+{module}.seed.ts
+{module}.service.ts
+{module}.types.ts
+index.ts
+```
+
+- `migration` owns one callable, idempotent table definition using the module's concrete table, columns, indexes, unique keys, and foreign keys. Keep a single consolidated `sql.raw()` table statement when the schema can be expressed in one statement.
+- `module` owns the stable module key and registers only that module's routes.
+- `repository` contains concrete SQL for only the module's table and relationship reads required by its public response. It must not accept table names, entity definitions, or arbitrary modules.
+- `service` owns normalization, required-parent checks, duplicate handling, protected-record rules, safe-delete blockers, and lifecycle decisions.
+- `routes` uses typed Zod request and response contracts through `registerContractRoute()`. Direct casts of request body, parameters, or query values are prohibited.
+- `seed` owns typed, repeatable data for only that module. A child seed may resolve a required parent through its persisted public identity but must not import or reuse the parent's private seed array.
+- `types` contains only that module's backend records, save payloads, filters, statuses, and public relation responses.
+- `index` exports only the intentional module surface.
+
+#### Frontend leaf contract
+
+Each CRUD frontend module owns:
+
+```text
+{module}.workspace.tsx
+{module}.list.tsx
+{module}.form.tsx
+{module}.services.ts
+{module}.hooks.ts
+{module}.schema.ts
+{module}.types.ts
+index.ts
+```
+
+- `types` defines the exact record, save payload, filters, status, and minimal lookup option contracts needed by this module. Do not include sibling entity fields for convenience.
+- `schema` performs strict executable validation of the module payload. Do not use `.passthrough()` to tolerate unrelated fields.
+- `services` owns fixed URLs and typed operations for this module. Functions must not accept arbitrary entity paths, table names, module kinds, or definitions.
+- `hooks` owns module-specific query keys and query integration. Cache invalidation must target the owning module deliberately.
+- `form` renders only the module's fields and relationship lookups, validates before submit, and owns create/edit form state. It must not contain list queries, pagination, row actions, or sibling creation engines.
+- `list` renders columns, status, protected indicators, and row actions for only the module record. Action controls inside clickable rows must stop propagation so Edit or lifecycle actions do not also open View.
+- `workspace` owns list filters, pagination, dialog selection state, mutations, notifications, cache invalidation, and composition of the module's form, list, details view, and confirmation dialog.
+- `index` exposes the module's intentional frontend surface without compatibility wrappers.
+
+#### Relationship rule
+
+- A child module may consume a parent only through a fixed public contract, fixed lookup API, injected public dependency, or approved event.
+- The child must own its minimal parent lookup type and lookup request. It must not import the parent's repository, service, form, hooks, private types, seed data, or implementation files.
+- Relationship selectors must use persisted API/database records, show useful labels, and submit the real parent ID.
+- Backend services must verify that the selected parent exists before writing.
+- Foreign keys, migration order, seed order, safe-delete blockers, and relation response shapes must match the same hierarchy.
+- A relation endpoint belongs to the leaf that owns the returned primary record. For example, Pincode owns its Pincode-to-City-to-District-to-State-to-Country relation read.
+
+#### Lifecycle and interaction rule
+
+- Normal CRUD modules provide create, view, edit, suspend/deactivate, restore/activate, and force-delete operations unless their module definition documents a real exemption.
+- Protected seed records must be blocked in both frontend actions and backend services. Backend responses must clearly state that the record is protected; do not disguise protection as a missing record.
+- Force delete must check dependent records and return a clear conflict instead of relying on a raw foreign-key error.
+- Lists use explicit Active/Inactive badge tones, database-backed records, searchable filters, pagination, and shared row-action controls.
+- Popup upsert forms must show validation and API errors, required markers, status controls, loading state, cancel behavior, and success/error notifications.
+- A row click may open View. Menu and action clicks must never bubble into the row's View handler.
+
+#### Forbidden implementation patterns
+
+The following are boundary failures:
+
+- `CountryKind`, `StateKind`, or any union used to make one leaf render multiple business entities.
+- `countryDefinitions`, `locationDefinitions`, metadata-driven columns, arbitrary `path` arguments, or functions such as `listRecords(path)` used across entities.
+- Generic Location, Common Master, or CRUD shells holding sibling fields, endpoints, parent queries, forms, or lifecycle actions.
+- Identical form, list, and workspace files; one-line aliases; re-export wrappers; dummy roles; placeholder roles; or copied private sibling implementations.
+- Shared business schemas, record unions, repositories, services, route factories, form factories, or field registries used instead of module ownership.
+- Direct sibling imports below another module's public `index` boundary, except composition roots importing explicit lifecycle functions for ordered registration, migration, or seeding.
+- Frontend types containing unrelated sibling fields or schemas accepting unrelated payload fields.
+- Request casts in routes, unvalidated foreign IDs, misleading lifecycle errors, and UI-only protection without backend enforcement.
+
+#### Required completion audit
+
+Before a module is declared final, the agent must:
+
+1. Inventory every backend and frontend file in the leaf.
+2. Verify every import and export and distinguish infrastructure from business behavior.
+3. Scan for generic kinds, metadata definitions, dynamic paths, wrappers, aliases, shared CRUD, sibling private imports, passthrough schemas, and duplicate role-file hashes.
+4. Verify migration columns, repository mappings, seeds, service payloads, route schemas, frontend types, and form fields agree exactly.
+5. Verify fixed route registration, parent validation, relation reads, protected records, dependency blockers, and lifecycle endpoints.
+6. Verify row actions do not trigger row View and status badges use explicit correct tones.
+7. Run Prettier, focused ESLint, backend TypeScript, frontend TypeScript, the app-scoped module-boundary checker, production builds, and the root dependency-layout check.
+8. Run configured database/E2E verification when available. If it is unavailable, state that explicitly and never report it as passed.
+9. Report any existing-database migration prerequisite, especially when `CREATE TABLE IF NOT EXISTS` cannot upgrade an already-created table.
+
+Passing TypeScript or lint alone does not prove module ownership. The ownership scan and role-behavior review are mandatory.
+
 - CODEXSUN is a modular monolith unless a stronger reason exists.
 - Module boundaries must be explicit.
 - Every full module must follow the exact backend and frontend file contract in `assist/architecture/module-boundaries.md`. A filename alone does not satisfy the contract: each role file must contain the behavior owned by that role.
-- Module-owned migrations, seeds, repositories, services, routes, events, workers, sync rules, types, tests, lists, forms, schemas, hooks, settings, and page orchestration must remain inside that module's folder. Do not scatter module behavior through app-level `database`, `services`, `controls`, `pages`, or `shared` folders.
-- Backend full modules use `{module}.module.ts`, `{module}.service.ts`, `{module}.repository.ts`, `{module}.routes.ts`, `{module}.events.ts`, `{module}.migration.ts`, `{module}.worker.ts`, `{module}.seed.ts`, `{module}.sync.ts`, `{module}.test.ts`, `{module}.types.ts`, and `index.ts`.
-- Core Common leaf masters use the deliberately reduced nine-file contract: `{module}.migration.ts`, `{module}.module.ts`, `{module}.repository.ts`, `{module}.routes.ts`, `{module}.seed.ts`, `{module}.service.ts`, `{module}.test.ts`, `{module}.types.ts`, and `index.ts`. Every leaf owns its concrete database, persistence, validation, HTTP, seed, lifecycle, contract, and test code; do not replace those roles with shared factories, inherited generic repositories/services, alias wrappers, metadata definitions, or placeholder event, sync, and worker files.
-- Frontend full modules use `{module}.workspace.tsx`, `{module}.list.tsx`, `{module}.form.tsx`, `{module}.services.ts`, `{module}.hooks.ts`, `{module}.types.ts`, `{module}.schema.ts`, `{module}.spec.ts`, and `index.ts`. Add `{module}.settings.tsx` and `{module}.print.tsx` when those behaviors exist.
+- Module-owned migrations, seeds, repositories, services, routes, events, workers, sync rules, types, lists, forms, schemas, hooks, settings, and page orchestration must remain inside that module's folder. Do not scatter module behavior through app-level `database`, `services`, `controls`, `pages`, or `shared` folders.
+- Backend full modules add executable event, worker, and sync roles to the reduced CRUD contract only when those capabilities exist. Placeholder capability files are prohibited.
+- Core Common leaf masters use the deliberately reduced eight-file backend contract documented above. Every leaf owns its concrete database, persistence, validation, HTTP, seed, lifecycle, and contract code.
+- Frontend CRUD modules use the eight-file frontend contract documented above. Add `{module}.settings.tsx` and `{module}.print.tsx` only when those behaviors exist.
 - Role files must not be one-line aliases, empty arrays, metadata-only placeholders, “reserved for future” declarations, or exports of another role under a new name. A list owns list rendering, a form owns form rendering and validation display, events own typed event construction, workers own executable job dispatch, sync owns an explicit sync policy and decision behavior, and seeds/migrations execute or expose callable database behavior.
 - A module that intentionally has no UI or no lifecycle concern must document the exemption in its module definition and must not create fake role files merely to satisfy naming.
 - `npm run check:module-boundaries` is mandatory and must reject missing required files, alias-only wrappers, placeholder roles, and cross-module placement.

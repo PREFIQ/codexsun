@@ -6,6 +6,7 @@ type StateRow = {
   id: number;
   country_id: number;
   country_name: string;
+  code: string;
   name: string;
   sort_order: number;
   status: StateStatus;
@@ -14,11 +15,11 @@ export class StateRepository {
   async list(filters: StateListFilters = {}) {
     const rows =
       await sql<StateRow>`SELECT states.id, states.country_id, countries.name country_name,
-        states.name, states.sort_order, states.status
+        states.code, states.name, states.sort_order, states.status
       FROM states
       INNER JOIN countries ON countries.id = states.country_id
       WHERE (${filters.countryId ?? ""} = '' OR states.country_id = ${Number(filters.countryId ?? 0)})
-        AND (${filters.search ?? ""} = '' OR LOWER(states.name) LIKE ${like(filters.search)} OR LOWER(countries.name) LIKE ${like(filters.search)})
+        AND (${filters.search ?? ""} = '' OR LOWER(states.code) LIKE ${like(filters.search)} OR LOWER(states.name) LIKE ${like(filters.search)} OR LOWER(countries.name) LIKE ${like(filters.search)})
       ORDER BY states.sort_order, states.name`.execute(getCoreDatabase());
     return rows.rows.map(toState);
   }
@@ -26,7 +27,7 @@ export class StateRepository {
   async find(id: string | number) {
     const rows =
       await sql<StateRow>`SELECT states.id, states.country_id, countries.name country_name,
-        states.name, states.sort_order, states.status
+        states.code, states.name, states.sort_order, states.status
       FROM states
       INNER JOIN countries ON countries.id = states.country_id
       WHERE states.id=${Number(id)} LIMIT 1`.execute(getCoreDatabase());
@@ -41,15 +42,15 @@ export class StateRepository {
   }
 
   async create(input: StateSavePayload) {
-    const result = await sql`INSERT INTO states (country_id, name, sort_order, status) VALUES
-      (${Number(input.countryId)}, ${input.name}, ${input.sortOrder}, ${input.status})`.execute(
+    const result = await sql`INSERT INTO states (country_id, code, name, sort_order, status) VALUES
+      (${Number(input.countryId)}, ${input.code}, ${input.name}, ${input.sortOrder}, ${input.status})`.execute(
       getCoreDatabase()
     );
     return (await this.find(String(result.insertId)))!;
   }
 
   async update(id: string | number, input: StateSavePayload) {
-    await sql`UPDATE states SET country_id=${Number(input.countryId)}, name=${input.name}, sort_order=${input.sortOrder}, status=${input.status} WHERE id=${Number(id)}`.execute(
+    await sql`UPDATE states SET country_id=${Number(input.countryId)}, code=${input.code}, name=${input.name}, sort_order=${input.sortOrder}, status=${input.status} WHERE id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return this.find(id);
@@ -82,6 +83,7 @@ function toState(row: StateRow): State {
     id: Number(row.id),
     countryId: Number(row.country_id),
     countryName: row.country_name,
+    code: row.code,
     name: row.name,
     sortOrder: Number(row.sort_order),
     status: row.status
