@@ -24,10 +24,6 @@ apps/
     src/              # Billing backend modules and thin package exports
     web/              # Billing frontend routes/screens/forms
 
-  accounts/
-    src/              # Accounts backend modules and thin package exports
-    web/              # Accounts frontend routes/screens/forms
-
   ecommerce/
     src/              # Ecommerce backend modules and thin package exports
     web/              # Ecommerce storefront/admin frontend
@@ -99,7 +95,6 @@ Business UI belongs to the app that owns the business meaning:
 ```text
 apps/core/web       # Common/master tenant UI
 apps/billing/web    # Billing entries, billing settings, billing reports
-apps/accounts/web   # Accounts vouchers, ledgers, financial reports
 apps/ecommerce/web  # Catalog, cart, orders, storefront/admin
 apps/crm/web        # Leads, customers, pipeline, activities
 apps/sites/web      # Site builder, pages, themes, public site tools
@@ -221,7 +216,6 @@ billing-suite
   platform
   core
   billing
-  accounts
 
 ecommerce-suite
   shared packages
@@ -286,8 +280,6 @@ dist/apps/core
 dist/apps/core/web
 dist/apps/billing
 dist/apps/billing/web
-dist/apps/accounts
-dist/apps/accounts/web
 dist/apps/ecommerce/web
 dist/apps/crm/web
 dist/apps/sites/web

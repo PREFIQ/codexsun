@@ -25,7 +25,6 @@
     "format:check": "prettier . --check",
     "verify:platform": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "verify:billing": "npm run check:module-boundaries && npm run typecheck && npm run build",
-    "verify:accounts": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "verify:core": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "verify:data-bridge": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "verify:kitchen-serve": "npm run check:module-boundaries && npm run typecheck && npm run build",

@@ -269,7 +269,7 @@ export class QuotationService {
       jobName:
         action === "confirmed" || action === "converted"
           ? "quotation.confirmation-sync"
-          : "quotation.accounts-preview",
+          : "quotation.activity-sync",
       payload: event.payload,
       sourceModule: "billing.quotation",
       tenantId: databaseName

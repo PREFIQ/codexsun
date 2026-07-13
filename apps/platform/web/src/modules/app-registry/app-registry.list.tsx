@@ -15,7 +15,6 @@ export const appRegistryFields: RegistryField<PlatformApp>[] = [
     options: [
       { label: "Platform", value: "platform" },
       { label: "Billing", value: "billing" },
-      { label: "Accounts", value: "accounts" },
       { label: "Platform Task Manager", value: "platform-task-manager" }
     ]
   },

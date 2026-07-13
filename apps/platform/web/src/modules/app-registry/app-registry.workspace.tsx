@@ -6,12 +6,12 @@ import { appRegistrySchema } from "./app-registry.schema";
 import type { PlatformAppSavePayload } from "./app-registry.types";
 const empty: PlatformAppSavePayload = {
   alwaysEnabled: false,
-  appId: "accounts",
+  appId: "application",
   defaultLanding: false,
   description: "",
   label: "",
   moduleKey: "",
-  stack: "accounts"
+  stack: "platform"
 };
 export function AppRegistryWorkspace() {
   const query = usePlatformAppsQuery();

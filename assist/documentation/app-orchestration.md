@@ -7,7 +7,6 @@ App Operations is the Super Admin runtime-maintenance surface for runnable repos
 - Platform: API `7010`, web `7020`; observable only because Platform cannot safely stop or restart itself.
 - Core: API `7030`, web `7040`.
 - Billing: API `7050`, web `7060`.
-- Accounts: API `7070`, web `7080`.
 - Data Bridge: API `7090`, web `7100`.
 - KitchenServe: API `7110`, web `7120`.
 

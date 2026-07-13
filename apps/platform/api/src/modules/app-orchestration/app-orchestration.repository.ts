@@ -28,13 +28,6 @@ export const appDefinitions = [
     services: [service("api", "API", 7050), service("web", "Web", 7060)]
   },
   {
-    id: "accounts",
-    label: "Accounts",
-    description: "Ledgers, vouchers, reports, and settings.",
-    managed: true,
-    services: [service("api", "API", 7070), service("web", "Web", 7080)]
-  },
-  {
     id: "data-bridge",
     label: "Data Bridge",
     description: "Schema comparison and controlled data migration.",

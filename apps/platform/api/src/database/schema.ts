@@ -46,7 +46,7 @@ export type PlatformAppsTable = {
   id: Generated<number>;
   label: string;
   module_key: string;
-  stack: "platform" | "billing" | "accounts" | "platform-task-manager";
+  stack: "platform" | "billing" | "platform-task-manager";
   updated_at: TimestampColumn;
   uuid: string;
 };

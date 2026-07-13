@@ -17,7 +17,7 @@ compose $profiles up -d --remove-orphans
 
 if [ "${RUN_PLATFORM_MIGRATIONS:-1}" = "1" ]; then
   compose run --rm -e CODEXSUN_SERVICE=platform-migrate platform-api
-  compose restart platform-api core-api billing-api accounts-api
+  compose restart platform-api core-api billing-api
 fi
 
 compose ps

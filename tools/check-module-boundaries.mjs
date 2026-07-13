@@ -13,10 +13,6 @@ const moduleRoots = [
     path: join(process.cwd(), "apps", "data-bridge", "api", "src", "modules")
   },
   {
-    app: "accounts-api",
-    path: join(process.cwd(), "apps", "accounts", "api", "src", "modules")
-  },
-  {
     app: "billing-api",
     path: join(process.cwd(), "apps", "billing", "api", "src", "modules")
   },
@@ -51,10 +47,6 @@ const webModuleRoots = [
   {
     app: "data-bridge-web",
     path: join(process.cwd(), "apps", "data-bridge", "web", "src", "modules")
-  },
-  {
-    app: "accounts-web",
-    path: join(process.cwd(), "apps", "accounts", "web", "src", "modules")
   },
   {
     app: "billing-web",

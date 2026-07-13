@@ -39,24 +39,18 @@ x-app-env: &app-env
   PLATFORM_API_HOST: 0.0.0.0
   CORE_API_HOST: 0.0.0.0
   BILLING_API_HOST: 0.0.0.0
-  ACCOUNTS_API_HOST: 0.0.0.0
   PLATFORM_API_PORT: ${PLATFORM_API_PORT:-7010}
   PLATFORM_WEB_PORT: ${PLATFORM_WEB_PORT:-7020}
   CORE_API_PORT: ${CORE_API_PORT:-7030}
   CORE_WEB_PORT: ${CORE_WEB_PORT:-7040}
   BILLING_API_PORT: ${BILLING_API_PORT:-7050}
   BILLING_WEB_PORT: ${BILLING_WEB_PORT:-7060}
-  ACCOUNTS_API_PORT: ${ACCOUNTS_API_PORT:-7070}
-  ACCOUNTS_WEB_PORT: ${ACCOUNTS_WEB_PORT:-7080}
   PLATFORM_WEB_ORIGIN: ${PLATFORM_WEB_ORIGIN:-http://localhost:7020}
   CORE_WEB_ORIGIN: ${CORE_WEB_ORIGIN:-http://localhost:7040}
   BILLING_WEB_ORIGIN: ${BILLING_WEB_ORIGIN:-http://localhost:7060}
-  ACCOUNTS_WEB_ORIGIN: ${ACCOUNTS_WEB_ORIGIN:-http://localhost:7080}
   VITE_PLATFORM_API_URL: ${VITE_PLATFORM_API_URL:-http://localhost:7010}
   VITE_CORE_API_URL: ${VITE_CORE_API_URL:-http://localhost:7030}
   VITE_BILLING_API_URL: ${VITE_BILLING_API_URL:-http://localhost:7050}
-  VITE_ACCOUNTS_API_URL: ${VITE_ACCOUNTS_API_URL:-http://localhost:7070}
-  ACCOUNTS_API_URL: ${ACCOUNTS_API_URL:-http://localhost:7070}
   VITE_TENANT_NAME: ${VITE_TENANT_NAME:-Codexsun}
 
 x-app-service: &app-service
@@ -128,24 +122,6 @@ services:
       CODEXSUN_SERVICE: billing-web
     ports:
       - "${BILLING_WEB_HOST_PORT:-7060}:${BILLING_WEB_PORT:-7060}"
-
-  accounts-api:
-    <<: *app-service
-    container_name: codexsun-accounts-api
-    environment:
-      <<: *app-env
-      CODEXSUN_SERVICE: accounts-api
-    ports:
-      - "${ACCOUNTS_API_HOST_PORT:-7070}:${ACCOUNTS_API_PORT:-7070}"
-
-  accounts-web:
-    <<: *app-service
-    container_name: codexsun-accounts-web
-    environment:
-      <<: *app-env
-      CODEXSUN_SERVICE: accounts-web
-    ports:
-      - "${ACCOUNTS_WEB_HOST_PORT:-7080}:${ACCOUNTS_WEB_PORT:-7080}"
 
   files:
     image: filebrowser/filebrowser:v2.63.5

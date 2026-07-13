@@ -34,12 +34,6 @@ case "$service" in
   billing-web)
     run_web apps/billing/web "${BILLING_WEB_PORT:-7060}"
     ;;
-  accounts-api)
-    exec node dist/apps/accounts/api/server.js
-    ;;
-  accounts-web)
-    run_web apps/accounts/web "${ACCOUNTS_WEB_PORT:-7080}"
-    ;;
   platform-migrate)
     exec npm run db:migrations:run -w @codexsun/platform-api
     ;;

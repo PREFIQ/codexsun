@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
-    "@codexsun/accounts-web": "^1.0.29",
     "@codexsun/billing-web": "^1.0.29",
     "@codexsun/core-web": "^1.0.29",
     "@codexsun/data-bridge-web": "^1.0.29",

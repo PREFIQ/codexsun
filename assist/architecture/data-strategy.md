@@ -123,7 +123,7 @@ Use:
 
 # Enforced database ownership
 
-The Platform master database is restricted to global Platform and Super Admin state. Core masters/common data, Billing, Accounts, KitchenServe, tenant users, tenant roles, and tenant permissions belong only to the selected tenant database.
+The Platform master database is restricted to global Platform and Super Admin state. Core masters/common data, Billing, KitchenServe, tenant users, tenant roles, and tenant permissions belong only to the selected tenant database.
 
 Core Common tables inside a dedicated tenant database must not add redundant `tenant_id` columns or accept a second tenant selector. Their tenant identity is the validated database context. Cross-tenant or shared-database tables in other application boundaries may still require explicit tenant keys when their storage model calls for them.
 

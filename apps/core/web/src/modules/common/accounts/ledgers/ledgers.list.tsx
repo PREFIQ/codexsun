@@ -4,8 +4,8 @@ import { WorkspaceProtectedIndicator } from "@codexsun/ui/workspace/protected-in
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
 import { WorkspaceTable } from "@codexsun/ui/workspace/table";
-import type { LedgerGroupRecord } from "./ledger-groups.types";
-export function LedgerGroupsList({
+import type { LedgerRecord } from "./ledgers.types";
+export function LedgersList({
   loading,
   onEdit,
   onForceDelete,
@@ -14,13 +14,13 @@ export function LedgerGroupsList({
   records
 }: {
   loading: boolean;
-  onEdit: (record: LedgerGroupRecord) => void;
-  onForceDelete: (record: LedgerGroupRecord) => void;
-  onRestore: (record: LedgerGroupRecord) => void;
-  onSuspend: (record: LedgerGroupRecord) => void;
-  records: LedgerGroupRecord[];
+  onEdit: (record: LedgerRecord) => void;
+  onForceDelete: (record: LedgerRecord) => void;
+  onRestore: (record: LedgerRecord) => void;
+  onSuspend: (record: LedgerRecord) => void;
+  records: LedgerRecord[];
 }) {
-  const columns: ColumnDef<LedgerGroupRecord>[] = [
+  const columns: ColumnDef<LedgerRecord>[] = [
     {
       accessorKey: "id",
       header: () => <div className="text-center">#</div>,
@@ -29,20 +29,21 @@ export function LedgerGroupsList({
     },
     {
       accessorKey: "name",
-      header: "Ledger group",
+      header: "Ledger",
       cell: ({ row }) =>
         protectedRecord(row.original) ? (
           <span className="font-medium">{row.original.name}</span>
         ) : (
           <button
             className="cursor-pointer font-medium hover:underline"
-            onClick={() => onEdit(row.original)}
             type="button"
+            onClick={() => onEdit(row.original)}
           >
             {row.original.name}
           </button>
         )
     },
+    { accessorKey: "ledgerGroupName", header: "Ledger group" },
     {
       accessorKey: "status",
       header: "Status",
@@ -59,7 +60,7 @@ export function LedgerGroupsList({
       cell: ({ row }) => (
         <div className="flex justify-center" onClick={(event) => event.stopPropagation()}>
           {protectedRecord(row.original) ? (
-            <WorkspaceProtectedIndicator label="Protected ledger group" />
+            <WorkspaceProtectedIndicator label="Protected ledger" />
           ) : (
             <WorkspaceRowActions
               actions={[
@@ -88,12 +89,12 @@ export function LedgerGroupsList({
     <WorkspaceTable
       columns={columns}
       data={records}
-      emptyState="No ledger groups found."
+      emptyState="No ledgers found."
       isLoading={loading}
-      minWidth="720px"
+      minWidth="800px"
     />
   );
 }
-function protectedRecord(record: LedgerGroupRecord) {
-  return record.name.trim().toLowerCase() === "general";
+function protectedRecord(record: LedgerRecord) {
+  return record.name.trim().toLowerCase() === "general ledger";
 }

@@ -5,8 +5,7 @@ Software makes simple.
 CODEXSUN is a monorepo foundation for a multi-tenant business application
 platform. The current workspace includes the Platform API, Platform web shell,
 shared Framework, Platform, and UI packages, Core business modules, Billing
-entry modules, Accounts modules, master database bootstrap, and
-version/changelog tooling.
+entry modules, master database bootstrap, and version/changelog tooling.
 
 ## Start
 
@@ -30,7 +29,7 @@ Platform web: <http://127.0.0.1:7020>
 ## Docker Deployment
 
 Docker deployment files live in `.container/`. The stack runs Platform,
-Core, Billing, Accounts, MariaDB/Redis options, and file storage as separate
+Core, Billing, MariaDB/Redis options, and file storage as separate
 containers while reusing one built application image.
 
 ```bash
@@ -61,7 +60,6 @@ apps/platform/api
 apps/platform/web
 apps/core
 apps/billing
-apps/accounts
 apps/data-bridge
 apps/kitchen-serve
 packages/framework

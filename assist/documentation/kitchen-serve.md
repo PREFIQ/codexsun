@@ -8,7 +8,7 @@ KitchenServe is the tenant-scoped hotel and restaurant POS workflow for waiter o
 - Web: `7120`
 - Start: `node tools/dev-stack.mjs kitchen-serve`
 
-The stack starts Platform API and Core API as supporting services, plus the isolated KitchenServe API and web runtime. KitchenServe does not depend on Billing or Accounts.
+The stack starts Platform API and Core API as supporting services, plus the isolated KitchenServe API and web runtime. KitchenServe does not depend on Billing.
 
 ## Operational Flow
 

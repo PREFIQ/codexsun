@@ -1,6 +1,6 @@
 # CODEXSUN Project Inventory
 
-> Database boundary update: the Platform master database contains only global Platform/Super Admin tables. Core, Billing, Accounts, KitchenServe, and tenant identity/access tables are tenant-database owned. Project Manager, Task Manager, and Data Bridge remain JSON-backed.
+> Database boundary update: the Platform master database contains only global Platform/Super Admin tables. Core, Billing, KitchenServe, and tenant identity/access tables are tenant-database owned. Project Manager, Task Manager, and Data Bridge remain JSON-backed.
 
 ## Purpose
 
@@ -75,9 +75,9 @@ Core owns shared business foundation modules that future apps can reuse.
 - `apps/core/api`: Fastify API package for core/common domain modules.
 - `apps/core/web`: React/Vite frontend for core/common module screens.
 
-Current Core module:
-
-- `country`
+Current Core common modules include location masters, contacts, products, work orders, organisation setup, and the
+accounts masters `ledger-groups` and `ledgers`. Each accounts master owns its API migration, repository, service,
+routes, seed, and frontend workspace; ledgers reference ledger groups within the tenant database.
 
 ### Billing
 

@@ -10,24 +10,6 @@ const root = resolve(import.meta.dirname, "..");
 const app = process.argv[2];
 
 const apps = {
-  "accounts-api": {
-    displayName: "accounts-api",
-    cwd: "apps/accounts/api",
-    envKey: "ACCOUNTS_API_PORT",
-    hostKey: "ACCOUNTS_API_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
-  },
-  "accounts-web": {
-    displayName: "accounts-web",
-    cwd: "apps/accounts/web",
-    envKey: "ACCOUNTS_WEB_PORT",
-    hostKey: "ACCOUNTS_WEB_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
-  },
   "billing-api": {
     displayName: "billing-api",
     cwd: "apps/billing/api",
@@ -135,7 +117,6 @@ if (
   app === "platform-api" ||
   app === "core-api" ||
   app === "billing-api" ||
-  app === "accounts-api" ||
   app === "data-bridge-api" ||
   app === "kitchen-serve-api"
 ) {

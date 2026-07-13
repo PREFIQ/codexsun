@@ -46,7 +46,6 @@ billing-suite
   platform
   core
   billing
-  accounts
 
 ecommerce-suite
   shared packages
@@ -109,8 +108,6 @@ dist/apps/core
 dist/apps/core/web
 dist/apps/billing
 dist/apps/billing/web
-dist/apps/accounts
-dist/apps/accounts/web
 dist/apps/ecommerce/web
 dist/apps/crm/web
 dist/apps/sites/web

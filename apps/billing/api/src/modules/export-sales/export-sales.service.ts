@@ -1,4 +1,3 @@
-import { env } from "../../env.js";
 import { AppError } from "@codexsun/framework/errors";
 import { ExportSalesRepository } from "./export-sales.repository.js";
 import type {
@@ -56,7 +55,6 @@ export class ExportSalesService {
         }
       });
     }
-    await postExportSaleToAccounts(databaseName, sale, "create");
     return sale;
   }
 
@@ -68,7 +66,6 @@ export class ExportSalesService {
     if (duplicate && duplicate.id !== id)
       throw AppError.conflict("Export sales invoice number already exists. Enter a unique number.");
     const sale = await this.repository.update(databaseName, id, normalizeExportSaleInput(input));
-    if (sale) await postExportSaleToAccounts(databaseName, sale, "update");
     return sale;
   }
 
@@ -78,7 +75,6 @@ export class ExportSalesService {
 
   async cancelExportSale(databaseName: string, id: string) {
     const sale = await this.repository.setStatus(databaseName, id, "cancelled");
-    if (sale) await postExportSaleToAccounts(databaseName, sale, "cancel");
     return sale;
   }
 
@@ -182,45 +178,4 @@ export function buildExportSaleTotals(
 
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
-}
-
-async function postExportSaleToAccounts(
-  databaseName: string,
-  sale: ExportSale,
-  operation: "create" | "update" | "cancel"
-) {
-  try {
-    const response = await fetch(`${env.ACCOUNTS_API_URL}/accounts/postings/billing`, {
-      body: JSON.stringify({
-        documentDate: sale.issuedOn,
-        operation,
-        partyLedgerName: sale.customerName,
-        placeOfSupply: sale.taxType,
-        roundOff: sale.roundOff,
-        sourceApp: "billing",
-        sourceDocumentId: sale.id,
-        sourceDocumentNo: sale.invoiceNumber,
-        sourceModule: "export-sales",
-        taxableAmount: sale.subtotal,
-        taxAmount: sale.taxAmount,
-        totalAmount: sale.amount
-      }),
-      headers: {
-        "Content-Type": "application/json",
-        "x-tenant-db": databaseName
-      },
-      method: "POST"
-    });
-
-    if (!response.ok) {
-      const message = await response.text().catch(() => "");
-      console.warn(
-        `[export-sales] Accounts posting deferred for ${sale.invoiceNumber}: ${message || response.statusText}`
-      );
-    }
-  } catch (error) {
-    console.warn(
-      `[export-sales] Accounts posting deferred for ${sale.invoiceNumber}: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
 }

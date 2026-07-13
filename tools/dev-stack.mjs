@@ -9,18 +9,6 @@ const root = resolve(import.meta.dirname, "..");
 const stackName = process.argv[2] ?? "platform";
 
 const services = {
-  "accounts-api": {
-    color: "\x1b[31m",
-    command: ["accounts-api"],
-    label: "accounts api",
-    logLabel: "accounts-api"
-  },
-  "accounts-web": {
-    color: "\x1b[90m",
-    command: ["accounts-web"],
-    label: "accounts web",
-    logLabel: "accounts-web"
-  },
   "billing-api": {
     color: "\x1b[33m",
     command: ["billing-api"],
@@ -64,22 +52,13 @@ const services = {
 };
 
 const stacks = {
-  api: ["platform-api", "core-api", "billing-api", "accounts-api"],
-  all: [
-    "platform-api",
-    "core-api",
-    "platform-web",
-    "billing-api",
-    "billing-web",
-    "accounts-api",
-    "accounts-web"
-  ],
-  accounts: ["platform-api", "core-api", "accounts-api", "accounts-web"],
+  api: ["platform-api", "core-api", "billing-api"],
+  all: ["platform-api", "core-api", "platform-web", "billing-api", "billing-web"],
   billing: ["platform-api", "core-api", "billing-api", "billing-web"],
   core: ["platform-api", "core-api", "platform-web", "core-web"],
   "data-bridge": ["data-bridge-api", "data-bridge-web"],
   "kitchen-serve": ["platform-api", "core-api", "kitchen-serve-api", "kitchen-serve-web"],
-  platform: ["platform-api", "core-api", "billing-api", "accounts-api", "platform-web"],
+  platform: ["platform-api", "core-api", "billing-api", "platform-web"],
   web: ["platform-web"]
 };
 

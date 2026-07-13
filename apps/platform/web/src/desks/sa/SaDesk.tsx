@@ -293,7 +293,6 @@ function appIdFromUrl(): OrchestratedAppId {
   const value = new URLSearchParams(window.location.search).get("app");
   return value === "core" ||
     value === "billing" ||
-    value === "accounts" ||
     value === "data-bridge" ||
     value === "kitchen-serve"
     ? value

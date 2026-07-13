@@ -59,7 +59,7 @@ It must support:
 - Multiple industries from the same codebase.
 - Multiple business apps connected as plug-and-play modules.
 - Online, offline, and sync-enabled workflows.
-- Centralized design system, authentication, accounts, billing, tasks, mail, activities, notifications, and
+- Centralized design system, authentication, accounting, billing, tasks, mail, activities, notifications, and
   integrations.
 - Indian accounting, GST, e-invoice, e-way bill, and compliance-first business operations.
 - Desktop, web, and mobile experiences.

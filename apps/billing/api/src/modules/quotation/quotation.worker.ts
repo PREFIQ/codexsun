@@ -1,6 +1,6 @@
 export type QuotationWorkerJob = {
   id: string;
-  name: "quotation.confirmation-sync" | "quotation.accounts-preview";
+  name: "quotation.confirmation-sync" | "quotation.activity-sync";
   payload: { action: string; id: string; salesInvoiceNo?: string };
 };
 

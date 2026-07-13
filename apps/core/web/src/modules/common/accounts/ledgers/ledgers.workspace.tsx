@@ -18,60 +18,60 @@ import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 import { cn } from "@codexsun/ui/lib/utils";
-import { LedgerGroupsForm } from "./ledger-groups.form";
-import { ledgerGroupsQueryKey, useLedgerGroups } from "./ledger-groups.hooks";
-import { LedgerGroupsList } from "./ledger-groups.list";
+import { LedgersForm } from "./ledgers.form";
+import { ledgersQueryKey, useLedgerGroupLookups, useLedgers } from "./ledgers.hooks";
+import { LedgersList } from "./ledgers.list";
 import {
-  activateLedgerGroup,
-  createLedgerGroup,
-  deactivateLedgerGroup,
-  forceDeleteLedgerGroup,
-  updateLedgerGroup
-} from "./ledger-groups.services";
-import type { LedgerGroupRecord, LedgerGroupSavePayload } from "./ledger-groups.types";
-type Action = { record: LedgerGroupRecord; type: "delete" | "restore" | "suspend" };
-export function LedgerGroupsWorkspace() {
+  activateLedger,
+  createLedger,
+  deactivateLedger,
+  forceDeleteLedger,
+  updateLedger
+} from "./ledgers.services";
+import type { LedgerRecord, LedgerSavePayload } from "./ledgers.types";
+type Action = { record: LedgerRecord; type: "delete" | "restore" | "suspend" };
+export function LedgersWorkspace() {
   const client = useQueryClient();
-  const query = useLedgerGroups();
+  const query = useLedgers();
+  const groups = useLedgerGroupLookups();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
-  const [editing, setEditing] = useState<LedgerGroupRecord | null | undefined>(undefined);
+  const [editing, setEditing] = useState<LedgerRecord | null | undefined>(undefined);
   const [action, setAction] = useState<Action | null>(null);
   const save = useMutation({
-    mutationFn: (payload: LedgerGroupSavePayload) =>
-      editing ? updateLedgerGroup(editing.id, payload) : createLedgerGroup(payload),
+    mutationFn: (payload: LedgerSavePayload) =>
+      editing ? updateLedger(editing.id, payload) : createLedger(payload),
     onSuccess: async (record) => {
-      await client.invalidateQueries({ queryKey: ledgerGroupsQueryKey });
-      toast.success(`Ledger group ${editing ? "updated" : "created"}`, {
-        description: record.name
-      });
+      await client.invalidateQueries({ queryKey: ledgersQueryKey });
+      toast.success(`Ledger ${editing ? "updated" : "created"}`, { description: record.name });
       setEditing(undefined);
     },
-    onError: (error) => toast.error("Unable to save ledger group", { description: message(error) })
+    onError: (error) => toast.error("Unable to save ledger", { description: message(error) })
   });
   const lifecycle = useMutation({
     mutationFn: ({ record, type }: Action) =>
       type === "delete"
-        ? forceDeleteLedgerGroup(record.id)
+        ? forceDeleteLedger(record.id)
         : type === "restore"
-          ? activateLedgerGroup(record.id)
-          : deactivateLedgerGroup(record.id),
+          ? activateLedger(record.id)
+          : deactivateLedger(record.id),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: ledgerGroupsQueryKey });
-      toast.success("Ledger group updated");
+      await client.invalidateQueries({ queryKey: ledgersQueryKey });
+      toast.success("Ledger updated");
       setAction(null);
     },
-    onError: (error) =>
-      toast.error("Unable to update ledger group", { description: message(error) })
+    onError: (error) => toast.error("Unable to update ledger", { description: message(error) })
   });
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return (query.data ?? []).filter(
       (record) =>
         (status === "all" || record.status === status) &&
-        (!term || record.name.toLowerCase().includes(term))
+        (!term ||
+          record.name.toLowerCase().includes(term) ||
+          record.ledgerGroupName.toLowerCase().includes(term))
     );
   }, [query.data, search, status]);
   const pages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
@@ -82,15 +82,15 @@ export function LedgerGroupsWorkspace() {
   }, [page, pages]);
   return (
     <WorkspacePage
-      title="Ledger Groups"
-      description="Manage ledger groups available to the current tenant database."
-      technicalName="page.common.accounts.ledger-groups.list"
+      title="Ledgers"
+      description="Manage ledgers and their ledger-group relationship for the current tenant database."
+      technicalName="page.common.accounts.ledgers.list"
       actions={
         <div className="flex items-center gap-2">
           <Button
             className="h-9 rounded-md"
             disabled={query.isFetching}
-            onClick={() => void query.refetch()}
+            onClick={() => void Promise.all([query.refetch(), groups.refetch()])}
             type="button"
             variant="outline"
           >
@@ -99,14 +99,14 @@ export function LedgerGroupsWorkspace() {
           </Button>
           <Button className="h-9 rounded-md" onClick={() => setEditing(null)} type="button">
             <Plus className="size-4" />
-            New ledger group
+            New ledger
           </Button>
         </div>
       }
     >
       <WorkspaceFilters
         filterOptions={[
-          { id: "all", label: "All ledger groups" },
+          { id: "all", label: "All ledgers" },
           { id: "active", label: "Active" },
           { id: "inactive", label: "Inactive" }
         ]}
@@ -119,10 +119,10 @@ export function LedgerGroupsWorkspace() {
           setSearch(value);
           setPage(1);
         }}
-        searchPlaceholder="Search ledger groups"
+        searchPlaceholder="Search ledgers or ledger groups"
         searchValue={search}
       />
-      <LedgerGroupsList
+      <LedgersList
         loading={query.isFetching && !query.data}
         records={records}
         onEdit={setEditing}
@@ -134,7 +134,7 @@ export function LedgerGroupsWorkspace() {
         page={current}
         rowsPerPage={rowsPerPage}
         showingLabel={buildShowingLabel(current, rowsPerPage, filtered.length)}
-        singularLabel="ledger group"
+        singularLabel="ledger"
         totalCount={filtered.length}
         totalPages={pages}
         onNextPage={() => setPage((value) => Math.min(pages, value + 1))}
@@ -145,9 +145,10 @@ export function LedgerGroupsWorkspace() {
           setPage(1);
         }}
       />
-      <LedgerGroupsForm
+      <LedgersForm
         open={editing !== undefined}
         record={editing ?? null}
+        groups={groups.data ?? []}
         loading={save.isPending}
         {...(save.error instanceof Error ? { error: save.error.message } : {})}
         onCancel={() => setEditing(undefined)}
@@ -179,11 +180,8 @@ function Dialog({
     <AlertDialog open={Boolean(action)} onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{verb} ledger group?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {action?.record.name} will be updated. Force deletion is blocked while ledgers reference
-            it.
-          </AlertDialogDescription>
+          <AlertDialogTitle>{verb} ledger?</AlertDialogTitle>
+          <AlertDialogDescription>{action?.record.name} will be updated.</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>

@@ -107,7 +107,7 @@ Each reduced Common module must own concrete migration SQL, repository queries, 
 
 ### Mandatory Boundary Audit For Every Application
 
-The same ownership discipline applies to Core, Platform, Billing, Accounts, Data Bridge, Kitchen Serve, and every future application. Before an application change is finalized, audit its complete backend and frontend module tree for wrapper/alias roles, inherited or metadata-driven generic CRUD, private cross-module imports, centralized business implementations, stale exports and proxies, misplaced files, and business behavior stored in app-level shared folders. Composition roots contain registration and lifecycle composition only; leaf modules own executable behavior.
+The same ownership discipline applies to Core, Platform, Billing, Data Bridge, Kitchen Serve, and every future application. Before an application change is finalized, audit its complete backend and frontend module tree for wrapper/alias roles, inherited or metadata-driven generic CRUD, private cross-module imports, centralized business implementations, stale exports and proxies, misplaced files, and business behavior stored in app-level shared folders. Composition roots contain registration and lifecycle composition only; leaf modules own executable behavior.
 
 Allowed shared infrastructure is narrow: API transport/session context, environment readers, observability, and reusable `@codexsun/ui` controls. Shared code must not know a business module's fields, validation, tables, lifecycle, routes, forms, lists, workspaces, settings, or print behavior.
 
@@ -161,10 +161,6 @@ apps/
     src/              # Billing backend modules and thin package exports
     web/              # Billing frontend modules
 
-  accounts/
-    src/              # Accounts backend modules
-    web/              # Accounts frontend modules
-
   ecommerce/
     src/              # Ecommerce backend modules
     web/              # Ecommerce frontend modules
@@ -197,7 +193,7 @@ Frontend ownership follows the same boundary:
 - `apps/platform/web` owns the shell, login, SA/admin desks, tenant desk layout, global navigation, activation, and route composition.
 - `apps/core/web` owns common/master tenant screens and shared tenant data UI.
 - `apps/billing/web` owns billing entries, billing settings, billing reports, and billing forms.
-- `apps/accounts/web`, `apps/ecommerce/web`, `apps/crm/web`, and `apps/sites/web` own their own app-specific screens and routes.
+- `apps/ecommerce/web`, `apps/crm/web`, and `apps/sites/web` own their own app-specific screens and routes.
 - `packages/ui` owns reusable design-system primitives only. It must not absorb app-specific business screens or rules.
 
 Runnable app web packages use `apps/{app}/web/src/modules/{module}/` for app-owned frontend workflows:
@@ -303,8 +299,6 @@ Do not put unstable business rules in the shared kernel.
 | `apps/core/web`      | Core frontend modules             | Common/master tenant screens, lookup controls, and reusable tenant record workspace UI                                                                     |
 | `apps/billing/src`   | Billing backend modules           | Quotation, sales, export sales, purchase, receipt, payment contracts, routes, migrations, workers, seeders, and sync rules under module folders            |
 | `apps/billing/web`   | Billing frontend modules          | Billing entry workspaces, billing settings, billing forms, and billing reports                                                                             |
-| `apps/accounts/src`  | Accounting backend modules        | Ledgers, bank accounts, cash accounts, journal, contra, double-entry contracts, posting contracts                                                          |
-| `apps/accounts/web`  | Accounting frontend modules       | Accounts screens, reports, voucher UI, and app-specific account workspaces                                                                                 |
 | `apps/platform/api`  | API gateway + platform routes     | Route registration, guard functions (session, tenant, feature, permission), migration runner, DB bootstrap                                                 |
 | `apps/platform/web`  | Platform shell and React composer | Login, SA desk, Admin desk, Tenant desk shell, design system pages, route/menu composition, API client integration                                         |
 
@@ -349,20 +343,16 @@ graph TD
   coreweb[apps/core/web]
   billing[apps/billing/src]
   billingweb[apps/billing/web]
-  accounts[apps/accounts/src]
-  accountsweb[apps/accounts/web]
   api[apps/platform/api]
   web[apps/platform/web]
 
   platform --> framework
   core --> framework
   billing --> framework
-  accounts --> framework
   api --> framework
   api --> platform
   api --> core
   api --> billing
-  api --> accounts
   web --> platform
   web --> ui
   web --> coreweb
@@ -370,17 +360,16 @@ graph TD
   coreweb --> ui
   billingweb --> ui
   billingweb --> coreweb
-  accountsweb --> ui
 ```
 
-Key rule: `packages/platform` depends on `packages/framework` **only**. `apps/core` depends on `packages/framework` **only**. `apps/billing` owns entries and consumes core through injected contracts/UI composition, not direct platform code. `apps/accounts` owns accounting vouchers, ledgers, and posting contracts. Platform API is the integration point where `platform`, `core`, `billing`, and future apps are composed.
+Key rule: `packages/platform` depends on `packages/framework` **only**. `apps/core` depends on `packages/framework` **only**. `apps/billing` owns entries and consumes core through injected contracts/UI composition, not direct platform code. Platform API is the integration point where `platform`, `core`, `billing`, and future apps are composed.
 
 ### App Suite Bundles
 
 | Bundle           | Includes                                                                      | Purpose                                                                                           |
 | ---------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | Base SaaS        | shared packages + `framework` + `platform` + `core`                           | Tenant, identity, RBAC, common modules, contacts, products, work orders                           |
-| Billing Software | shared packages + `framework` + `platform` + `core` + `billing` + `accounts`  | Entry billing with industry feature flags, document settings, and optional accounting integration |
+| Billing Software | shared packages + `framework` + `platform` + `core` + `billing`               | Entry billing with industry feature flags and document settings                                  |
 | Ecommerce Suite  | shared packages + `framework` + `platform` + `core` + `billing` + `ecommerce` | Ecommerce app consuming core masters and billing documents                                        |
 | CRM Suite        | shared packages + `framework` + `platform` + `core` + `crm`                   | CRM app with shared identity, tenant, and core customer data foundation                           |
 | Sites Suite      | shared packages + `framework` + `platform` + `sites`                          | Sites app with platform identity, settings, files, and site-specific publishing tools             |
@@ -432,7 +421,7 @@ Current registered modules in `platformModuleCatalog`:
 | `core.product`           | tenant   | Active                      |
 | `business.items`         | tenant   | Future                      |
 | `business.billing`       | tenant   | Active (entry modules)      |
-| `business.accounting`    | tenant   | Planned (`apps/accounts`)   |
+| `business.accounting`    | tenant   | Planned                     |
 | `business.reports`       | tenant   | Future                      |
 | `business.offline-sync`  | tenant   | Future                      |
 | `app.zetro`              | tenant   | Future                      |
@@ -451,7 +440,7 @@ Current registered modules in `platformModuleCatalog`:
 7. **Industry scoping is defined but not implemented** — `ModuleScope` includes `"industry"` but no industry modules or tables exist yet.
 8. **GST/ZETRO are placeholders** — Tax identity types and HSN codes exist in core contracts; full compliance APIs and ZETRO assistant are future work.
 
-9. **Business apps use strict backend/frontend module folders** - Business apps such as Core, Billing, Accounts, Ecommerce, CRM, and Sites use `src/index.ts` plus `src/modules/` for backend modules and `web/pages/index.ts` plus `web/pages/modules/` for frontend modules. Only runnable gateway surfaces such as `apps/platform/api` use `api/`.
+9. **Business apps use strict backend/frontend module folders** - Business apps such as Core, Billing, Ecommerce, CRM, and Sites use `src/index.ts` plus `src/modules/` for backend modules and `web/pages/index.ts` plus `web/pages/modules/` for frontend modules. Only runnable gateway surfaces such as `apps/platform/api` use `api/`.
 10. **Platform web composes app web packages** - `apps/platform/web` remains the shell and route/menu composer. Business screens must live in the owning app web package and be imported or registered through app manifests.
 
 ### Tenant Readiness Tracking

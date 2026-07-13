@@ -258,10 +258,7 @@ const treeData = [
   {
     label: "Business Apps",
     value: "business-apps",
-    children: [
-      { label: "Billing", value: "billing" },
-      { label: "Accounts", value: "accounts" }
-    ]
+    children: [{ label: "Billing", value: "billing" }]
   }
 ];
 

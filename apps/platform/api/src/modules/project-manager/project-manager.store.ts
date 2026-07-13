@@ -679,15 +679,6 @@ function seedModules() {
       },
       {
         groupId: "group-tenant-apps",
-        id: "module-app-accounts",
-        key: "tenant.apps.accounts",
-        moduleType: "area",
-        name: "Accounts",
-        routePath: "/app/accounts/overview",
-        sortOrder: 30
-      },
-      {
-        groupId: "group-tenant-apps",
         id: "module-application-platform",
         key: "tenant.apps.application.platform",
         moduleType: "area",
@@ -1031,7 +1022,7 @@ function quotationDocumentation() {
       ["Confirmed", "billing.quotation.confirmed"],
       ["Actions", "created, updated, confirmed, cancelled, converted"],
       ["Source module", "billing.quotation"],
-      ["Worker jobs", "quotation.confirmation-sync, quotation.accounts-preview"],
+      ["Worker jobs", "quotation.confirmation-sync, quotation.activity-sync"],
       ["Sync rule", "Confirmed quotation with amount greater than zero"]
     ]
   });
@@ -1040,13 +1031,6 @@ function quotationDocumentation() {
 function quotationPlanningNotes() {
   const timestamp = "2026-07-11T00:00:00.000Z";
   return [
-    {
-      body: "Connect confirmed quotations to accounts preview and reliable background synchronization.",
-      createdAt: timestamp,
-      id: "quotation-plan-accounts",
-      title: "Accounts integration",
-      updatedAt: timestamp
-    },
     {
       body: "Move assignment, attachments, email, tags, and WhatsApp activity from local UI state to audited backend records.",
       createdAt: timestamp,

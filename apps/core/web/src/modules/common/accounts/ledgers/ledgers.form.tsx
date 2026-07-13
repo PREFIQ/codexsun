@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Save } from "lucide-react";
 import { Input } from "@codexsun/ui/components/input";
 import { Switch } from "@codexsun/ui/components/switch";
+import { WorkspaceLookup } from "@codexsun/ui/workspace/lookup";
 import {
   WorkspaceFormBanner,
   WorkspaceFormField,
@@ -9,11 +10,12 @@ import {
   WorkspaceFormGrid,
   WorkspaceUpsertDialog
 } from "@codexsun/ui/workspace/upsert";
-import { ledgerGroupSchema } from "./ledger-groups.schema";
-import type { LedgerGroupRecord, LedgerGroupSavePayload } from "./ledger-groups.types";
-const empty: LedgerGroupSavePayload = { name: "", status: "active" };
-export function LedgerGroupsForm({
+import { ledgerSchema } from "./ledgers.schema";
+import type { LedgerGroupLookup, LedgerRecord, LedgerSavePayload } from "./ledgers.types";
+const empty: LedgerSavePayload = { ledgerGroupId: 0, name: "", status: "active" };
+export function LedgersForm({
   error,
+  groups,
   loading,
   onCancel,
   onSubmit,
@@ -21,23 +23,29 @@ export function LedgerGroupsForm({
   record
 }: {
   error?: string;
+  groups: LedgerGroupLookup[];
   loading: boolean;
   onCancel: () => void;
-  onSubmit: (payload: LedgerGroupSavePayload) => void;
+  onSubmit: (payload: LedgerSavePayload) => void;
   open: boolean;
-  record: LedgerGroupRecord | null;
+  record: LedgerRecord | null;
 }) {
   return (
     <WorkspaceUpsertDialog
-      description="Enter the ledger group details and save without leaving the list."
+      description="Choose a ledger group, enter the ledger name, and save."
       onClose={onCancel}
       open={open}
-      title={`${record ? "Edit" : "New"} ledger group`}
+      title={`${record ? "Edit" : "New"} ledger`}
     >
       <Body
         key={`${record?.id ?? "new"}:${open}`}
         {...(error ? { error } : {})}
-        initial={record ? { name: record.name, status: record.status } : empty}
+        groups={groups}
+        initial={
+          record
+            ? { ledgerGroupId: record.ledgerGroupId, name: record.name, status: record.status }
+            : empty
+        }
         loading={loading}
         onCancel={onCancel}
         onSubmit={onSubmit}
@@ -47,16 +55,18 @@ export function LedgerGroupsForm({
 }
 function Body({
   error,
+  groups,
   initial,
   loading,
   onCancel,
   onSubmit
 }: {
   error?: string;
-  initial: LedgerGroupSavePayload;
+  groups: LedgerGroupLookup[];
+  initial: LedgerSavePayload;
   loading: boolean;
   onCancel: () => void;
-  onSubmit: (payload: LedgerGroupSavePayload) => void;
+  onSubmit: (payload: LedgerSavePayload) => void;
 }) {
   const [value, setValue] = useState(initial);
   const [validation, setValidation] = useState("");
@@ -66,9 +76,9 @@ function Body({
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        const parsed = ledgerGroupSchema.safeParse(value);
+        const parsed = ledgerSchema.safeParse(value);
         if (!parsed.success) {
-          setValidation(parsed.error.issues[0]?.message ?? "Check the ledger group details.");
+          setValidation(parsed.error.issues[0]?.message ?? "Check the ledger details.");
           return;
         }
         setValidation("");
@@ -77,7 +87,20 @@ function Body({
     >
       {shown ? <WorkspaceFormBanner title="Unable to save">{shown}</WorkspaceFormBanner> : null}
       <WorkspaceFormGrid columns={1}>
-        <WorkspaceFormField label="Ledger group name" required>
+        <WorkspaceFormField label="Ledger group" required>
+          <WorkspaceLookup
+            allowTextValue={false}
+            options={groups
+              .filter((group) => group.status === "active" || group.id === value.ledgerGroupId)
+              .map((group) => ({ value: String(group.id), label: group.name }))}
+            placeholder="Search ledger group"
+            value={value.ledgerGroupId ? String(value.ledgerGroupId) : ""}
+            onValueChange={(id) =>
+              setValue((current) => ({ ...current, ledgerGroupId: Number(id) || 0 }))
+            }
+          />
+        </WorkspaceFormField>
+        <WorkspaceFormField label="Ledger name" required>
           <Input
             autoFocus
             maxLength={200}
@@ -88,7 +111,7 @@ function Body({
         <div className="flex h-11 items-center gap-3 rounded-md border border-border/80 px-3">
           <span className="text-sm font-medium">Active</span>
           <Switch
-            aria-label="Ledger group active status"
+            aria-label="Ledger active status"
             checked={value.status === "active"}
             className="ml-auto"
             onCheckedChange={(checked) =>
@@ -100,13 +123,13 @@ function Body({
       <WorkspaceFormFooter
         className="mt-6 border-t pt-4"
         onCancel={onCancel}
-        primaryLabel="Save ledger group"
+        primaryLabel="Save ledger"
         primaryLoading={loading}
         primaryProps={{
           children: (
             <>
               <Save className="size-4" />
-              Save ledger group
+              Save ledger
             </>
           )
         }}

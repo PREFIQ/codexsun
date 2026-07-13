@@ -5,7 +5,6 @@ import {
   CreditCardIcon,
   FileTextIcon,
   IndianRupeeIcon,
-  LandmarkIcon,
   LayoutDashboardIcon,
   ListChecksIcon,
   ReceiptIndianRupeeIcon,
@@ -45,6 +44,8 @@ import { CountryWorkspace } from "@codexsun/core-web/modules/common/location/cou
 import { DistrictWorkspace } from "@codexsun/core-web/modules/common/location/district";
 import { PincodeWorkspace } from "@codexsun/core-web/modules/common/location/pincode";
 import { StateWorkspace } from "@codexsun/core-web/modules/common/location/state";
+import { LedgerGroupsWorkspace } from "@codexsun/core-web/modules/common/accounts/ledger-groups";
+import { LedgersWorkspace } from "@codexsun/core-web/modules/common/accounts/ledgers";
 import { CurrenciesWorkspace } from "@codexsun/core-web/modules/common/others/currencies";
 import { MonthsWorkspace } from "@codexsun/core-web/modules/common/others/months";
 import { PaymentTermsWorkspace } from "@codexsun/core-web/modules/common/others/payment-terms";
@@ -86,7 +87,6 @@ import { PurchaseWorkspace } from "../../modules/purchase/purchase.workspace";
 import { ExportSalesWorkspace } from "../../modules/export-sales/export-sales.workspace";
 import { PaymentWorkspace } from "../../modules/payment/payment.workspace";
 import { ReceiptWorkspace } from "../../modules/receipt/receipt.workspace";
-import { AccountsSettingsWorkspace, AccountsWorkspace } from "../../modules/accounts";
 import {
   BillingSettingsWorkspace,
   DocumentSettingsWorkspace
@@ -109,23 +109,6 @@ type AppPage =
   | "billing.document-settings"
   | "task-manager.overview"
   | "task-manager.todos"
-  | "accounts.overview"
-  | "accounts.groups"
-  | "accounts.ledgers"
-  | "accounts.opening-balances"
-  | "accounts.vouchers"
-  | "accounts.sales-postings"
-  | "accounts.receipts-payments"
-  | "accounts.reports"
-  | "accounts.trial-balance"
-  | "accounts.ledger-statement"
-  | "accounts.balance-sheet"
-  | "accounts.profit-loss"
-  | "accounts.settings"
-  | "accounts.posting-rules"
-  | "accounts.financial-year"
-  | "accounts.voucher-numbering"
-  | "accounts.tally-integration"
   | "core.common.location.countries"
   | "core.common.location.states"
   | "core.common.location.districts"
@@ -137,7 +120,7 @@ type AppPage =
   | "core.master.contact"
   | "core.master.product"
   | "core.master.work-order"
-  | `core.common.${"contacts" | "others" | "products" | "workorder"}.${string}`;
+  | `core.common.${"accounts" | "contacts" | "others" | "products" | "workorder"}.${string}`;
 const LANDING_APP_STORAGE_KEY = "codexsun.tenant.landing-app.live";
 const COMPANY_CONTEXT_STORAGE_KEY = "codexsun.tenant.company-id";
 const ACCOUNTING_YEAR_CONTEXT_STORAGE_KEY = "codexsun.tenant.financial-year-id";
@@ -185,10 +168,9 @@ export function AppDesk() {
         : runtimeLandingApp;
   const activeApp = appFromPage(page, landingApp, switchableApps);
   const safePage =
-    ((page.startsWith("billing") ||
+    (page.startsWith("billing") ||
       (page.startsWith("core") && !page.startsWith("core.organisation"))) &&
-      !switchableApps.includes("billing")) ||
-    (page.startsWith("accounts") && !switchableApps.includes("accounts"))
+    !switchableApps.includes("billing")
       ? pageForApp(landingApp)
       : page;
   const activeCompanies = useMemo(
@@ -272,7 +254,11 @@ export function AppDesk() {
   }
 
   const activeWorkspaceTitle =
-    activeApp === "billing" ? "Billing" : activeApp === "accounts" ? "Accounts" : "Application";
+    activeApp === "billing"
+      ? "Billing"
+      : activeApp === "task-manager"
+        ? "Task Manager"
+        : "Application";
   const menuItems = appMenuItemsFor(activeApp, safePage, (nextPage) =>
     selectPage(nextPage as AppPage)
   );
@@ -284,14 +270,14 @@ export function AppDesk() {
           ? "application.overview"
           : item.title === "Billing"
             ? "billing.overview"
-            : "accounts.overview"
+            : "task-manager.overview"
       ),
     url:
       item.title === "Application"
         ? "/app/application/overview"
         : item.title === "Billing"
           ? "/app/billing/overview"
-          : "/app/accounts/overview"
+          : "/app/task-manager/overview"
   }));
 
   return (
@@ -301,8 +287,8 @@ export function AppDesk() {
           href:
             activeApp === "billing"
               ? "/app/billing/overview"
-              : activeApp === "accounts"
-                ? "/app/accounts/overview"
+              : activeApp === "task-manager"
+                ? "/app/task-manager/overview"
                 : "/app/application/overview",
           options: activeCompanies.map((company) => ({
             id: String(company.id),
@@ -359,12 +345,6 @@ export function AppDesk() {
           {safePage === "billing.receipt" ? <ReceiptWorkspace /> : null}
           {safePage === "billing.settings" ? <BillingSettingsWorkspace /> : null}
           {safePage === "billing.document-settings" ? <DocumentSettingsWorkspace /> : null}
-          {isAccountsPage(safePage) &&
-          safePage !== "accounts.settings" &&
-          !isAccountsSettingsPage(safePage) ? (
-            <AccountsWorkspace page={accountsWorkspacePage(safePage)} />
-          ) : null}
-          {isAccountsSettingsPage(safePage) ? <AccountsSettings page={safePage} /> : null}
           {safePage === "core.organisation.company" ? <CompanyWorkspace /> : null}
           {safePage === "core.organisation.financial-year" ? <FinancialYearWorkspace /> : null}
           {safePage === "core.organisation.default-company" ? (
@@ -430,23 +410,6 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "billing.receipt" ||
     key === "billing.settings" ||
     key === "billing.document-settings" ||
-    key === "accounts.overview" ||
-    key === "accounts.groups" ||
-    key === "accounts.ledgers" ||
-    key === "accounts.opening-balances" ||
-    key === "accounts.vouchers" ||
-    key === "accounts.sales-postings" ||
-    key === "accounts.receipts-payments" ||
-    key === "accounts.reports" ||
-    key === "accounts.trial-balance" ||
-    key === "accounts.ledger-statement" ||
-    key === "accounts.balance-sheet" ||
-    key === "accounts.profit-loss" ||
-    key === "accounts.settings" ||
-    key === "accounts.posting-rules" ||
-    key === "accounts.financial-year" ||
-    key === "accounts.voucher-numbering" ||
-    key === "accounts.tally-integration" ||
     key === "core.common.location.countries" ||
     key === "core.common.location.states" ||
     key === "core.common.location.districts" ||
@@ -485,34 +448,22 @@ function LandingDesk({
     description:
       appId === "billing"
         ? "Sales, purchase, receipt, payment, report, master, common, and billing settings."
-        : appId === "accounts"
-          ? "Ledgers, vouchers, balances, reports, and Tally-ready accounting."
-          : "Shared workspace, company setup, roles, and cross-app launch desk.",
+        : "Shared workspace, company setup, roles, and cross-app launch desk.",
     icon:
       appId === "billing"
         ? CreditCardIcon
-        : appId === "accounts"
-          ? LandmarkIcon
-          : appId === "task-manager"
-            ? ListChecksIcon
-            : LayoutDashboardIcon,
+        : appId === "task-manager"
+          ? ListChecksIcon
+          : LayoutDashboardIcon,
     iconClass:
       appId === "billing"
         ? "bg-emerald-600 text-white"
-        : appId === "accounts"
-          ? "bg-blue-700 text-white"
-          : appId === "task-manager"
-            ? "bg-violet-600 text-white"
-            : "bg-slate-950 text-white",
+        : appId === "task-manager"
+          ? "bg-violet-600 text-white"
+          : "bg-slate-950 text-white",
     id: appId,
     label:
-      appId === "billing"
-        ? "Billing"
-        : appId === "accounts"
-          ? "Accounts"
-          : appId === "task-manager"
-            ? "Task Manager"
-            : "Application"
+      appId === "billing" ? "Billing" : appId === "task-manager" ? "Task Manager" : "Application"
   })) satisfies Array<{
     description: string;
     icon: typeof LayoutDashboardIcon;
@@ -981,83 +932,6 @@ function decodeTokenEmail(token: string) {
   }
 }
 
-function AccountsSettings({
-  page = "accounts.settings"
-}: {
-  page?: Extract<AppPage, `accounts.${string}`>;
-}) {
-  const title = titleForPage(page);
-  const description = accountsSettingsDescription(page);
-  return (
-    <section className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border bg-card p-5 shadow-sm">
-        <div>
-          <p className="text-sm font-semibold uppercase text-muted-foreground">Accounts</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-normal">{title}</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
-        </div>
-        <StatusBadge tone="green">Accounts enabled</StatusBadge>
-      </div>
-      <AccountsSettingsWorkspace page={page} />
-    </section>
-  );
-}
-
-function isAccountsSettingsPage(page: AppPage): page is Extract<AppPage, `accounts.${string}`> {
-  return (
-    page === "accounts.settings" ||
-    page === "accounts.posting-rules" ||
-    page === "accounts.financial-year" ||
-    page === "accounts.voucher-numbering" ||
-    page === "accounts.tally-integration"
-  );
-}
-
-function isAccountsPage(page: AppPage): page is Extract<AppPage, `accounts.${string}`> {
-  return page.startsWith("accounts.");
-}
-
-function accountsWorkspacePage(
-  page: Extract<AppPage, `accounts.${string}`>
-): "overview" | "ledgers" | "vouchers" | "reports" {
-  if (
-    page === "accounts.groups" ||
-    page === "accounts.ledgers" ||
-    page === "accounts.opening-balances"
-  )
-    return "ledgers";
-  if (
-    page === "accounts.vouchers" ||
-    page === "accounts.sales-postings" ||
-    page === "accounts.receipts-payments"
-  )
-    return "vouchers";
-  if (
-    page === "accounts.reports" ||
-    page === "accounts.trial-balance" ||
-    page === "accounts.ledger-statement" ||
-    page === "accounts.balance-sheet" ||
-    page === "accounts.profit-loss"
-  )
-    return "reports";
-  return "overview";
-}
-
-function accountsSettingsDescription(page: Extract<AppPage, `accounts.${string}`>) {
-  const descriptions: Partial<Record<Extract<AppPage, `accounts.${string}`>, string>> = {
-    "accounts.financial-year": "Financial year, period locks, and accounting period controls.",
-    "accounts.posting-rules":
-      "Backend billing-to-accounts posting rules for save, update, delete, and reversal flows.",
-    "accounts.settings":
-      "Financial year, posting policy, period locks, voucher numbering, and Tally sync settings.",
-    "accounts.tally-integration":
-      "Tally-ready ledger names, voucher export mapping, and next integration settings.",
-    "accounts.voucher-numbering":
-      "Voucher numbering series for sales, journal, receipt, payment, debit note, and credit note entries."
-  };
-  return descriptions[page] ?? "Accounts configuration.";
-}
-
 function renderOwnedLocationPage(page: AppPage) {
   if (page === "core.common.location.countries") return <CountryWorkspace />;
   if (page === "core.common.location.states") return <StateWorkspace />;
@@ -1068,6 +942,8 @@ function renderOwnedLocationPage(page: AppPage) {
 }
 
 function renderOwnedCommonMasterPage(page: AppPage) {
+  if (page === "core.common.accounts.ledger-groups") return <LedgerGroupsWorkspace />;
+  if (page === "core.common.accounts.ledgers") return <LedgersWorkspace />;
   if (page === "core.common.contacts.contact-groups") return <ContactGroupsWorkspace />;
   if (page === "core.common.contacts.contact-types") return <ContactTypesWorkspace />;
   if (page === "core.common.contacts.address-types") return <AddressTypesWorkspace />;
@@ -1113,23 +989,6 @@ function titleForPage(page: AppPage) {
     "billing.document-settings": "Document Settings",
     "task-manager.overview": "Task Manager",
     "task-manager.todos": "Todo",
-    "accounts.overview": "Overview",
-    "accounts.groups": "Account Groups",
-    "accounts.ledgers": "Ledgers",
-    "accounts.opening-balances": "Opening Balances",
-    "accounts.vouchers": "Vouchers",
-    "accounts.sales-postings": "Billing Postings",
-    "accounts.receipts-payments": "Receipts & Payments",
-    "accounts.reports": "Accounts Reports",
-    "accounts.trial-balance": "Trial Balance",
-    "accounts.ledger-statement": "Ledger Statement",
-    "accounts.balance-sheet": "Balance Sheet",
-    "accounts.profit-loss": "Profit & Loss",
-    "accounts.settings": "Accounts Settings",
-    "accounts.posting-rules": "Posting Rules",
-    "accounts.financial-year": "Financial Year",
-    "accounts.voucher-numbering": "Voucher Numbering",
-    "accounts.tally-integration": "Tally Integration",
     "core.common.location.cities": "Cities",
     "core.common.location.countries": "Countries",
     "core.common.location.districts": "Districts",
@@ -1139,6 +998,8 @@ function titleForPage(page: AppPage) {
     "core.common.contacts.bank-names": "Bank Names",
     "core.common.contacts.contact-groups": "Contact Groups",
     "core.common.contacts.contact-types": "Contact Types",
+    "core.common.accounts.ledger-groups": "Ledger Groups",
+    "core.common.accounts.ledgers": "Ledgers",
     "core.common.others.currencies": "Currencies",
     "core.common.others.months": "Months",
     "core.common.others.payment-terms": "Payment Terms",
@@ -1174,6 +1035,8 @@ function isCommonMasterPage(page: string): page is AppPage {
 }
 
 const COMMON_MASTER_PAGES = new Set<string>([
+  "core.common.accounts.ledger-groups",
+  "core.common.accounts.ledgers",
   "core.common.contacts.address-types",
   "core.common.contacts.bank-names",
   "core.common.contacts.contact-groups",
@@ -1208,15 +1071,12 @@ function appFromPage(
   if (page.startsWith("core.organisation")) return "application";
   if (page.startsWith("billing") || page.startsWith("core"))
     return enabledApps.includes("billing") ? "billing" : landingApp;
-  if (page.startsWith("accounts"))
-    return enabledApps.includes("accounts") ? "accounts" : landingApp;
   if (page.startsWith("task-manager"))
     return enabledApps.includes("task-manager") ? "task-manager" : landingApp;
   return "application";
 }
 
 function pageForApp(app: PlatformAppId): AppPage {
-  if (app === "accounts") return "accounts.overview";
   if (app === "task-manager") return "task-manager.overview";
   return app === "billing" ? "billing.overview" : "application.overview";
 }
@@ -1228,10 +1088,7 @@ function isAppRootPath() {
 function readPublishedLandingApp(): PlatformAppId | null {
   try {
     const stored = window.localStorage.getItem(LANDING_APP_STORAGE_KEY);
-    return stored === "application" ||
-      stored === "billing" ||
-      stored === "accounts" ||
-      stored === "task-manager"
+    return stored === "application" || stored === "billing" || stored === "task-manager"
       ? stored
       : null;
   } catch {

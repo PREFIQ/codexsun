@@ -1300,10 +1300,7 @@ function tenantAppAccessFromRegistry(apps: PlatformApp[] | undefined): TenantApp
   return source
     .filter(
       (app) =>
-        app.appId === "application" ||
-        app.appId === "billing" ||
-        app.appId === "accounts" ||
-        app.appId === "task-manager"
+        app.appId === "application" || app.appId === "billing" || app.appId === "task-manager"
     )
     .map((app) => {
       const local =

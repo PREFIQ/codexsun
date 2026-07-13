@@ -1,6 +1,5 @@
 import {
   DatabaseZapIcon,
-  LandmarkIcon,
   Layers3Icon,
   ReceiptTextIcon,
   ServerCogIcon,
@@ -15,7 +14,6 @@ const icons = {
   platform: ServerCogIcon,
   core: Layers3Icon,
   billing: ReceiptTextIcon,
-  accounts: LandmarkIcon,
   "data-bridge": DatabaseZapIcon,
   "kitchen-serve": UtensilsIcon
 };
@@ -40,12 +38,6 @@ export const appOperationTones: Record<
     icon: "border-amber-200 bg-white/70 text-amber-700 dark:border-amber-800 dark:bg-amber-950/70 dark:text-amber-300",
     metric:
       "border-amber-100 from-amber-50/80 via-card to-orange-50/70 dark:border-amber-900 dark:from-amber-950/35 dark:to-orange-950/25"
-  },
-  accounts: {
-    card: "border-rose-200/80 from-rose-100 via-pink-50 to-red-100 hover:border-rose-300 dark:border-rose-800/70 dark:from-rose-950/70 dark:via-pink-950/50 dark:to-red-950/70",
-    icon: "border-rose-200 bg-white/70 text-rose-700 dark:border-rose-800 dark:bg-rose-950/70 dark:text-rose-300",
-    metric:
-      "border-rose-100 from-rose-50/80 via-card to-pink-50/70 dark:border-rose-900 dark:from-rose-950/35 dark:to-pink-950/25"
   },
   "data-bridge": {
     card: "border-emerald-200/80 from-emerald-100 via-green-50 to-teal-100 hover:border-emerald-300 dark:border-emerald-800/70 dark:from-emerald-950/70 dark:via-green-950/50 dark:to-teal-950/70",

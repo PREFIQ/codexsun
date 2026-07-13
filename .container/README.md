@@ -1,12 +1,12 @@
 # CODEXSUN Docker Deployment
 
-This deployment is for the current CODEXSUN monorepo described in `assist/README.md`: Framework, Platform, Core, Billing, Accounts, MariaDB, Redis queue support, and file storage. It keeps each runtime in its own container while reusing one built image to keep hosting simple and affordable.
+This deployment is for the current CODEXSUN monorepo described in `assist/README.md`: Framework, Platform, Core, Billing, MariaDB, Redis queue support, and file storage. It keeps each runtime in its own container while reusing one built image to keep hosting simple and affordable.
 
 ## Affordable Topology
 
 - One small VPS with Docker and Docker Compose.
 - One Compose project named `codexsun`.
-- Separate containers for `platform-api`, `platform-web`, `core-api`, `core-web`, `billing-api`, `billing-web`, `accounts-api`, `accounts-web`, and `files`.
+- Separate containers for `platform-api`, `platform-web`, `core-api`, `core-web`, `billing-api`, `billing-web`, and `files`.
 - Optional internal MariaDB and Redis containers for low-cost single-server deploys.
 - Optional external MariaDB and Redis for managed database or existing server reuse.
 - Optional admin containers for Docker, MariaDB, and Redis administration.
@@ -22,8 +22,6 @@ Default ports:
 | Core Web                     |      7040 |
 | Billing API                  |      7050 |
 | Billing Web                  |      7060 |
-| Accounts API                 |      7070 |
-| Accounts Web                 |      7080 |
 | File server                  |      7090 |
 | Docker admin, Portainer      |      7091 |
 | MariaDB admin, Adminer       |      7092 |
@@ -152,8 +150,6 @@ Put Nginx or Caddy in front of the host ports for HTTPS. A simple split is:
 - platform API -> `127.0.0.1:7010`
 - billing app -> `127.0.0.1:7060`
 - billing API -> `127.0.0.1:7050`
-- accounts app -> `127.0.0.1:7080`
-- accounts API -> `127.0.0.1:7070`
 - file manager -> private/admin-only access to `127.0.0.1:7090`
 
 Keep File Browser behind VPN, basic auth, or an admin-only firewall rule for production.

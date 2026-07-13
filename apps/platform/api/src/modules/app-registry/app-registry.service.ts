@@ -31,18 +31,6 @@ export const platformAppRegistry: PlatformAppDefinition[] = [
   {
     alwaysEnabled: false,
     defaultLanding: false,
-    description:
-      "Ledgers, vouchers, double-entry postings, balances, reports, and Tally-ready accounting.",
-    appId: "accounts",
-    id: 0,
-    label: "Accounts",
-    moduleKey: "accounts.ledgers",
-    stack: "accounts",
-    uuid: ""
-  },
-  {
-    alwaysEnabled: false,
-    defaultLanding: false,
     description: "Tenant-owned Todo planning with a lightweight JSON workspace.",
     appId: "task-manager",
     id: 0,
