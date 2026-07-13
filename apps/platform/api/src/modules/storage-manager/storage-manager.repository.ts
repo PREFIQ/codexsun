@@ -139,11 +139,16 @@ export class StorageManagerRepository {
     const tenantKey = tenant.slug || tenant.tenantCode;
     const fileName = input.variant === "logo-dark" ? "logo-dark.svg" : "logo.svg";
     const relativePath = `logo/${fileName}`;
-    const base = tenantStorageRoot(tenantKey);
+    const base = tenantPublicStorageRoot(tenantKey);
     const filePath = resolveInsideStorage(base, relativePath);
     const buffer = Buffer.from(input.contentBase64, "base64");
 
-    if (!isSvg(buffer)) throw new Error("Company logos must be valid SVG files.");
+    if (!isSafeSvg(buffer)) {
+      throw new Error("Company logos must be safe SVG files without scripts or external content.");
+    }
+    if (buffer.byteLength > 640 * 1024) {
+      throw new Error("Company logos must be 640 KB or smaller.");
+    }
 
     await mkdir(resolveInsideStorage(base, "logo"), { recursive: true });
     await writeFile(filePath, buffer);
@@ -159,7 +164,7 @@ export class StorageManagerRepository {
       visibility: "public"
     });
 
-    return { path: `storage/${tenantKey}/${relativePath}`, variant: input.variant };
+    return { path: `storage/${tenantKey}/public/${relativePath}`, variant: input.variant };
   }
 
   async readCompanyLogo(tenantId: string, variant: "logo" | "logo-dark") {
@@ -168,7 +173,7 @@ export class StorageManagerRepository {
 
     const tenantKey = tenant.slug || tenant.tenantCode;
     const fileName = variant === "logo-dark" ? "logo-dark.svg" : "logo.svg";
-    const filePath = resolveInsideStorage(tenantStorageRoot(tenantKey), `logo/${fileName}`);
+    const filePath = resolveInsideStorage(tenantPublicStorageRoot(tenantKey), `logo/${fileName}`);
     const info = await stat(filePath);
     if (!info.isFile()) throw new Error("Company logo was not found.");
     return {
@@ -293,9 +298,19 @@ function sanitizeFileName(value: string) {
   return fileName.slice(0, 160);
 }
 
-function isSvg(buffer: Buffer) {
-  const source = buffer.toString("utf8", 0, Math.min(buffer.length, 2048)).trim();
-  return source.startsWith("<?xml") ? /<svg[\s>]/i.test(source) : /^<svg[\s>]/i.test(source);
+function isSafeSvg(buffer: Buffer) {
+  const source = buffer.toString("utf8").trim();
+  const hasSvg = source.startsWith("<?xml")
+    ? /<svg[\s>]/i.test(source)
+    : /^<svg[\s>]/i.test(source);
+  return (
+    hasSvg &&
+    !/<script[\s>]/i.test(source) &&
+    !/<foreignObject[\s>]/i.test(source) &&
+    !/\son[a-z]+\s*=/i.test(source) &&
+    !/javascript\s*:/i.test(source) &&
+    !/(?:href|src)\s*=\s*["'](?:https?:|\/\/)/i.test(source)
+  );
 }
 
 function mimeTypeFor(filePath: string) {

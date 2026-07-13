@@ -17,7 +17,7 @@ import {
   UserRoundIcon,
   WalletCardsIcon
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ApplicationLayout,
   Button,
@@ -69,17 +69,24 @@ import { ContactWorkspace } from "@codexsun/core-web/modules/master/contact";
 import { ProductWorkspace } from "@codexsun/core-web/modules/master/product";
 import { WorkOrderWorkspace } from "@codexsun/core-web/modules/master/work-order";
 import { CompanyWorkspace, listCompanies } from "@codexsun/core-web/modules/organisation/company";
+import {
+  DefaultCompanyWorkspace,
+  defaultCompanyQueryKey,
+  getDefaultCompany,
+  saveDefaultCompany,
+  type LandingAppOption
+} from "@codexsun/core-web/modules/organisation/default-company";
+import {
+  FinancialYearWorkspace,
+  listFinancialYears
+} from "@codexsun/core-web/modules/organisation/financial-year";
 import { QuotationWorkspace } from "../../modules/quotation/quotation.workspace";
 import { SalesWorkspace } from "../../modules/sales/sales.workspace";
 import { PurchaseWorkspace } from "../../modules/purchase/purchase.workspace";
 import { ExportSalesWorkspace } from "../../modules/export-sales/export-sales.workspace";
 import { PaymentWorkspace } from "../../modules/payment/payment.workspace";
 import { ReceiptWorkspace } from "../../modules/receipt/receipt.workspace";
-import {
-  AccountsSettingsWorkspace,
-  AccountsWorkspace,
-  getAccountsSettings
-} from "../../modules/accounts";
+import { AccountsSettingsWorkspace, AccountsWorkspace } from "../../modules/accounts";
 import {
   BillingSettingsWorkspace,
   DocumentSettingsWorkspace
@@ -125,14 +132,18 @@ type AppPage =
   | "core.common.location.cities"
   | "core.common.location.pincodes"
   | "core.organisation.company"
+  | "core.organisation.financial-year"
+  | "core.organisation.default-company"
   | "core.master.contact"
   | "core.master.product"
   | "core.master.work-order"
   | `core.common.${"contacts" | "others" | "products" | "workorder"}.${string}`;
 const LANDING_APP_STORAGE_KEY = "codexsun.tenant.landing-app.live";
 const COMPANY_CONTEXT_STORAGE_KEY = "codexsun.tenant.company-id";
+const ACCOUNTING_YEAR_CONTEXT_STORAGE_KEY = "codexsun.tenant.financial-year-id";
 
 export function AppDesk() {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState<AppPage>(() => pageFromUrl(readPublishedLandingApp()));
   const [publishedLandingApp, setPublishedLandingApp] = useState<PlatformAppId | null>(() =>
     readPublishedLandingApp()
@@ -147,23 +158,31 @@ export function AppDesk() {
     queryFn: () => listCompanies(),
     queryKey: ["core", "organisation", "companies", runtimeQuery.data?.tenant?.uuid]
   });
-  const accountingSettingsQuery = useQuery({
+  const financialYearsQuery = useQuery({
     enabled: Boolean(runtimeQuery.data?.tenant?.uuid),
-    queryFn: getAccountsSettings,
-    queryKey: ["accounts", "settings", runtimeQuery.data?.tenant?.uuid]
+    queryFn: listFinancialYears,
+    queryKey: ["core", "organisation", "financial-years", runtimeQuery.data?.tenant?.uuid]
   });
-  const [selectedCompanyId, setSelectedCompanyId] = useState(() => readSelectedCompanyId());
-
+  const defaultCompanyQuery = useQuery({
+    enabled: Boolean(runtimeQuery.data?.tenant?.uuid),
+    queryFn: getDefaultCompany,
+    queryKey: [...defaultCompanyQueryKey, runtimeQuery.data?.tenant?.uuid]
+  });
   const runtime = runtimeQuery.data;
   const moduleKeys = runtime?.tenant?.enabledModuleKeys ?? ["platform.application"];
   const enabledApps = enabledAppIds(moduleKeys);
   const switchableApps = uniqueApps(enabledApps);
   const runtimeLandingApp =
     runtime?.defaultLandingApp ?? defaultLandingApp(runtime?.tenant?.defaultLandingApp, moduleKeys);
+  const activeDefaultCompany =
+    defaultCompanyQuery.data?.status === "active" ? defaultCompanyQuery.data : null;
+  const persistedLandingApp = activeDefaultCompany?.landingApp as PlatformAppId | undefined;
   const landingApp =
     publishedLandingApp && enabledApps.includes(publishedLandingApp)
       ? publishedLandingApp
-      : runtimeLandingApp;
+      : persistedLandingApp && enabledApps.includes(persistedLandingApp)
+        ? persistedLandingApp
+        : runtimeLandingApp;
   const activeApp = appFromPage(page, landingApp, switchableApps);
   const safePage =
     ((page.startsWith("billing") ||
@@ -177,10 +196,27 @@ export function AppDesk() {
     [companiesQuery.data]
   );
   const selectedCompany =
-    activeCompanies.find((company) => String(company.id) === selectedCompanyId) ??
+    activeCompanies.find((company) => company.id === activeDefaultCompany?.companyId) ??
     activeCompanies[0] ??
     null;
-  const accountingYear = financialYearLabel(accountingSettingsQuery.data?.financialYear);
+  const activeFinancialYears = useMemo(
+    () => (financialYearsQuery.data ?? []).filter((year) => year.status === "active"),
+    [financialYearsQuery.data]
+  );
+  const selectedFinancialYear =
+    activeFinancialYears.find((year) => year.id === activeDefaultCompany?.financialYearId) ??
+    activeFinancialYears.find((year) => year.isCurrent) ??
+    activeFinancialYears[0] ??
+    null;
+  const accountingYear = selectedFinancialYear?.name ?? "Accounting year";
+  const defaultSelectionMutation = useMutation({
+    mutationFn: saveDefaultCompany,
+    onSuccess: async (record) => {
+      publishCompanyContext(record.companyId);
+      publishAccountingYear(record.financialYearId);
+      await queryClient.invalidateQueries({ queryKey: defaultCompanyQueryKey });
+    }
+  });
 
   useEffect(() => {
     if (publishedLandingApp && !enabledApps.includes(publishedLandingApp)) {
@@ -197,10 +233,14 @@ export function AppDesk() {
   }, [runtime?.tenant]);
 
   useEffect(() => {
-    if (!selectedCompany || String(selectedCompany.id) === selectedCompanyId) return;
-    setSelectedCompanyId(String(selectedCompany.id));
-    window.localStorage.setItem(COMPANY_CONTEXT_STORAGE_KEY, String(selectedCompany.id));
-  }, [selectedCompany, selectedCompanyId]);
+    if (!selectedCompany) return;
+    publishCompanyContext(selectedCompany.id);
+  }, [selectedCompany]);
+
+  useEffect(() => {
+    if (!selectedFinancialYear) return;
+    publishAccountingYear(selectedFinancialYear.id);
+  }, [selectedFinancialYear]);
 
   useEffect(() => {
     if (!shouldResolveLandingPath) return;
@@ -220,6 +260,15 @@ export function AppDesk() {
   function publishLandingApp(nextLandingApp: PlatformAppId) {
     setPublishedLandingApp(nextLandingApp);
     window.localStorage.setItem(LANDING_APP_STORAGE_KEY, nextLandingApp);
+  }
+
+  function updateGlobalDefault(companyId: number, financialYearId: number) {
+    defaultSelectionMutation.mutate({
+      companyId,
+      financialYearId,
+      landingApp,
+      status: "active"
+    });
   }
 
   const activeWorkspaceTitle =
@@ -257,16 +306,29 @@ export function AppDesk() {
                 : "/app/application/overview",
           options: activeCompanies.map((company) => ({
             id: String(company.id),
-            subtitle: `${company.code} · ${accountingYear}`,
+            subtitle: accountingYear,
             title: company.name
           })),
+          optionsLabel: "Company",
           onOptionSelect: (id) => {
-            setSelectedCompanyId(id);
-            window.localStorage.setItem(COMPANY_CONTEXT_STORAGE_KEY, id);
+            if (!selectedFinancialYear) return;
+            updateGlobalDefault(Number(id), selectedFinancialYear.id);
+          },
+          onSecondaryOptionSelect: (id) => {
+            if (!selectedCompany) return;
+            updateGlobalDefault(selectedCompany.id, Number(id));
           },
           ...(selectedCompany ? { selectedOptionId: String(selectedCompany.id) } : {}),
-          subtitle: selectedCompany
-            ? accountingYear
+          ...(selectedFinancialYear
+            ? { selectedSecondaryOptionId: String(selectedFinancialYear.id) }
+            : {}),
+          secondaryOptions: activeFinancialYears.map((year) => ({
+            id: String(year.id),
+            title: year.name
+          })),
+          secondaryOptionsLabel: "Financial year",
+          subtitle: selectedFinancialYear
+            ? selectedFinancialYear.name
             : `${activeWorkspaceTitle.toLowerCase()} workspace`,
           title: selectedCompany?.name ?? activeWorkspaceTitle
         }}
@@ -304,6 +366,16 @@ export function AppDesk() {
           ) : null}
           {isAccountsSettingsPage(safePage) ? <AccountsSettings page={safePage} /> : null}
           {safePage === "core.organisation.company" ? <CompanyWorkspace /> : null}
+          {safePage === "core.organisation.financial-year" ? <FinancialYearWorkspace /> : null}
+          {safePage === "core.organisation.default-company" ? (
+            <DefaultCompanyWorkspace
+              landingApps={landingAppOptions(switchableApps)}
+              onSaved={() => {
+                void defaultCompanyQuery.refetch();
+                void financialYearsQuery.refetch();
+              }}
+            />
+          ) : null}
           {renderOwnedLocationPage(safePage)}
           {renderOwnedCommonMasterPage(safePage)}
           {safePage === "core.master.contact" ? <ContactWorkspace key={safePage} /> : null}
@@ -315,21 +387,23 @@ export function AppDesk() {
   );
 }
 
-function readSelectedCompanyId() {
-  try {
-    return window.localStorage.getItem(COMPANY_CONTEXT_STORAGE_KEY) ?? "";
-  } catch {
-    return "";
-  }
+function publishCompanyContext(id: number) {
+  window.localStorage.setItem(COMPANY_CONTEXT_STORAGE_KEY, String(id));
+  window.dispatchEvent(new CustomEvent("codexsun:company-change", { detail: { id } }));
+}
+function publishAccountingYear(id: number) {
+  window.localStorage.setItem(ACCOUNTING_YEAR_CONTEXT_STORAGE_KEY, String(id));
+  window.dispatchEvent(new CustomEvent("codexsun:accounting-year-change", { detail: { id } }));
 }
 
-function financialYearLabel(value: { endDate: string; startDate: string } | undefined) {
-  if (!value?.startDate || !value.endDate) return "Accounting year";
-  const startYear = value.startDate.slice(0, 4);
-  const endYear = value.endDate.slice(2, 4);
-  return /^\d{4}$/.test(startYear) && /^\d{2}$/.test(endYear)
-    ? `FY ${startYear}-${endYear}`
-    : `${value.startDate} to ${value.endDate}`;
+function landingAppOptions(apps: PlatformAppId[]): LandingAppOption[] {
+  return apps.map((app) => ({
+    label:
+      app === "application"
+        ? "Application"
+        : app.replaceAll("-", " ").replace(/^./, (c) => c.toUpperCase()),
+    value: app
+  }));
 }
 
 function uniqueApps(apps: PlatformAppId[]) {
@@ -379,6 +453,8 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "core.common.location.cities" ||
     key === "core.common.location.pincodes" ||
     key === "core.organisation.company" ||
+    key === "core.organisation.financial-year" ||
+    key === "core.organisation.default-company" ||
     key === "core.master.contact" ||
     key === "core.master.product" ||
     key === "core.master.work-order" ||
@@ -1084,6 +1160,8 @@ function titleForPage(page: AppPage) {
     "core.common.workorder.warehouses": "Warehouses",
     "core.common.workorder.work-order-types": "Work Order Types",
     "core.organisation.company": "Company",
+    "core.organisation.financial-year": "Financial Years",
+    "core.organisation.default-company": "Default Company",
     "core.master.contact": "Contact",
     "core.master.product": "Product",
     "core.master.work-order": "Work Order"

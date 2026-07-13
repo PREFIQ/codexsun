@@ -5,16 +5,67 @@ import { registerContractRoute } from "@codexsun/framework/http";
 import { CompanyService } from "./company.service.js";
 
 export const COMPANY_COLLECTION_PATH = "/core/organisation/companies";
-export const COMPANY_INDUSTRY_LOOKUP_PATH = "/core/organisation/industries";
 const service = new CompanyService();
 const idSchema = z.object({ id: z.string().regex(/^\d+$/, "Company ID must be numeric.") });
-const childValueSchema = z.union([z.boolean(), z.number(), z.string(), z.null()]);
-const childSchema = z
-  .record(z.string(), childValueSchema)
-  .and(z.object({ id: z.union([z.number(), z.string()]) }));
 const nullableString = z.string().trim().nullable();
 const nullableId = z.number().int().positive().nullable();
-const statusSchema = z.enum(["active", "inactive", "suspend"]);
+const statusSchema = z.enum(["active", "suspend"]);
+const socialStatusSchema = z.enum(["active", "inactive"]);
+
+const emailSchema = z.object({
+  id: z.number().int().nonnegative(),
+  email: z.string(),
+  emailType: z.string(),
+  isPrimary: z.boolean(),
+  sortOrder: z.number().int().positive()
+});
+const phoneSchema = z.object({
+  id: z.number().int().nonnegative(),
+  phone: z.string(),
+  phoneType: z.string(),
+  isPrimary: z.boolean(),
+  sortOrder: z.number().int().positive()
+});
+const addressSchema = z.object({
+  id: z.number().int().nonnegative(),
+  addressTypeId: nullableId,
+  addressTypeName: nullableString,
+  addressLine1: z.string(),
+  addressLine2: nullableString,
+  countryId: nullableId,
+  countryName: nullableString,
+  stateId: nullableId,
+  stateName: nullableString,
+  districtId: nullableId,
+  districtName: nullableString,
+  cityId: nullableId,
+  cityName: nullableString,
+  pincodeId: nullableId,
+  pincodeName: nullableString,
+  isDefault: z.boolean(),
+  sortOrder: z.number().int().positive()
+});
+const bankAccountSchema = z.object({
+  id: z.number().int().nonnegative(),
+  bankNameId: nullableId,
+  bankName: nullableString,
+  accountType: nullableString,
+  accountNumber: z.string(),
+  holderName: nullableString,
+  ifsc: nullableString,
+  branch: nullableString,
+  isPrimary: z.boolean(),
+  sortOrder: z.number().int().positive()
+});
+const socialLinkSchema = z.object({
+  id: z.number().int().nonnegative(),
+  platform: z.string(),
+  url: z.string(),
+  status: socialStatusSchema,
+  isActive: z.boolean(),
+  sortOrder: z.number().int().positive()
+});
+
 const companySchema = z.object({
   id: z.number().int().positive(),
   code: z.string(),
@@ -24,6 +75,11 @@ const companySchema = z.object({
   primaryEmail: nullableString,
   gstin: nullableString,
   pan: nullableString,
+  msmeNo: nullableString,
+  msmeCategory: nullableString,
+  tanNo: nullableString,
+  tdsAvailable: z.boolean(),
+  tcsAvailable: z.boolean(),
   website: nullableString,
   description: nullableString,
   logoPath: nullableString,
@@ -32,50 +88,41 @@ const companySchema = z.object({
   industryName: nullableString,
   status: statusSchema,
   isActive: z.boolean(),
-  emails: z.array(childSchema),
-  phones: z.array(childSchema),
-  addresses: z.array(childSchema),
-  bankAccounts: z.array(childSchema),
-  socialLinks: z.array(childSchema),
+  emails: z.array(emailSchema),
+  phones: z.array(phoneSchema),
+  addresses: z.array(addressSchema),
+  bankAccounts: z.array(bankAccountSchema),
+  socialLinks: z.array(socialLinkSchema),
   createdAt: z.string(),
   updatedAt: z.string()
 });
+
 const payloadSchema = z.object({
-  code: z.string().trim().optional(),
-  name: z.string().trim().min(1, "Company name is required."),
+  code: z.string().trim().max(80).optional(),
+  name: z.string().trim().min(1, "Company name is required.").max(191),
   legalName: nullableString.optional(),
-  primaryPhone: nullableString.optional(),
-  primaryEmail: nullableString.optional(),
   gstin: nullableString.optional(),
   pan: nullableString.optional(),
+  msmeNo: nullableString.optional(),
+  msmeCategory: nullableString.optional(),
+  tanNo: nullableString.optional(),
+  tdsAvailable: z.boolean().optional(),
+  tcsAvailable: z.boolean().optional(),
   website: nullableString.optional(),
   description: nullableString.optional(),
   logoPath: nullableString.optional(),
   logoDarkPath: nullableString.optional(),
   industryId: nullableId.optional(),
-  industryName: nullableString.optional(),
   status: statusSchema.optional(),
   isActive: z.boolean().optional(),
-  emails: z.array(childSchema).optional(),
-  phones: z.array(childSchema).optional(),
-  addresses: z.array(childSchema).optional(),
-  bankAccounts: z.array(childSchema).optional(),
-  socialLinks: z.array(childSchema).optional()
+  emails: z.array(emailSchema).optional(),
+  phones: z.array(phoneSchema).optional(),
+  addresses: z.array(addressSchema).optional(),
+  bankAccounts: z.array(bankAccountSchema).optional(),
+  socialLinks: z.array(socialLinkSchema).optional()
 });
 const querySchema = z.object({ search: z.string().trim().optional() });
-const industrySchema = z.object({
-  code: z.string(),
-  id: z.number().int().positive(),
-  name: z.string()
-});
-
 export async function registerCompanyRoutes(app: FastifyInstance) {
-  registerContractRoute(app, {
-    handler: () => service.listIndustries(),
-    method: "GET",
-    schemas: { response: z.array(industrySchema) },
-    url: COMPANY_INDUSTRY_LOOKUP_PATH
-  });
   registerContractRoute(app, {
     handler: ({ query }) => service.list(query.search ?? ""),
     method: "GET",
@@ -89,13 +136,14 @@ export async function registerCompanyRoutes(app: FastifyInstance) {
     url: `${COMPANY_COLLECTION_PATH}/:id`
   });
   registerContractRoute(app, {
-    handler: ({ body }) => service.create(body),
+    handler: ({ body, request }) => service.create(body, request.headers.authorization),
     method: "POST",
     schemas: { body: payloadSchema, response: companySchema },
     url: COMPANY_COLLECTION_PATH
   });
   registerContractRoute(app, {
-    handler: async ({ body, params }) => required(await service.update(params.id, body)),
+    handler: async ({ body, params, request }) =>
+      required(await service.update(params.id, body, request.headers.authorization)),
     method: "PUT",
     schemas: { body: payloadSchema, params: idSchema, response: companySchema },
     url: `${COMPANY_COLLECTION_PATH}/:id`

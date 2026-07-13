@@ -316,7 +316,6 @@ export function appMenuFor(
           isActive:
             activePage === "accounts.settings" ||
             activePage === "accounts.posting-rules" ||
-            activePage === "accounts.financial-year" ||
             activePage === "accounts.voucher-numbering" ||
             activePage === "accounts.tally-integration",
           items: [
@@ -329,11 +328,6 @@ export function appMenuFor(
               title: "Posting Rules",
               isActive: activePage === "accounts.posting-rules",
               onSelect: () => onSelect("accounts.posting-rules")
-            },
-            {
-              title: "Financial Year",
-              isActive: activePage === "accounts.financial-year",
-              onSelect: () => onSelect("accounts.financial-year")
             },
             {
               title: "Voucher Numbering",
@@ -353,7 +347,7 @@ export function appMenuFor(
 
   return {
     icon: Building2Icon,
-    isActive: activePage.startsWith("application") || activePage === "core.organisation.company",
+    isActive: activePage.startsWith("application") || activePage.startsWith("core.organisation"),
     title: "Application",
     items: [
       {
@@ -388,12 +382,22 @@ export function appMenuFor(
       {
         icon: Building2Icon,
         title: "Organisation",
-        isActive: activePage === "core.organisation.company",
+        isActive: activePage.startsWith("core.organisation"),
         items: [
           {
             title: "Company",
             isActive: activePage === "core.organisation.company",
             onSelect: () => onSelect("core.organisation.company")
+          },
+          {
+            title: "Financial Years",
+            isActive: activePage === "core.organisation.financial-year",
+            onSelect: () => onSelect("core.organisation.financial-year")
+          },
+          {
+            title: "Default Company",
+            isActive: activePage === "core.organisation.default-company",
+            onSelect: () => onSelect("core.organisation.default-company")
           }
         ]
       }
@@ -639,7 +643,6 @@ export function appMenuItemsFor(
         isActive:
           activePage === "accounts.settings" ||
           activePage === "accounts.posting-rules" ||
-          activePage === "accounts.financial-year" ||
           activePage === "accounts.voucher-numbering" ||
           activePage === "accounts.tally-integration",
         title: "Settings",
@@ -653,11 +656,6 @@ export function appMenuItemsFor(
             title: "Posting Rules",
             isActive: activePage === "accounts.posting-rules",
             onSelect: () => onSelect("accounts.posting-rules")
-          },
-          {
-            title: "Financial Year",
-            isActive: activePage === "accounts.financial-year",
-            onSelect: () => onSelect("accounts.financial-year")
           },
           {
             title: "Voucher Numbering",
@@ -708,13 +706,23 @@ export function appMenuItemsFor(
     },
     {
       icon: Building2Icon,
-      isActive: activePage === "core.organisation.company",
+      isActive: activePage.startsWith("core.organisation"),
       title: "Organisation",
       items: [
         {
           title: "Company",
           isActive: activePage === "core.organisation.company",
           onSelect: () => onSelect("core.organisation.company")
+        },
+        {
+          title: "Financial Years",
+          isActive: activePage === "core.organisation.financial-year",
+          onSelect: () => onSelect("core.organisation.financial-year")
+        },
+        {
+          title: "Default Company",
+          isActive: activePage === "core.organisation.default-company",
+          onSelect: () => onSelect("core.organisation.default-company")
         }
       ]
     }

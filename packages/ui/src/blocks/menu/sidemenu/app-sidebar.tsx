@@ -30,20 +30,27 @@ import {
   SidebarRail
 } from "../../../components/sidebar";
 
+type SidebarBrandOption = {
+  id: string;
+  logoDarkSrc?: string;
+  logoSrc?: string;
+  subtitle?: string;
+  title: string;
+};
+
 export type SidebarBrand = {
   href?: string;
   logoAlt?: string;
   logoDarkSrc?: string;
   logoSrc?: string;
-  options?: Array<{
-    id: string;
-    logoDarkSrc?: string;
-    logoSrc?: string;
-    subtitle: string;
-    title: string;
-  }>;
+  options?: SidebarBrandOption[];
+  optionsLabel?: string;
   onOptionSelect?: (id: string) => void;
+  onSecondaryOptionSelect?: (id: string) => void;
   selectedOptionId?: string;
+  selectedSecondaryOptionId?: string;
+  secondaryOptions?: SidebarBrandOption[];
+  secondaryOptionsLabel?: string;
   subtitle: string;
   title: string;
 };
@@ -165,12 +172,13 @@ export function AppSidebar({
 
 function SidebarBrandMenu({ brand }: { brand: SidebarBrand }) {
   const options = brand.options ?? [];
+  const secondaryOptions = brand.secondaryOptions ?? [];
   const active = options.find((option) => option.id === brand.selectedOptionId) ?? options[0];
   const current = active ?? brand;
   const trigger = (
     <SidebarMenuButton size="lg" tooltip={current.title} className="h-14">
       <BrandIdentity brand={current} fallback={brand} />
-      {options.length ? (
+      {options.length || secondaryOptions.length ? (
         <ChevronsUpDownIcon className="ml-auto size-4 text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden" />
       ) : null}
     </SidebarMenuButton>
@@ -179,10 +187,15 @@ function SidebarBrandMenu({ brand }: { brand: SidebarBrand }) {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        {options.length ? (
+        {options.length || secondaryOptions.length ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="right" className="w-64 p-1">
+              {brand.optionsLabel ? (
+                <div className="px-2 pb-1 pt-1.5 text-[0.68rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {brand.optionsLabel}
+                </div>
+              ) : null}
               {options.map((option) => (
                 <DropdownMenuItem
                   key={option.id}
@@ -191,9 +204,37 @@ function SidebarBrandMenu({ brand }: { brand: SidebarBrand }) {
                   <BrandLogo brand={option} fallback={brand} compact />
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{option.title}</div>
-                    <div className="truncate text-xs text-muted-foreground">{option.subtitle}</div>
+                    {option.subtitle ? (
+                      <div className="truncate text-xs text-muted-foreground">
+                        {option.subtitle}
+                      </div>
+                    ) : null}
                   </div>
                   {option.id === brand.selectedOptionId ? (
+                    <BadgeCheckIcon className="size-4 text-primary" />
+                  ) : null}
+                </DropdownMenuItem>
+              ))}
+              {options.length && secondaryOptions.length ? <DropdownMenuSeparator /> : null}
+              {brand.secondaryOptionsLabel ? (
+                <div className="px-2 pb-1 pt-1.5 text-[0.68rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {brand.secondaryOptionsLabel}
+                </div>
+              ) : null}
+              {secondaryOptions.map((option) => (
+                <DropdownMenuItem
+                  key={option.id}
+                  onSelect={() => brand.onSecondaryOptionSelect?.(option.id)}
+                >
+                  <div className="min-w-0 flex-1 px-1">
+                    <div className="truncate font-medium">{option.title}</div>
+                    {option.subtitle ? (
+                      <div className="truncate text-xs text-muted-foreground">
+                        {option.subtitle}
+                      </div>
+                    ) : null}
+                  </div>
+                  {option.id === brand.selectedSecondaryOptionId ? (
                     <BadgeCheckIcon className="size-4 text-primary" />
                   ) : null}
                 </DropdownMenuItem>
@@ -212,7 +253,13 @@ function BrandIdentity({
   brand,
   fallback
 }: {
-  brand: Pick<SidebarBrand, "logoAlt" | "logoDarkSrc" | "logoSrc" | "subtitle" | "title">;
+  brand: {
+    logoAlt?: string;
+    logoDarkSrc?: string;
+    logoSrc?: string;
+    subtitle?: string;
+    title: string;
+  };
   fallback: SidebarBrand;
 }) {
   return (
@@ -220,7 +267,9 @@ function BrandIdentity({
       <BrandLogo brand={brand} fallback={fallback} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-none group-data-[collapsible=icon]:hidden">
         <span className="truncate font-semibold">{brand.title}</span>
-        <span className="truncate text-xs text-muted-foreground">{brand.subtitle}</span>
+        <span className="truncate text-xs text-muted-foreground">
+          {brand.subtitle ?? fallback.subtitle}
+        </span>
       </div>
     </>
   );

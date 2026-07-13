@@ -24,8 +24,12 @@ import { stockRejectionTypesModule } from "./workorder/stock-rejection-types/sto
 import { transportsModule } from "./workorder/transports/transports.module.js";
 import { warehousesModule } from "./workorder/warehouses/warehouses.module.js";
 import { workOrderTypesModule } from "./workorder/work-order-types/work-order-types.module.js";
+import { ledgerGroupsModule } from "./accounts/ledger-groups/ledger-groups.module.js";
+import { ledgersModule } from "./accounts/ledgers/ledgers.module.js";
 const modules = [
   locationModule,
+  ledgerGroupsModule,
+  ledgersModule,
   addressTypesModule,
   bankNamesModule,
   contactGroupsModule,

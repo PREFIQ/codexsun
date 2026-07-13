@@ -191,20 +191,18 @@ export function ProductForm({
               value={form.openingRate}
               onChange={(value) => field("openingRate", value ?? 0)}
             />
-            <WorkspaceFormField label="Active">
-              <div className="flex h-11 items-center justify-between rounded-md border px-3">
-                <span className="text-sm">Available for use</span>
-                <Switch
-                  checked={form.isActive !== false}
-                  onCheckedChange={(value) =>
-                    setForm((current) => ({
-                      ...current,
-                      isActive: value,
-                      status: value ? "active" : "inactive"
-                    }))
-                  }
-                />
-              </div>
+            <WorkspaceFormField className="md:col-span-2" label="Status">
+              <ToggleRow
+                checked={form.isActive !== false}
+                label={form.isActive !== false ? "Active" : "Suspended"}
+                onCheckedChange={(checked) =>
+                  setForm((current) => ({
+                    ...current,
+                    isActive: checked,
+                    status: checked ? "active" : "suspend"
+                  }))
+                }
+              />
             </WorkspaceFormField>
           </WorkspaceFormGrid>
           {validationError || error ? (
@@ -384,6 +382,26 @@ function NumberField({
         onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)}
       />
     </WorkspaceFormField>
+  );
+}
+function ToggleRow({
+  checked,
+  label,
+  onCheckedChange
+}: {
+  checked: boolean;
+  label: string;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div
+      className={`flex min-h-11 items-center justify-between gap-3 rounded-md border px-3 py-2 ${
+        checked ? "border-emerald-200 bg-emerald-50" : "border-border bg-muted/30"
+      }`}
+    >
+      <p className="text-sm font-medium">{label}</p>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
   );
 }
 function namedOptions(items: Array<{ id: number; name: string }>) {

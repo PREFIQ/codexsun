@@ -25,6 +25,8 @@ import { migrateStockRejectionTypes } from "./workorder/stock-rejection-types/st
 import { migrateTransports } from "./workorder/transports/transports.migration.js";
 import { migrateWarehouses } from "./workorder/warehouses/warehouses.migration.js";
 import { migrateWorkOrderTypes } from "./workorder/work-order-types/work-order-types.migration.js";
+import { migrateLedgerGroups } from "./accounts/ledger-groups/ledger-groups.migration.js";
+import { migrateLedgers } from "./accounts/ledgers/ledgers.migration.js";
 
 export const commonMigration = {
   description: "Common module aggregator migrations.",
@@ -32,6 +34,8 @@ export const commonMigration = {
 };
 export async function migrateCommonModule(database: Kysely<CoreDatabase>) {
   await migrateLocationModules(database);
+  await migrateLedgerGroups(database);
+  await migrateLedgers(database);
   await migrateAddressTypes(database);
   await migrateBankNames(database);
   await migrateContactGroups(database);

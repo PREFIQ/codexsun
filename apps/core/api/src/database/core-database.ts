@@ -6,7 +6,10 @@ import { env } from "../env.js";
 import { migrateCommonModule } from "../modules/common/common.migration.js";
 import { seedCommonModule } from "../modules/common/common.seed.js";
 import { migrateMasterModule, seedMasterModule } from "../modules/master/index.js";
-import { migrateOrganisationModule } from "../modules/organisation/index.js";
+import {
+  migrateOrganisationModule,
+  seedOrganisationModule
+} from "../modules/organisation/index.js";
 
 export type CoreDatabase = Record<string, unknown>;
 
@@ -60,6 +63,7 @@ export async function bootstrapCoreDatabase(databaseName: string) {
     await migrateCommonModule(database);
     await migrateOrganisationModule(database);
     await migrateMasterModule(database);
+    await seedOrganisationModule();
     await seedMasterModule();
     await seedCommonModule();
     migrated.add(name);

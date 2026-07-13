@@ -251,23 +251,6 @@ function DetailsTab({
           onValueChange={(value) => set("groupId", value ? Number(value) : null)}
         />
       </WorkspaceFormField>
-      <WorkspaceFormField label="Opening balance">
-        <Input
-          inputMode="decimal"
-          type="number"
-          value={form.openingBalance}
-          onChange={(event) => set("openingBalance", Number(event.target.value || 0))}
-        />
-      </WorkspaceFormField>
-      <WorkspaceFormField label="Credit limit">
-        <Input
-          inputMode="decimal"
-          min={0}
-          type="number"
-          value={form.creditLimit}
-          onChange={(event) => set("creditLimit", Number(event.target.value || 0))}
-        />
-      </WorkspaceFormField>
       <WorkspaceFormField className="md:col-span-2" label="Status">
         <ToggleRow
           checked={form.isActive}
@@ -449,12 +432,24 @@ function AddressesTab({
   setForm: React.Dispatch<React.SetStateAction<ContactSavePayload>>;
 }) {
   return (
-    <RepeatPanel
-      onAdd={() =>
-        setForm((current) => ({ ...current, addresses: [...current.addresses, blankAddress()] }))
-      }
-      title="Addresses"
-    >
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold">Addresses</h2>
+        <Button
+          size="sm"
+          type="button"
+          variant="outline"
+          onClick={() =>
+            setForm((current) => ({
+              ...current,
+              addresses: [...current.addresses, blankAddress()]
+            }))
+          }
+        >
+          <Plus className="size-4" />
+          Add
+        </Button>
+      </div>
       <div className="space-y-6">
         {form.addresses.map((address, index) => {
           const states = lookups.states.filter((item) => item.countryId === address.countryId);
@@ -666,7 +661,7 @@ function AddressesTab({
           );
         })}
       </div>
-    </RepeatPanel>
+    </div>
   );
 }
 
@@ -684,109 +679,149 @@ function FinanceTab({
   setForm: React.Dispatch<React.SetStateAction<ContactSavePayload>>;
 }) {
   return (
-    <RepeatPanel
-      onAdd={() =>
-        setForm((current) => ({
-          ...current,
-          bankAccounts: [...current.bankAccounts, blankBankAccount()]
-        }))
-      }
-      title="Bank accounts"
-    >
-      <div className="space-y-6">
-        {form.bankAccounts.map((account, index) => (
-          <WorkspaceFormPanel key={`${account.id}-${index}`}>
-            <div className="space-y-5">
-              <div className="flex justify-end">
-                <RemoveButton onClick={() => removeBankAccount(setForm, index)} />
+    <div className="space-y-6">
+      <WorkspaceFormGrid columns={2}>
+        <WorkspaceFormField label="Opening balance">
+          <Input
+            inputMode="decimal"
+            type="number"
+            value={form.openingBalance}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                openingBalance: Number(event.target.value || 0)
+              }))
+            }
+          />
+        </WorkspaceFormField>
+        <WorkspaceFormField label="Credit limit">
+          <Input
+            inputMode="decimal"
+            min={0}
+            type="number"
+            value={form.creditLimit}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                creditLimit: Number(event.target.value || 0)
+              }))
+            }
+          />
+        </WorkspaceFormField>
+      </WorkspaceFormGrid>
+      <div className="space-y-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold">Bank accounts</h2>
+          <Button
+            size="sm"
+            type="button"
+            variant="outline"
+            onClick={() =>
+              setForm((current) => ({
+                ...current,
+                bankAccounts: [...current.bankAccounts, blankBankAccount()]
+              }))
+            }
+          >
+            <Plus className="size-4" />
+            Add
+          </Button>
+        </div>
+        <div className="space-y-6">
+          {form.bankAccounts.map((account, index) => (
+            <WorkspaceFormPanel key={`${account.id}-${index}`}>
+              <div className="space-y-5">
+                <div className="flex justify-end">
+                  <RemoveButton onClick={() => removeBankAccount(setForm, index)} />
+                </div>
+                <WorkspaceFormGrid columns={2}>
+                  <WorkspaceFormField label="Bank name">
+                    <WorkspaceLookup
+                      allowTextValue={false}
+                      createLabel="Create bank name"
+                      createMode="inline"
+                      loading={loading}
+                      options={lookupOptions(lookups.bankNames)}
+                      placeholder="Search bank name"
+                      value={account.bankNameId ? String(account.bankNameId) : ""}
+                      onCreate={async (name) => toOption(await createLookup.bankName(name))}
+                      onValueChange={(value, option) =>
+                        updateBankAccount(setForm, index, {
+                          ...account,
+                          bankNameId: value ? Number(value) : null,
+                          bankName: option?.label ?? null
+                        })
+                      }
+                    />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Account number">
+                    <Input
+                      value={account.accountNumber}
+                      onChange={(event) =>
+                        updateBankAccount(setForm, index, {
+                          ...account,
+                          accountNumber: event.target.value
+                        })
+                      }
+                    />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Holder name">
+                    <Input
+                      value={account.holderName ?? ""}
+                      onChange={(event) =>
+                        updateBankAccount(setForm, index, {
+                          ...account,
+                          holderName: nullable(event.target.value)
+                        })
+                      }
+                    />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Account type">
+                    <WorkspaceSelect
+                      options={accountTypeOptions}
+                      placeholder="Select account type"
+                      value={account.accountType ?? "Current"}
+                      onValueChange={(value) =>
+                        updateBankAccount(setForm, index, { ...account, accountType: value })
+                      }
+                    />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="IFSC">
+                    <Input
+                      value={account.ifsc ?? ""}
+                      onChange={(event) =>
+                        updateBankAccount(setForm, index, {
+                          ...account,
+                          ifsc: nullable(event.target.value.toUpperCase())
+                        })
+                      }
+                    />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Branch">
+                    <Input
+                      value={account.branch ?? ""}
+                      onChange={(event) =>
+                        updateBankAccount(setForm, index, {
+                          ...account,
+                          branch: nullable(event.target.value)
+                        })
+                      }
+                    />
+                  </WorkspaceFormField>
+                  <WorkspaceFormField label="Primary bank">
+                    <ToggleRow
+                      checked={account.isPrimary}
+                      label="Primary bank"
+                      onCheckedChange={() => setPrimaryBank(setForm, index)}
+                    />
+                  </WorkspaceFormField>
+                </WorkspaceFormGrid>
               </div>
-              <WorkspaceFormGrid columns={2}>
-                <WorkspaceFormField label="Bank name">
-                  <WorkspaceLookup
-                    allowTextValue={false}
-                    createLabel="Create bank name"
-                    createMode="inline"
-                    loading={loading}
-                    options={lookupOptions(lookups.bankNames)}
-                    placeholder="Search bank name"
-                    value={account.bankNameId ? String(account.bankNameId) : ""}
-                    onCreate={async (name) => toOption(await createLookup.bankName(name))}
-                    onValueChange={(value, option) =>
-                      updateBankAccount(setForm, index, {
-                        ...account,
-                        bankNameId: value ? Number(value) : null,
-                        bankName: option?.label ?? null
-                      })
-                    }
-                  />
-                </WorkspaceFormField>
-                <WorkspaceFormField label="Account number">
-                  <Input
-                    value={account.accountNumber}
-                    onChange={(event) =>
-                      updateBankAccount(setForm, index, {
-                        ...account,
-                        accountNumber: event.target.value
-                      })
-                    }
-                  />
-                </WorkspaceFormField>
-                <WorkspaceFormField label="Holder name">
-                  <Input
-                    value={account.holderName ?? ""}
-                    onChange={(event) =>
-                      updateBankAccount(setForm, index, {
-                        ...account,
-                        holderName: nullable(event.target.value)
-                      })
-                    }
-                  />
-                </WorkspaceFormField>
-                <WorkspaceFormField label="Account type">
-                  <WorkspaceSelect
-                    options={accountTypeOptions}
-                    placeholder="Select account type"
-                    value={account.accountType ?? "Current"}
-                    onValueChange={(value) =>
-                      updateBankAccount(setForm, index, { ...account, accountType: value })
-                    }
-                  />
-                </WorkspaceFormField>
-                <WorkspaceFormField label="IFSC">
-                  <Input
-                    value={account.ifsc ?? ""}
-                    onChange={(event) =>
-                      updateBankAccount(setForm, index, {
-                        ...account,
-                        ifsc: nullable(event.target.value.toUpperCase())
-                      })
-                    }
-                  />
-                </WorkspaceFormField>
-                <WorkspaceFormField label="Branch">
-                  <Input
-                    value={account.branch ?? ""}
-                    onChange={(event) =>
-                      updateBankAccount(setForm, index, {
-                        ...account,
-                        branch: nullable(event.target.value)
-                      })
-                    }
-                  />
-                </WorkspaceFormField>
-                <WorkspaceFormField label="Primary bank">
-                  <ToggleRow
-                    checked={account.isPrimary}
-                    label="Primary bank"
-                    onCheckedChange={() => setPrimaryBank(setForm, index)}
-                  />
-                </WorkspaceFormField>
-              </WorkspaceFormGrid>
-            </div>
-          </WorkspaceFormPanel>
-        ))}
+            </WorkspaceFormPanel>
+          ))}
+        </div>
       </div>
-    </RepeatPanel>
+    </div>
   );
 }
 
@@ -1320,6 +1355,7 @@ function nullable(value: unknown) {
 function tabForPath(path: string): ContactTab {
   if (path.startsWith("emails") || path.startsWith("phones")) return "communication";
   if (path.startsWith("addresses")) return "addresses";
+  if (path === "openingBalance" || path === "creditLimit") return "finance";
   if (path.startsWith("bankAccounts")) return "finance";
   if (path.startsWith("socialLinks") || path === "website" || path === "description") return "more";
   if (["gstin", "pan", "msmeNo", "msmeCategory", "tanNo"].includes(path)) return "tax";

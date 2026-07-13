@@ -31,7 +31,10 @@ CODEXSUN is intended to be:
 - Tenant UI E2E coverage verifies route wiring, tenant-scoped CRUD, and wrong `x-tenant-id` rejection.
 - Super Admin has database-backed domain and industry registry management.
 - Tenant can create multiple companies in the Company master.
-- Default company/accounting-year selection exists for the tenant application desk.
+- Organisation owns tenant-database `financial_years` and singleton `default_company_settings`
+  records. The tenant application desk loads the persisted default company, landing app, and
+  accounting year. The sidebar switcher persists company/year changes back to that singleton and
+  publishes both values through the shared frontend context for every enabled app.
 
 ### Partially Implemented
 

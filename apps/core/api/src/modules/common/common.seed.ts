@@ -23,6 +23,8 @@ import { seedStockRejectionTypes } from "./workorder/stock-rejection-types/stock
 import { seedTransports } from "./workorder/transports/transports.seed.js";
 import { seedWarehouses } from "./workorder/warehouses/warehouses.seed.js";
 import { seedWorkOrderTypes } from "./workorder/work-order-types/work-order-types.seed.js";
+import { seedLedgerGroups } from "./accounts/ledger-groups/ledger-groups.seed.js";
+import { seedLedgers } from "./accounts/ledgers/ledgers.seed.js";
 
 export const commonSeed = {
   description: "Common module aggregator seed behavior.",
@@ -30,6 +32,8 @@ export const commonSeed = {
 };
 export async function seedCommonModule() {
   await seedLocationModules();
+  await seedLedgerGroups();
+  await seedLedgers();
   await seedAddressTypes();
   await seedBankNames();
   await seedContactGroups();
