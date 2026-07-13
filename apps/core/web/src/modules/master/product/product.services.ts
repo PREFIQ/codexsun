@@ -1,6 +1,13 @@
 import { getTenantDbName, getToken } from "../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../shared/env/client-env";
-import type { ProductRecord, ProductSavePayload } from "./product.types";
+import type {
+  ProductHsnCodeLookup,
+  ProductLookups,
+  ProductNamedLookup,
+  ProductRecord,
+  ProductSavePayload,
+  ProductTaxLookup
+} from "./product.types";
 const base = requiredClientEnv("VITE_CORE_API_URL"),
   path = "/core/master/products";
 type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
@@ -32,3 +39,46 @@ export const setProductActive = (id: number, active: boolean) =>
   request<ProductRecord>(`${path}/${id}/${active ? "activate" : "deactivate"}`, { method: "POST" });
 export const forceDeleteProduct = (id: number) =>
   request<ProductRecord>(`${path}/${id}/force`, { method: "DELETE" });
+
+export async function listProductLookups(): Promise<ProductLookups> {
+  const [productTypes, productCategories, hsnCodes, units, taxes] = await Promise.all([
+    request<ProductNamedLookup[]>("/core/common/products/product-types"),
+    request<ProductNamedLookup[]>("/core/common/products/product-categories"),
+    request<ProductHsnCodeLookup[]>("/core/common/products/hsn-codes"),
+    request<ProductNamedLookup[]>("/core/common/products/units"),
+    request<ProductTaxLookup[]>("/core/common/products/taxes")
+  ]);
+  return {
+    productTypes: productTypes.filter((item) => item.isActive),
+    productCategories: productCategories.filter((item) => item.isActive),
+    hsnCodes: hsnCodes.filter((item) => item.isActive),
+    units: units.filter((item) => item.isActive),
+    taxes: taxes.filter((item) => item.isActive)
+  };
+}
+
+export const createProductTypeLookup = (name: string) =>
+  request<ProductNamedLookup>("/core/common/products/product-types", {
+    body: JSON.stringify({ name, isActive: true, sortOrder: 1000 }),
+    method: "POST"
+  });
+export const createProductCategoryLookup = (name: string) =>
+  request<ProductNamedLookup>("/core/common/products/product-categories", {
+    body: JSON.stringify({ name, isActive: true, sortOrder: 1000 }),
+    method: "POST"
+  });
+export const createHsnCodeLookup = (code: string, description: string) =>
+  request<ProductHsnCodeLookup>("/core/common/products/hsn-codes", {
+    body: JSON.stringify({ code, description, isActive: true, sortOrder: 1000 }),
+    method: "POST"
+  });
+export const createUnitLookup = (name: string) =>
+  request<ProductNamedLookup>("/core/common/products/units", {
+    body: JSON.stringify({ name, isActive: true, sortOrder: 1000 }),
+    method: "POST"
+  });
+export const createTaxLookup = (ratePercent: number, description: string) =>
+  request<ProductTaxLookup>("/core/common/products/taxes", {
+    body: JSON.stringify({ ratePercent, description, isActive: true, sortOrder: 1000 }),
+    method: "POST"
+  });

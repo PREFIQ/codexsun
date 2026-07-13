@@ -6,25 +6,48 @@ import { Button } from "@codexsun/ui/components/button";
 import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { ProductForm } from "./product.form";
-import { useProducts } from "./product.hooks";
+import {
+  productLookupsQueryKey,
+  productsQueryKey,
+  useProductLookups,
+  useProducts
+} from "./product.hooks";
 import { ProductList } from "./product.list";
 import {
   createProduct,
+  createHsnCodeLookup,
+  createProductCategoryLookup,
+  createProductTypeLookup,
+  createTaxLookup,
+  createUnitLookup,
   forceDeleteProduct,
   setProductActive,
   updateProduct
 } from "./product.services";
-import type { ProductRecord, ProductSavePayload } from "./product.types";
+import type {
+  ProductLookupCreate,
+  ProductLookups,
+  ProductRecord,
+  ProductSavePayload
+} from "./product.types";
+const emptyLookups: ProductLookups = {
+  productTypes: [],
+  productCategories: [],
+  hsnCodes: [],
+  units: [],
+  taxes: []
+};
 export function ProductWorkspace() {
   const client = useQueryClient(),
     [search, setSearch] = useState(""),
     [editing, setEditing] = useState<ProductRecord | null | undefined>(undefined),
-    query = useProducts(search);
+    query = useProducts(search),
+    lookupsQuery = useProductLookups();
   const save = useMutation({
     mutationFn: (payload: ProductSavePayload) =>
       editing ? updateProduct(editing.id, payload) : createProduct(payload),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: ["core", "product", "list"] });
+      await client.invalidateQueries({ queryKey: productsQueryKey });
       toast.success("Product saved");
       setEditing(undefined);
     },
@@ -36,15 +59,31 @@ export function ProductWorkspace() {
         ? forceDeleteProduct(record.id)
         : setProductActive(record.id, !record.isActive),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: ["core", "product", "list"] });
+      await client.invalidateQueries({ queryKey: productsQueryKey });
     },
     onError: (error) => toast.error("Unable to update product", { description: error.message })
   });
+  const refreshLookups = async <Record,>(work: () => Promise<Record>) => {
+    const result = await work();
+    await client.invalidateQueries({ queryKey: productLookupsQueryKey });
+    return result;
+  };
+  const createLookup: ProductLookupCreate = {
+    productType: (name) => refreshLookups(() => createProductTypeLookup(name)),
+    productCategory: (name) => refreshLookups(() => createProductCategoryLookup(name)),
+    hsnCode: (code, description) => refreshLookups(() => createHsnCodeLookup(code, description)),
+    unit: (name) => refreshLookups(() => createUnitLookup(name)),
+    tax: (ratePercent, description) =>
+      refreshLookups(() => createTaxLookup(ratePercent, description))
+  };
   if (editing !== undefined)
     return (
       <ProductForm
+        createLookup={createLookup}
         error={save.error?.message ?? ""}
         loading={save.isPending}
+        lookups={lookupsQuery.data ?? emptyLookups}
+        lookupsLoading={lookupsQuery.isLoading}
         record={editing}
         onBack={() => setEditing(undefined)}
         onSubmit={(payload) => save.mutate(payload)}

@@ -43,6 +43,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 - Replaced the India-only six-digit Pincode validation with an international 2-20 character postal-code contract supporting letters, numbers, spaces, and hyphens in both the Common Pincode owner and Contact lookup creation popup.
 - Moved Contact next-code generation to the Contact backend using all persisted codes, recognizing both `C-0000` and legacy `C_0001` sequences while returning the canonical next `C-####` value independently of frontend search filters.
 - Aligned the Contact postal-code creation popup with the Common Country upsert tone using a compact dialog width, padded header and fields, descriptive copy, footer divider, and consistent primary/cancel action spacing.
+- Replaced Product's raw Product Type, Product Category, HSN Code, Unit, and GST Tax ID inputs with Product-owned autocomplete lookups, fixed Common relationship endpoints, create-and-select flows, active-reference validation, and persisted numeric foreign IDs.
 - Bumped workspace version to 1.0.28.
 
 ## v-1.0.27

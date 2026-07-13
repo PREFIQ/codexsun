@@ -26,6 +26,36 @@ type ProductRow = {
 };
 
 export class ProductRepository {
+  async hasActiveProductType(id: number) {
+    const result = await sql<{ id: number }>`SELECT id FROM product_types
+      WHERE id=${id} AND status='active' LIMIT 1`.execute(getCoreDatabase());
+    return Boolean(result.rows[0]);
+  }
+
+  async hasActiveProductCategory(id: number) {
+    const result = await sql<{ id: number }>`SELECT id FROM product_categories
+      WHERE id=${id} AND status='active' LIMIT 1`.execute(getCoreDatabase());
+    return Boolean(result.rows[0]);
+  }
+
+  async hasActiveHsnCode(id: number) {
+    const result = await sql<{ id: number }>`SELECT id FROM hsn_codes
+      WHERE id=${id} AND status='active' LIMIT 1`.execute(getCoreDatabase());
+    return Boolean(result.rows[0]);
+  }
+
+  async hasActiveUnit(id: number) {
+    const result = await sql<{ id: number }>`SELECT id FROM units
+      WHERE id=${id} AND status='active' LIMIT 1`.execute(getCoreDatabase());
+    return Boolean(result.rows[0]);
+  }
+
+  async hasActiveTax(id: number) {
+    const result = await sql<{ id: number }>`SELECT id FROM taxes
+      WHERE id=${id} AND status='active' LIMIT 1`.execute(getCoreDatabase());
+    return Boolean(result.rows[0]);
+  }
+
   async list(filters: ProductListFilters = {}) {
     const search = filters.search?.trim().toLowerCase() ?? "";
     const result = await sql<ProductRow>`SELECT * FROM products
