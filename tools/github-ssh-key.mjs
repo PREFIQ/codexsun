@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, readFileSync } from "node:fs";
-import { hostname, tmpdir } from "node:os";
-import { join } from "node:path";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { hostname } from "node:os";
+import { join, resolve } from "node:path";
 import process from "node:process";
 
 const output = globalThis.console;
@@ -15,7 +15,12 @@ if (options.help) {
   process.exit(0);
 }
 
-const directory = mkdtempSync(join(tmpdir(), "codexsun-github-key-"));
+const repositoryRoot = resolve(import.meta.dirname, "..");
+const repositoryTemp = join(repositoryRoot, ".temp");
+mkdirSync(repositoryTemp, { mode: 0o700, recursive: true });
+chmodSync(repositoryTemp, 0o700);
+
+const directory = mkdtempSync(join(repositoryTemp, "github-ssh-key-"));
 const privateKeyPath = join(directory, "github_codexsun");
 const publicKeyPath = `${privateKeyPath}.pub`;
 const comment = options.comment ?? `codexsun-server@${hostname()}`;
@@ -51,7 +56,7 @@ if (!publicKey.startsWith("ssh-ed25519 ")) {
 if (options.json) {
   output.log(JSON.stringify({ comment, directory, privateKeyPath, publicKey, publicKeyPath }));
 } else {
-  output.log("GitHub SSH keypair generated in the operating-system temp directory.");
+  output.log("GitHub SSH keypair generated in the repository's ignored .temp directory.");
   output.log(`Private key: ${privateKeyPath}`);
   output.log(`Public key:  ${publicKeyPath}`);
   output.log("");
@@ -99,6 +104,6 @@ Usage:
   npm run github:ssh-key -- --comment "codexsun-server"
   npm run github:ssh-key -- --json
 
-The private key is created only in the operating-system temp directory and is never
-written into the repository. The command prints the public key for GitHub setup.`);
+The keypair is created under this repository's ignored .temp directory. It is never
+tracked by Git. The command prints the public key for GitHub setup.`);
 }

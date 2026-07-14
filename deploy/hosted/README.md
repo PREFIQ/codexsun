@@ -12,7 +12,7 @@ These checked-in files target the current host layout:
 
 ## Generate the server GitHub key
 
-Generate a temporary ED25519 keypair on the server:
+Generate a temporary ED25519 keypair under the server repository's ignored `.temp` directory:
 
 ```sh
 npm run github:ssh-key -- --comment "codexsun-server"
@@ -24,8 +24,8 @@ the exact temporary paths printed by the command:
 
 ```sh
 install -d -m 700 ~/.ssh
-install -m 600 /tmp/codexsun-github-key-XXXXXX/github_codexsun ~/.ssh/github_codexsun
-install -m 644 /tmp/codexsun-github-key-XXXXXX/github_codexsun.pub ~/.ssh/github_codexsun.pub
+install -m 600 /home/sundar/codexsun/.temp/github-ssh-key-XXXXXX/github_codexsun ~/.ssh/github_codexsun
+install -m 644 /home/sundar/codexsun/.temp/github-ssh-key-XXXXXX/github_codexsun.pub ~/.ssh/github_codexsun.pub
 ```
 
 Replace `XXXXXX` with the generated directory name. Then add this host entry to `~/.ssh/config`:
