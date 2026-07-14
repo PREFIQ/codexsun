@@ -106,7 +106,10 @@ const printCopyOptions: Array<{ label: string; value: SalePrintCopy }> = [
 ];
 
 export function SalePrintDocument({ copy, sale }: { copy: SalePrintCopy; sale: Sale }) {
-  const addressMode = useBillingSettings().data?.printing.addressMode ?? "billing_and_shipping";
+  const billingSettings = useBillingSettings().data;
+  const addressMode = billingSettings?.printing.addressMode ?? "billing_and_shipping";
+  const showPo = billingSettings?.layout.usePo ?? false;
+  const showDc = billingSettings?.layout.useDc ?? false;
   const statesQuery = useQuery({
     queryFn: () => listSaleLocations("states"),
     queryKey: ["billing", "sale", "print", "states"]
@@ -132,25 +135,14 @@ export function SalePrintDocument({ copy, sale }: { copy: SalePrintCopy; sale: S
           addressMode={addressMode}
           billingAddress={billingAddress}
           shippingAddress={shippingAddress}
+          showDc={showDc}
+          showPo={showPo}
           sale={sale}
         />
       ))}
     </WorkspacePrintSheet>
   );
 }
-
-const salePrintHeadings = [
-  "S.no",
-  "Particulars",
-  "HSN",
-  "Qty",
-  "Rate",
-  "Taxable",
-  "GST %",
-  "CGST",
-  "SGST",
-  "Total"
-];
 
 function SalePrintPage({
   copy,
@@ -162,6 +154,8 @@ function SalePrintPage({
   addressMode,
   billingAddress,
   shippingAddress,
+  showDc,
+  showPo,
   sale
 }: {
   copy: SalePrintCopy;
@@ -173,10 +167,25 @@ function SalePrintPage({
   addressMode: "billing_only" | "billing_and_shipping";
   billingAddress: { address: string; state: string };
   shippingAddress: { address: string; state: string };
+  showDc: boolean;
+  showPo: boolean;
   sale: Sale;
 }) {
   const splitTax = sale.taxType === "cgst-sgst";
   const blankRows = isLastPage ? Math.max(0, 12 - items.length) : 0;
+  const headings = [
+    "S.no",
+    ...(showPo ? ["PO"] : []),
+    ...(showDc ? ["DC"] : []),
+    "Particulars",
+    "HSN",
+    "Qty",
+    "Rate",
+    "Taxable",
+    "GST %",
+    "GST Amount",
+    "Total"
+  ];
 
   return (
     <article
@@ -266,13 +275,28 @@ function SalePrintPage({
         </section>
 
         <section>
-          <table className="w-full border-collapse text-[10px]">
+          <table className="w-full table-fixed border-collapse text-[10px]">
+            <colgroup>
+              <col className="w-[4.5%]" />
+              {showPo ? <col className="w-[7%]" /> : null}
+              {showDc ? <col className="w-[7%]" /> : null}
+              <col />
+              <col className="w-[10ch]" />
+              <col className="w-[5.5%]" />
+              <col className="w-[8%]" />
+              <col className="w-[9%]" />
+              <col className="w-[7%]" />
+              <col className="w-[10%]" />
+              <col className="w-[9%]" />
+            </colgroup>
             <thead>
               <tr className="border-b border-slate-300">
-                {salePrintHeadings.map((heading) => (
+                {headings.map((heading) => (
                   <th
                     key={heading}
-                    className="border-r border-slate-300 px-2 py-2 text-center font-semibold last:border-r-0"
+                    className={`border-r border-slate-300 py-2 text-center font-semibold last:border-r-0 ${
+                      heading === "Particulars" ? "px-1.5 text-left" : "px-1"
+                    }`}
                   >
                     {heading}
                   </th>
@@ -284,25 +308,34 @@ function SalePrintPage({
                 <tr>
                   <td
                     className="border-b border-slate-300 px-2 py-1 text-left font-semibold"
-                    colSpan={salePrintHeadings.length}
+                    colSpan={headings.length}
                   >
                     Carry forward from previous page
                   </td>
                 </tr>
               ) : null}
               {items.map(({ item, index }) => (
-                <SalePrintItemRow key={item.id} item={item} index={index} />
+                <SalePrintItemRow
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  showDc={showDc}
+                  showPo={showPo}
+                />
               ))}
               {Array.from({ length: blankRows }).map((_, index) => (
-                <SalePrintBlankRow key={`blank-${pageIndex}-${index}`} />
+                <SalePrintBlankRow
+                  key={`blank-${pageIndex}-${index}`}
+                  columnCount={headings.length}
+                />
               ))}
               {isLastPage ? (
-                <SalePrintTotalRow sale={sale} />
+                <SalePrintTotalRow sale={sale} showDc={showDc} showPo={showPo} />
               ) : (
                 <tr>
                   <td
                     className="border-t border-slate-300 px-2 py-2 text-right font-semibold"
-                    colSpan={salePrintHeadings.length}
+                    colSpan={headings.length}
                   >
                     To be continued...
                   </td>
@@ -364,68 +397,97 @@ function SalePrintPage({
   );
 }
 
-function SalePrintItemRow({ item, index }: { item: Sale["items"][number]; index: number }) {
+function SalePrintItemRow({
+  item,
+  index,
+  showDc,
+  showPo
+}: {
+  item: Sale["items"][number];
+  index: number;
+  showDc: boolean;
+  showPo: boolean;
+}) {
+  const particulars = [item.productName, item.description].filter(hasDisplayValue).join(" - ");
+  const variants = [
+    hasDisplayValue(item.colour) ? `Colour: ${item.colour.trim()}` : "",
+    hasDisplayValue(item.size) ? `Size: ${item.size.trim()}` : ""
+  ].filter(Boolean);
+
   return (
     <tr className="align-top">
-      <td className="border-r border-slate-200 px-2 py-2 text-center">{index + 1}</td>
-      <td className="border-r border-slate-200 px-2 py-2">
-        <div className="font-medium">
-          {[item.productName, item.description].filter(Boolean).join(" - ")}
-        </div>
-        <div>
-          {[item.colour ? `Colour : ${item.colour}` : "", item.size ? `Size : ${item.size}` : ""]
-            .filter(Boolean)
-            .join(" - ")}
-        </div>
+      <td className="border-r border-slate-200 px-1 py-2 text-center">{index + 1}</td>
+      {showPo ? (
+        <td className="break-words border-r border-slate-200 px-1 py-2 text-center">
+          {hasDisplayValue(item.poNo) ? item.poNo : ""}
+        </td>
+      ) : null}
+      {showDc ? (
+        <td className="break-words border-r border-slate-200 px-1 py-2 text-center">
+          {hasDisplayValue(item.dcNo) ? item.dcNo : ""}
+        </td>
+      ) : null}
+      <td className="break-words border-r border-slate-200 px-1.5 py-2 leading-4">
+        <div className="font-medium">{particulars}</div>
+        {variants.length ? <div>{variants.join(" - ")}</div> : null}
       </td>
-      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.hsnCode || "-"}</td>
-      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.quantity}</td>
-      <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.rate)}</td>
-      <td className="border-r border-slate-200 px-2 py-2 text-right">
+      <td className="whitespace-nowrap border-r border-slate-200 px-1 py-2 text-center">
+        {hasDisplayValue(item.hsnCode) ? item.hsnCode : ""}
+      </td>
+      <td className="border-r border-slate-200 px-1 py-2 text-center">{item.quantity}</td>
+      <td className="border-r border-slate-200 px-1 py-2 text-right">{money(item.rate)}</td>
+      <td className="border-r border-slate-200 px-1 py-2 text-right">
         {money(item.taxableAmount)}
       </td>
-      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.taxRate}%</td>
-      <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.cgstAmount)}</td>
-      <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.sgstAmount)}</td>
-      <td className="px-2 py-2 text-right">{money(item.lineTotal)}</td>
+      <td className="border-r border-slate-200 px-1 py-2 text-center">{item.taxRate}%</td>
+      <td className="border-r border-slate-200 px-1 py-2 text-right">{money(item.taxAmount)}</td>
+      <td className="px-1 py-2 text-right">{money(item.lineTotal)}</td>
     </tr>
   );
 }
 
-function SalePrintBlankRow() {
+function SalePrintBlankRow({ columnCount }: { columnCount: number }) {
   return (
     <tr className="h-6">
-      {salePrintHeadings.map((heading, index) => (
-        <td
-          key={heading}
-          className={index === salePrintHeadings.length - 1 ? "" : "border-r border-slate-200"}
-        />
+      {Array.from({ length: columnCount }).map((_, index) => (
+        <td key={index} className={index === columnCount - 1 ? "" : "border-r border-slate-200"} />
       ))}
     </tr>
   );
 }
 
-function SalePrintTotalRow({ sale }: { sale: Sale }) {
+function SalePrintTotalRow({
+  sale,
+  showDc,
+  showPo
+}: {
+  sale: Sale;
+  showDc: boolean;
+  showPo: boolean;
+}) {
   return (
     <tr className="border-t border-slate-300 font-semibold">
-      <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={3}>
+      <td
+        className="border-r border-slate-200 px-1 py-2 text-right"
+        colSpan={3 + Number(showPo) + Number(showDc)}
+      >
         Total
       </td>
-      <td className="border-r border-slate-200 px-2 py-2 text-center">
+      <td className="border-r border-slate-200 px-1 py-2 text-center">
         {sale.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}
       </td>
-      <td className="border-r border-slate-200 px-2 py-2" />
-      <td className="border-r border-slate-200 px-2 py-2 text-right">{money(sale.subtotal)}</td>
-      <td className="border-r border-slate-200 px-2 py-2" />
-      <td className="border-r border-slate-200 px-2 py-2 text-right">
-        {money(sale.taxAmount / 2)}
-      </td>
-      <td className="border-r border-slate-200 px-2 py-2 text-right">
-        {money(sale.taxAmount / 2)}
-      </td>
-      <td className="px-2 py-2 text-right">{money(sale.amount)}</td>
+      <td className="border-r border-slate-200 px-1 py-2" />
+      <td className="border-r border-slate-200 px-1 py-2 text-right">{money(sale.subtotal)}</td>
+      <td className="border-r border-slate-200 px-1 py-2" />
+      <td className="border-r border-slate-200 px-1 py-2 text-right">{money(sale.taxAmount)}</td>
+      <td className="px-1 py-2 text-right">{money(sale.amount)}</td>
     </tr>
   );
+}
+
+function hasDisplayValue(value: string | null | undefined) {
+  const normalized = value?.trim() ?? "";
+  return Boolean(normalized && normalized !== "-");
 }
 
 function chunkItems(items: Sale["items"], _size: number) {

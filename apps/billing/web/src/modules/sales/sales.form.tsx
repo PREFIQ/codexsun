@@ -128,6 +128,10 @@ export function SalesForm({
   settings: BillingDocumentLayoutSettings;
 }) {
   const [activeTab, setActiveTab] = useState("details");
+  useEffect(() => {
+    if (activeTab === "eway" && !settings.useEway) setActiveTab("details");
+    if (activeTab === "einvoice" && !settings.useEinvoice) setActiveTab("details");
+  }, [activeTab, settings.useEinvoice, settings.useEway]);
   const [workflowAction, setWorkflowAction] = useState<"draft" | "submit" | "revoke">(
     sale?.status === "confirmed" ? "revoke" : "draft"
   );

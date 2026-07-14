@@ -6,6 +6,7 @@ import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
 import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import { getDocumentSettings, saveDocumentSettings } from "./settings.services";
+import { billingSettingsQueryKey, useCompanyContextId } from "./settings.hooks";
 import {
   defaultBillingSettings,
   type BillingDocumentNumberSettings,
@@ -24,9 +25,11 @@ const documents: Array<{ key: BillingNumberDocumentKind; label: string }> = [
 
 export function DocumentSettingsWorkspace() {
   const queryClient = useQueryClient();
+  const companyId = useCompanyContextId();
   const query = useQuery({
+    enabled: Boolean(companyId),
     queryFn: getDocumentSettings,
-    queryKey: ["billing", "document-settings"]
+    queryKey: ["billing", "document-settings", companyId]
   });
   const [form, setForm] = useState<BillingSettings["numbering"]>(defaultBillingSettings.numbering);
 
@@ -38,8 +41,10 @@ export function DocumentSettingsWorkspace() {
     mutationFn: saveDocumentSettings,
     onSuccess: async (settings) => {
       setForm(settings);
-      await queryClient.invalidateQueries({ queryKey: ["billing", "document-settings"] });
-      await queryClient.invalidateQueries({ queryKey: ["billing", "settings"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["billing", "document-settings", companyId]
+      });
+      await queryClient.invalidateQueries({ queryKey: billingSettingsQueryKey(companyId) });
       toast.success("Document settings saved");
     },
     onError: (error) =>

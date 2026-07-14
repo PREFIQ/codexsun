@@ -4,7 +4,13 @@ export { DocumentSettingsWorkspace } from "./settings.document-workspace";
 export * from "./settings.list";
 export * from "./settings.schema";
 export { SalesSettingsPage } from "./settings.workspace";
-export { useBillingSettings, useSalesSettings } from "./settings.hooks";
+export {
+  billingSettingsQueryKey,
+  useBillingSettings,
+  useCompanyContextId,
+  useSalesSettings
+} from "./settings.hooks";
+export { getBillingSettings } from "./settings.services";
 export type {
   BillingDocumentKind,
   BillingDocumentLayoutSettings,

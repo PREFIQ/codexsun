@@ -27,6 +27,8 @@ type PurchaseHeaderRow = {
   created_at: string;
   currency_code: string;
   currency_id: number;
+  purchase_einvoice_json: string | null;
+  purchase_eway_json: string | null;
   supplier_email: string | null;
   supplier_id: number;
   supplier_name: string;
@@ -365,14 +367,17 @@ export class PurchaseRepository {
           uuid, company_id, financial_year_id, line_number, purchase_number, supplier_id,
           supplier_bill_number, supplier_bill_date,
           billing_address_id, shipping_address_id, work_order_id, ledger_id, tax_type,
-          currency_id, purchase_date, subtotal, tax_amount, round_off, amount, terms, notes, status
+          currency_id, purchase_date, subtotal, tax_amount, round_off, amount, terms, notes, status,
+          purchase_eway_json, purchase_einvoice_json
         ) VALUES (
           ${uuid}, ${input.companyId}, ${input.financialYearId}, ${lineNumber}, ${input.invoiceNumber},
           ${input.supplierId}, ${input.supplierBillNo ?? null}, ${input.supplierBillDate || null},
           ${input.billingAddressId}, ${input.shippingAddressId},
           ${input.workOrderId}, ${input.ledgerId}, ${input.taxType ?? "cgst-sgst"},
           ${input.currencyId}, ${input.issuedOn}, ${totals.subtotal}, ${totals.taxAmount},
-          ${input.roundOff ?? 0}, ${totals.amount}, ${input.terms ?? ""}, ${input.notes}, ${input.status}
+          ${input.roundOff ?? 0}, ${totals.amount}, ${input.terms ?? ""}, ${input.notes}, ${input.status},
+          ${JSON.stringify(input.eway ?? emptyPurchaseEway())},
+          ${JSON.stringify(input.einvoice ?? emptyPurchaseEinvoice())}
         )
       `.execute(transaction);
       const purchaseId = Number(inserted.insertId);
@@ -404,6 +409,8 @@ export class PurchaseRepository {
           purchase_date = ${input.issuedOn}, subtotal = ${totals.subtotal}, tax_amount = ${totals.taxAmount},
           round_off = ${input.roundOff ?? 0}, amount = ${totals.amount}, terms = ${input.terms ?? ""},
           notes = ${input.notes}, status = ${input.status}, updated_at = CURRENT_TIMESTAMP(3)
+          , purchase_eway_json = ${JSON.stringify(input.eway ?? emptyPurchaseEway())}
+          , purchase_einvoice_json = ${JSON.stringify(input.einvoice ?? emptyPurchaseEinvoice())}
         WHERE id = ${existing.id}
       `.execute(transaction);
       await sql`DELETE FROM billing_purchase_items WHERE purchase_id = ${existing.id}`.execute(
@@ -496,6 +503,8 @@ export class PurchaseRepository {
       createdAt: row.created_at,
       currencyCode: row.currency_code,
       currencyId: row.currency_id,
+      einvoice: parsePurchaseEinvoice(row.purchase_einvoice_json),
+      eway: parsePurchaseEway(row.purchase_eway_json),
       supplierEmail: row.supplier_email ?? "",
       supplierId: row.supplier_id,
       supplierName: row.supplier_name,
@@ -552,7 +561,7 @@ function selectPurchaseHeaders(uuid?: string) {
            ledger.name AS ledger_name, s.tax_type, s.currency_id, currency.name AS currency_code,
            DATE_FORMAT(s.purchase_date, '%Y-%m-%d') AS purchase_date,
             s.subtotal, s.tax_amount, s.round_off, s.amount, s.terms, s.notes, s.status,
-            s.generated_sales_invoice_no,
+            s.generated_sales_invoice_no, s.purchase_eway_json, s.purchase_einvoice_json,
            DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%s') AS created_at,
            DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%s') AS updated_at
     FROM billing_purchases s
@@ -567,6 +576,30 @@ function selectPurchaseHeaders(uuid?: string) {
     WHERE s.deleted_at IS NULL ${uuid ? sql`AND s.uuid = ${uuid}` : sql``}
     ORDER BY s.purchase_date DESC, s.line_number DESC
   `;
+}
+
+function emptyPurchaseEway() {
+  return { billDate: "", billNo: "", transport: "", vehicleNo: "" };
+}
+
+function emptyPurchaseEinvoice() {
+  return { ackDate: "", ackNo: "", irn: "", signedQr: "" };
+}
+
+function parsePurchaseEway(value: string | null) {
+  try {
+    return { ...emptyPurchaseEway(), ...(value ? JSON.parse(value) : {}) };
+  } catch {
+    return emptyPurchaseEway();
+  }
+}
+
+function parsePurchaseEinvoice(value: string | null) {
+  try {
+    return { ...emptyPurchaseEinvoice(), ...(value ? JSON.parse(value) : {}) };
+  } catch {
+    return emptyPurchaseEinvoice();
+  }
 }
 
 function selectPurchaseItems(purchaseId: number) {

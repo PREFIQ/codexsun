@@ -839,10 +839,17 @@
   }
 
   .global-loader-fullscreen {
-    backdrop-filter: blur(12px);
+    animation: global-loader-backdrop-in 240ms linear 120ms both;
+    backdrop-filter: blur(0);
+    background: transparent;
     inset: 0;
     min-height: 100svh;
     position: fixed;
+    will-change: background-color, backdrop-filter;
+  }
+
+  .global-loader-fullscreen .global-loader-mark {
+    animation: global-loader-mark-in 200ms ease-out 150ms both;
   }
 
   .global-loader-inline {
@@ -945,6 +952,38 @@
     height: 41px;
     object-fit: contain;
     width: 41px;
+  }
+
+  @keyframes global-loader-backdrop-in {
+    from {
+      backdrop-filter: blur(0);
+      background-color: transparent;
+    }
+
+    to {
+      backdrop-filter: blur(7px);
+      background-color: rgb(2 6 23 / 0.12);
+    }
+  }
+
+  @keyframes global-loader-mark-in {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .global-loader-fullscreen,
+    .global-loader-fullscreen .global-loader-mark {
+      animation-delay: 0ms;
+      animation-duration: 1ms;
+    }
   }
 
   [data-sonner-toast][data-styled="true"] .workspace-toast-close[data-close-button] {

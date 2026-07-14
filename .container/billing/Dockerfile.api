@@ -1,0 +1,24 @@
+FROM node:22-bookworm-slim AS build
+WORKDIR /app
+COPY . .
+RUN npm ci \
+  && npm run build -w @codexsun/framework \
+  && npm run build -w @codexsun/billing-api \
+  && npm prune --omit=dev
+
+FROM node:22-bookworm-slim AS runtime
+ARG CODEXSUN_VERSION=1.0.32
+LABEL org.opencontainers.image.title="CODEXSUN Billing API" \
+      org.opencontainers.image.version="$CODEXSUN_VERSION"
+WORKDIR /app
+RUN mkdir -p /storage && chown node:node /storage
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages/framework ./packages/framework
+COPY --from=build /app/apps/billing/api/package.json ./apps/billing/api/package.json
+COPY --from=build /app/dist ./dist
+ENV NODE_ENV=production
+USER node
+EXPOSE 7050
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=10 \
+  CMD node -e "fetch('http://127.0.0.1:7050/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+CMD ["node", "dist/apps/billing/api/server.js"]

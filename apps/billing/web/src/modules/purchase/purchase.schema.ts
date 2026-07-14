@@ -26,6 +26,18 @@ export const purchaseSchema = z.object({
   companyId: z.number().int().positive("Default Company is required."),
   currencyCode: z.string().trim().length(3),
   currencyId: z.number().int().positive("Currency is required."),
+  einvoice: z.object({
+    ackDate: z.string(),
+    ackNo: z.string(),
+    irn: z.string(),
+    signedQr: z.string()
+  }),
+  eway: z.object({
+    billDate: z.union([z.iso.date(), z.literal("")]),
+    billNo: z.string(),
+    transport: z.string(),
+    vehicleNo: z.string()
+  }),
   supplierEmail: z.string(),
   supplierId: z.number().int().positive("Select a persisted supplier."),
   supplierName: z.string().trim().min(1, "Supplier is required."),

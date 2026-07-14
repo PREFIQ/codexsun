@@ -44,7 +44,10 @@ export class SalesService {
       await this.repository.resolveMissingReferences(databaseName, input)
     );
     await this.validateReferences(databaseName, normalized);
-    const billingSettings = await this.settings.getBillingSettings(databaseName);
+    const billingSettings = await this.settings.getBillingSettings(
+      databaseName,
+      normalized.companyId
+    );
     const numbering = billingSettings.numbering.sales;
     const numbered = await resolveNextSaleNumber(
       databaseName,
@@ -56,7 +59,7 @@ export class SalesService {
     const sale = await this.repository.create(databaseName, numbered.input, totals);
     if (!sale) throw AppError.validation("Sales invoice could not be created.");
     if (numbering.automatic && (numbered.generated || numbered.nextNumber > numbering.nextNumber)) {
-      await this.settings.saveBillingSettings(databaseName, {
+      await this.settings.saveBillingSettings(databaseName, normalized.companyId, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
@@ -122,6 +125,9 @@ export class SalesService {
   async generateEinvoice(databaseName: string, id: string, details?: SaleEinvoiceDetails) {
     let sale = await this.repository.get(databaseName, id);
     if (!sale) return null;
+    const settings = await this.settings.getBillingSettings(databaseName, sale.companyId);
+    if (!settings.layout.useEinvoice)
+      throw AppError.conflict("E-invoice is disabled for this company.");
     if (sale.status !== "confirmed")
       throw AppError.conflict("Confirm the sale before generating an E-invoice.");
     if (details)
@@ -136,6 +142,8 @@ export class SalesService {
   async generateEway(databaseName: string, id: string, details?: SaleEwayDetails) {
     let sale = await this.repository.get(databaseName, id);
     if (!sale) return null;
+    const settings = await this.settings.getBillingSettings(databaseName, sale.companyId);
+    if (!settings.layout.useEway) throw AppError.conflict("E-way is disabled for this company.");
     if (sale.status !== "confirmed")
       throw AppError.conflict("Confirm the sale before generating an E-way bill.");
     if (details)

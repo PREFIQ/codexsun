@@ -154,6 +154,10 @@ export function PurchaseForm({
       financialYearId: contextQuery.data.financialYearId
     }));
   }, [contextQuery.data, purchase]);
+  useEffect(() => {
+    if (activeTab === "eway" && !settings.useEway) setActiveTab("details");
+    if (activeTab === "einvoice" && !settings.useEinvoice) setActiveTab("details");
+  }, [activeTab, settings.useEinvoice, settings.useEway]);
   const [itemDraft, setItemDraft] = useState(
     () => createEmptyPurchase().items[0] ?? createEmptyPurchaseItem()
   );
@@ -622,6 +626,94 @@ export function PurchaseForm({
         </div>
       )
     },
+    ...(settings.useEway
+      ? [
+          {
+            value: "eway",
+            label: "E-way",
+            content: (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Field label="E-way bill number">
+                  <Input
+                    value={form.eway.billNo}
+                    onChange={(event) =>
+                      patch({ eway: { ...form.eway, billNo: event.target.value } })
+                    }
+                  />
+                </Field>
+                <Field label="E-way bill date">
+                  <WorkspaceDatePicker
+                    value={form.eway.billDate}
+                    onValueChange={(billDate) => patch({ eway: { ...form.eway, billDate } })}
+                  />
+                </Field>
+                <Field label="Transporter">
+                  <Input
+                    value={form.eway.transport}
+                    onChange={(event) =>
+                      patch({ eway: { ...form.eway, transport: event.target.value } })
+                    }
+                  />
+                </Field>
+                <Field label="Vehicle number">
+                  <Input
+                    value={form.eway.vehicleNo}
+                    onChange={(event) =>
+                      patch({ eway: { ...form.eway, vehicleNo: event.target.value } })
+                    }
+                  />
+                </Field>
+              </div>
+            )
+          }
+        ]
+      : []),
+    ...(settings.useEinvoice
+      ? [
+          {
+            value: "einvoice",
+            label: "E-invoice",
+            content: (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Field label="IRN">
+                  <Input
+                    value={form.einvoice.irn}
+                    onChange={(event) =>
+                      patch({ einvoice: { ...form.einvoice, irn: event.target.value } })
+                    }
+                  />
+                </Field>
+                <Field label="Acknowledgement number">
+                  <Input
+                    value={form.einvoice.ackNo}
+                    onChange={(event) =>
+                      patch({ einvoice: { ...form.einvoice, ackNo: event.target.value } })
+                    }
+                  />
+                </Field>
+                <Field label="Acknowledgement date">
+                  <Input
+                    type="datetime-local"
+                    value={form.einvoice.ackDate}
+                    onChange={(event) =>
+                      patch({ einvoice: { ...form.einvoice, ackDate: event.target.value } })
+                    }
+                  />
+                </Field>
+                <Field label="Signed QR data">
+                  <Textarea
+                    className="min-h-24"
+                    value={form.einvoice.signedQr}
+                    onChange={(event) =>
+                      patch({ einvoice: { ...form.einvoice, signedQr: event.target.value } })
+                    }
+                  />
+                </Field>
+              </div>
+            )
+          }
+        ]
+      : []),
     {
       value: "terms",
       label: "Terms",

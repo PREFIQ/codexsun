@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
@@ -11,7 +11,8 @@ import {
 } from "@codexsun/ui/workspace/animated-tabs";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
-import { getBillingSettings, saveBillingSettings } from "./settings.services";
+import { saveBillingSettings } from "./settings.services";
+import { billingSettingsQueryKey, useBillingSettings } from "./settings.hooks";
 import {
   defaultBillingSettings,
   type BillingDocumentKind,
@@ -46,12 +47,15 @@ const switches: Array<{ key: keyof BillingDocumentLayoutSettings; label: string 
   { key: "useEway", label: "E-way" }
 ];
 
+function switchNote(key: keyof BillingDocumentLayoutSettings, label: string) {
+  return key === "useEinvoice" || key === "useEway"
+    ? `Show ${label} tabs in sales, purchase, and export sales.`
+    : `Show ${label} controls in quotation, sales, and purchase.`;
+}
+
 export function BillingSettingsWorkspace() {
   const queryClient = useQueryClient();
-  const query = useQuery({
-    queryFn: getBillingSettings,
-    queryKey: ["billing", "settings"]
-  });
+  const query = useBillingSettings();
   const [activeTab, setActiveTab] = useState("layout");
   const [form, setForm] = useState<BillingSettings>(defaultBillingSettings);
 
@@ -63,7 +67,7 @@ export function BillingSettingsWorkspace() {
     mutationFn: saveBillingSettings,
     onSuccess: async (settings) => {
       setForm(settings);
-      await queryClient.invalidateQueries({ queryKey: ["billing", "settings"] });
+      await queryClient.invalidateQueries({ queryKey: billingSettingsQueryKey() });
       toast.success("Billing settings published", {
         description: "Quotation, sales, and purchase screens will use the updated controls."
       });
@@ -76,9 +80,45 @@ export function BillingSettingsWorkspace() {
   });
 
   function patchLayout(next: Partial<BillingDocumentLayoutSettings>) {
+    setForm((current) => {
+      const layout = { ...current.layout, ...next };
+      if (next.useEway === false) {
+        return { ...current, gstApiMode: "none", layout: { ...layout, useEinvoice: false } };
+      }
+      if (next.useEway === true) {
+        return {
+          ...current,
+          gstApiMode: layout.useEinvoice ? "einvoice_eway" : "eway_only",
+          layout
+        };
+      }
+      if (next.useEinvoice === true) {
+        return {
+          ...current,
+          gstApiMode: "einvoice_eway",
+          layout: { ...layout, useEway: true }
+        };
+      }
+      if (next.useEinvoice === false) {
+        return {
+          ...current,
+          gstApiMode: layout.useEway ? "eway_only" : "none",
+          layout
+        };
+      }
+      return { ...current, layout };
+    });
+  }
+
+  function patchGstApiMode(gstApiMode: BillingSettings["gstApiMode"]) {
     setForm((current) => ({
       ...current,
-      layout: { ...current.layout, ...next }
+      gstApiMode,
+      layout: {
+        ...current.layout,
+        useEinvoice: gstApiMode === "einvoice_eway",
+        useEway: gstApiMode !== "none"
+      }
     }));
   }
 
@@ -123,14 +163,12 @@ export function BillingSettingsWorkspace() {
                 <WorkspaceSelect
                   value={form.gstApiMode}
                   options={[
+                    { label: "None", value: "none" },
                     { label: "E-invoice + E-way", value: "einvoice_eway" },
                     { label: "E-way only", value: "eway_only" }
                   ]}
                   onValueChange={(gstApiMode) =>
-                    setForm((current) => ({
-                      ...current,
-                      gstApiMode: gstApiMode as BillingSettings["gstApiMode"]
-                    }))
+                    patchGstApiMode(gstApiMode as BillingSettings["gstApiMode"])
                   }
                 />
               </div>
@@ -141,7 +179,7 @@ export function BillingSettingsWorkspace() {
                   key={item.key}
                   checked={form.layout[item.key]}
                   label={item.label}
-                  note={`Show ${item.label} controls in quotation, sales, and purchase.`}
+                  note={switchNote(item.key, item.label)}
                   onChange={(checked) => patchLayout({ [item.key]: checked })}
                 />
               ))}

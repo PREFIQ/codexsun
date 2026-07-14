@@ -6,7 +6,7 @@ export const salesSettingsSchema = z.object({
     quotation: z.boolean(),
     tconnect: z.boolean()
   }),
-  gstApiMode: z.enum(["einvoice_eway", "eway_only"]),
+  gstApiMode: z.enum(["none", "einvoice_eway", "eway_only"]),
   layout: z.object({
     useColour: z.boolean(),
     useDc: z.boolean(),
@@ -30,7 +30,13 @@ export const salesSettingsSchema = z.object({
     })
   ),
   customise: z.object({
-    documentTitles: z.record(z.enum(["quotation", "sales", "purchase"]), z.string()),
+    documentTitles: z.object({
+      payment: z.string(),
+      purchase: z.string(),
+      quotation: z.string(),
+      receipt: z.string(),
+      sales: z.string()
+    }),
     printLanguage: z.literal("english")
   }),
   printing: z.object({

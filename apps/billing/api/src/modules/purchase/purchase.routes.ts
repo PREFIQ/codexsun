@@ -16,6 +16,18 @@ const lookupBodySchema = z.record(z.string(), z.unknown());
 const lookupResponseSchema = z.unknown();
 const statusSchema = z.enum(["draft", "confirmed", "cancelled"]);
 const taxTypeSchema = z.enum(["cgst-sgst", "igst"]);
+const ewaySchema = z.object({
+  billDate: z.union([z.iso.date(), z.literal("")]),
+  billNo: z.string(),
+  transport: z.string(),
+  vehicleNo: z.string()
+});
+const einvoiceSchema = z.object({
+  ackDate: z.string(),
+  ackNo: z.string(),
+  irn: z.string(),
+  signedQr: z.string()
+});
 const itemInputSchema = z.object({
   colour: z.string().optional(),
   colourId: z.number().int().positive().nullable(),
@@ -51,6 +63,8 @@ const purchasePayloadSchema = z.object({
   companyId: z.number().int().positive(),
   currencyCode: z.string().trim().length(3),
   currencyId: z.number().int().positive(),
+  einvoice: einvoiceSchema.optional(),
+  eway: ewaySchema.optional(),
   supplierEmail: z.string(),
   supplierId: z.number().int().positive(),
   supplierName: z.string(),
@@ -82,6 +96,8 @@ const purchaseSchema = z.object({
   createdAt: z.string(),
   currencyCode: z.string(),
   currencyId: z.number().int().positive(),
+  einvoice: einvoiceSchema,
+  eway: ewaySchema,
   supplierEmail: z.string(),
   supplierId: z.number().int().positive(),
   supplierName: z.string(),

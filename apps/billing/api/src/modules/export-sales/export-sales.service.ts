@@ -47,7 +47,10 @@ export class ExportSalesService {
       await this.repository.resolveMissingReferences(databaseName, input)
     );
     await this.validateReferences(databaseName, normalized);
-    const billingSettings = await this.settings.getBillingSettings(databaseName);
+    const billingSettings = await this.settings.getBillingSettings(
+      databaseName,
+      normalized.companyId
+    );
     const numbering = billingSettings.numbering.exportSales;
     const numbered = await resolveNextExportSaleNumber(
       databaseName,
@@ -59,7 +62,7 @@ export class ExportSalesService {
     const exportSale = await this.repository.create(databaseName, numbered.input, totals);
     if (!exportSale) throw AppError.validation("Export sales invoice could not be created.");
     if (numbering.automatic && (numbered.generated || numbered.nextNumber > numbering.nextNumber)) {
-      await this.settings.saveBillingSettings(databaseName, {
+      await this.settings.saveBillingSettings(databaseName, normalized.companyId, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
@@ -132,6 +135,9 @@ export class ExportSalesService {
   async generateEinvoice(databaseName: string, id: string, details?: ExportSaleEinvoiceDetails) {
     let exportSale = await this.repository.get(databaseName, id);
     if (!exportSale) return null;
+    const settings = await this.settings.getBillingSettings(databaseName, exportSale.companyId);
+    if (!settings.layout.useEinvoice)
+      throw AppError.conflict("E-invoice is disabled for this company.");
     if (exportSale.status !== "confirmed")
       throw AppError.conflict("Confirm the export sale before generating an E-invoice.");
     if (details)
@@ -147,6 +153,8 @@ export class ExportSalesService {
   async generateEway(databaseName: string, id: string, details?: ExportSaleEwayDetails) {
     let exportSale = await this.repository.get(databaseName, id);
     if (!exportSale) return null;
+    const settings = await this.settings.getBillingSettings(databaseName, exportSale.companyId);
+    if (!settings.layout.useEway) throw AppError.conflict("E-way is disabled for this company.");
     if (exportSale.status !== "confirmed")
       throw AppError.conflict("Confirm the export sale before generating an E-way bill.");
     if (details)

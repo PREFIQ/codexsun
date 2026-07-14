@@ -328,6 +328,8 @@ export function AppDesk() {
     queryFn: getDefaultCompany,
     queryKey: [...defaultCompanyQueryKey, runtimeQuery.data?.tenant?.uuid]
   });
+  const [companyContextId, setCompanyContextId] = useState<number | null>(null);
+  const [financialYearContextId, setFinancialYearContextId] = useState<number | null>(null);
   const runtime = runtimeQuery.data;
   const moduleKeys = runtime?.tenant?.enabledModuleKeys ?? ["platform.application"];
   const enabledApps = enabledAppIds(moduleKeys);
@@ -367,6 +369,14 @@ export function AppDesk() {
     activeFinancialYears.find((year) => year.isCurrent) ??
     activeFinancialYears[0] ??
     null;
+  const billingSettingsQuery = useQuery({
+    enabled: enabledApps.includes("billing") && Boolean(companyContextId),
+    queryFn: async () => {
+      const module = await import("@codexsun/billing-web");
+      return module.getBillingSettings();
+    },
+    queryKey: ["billing", "settings", companyContextId]
+  });
   const accountingYear = selectedFinancialYear?.name ?? "Accounting year";
   const defaultSelectionMutation = useMutation({
     mutationFn: saveDefaultCompany,
@@ -392,13 +402,21 @@ export function AppDesk() {
   }, [runtime?.tenant]);
 
   useEffect(() => {
-    if (!selectedCompany) return;
+    if (!selectedCompany) {
+      setCompanyContextId(null);
+      return;
+    }
     publishCompanyContext(selectedCompany.id);
+    setCompanyContextId(selectedCompany.id);
   }, [selectedCompany]);
 
   useEffect(() => {
-    if (!selectedFinancialYear) return;
+    if (!selectedFinancialYear) {
+      setFinancialYearContextId(null);
+      return;
+    }
     publishAccountingYear(selectedFinancialYear.id);
+    setFinancialYearContextId(selectedFinancialYear.id);
   }, [selectedFinancialYear]);
 
   useEffect(() => {
@@ -456,6 +474,37 @@ export function AppDesk() {
           ? "/app/billing/overview"
           : "/app/task-manager/overview"
   }));
+
+  const contextError =
+    !companiesQuery.isLoading && runtime?.tenant && !selectedCompany
+      ? new Error("No active company is available for this tenant.")
+      : !financialYearsQuery.isLoading && runtime?.tenant && !selectedFinancialYear
+        ? new Error("No active financial year is available for this tenant.")
+        : null;
+
+  const bootstrapLoading =
+    runtimeQuery.isLoading ||
+    companiesQuery.isLoading ||
+    financialYearsQuery.isLoading ||
+    defaultCompanyQuery.isLoading ||
+    (!companyContextId && !contextError) ||
+    (!financialYearContextId && !contextError) ||
+    (enabledApps.includes("billing") && billingSettingsQuery.isLoading);
+  const bootstrapError =
+    runtimeQuery.error ??
+    companiesQuery.error ??
+    financialYearsQuery.error ??
+    defaultCompanyQuery.error ??
+    billingSettingsQuery.error ??
+    contextError;
+
+  if (bootstrapLoading || bootstrapError) {
+    return (
+      <AuthGate desk="tenant">
+        <TenantBootstrapScreen error={bootstrapError} />
+      </AuthGate>
+    );
+  }
 
   return (
     <AuthGate desk="tenant">
@@ -548,6 +597,23 @@ export function AppDesk() {
         </main>
       </ApplicationLayout>
     </AuthGate>
+  );
+}
+
+function TenantBootstrapScreen({ error }: { error: unknown }) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-background px-4 text-foreground">
+      <div className="w-full max-w-md rounded-md border border-border bg-card p-6 shadow-sm">
+        <div className="text-base font-semibold">
+          {error ? "Application setup could not be loaded" : "Preparing your workspace"}
+        </div>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          {error instanceof Error
+            ? error.message
+            : "Loading enabled apps, Default Company, financial year, and company settings..."}
+        </p>
+      </div>
+    </main>
   );
 }
 

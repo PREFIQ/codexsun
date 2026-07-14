@@ -22,6 +22,22 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 ## v-1.0.32
 
+### [v 1.0.32] 2026-07-14 06:37 pm - Company Billing Compliance Bootstrap
+
+#### Database Changes
+
+- Database update: Yes (automatic tenant migration).
+- Added company-scoped Billing settings keyed by Company inside each tenant database, with a one-time compatibility fallback that copies the existing tenant-wide Billing setting into a Company's first settings row.
+- Added Purchase-owned E-way and E-invoice JSON columns so supplier compliance references persist with each Purchase.
+
+#### App Codebase Changes
+
+- Added `None`, `E-way only`, and `E-invoice + E-way` GST API modes and synchronized the Billing switches so E-invoice cannot be enabled without E-way.
+- Wired the saved Company mode to show or omit E-way and E-invoice tabs in Sales, Purchase, and Export Sales, and enforced the same capability checks on Sales and Export Sales generation endpoints.
+- Added a tenant startup gate that confirms the authenticated session, loads the enabled tenant apps, resolves the default Company and Financial Year, publishes that context, and preloads Company Billing settings before the first application workspace paint.
+- Keyed Billing settings queries and mutations by Company so Company changes cannot reuse another Company's cached feature configuration.
+- Verified the Billing migration stack, company setting mode round-trips, module boundaries, dependency direction, lint, typecheck, production builds, and tenant-isolated Billing persistence E2E.
+
 ### [v 1.0.32] 2026-07-14 11:47 am - Production Docker Setup Notes
 
 #### Database Changes
@@ -32,6 +48,12 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 - Added `assist/execution/setup.md` as the production Docker setup helper, documenting the active `.container/` deployment bundle, image build inputs, runtime services, environment requirements, upgrade path, clean reinstall flow, storage, admin tooling, reverse proxy notes, and pre-production checks.
 - Recorded the installed Docker image base and runtime packages used by the production build: Node.js 22 Bookworm slim with `ca-certificates`, `curl`, `git`, `mariadb-client`, `nano`, `redis-tools`, and `sudo`.
+- Replaced the shared runtime image with independently versioned Platform, Core, Billing, and Kitchen Serve API/Web images plus a dedicated migration runner.
+- Split MariaDB, Redis, Pictures, Files, and every application stack into individually deployable Compose projects joined through the external `codexsun-network`.
+- Added explicit persistent volumes for database data/backups, Redis, each app stack, picture content/metadata, and file content/metadata; reinstall now preserves all data unless a targeted wipe flag is explicitly enabled.
+- Added the Pictures/Files media setup workflow that initializes both File Browser databases and keeps their admin passwords synchronized with `SUPER_ADMIN_PASSWORD` from the repository `.env` without printing the credential.
+- Tightened destructive media setup so `--wipe-media` is rejected without `--reinstall`, attached containers are reported before a wipe, and every requested Docker volume removal is verified instead of silently ignoring failures.
+- Pinned all upstream Docker bases and aligned CODEXSUN image tags with workspace version `1.0.32`, with no production `latest` tags.
 - Bumped workspace version to 1.0.32.
 
 ## v-1.0.31

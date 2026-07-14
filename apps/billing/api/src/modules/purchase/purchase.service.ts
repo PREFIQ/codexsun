@@ -49,7 +49,10 @@ export class PurchaseService {
       await this.repository.resolveMissingReferences(databaseName, input)
     );
     await this.validateReferences(databaseName, normalized);
-    const billingSettings = await this.settings.getBillingSettings(databaseName);
+    const billingSettings = await this.settings.getBillingSettings(
+      databaseName,
+      normalized.companyId
+    );
     const numbering = billingSettings.numbering.purchase;
     const numbered = await resolveNextPurchaseNumber(
       databaseName,
@@ -61,7 +64,7 @@ export class PurchaseService {
     const purchase = await this.repository.create(databaseName, numbered.input, totals);
     if (!purchase) throw AppError.validation("Purchase could not be created.");
     if (numbering.automatic && (numbered.generated || numbered.nextNumber > numbering.nextNumber)) {
-      await this.settings.saveBillingSettings(databaseName, {
+      await this.settings.saveBillingSettings(databaseName, normalized.companyId, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
@@ -145,7 +148,10 @@ export class PurchaseService {
     const purchase = await this.repository.get(databaseName, id);
     if (!purchase) return null;
     this.assertConvertible(purchase);
-    const billingSettings = await this.settings.getBillingSettings(databaseName);
+    const billingSettings = await this.settings.getBillingSettings(
+      databaseName,
+      purchase.companyId
+    );
     const sale = await this.sales.createSale(databaseName, {
       billingAddress: purchase.billingAddress,
       billingAddressId: purchase.billingAddressId,
@@ -193,7 +199,7 @@ export class PurchaseService {
     if (purchases.some((purchase) => purchase.supplierId !== first.supplierId))
       throw AppError.conflict("Selected purchases must belong to the same contact.");
     purchases.forEach((purchase) => this.assertConvertible(purchase));
-    const billingSettings = await this.settings.getBillingSettings(databaseName);
+    const billingSettings = await this.settings.getBillingSettings(databaseName, first.companyId);
     const sale = await this.sales.createSale(databaseName, {
       billingAddress: first.billingAddress,
       billingAddressId: first.billingAddressId,
@@ -328,6 +334,18 @@ export function normalizePurchaseInput(input: PurchaseSavePayload): PurchaseSave
     companyId: input.companyId,
     currencyCode: input.currencyCode?.trim().toUpperCase() || "INR",
     currencyId: input.currencyId,
+    einvoice: {
+      ackDate: input.einvoice?.ackDate.trim() ?? "",
+      ackNo: input.einvoice?.ackNo.trim() ?? "",
+      irn: input.einvoice?.irn.trim() ?? "",
+      signedQr: input.einvoice?.signedQr.trim() ?? ""
+    },
+    eway: {
+      billDate: input.eway?.billDate.trim() ?? "",
+      billNo: input.eway?.billNo.trim().toUpperCase() ?? "",
+      transport: input.eway?.transport.trim() ?? "",
+      vehicleNo: input.eway?.vehicleNo.trim().toUpperCase() ?? ""
+    },
     supplierEmail: input.supplierEmail.trim().toLowerCase(),
     supplierId: input.supplierId,
     supplierName: input.supplierName.trim(),

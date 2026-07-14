@@ -141,13 +141,14 @@ async function bootstrapBillingDatabaseOnce(name: string) {
     await seedPaymentModule(db);
     await seedReceiptModule(db);
     const settingsRepository = new BillingSettingsRepository();
-    const settings = await settingsRepository.getSalesSettings(name);
+    const companyId = await settingsRepository.defaultCompanyId(name);
+    const settings = await settingsRepository.getSalesSettings(name, companyId);
     const sales = await new SalesRepository().list(name);
     const nextNumber = nextAvailableSalesNumber(
       sales.map((sale) => sale.invoiceNumber),
       settings.numbering.sales
     );
-    await settingsRepository.saveSalesSettings(name, {
+    await settingsRepository.saveSalesSettings(name, companyId, {
       ...settings,
       numbering: {
         ...settings.numbering,

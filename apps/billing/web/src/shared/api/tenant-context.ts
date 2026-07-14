@@ -1,6 +1,7 @@
 const TENANT_TOKEN_KEY = "codexsun_session_tenant";
 const TENANT_ID_KEY = "codexsun_tenant_id";
 const TENANT_DB_NAME_KEY = "codexsun_tenant_db_name";
+const COMPANY_ID_KEY = "codexsun.tenant.company-id";
 
 export function getToken(_desk?: "tenant"): string | null {
   try {
@@ -21,6 +22,15 @@ export function getTenantId(): string | null {
 export function getTenantDbName(): string | null {
   try {
     return localStorage.getItem(TENANT_DB_NAME_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function getCompanyId(): number | null {
+  try {
+    const value = Number(localStorage.getItem(COMPANY_ID_KEY));
+    return Number.isInteger(value) && value > 0 ? value : null;
   } catch {
     return null;
   }

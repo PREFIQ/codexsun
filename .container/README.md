@@ -1,155 +1,141 @@
-# CODEXSUN Docker Deployment
+# CODEXSUN Independent Docker Stacks
 
-This deployment is for the current CODEXSUN monorepo described in `assist/README.md`: Framework, Platform, Core, Billing, MariaDB, Redis queue support, and file storage. It keeps each runtime in its own container while reusing one built image to keep hosting simple and affordable.
+The Docker deployment follows the app boundaries in `assist/README.md`. Every server has its own image and Compose file, every data owner has a stable named volume, and all stacks communicate through one external Docker network.
 
-## Affordable Topology
+## Image policy
 
-- One small VPS with Docker and Docker Compose.
-- One Compose project named `codexsun`.
-- Separate containers for `platform-api`, `platform-web`, `core-api`, `core-web`, `billing-api`, `billing-web`, and `files`.
-- Optional internal MariaDB and Redis containers for low-cost single-server deploys.
-- Optional external MariaDB and Redis for managed database or existing server reuse.
-- Optional admin containers for Docker, MariaDB, and Redis administration.
-- One shared Docker volume, `codexsun-storage`, mounted into all app containers and File Browser.
+CODEXSUN application images use the lockstep workspace version `1.0.32`. Upstream images are pinned; this deployment never uses `latest`.
 
-Default ports:
+| Runtime | Default image |
+| --- | --- |
+| Platform API/Web | `codexsun/platform-api:1.0.32`, `codexsun/platform-web:1.0.32` |
+| Core API/Web | `codexsun/core-api:1.0.32`, `codexsun/core-web:1.0.32` |
+| Billing API/Web | `codexsun/billing-api:1.0.32`, `codexsun/billing-web:1.0.32` |
+| Kitchen Serve API/Web | `codexsun/kitchen-serve-api:1.0.32`, `codexsun/kitchen-serve-web:1.0.32` |
+| Migration runner | `codexsun/platform-migrations:1.0.32` |
+| MariaDB | `codexsun/mariadb:11.8-codexsun-1.0.32`, based on `mariadb:11.8` |
+| Redis | `codexsun/redis:7.4-codexsun-1.0.32`, based on `redis:7.4-alpine` |
+| Pictures/Files | versioned CODEXSUN images based on `filebrowser/filebrowser:v2.63.5` |
 
-| Service                      | Host Port |
-| ---------------------------- | --------: |
-| Platform API                 |      7010 |
-| Platform Web                 |      7020 |
-| Core API                     |      7030 |
-| Core Web                     |      7040 |
-| Billing API                  |      7050 |
-| Billing Web                  |      7060 |
-| File server                  |      7090 |
-| Docker admin, Portainer      |      7091 |
-| MariaDB admin, Adminer       |      7092 |
-| Redis admin, Redis Commander |      7093 |
+Override `CODEXSUN_IMAGE_REGISTRY` when images will be pushed to GHCR or another registry. Change image tags only through the deployment environment and keep them immutable after publishing.
 
-## First Deploy
+## Stack layout
+
+```text
+.container/
+  database/mariadb/       MariaDB Dockerfile, configuration, Compose
+  database/redis/         Redis Dockerfile and Compose
+  storage/                independent Pictures and Files images/volumes
+  platform/               Platform API, web, and migration runner
+  core/                   Core API and web
+  billing/                Billing API and web
+  kitchen-serve/          Kitchen Serve API and web
+  docker-compose.yml      full-stack aggregator
+  deploy.env.example      shared deployment contract
+  stack.sh                individual-stack CLI
+```
+
+The external network defaults to `codexsun-network`. The setup scripts create it when missing. Because it is external, stopping one Compose project does not remove connectivity required by another stack.
+
+## Persistent volumes
+
+MariaDB data/backups, Redis data, each app's operational storage, picture content/database, and file content/database all use separate explicitly named volumes. A normal `down`, upgrade, or reinstall does not remove them.
+
+The Pictures and Files content volumes are external shared resources: each API mounts them at `/storage/pictures` and `/storage/files`, while the two File Browser images provide private management surfaces. Their metadata databases remain separate and are never mounted into application containers.
+
+Important data volumes:
+
+- `codexsun-mariadb-data` and `codexsun-mariadb-backups`
+- `codexsun-redis-data`
+- `codexsun-platform-data`, `codexsun-core-data`, `codexsun-billing-data`, `codexsun-kitchen-serve-data`
+- `codexsun-pictures-data`, `codexsun-pictures-db`
+- `codexsun-files-data`, `codexsun-files-db`
+
+## First deployment
 
 ```bash
 cp .container/deploy.env.example .container/deploy.env
+nano .container/deploy.env
 bash .container/setup.sh
 ```
 
-The interactive setup asks:
+Set real public origins/API URLs and review every generated secret before exposing the host. Ports bind to `127.0.0.1` by default for a same-host Nginx/Caddy reverse proxy.
 
-- `upgrade` or `reinstall`
-- internal or external MariaDB
-- internal or external Redis
-
-For production, edit `.container/deploy.env` first and set real passwords, origins, public API URLs, and `JWT_SECRET`. The setup script generates missing placeholder secrets, but public deployments should still be reviewed before DNS/Nginx is pointed at the services.
-
-## Method 1: Container Upgrade
-
-Use this for normal CI/CD and regular releases. It rebuilds the image, starts/replaces containers, runs Platform migrations by default, and preserves volumes.
+Deploy the complete stack non-interactively:
 
 ```bash
 bash .container/upgrade-containers.sh
 ```
 
-Skip the explicit migration run when you only need a container restart:
+This builds versioned images, waits for health checks, runs the Platform/Core/Billing tenant migration stack, restarts APIs, and verifies health again.
+
+## Individual stacks
+
+Each stack can be installed, upgraded, inspected, or stopped independently:
 
 ```bash
-RUN_PLATFORM_MIGRATIONS=0 bash .container/upgrade-containers.sh
+bash .container/stack.sh mariadb up
+bash .container/stack.sh redis up
+bash .container/stack.sh storage up
+bash .container/stack.sh platform up
+bash .container/stack.sh core up
+bash .container/stack.sh billing up
+bash .container/stack.sh kitchen-serve up
 ```
 
-## Method 2: Hard Docker Reinstall
+Supported actions are `up`, `build`, `pull`, `ps`, `logs`, and `down`. Direct Compose usage is also supported:
 
-Use this when the Docker app stack must be rebuilt cleanly. It recreates app/file/Redis volumes and containers. The internal MariaDB volume is preserved by default.
+```bash
+docker compose --env-file .container/deploy.env \
+  -f .container/billing/docker-compose.yml up -d --build --wait
+```
+
+Start infrastructure before app stacks when deploying them separately. Core expects Platform on the shared network; Billing expects Core; all APIs expect MariaDB, and Platform queue processing expects Redis.
+
+## Pictures and Files administrator
+
+Use the media setup helper when installing storage or refreshing its administrator:
+
+```bash
+bash .container/setup-media.sh
+```
+
+It reads `SUPER_ADMIN_PASSWORD` from the repository `.env`, synchronizes the Pictures and Files deployment credentials, initializes both File Browser databases, and updates or creates each `admin` user with full management permissions. The password is never printed.
+
+Recreate only the File Browser metadata databases while preserving uploaded content:
+
+```bash
+bash .container/setup-media.sh --reinstall
+```
+
+`--reinstall --wipe-media` also removes picture and file content and is intentionally blocked while API containers have those volumes mounted.
+
+## Ports
+
+| Service | Host port |
+| --- | ---: |
+| Platform API / Web | `7010` / `7020` |
+| Core API / Web | `7030` / `7040` |
+| Billing API / Web | `7050` / `7060` |
+| Files / Pictures | `7090` / `7094` |
+| Kitchen Serve API / Web | `7110` / `7120` |
+| MariaDB / Redis | `3306` / `6379` |
+
+Keep database, Redis, pictures, and files private. Change `CODEXSUN_BIND_ADDRESS` only for a deliberate trusted-network deployment.
+
+## Reinstall and data safety
 
 ```bash
 bash .container/hard-reinstall.sh
 ```
 
-To intentionally wipe the internal MariaDB Docker volume too:
+The command requires typing `REINSTALL`. It recreates containers and images but preserves every volume by default. Destructive flags are independent:
 
-```bash
-WIPE_INTERNAL_DB=1 bash .container/hard-reinstall.sh
-```
+- `WIPE_APP_DATA=1`
+- `WIPE_STORAGE_DATA=1`
+- `WIPE_REDIS_DATA=1`
+- `WIPE_INTERNAL_DB=1`
 
-The script asks you to type `REINSTALL` before it removes volumes.
+Never wipe MariaDB or storage volumes without a verified backup and explicit approval.
 
-## Individual Setup Scripts
-
-```bash
-bash .container/setup-database.sh internal
-bash .container/setup-database.sh external
-bash .container/setup-redis.sh internal
-bash .container/setup-redis.sh external
-bash .container/setup-files.sh
-bash .container/setup-admin.sh
-bash .container/logs.sh platform-api
-```
-
-Admin tools are behind the `admin` Compose profile. Enable them with:
-
-```bash
-CODEXSUN_ADMIN_TOOLS=1 bash .container/upgrade-containers.sh
-```
-
-or start only the admin containers:
-
-```bash
-bash .container/setup-admin.sh
-```
-
-Keep these ports private in production. Portainer uses the Docker socket, so expose it only through VPN, SSH tunnel, firewall allowlist, or a trusted admin network.
-
-For an external MariaDB deployment, set these values in `.container/deploy.env`:
-
-```env
-CODEXSUN_DB_MODE=external
-DB_HOST=10.0.0.10
-DB_PORT=3306
-DB_USER=codexsun
-DB_PASSWORD=...
-DB_MASTER_NAME=codexsun_master
-```
-
-For external Redis:
-
-```env
-CODEXSUN_REDIS_MODE=external
-CODEXSUN_REDIS_URL=redis://:password@10.0.0.11:6379/0
-REDIS_ADMIN_HOSTS=external:10.0.0.11:6379
-```
-
-## CI/CD
-
-The cheapest reliable path is GitHub Actions over SSH to the VPS. The workflow in `.github/workflows/deploy.yml` checks, builds, then runs `.container/upgrade-containers.sh` on the server.
-
-Required GitHub secrets:
-
-- `CODEXSUN_DEPLOY_HOST`
-- `CODEXSUN_DEPLOY_USER`
-- `CODEXSUN_DEPLOY_KEY`
-- `CODEXSUN_DEPLOY_PATH`, for example `/opt/codexsun`
-
-Server preparation:
-
-```bash
-sudo apt-get update
-sudo apt-get install -y docker.io docker-compose-plugin git
-sudo usermod -aG docker "$USER"
-git clone https://github.com/YOUR_ORG/YOUR_REPO.git /opt/codexsun
-cd /opt/codexsun
-cp .container/deploy.env.example .container/deploy.env
-bash .container/setup.sh
-```
-
-After that, pushes to `main` can upgrade containers automatically.
-
-## Nginx Hint
-
-Put Nginx or Caddy in front of the host ports for HTTPS. A simple split is:
-
-- public platform app -> `127.0.0.1:7020`
-- platform API -> `127.0.0.1:7010`
-- billing app -> `127.0.0.1:7060`
-- billing API -> `127.0.0.1:7050`
-- file manager -> private/admin-only access to `127.0.0.1:7090`
-
-Keep File Browser behind VPN, basic auth, or an admin-only firewall rule for production.
+If Redis authentication is enabled, set both `REDIS_PASSWORD` and an encoded authenticated `CODEXSUN_REDIS_URL` in `deploy.env`.

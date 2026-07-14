@@ -4,20 +4,24 @@ import { defaultBillingSettings, type BillingSettings } from "./settings.types.j
 export class BillingSettingsService {
   constructor(private readonly repository = new BillingSettingsRepository()) {}
 
-  getBillingSettings(databaseName: string) {
-    return this.repository.getBillingSettings(databaseName);
+  getBillingSettings(databaseName: string, companyId: number) {
+    return this.repository.getBillingSettings(databaseName, companyId);
   }
 
-  saveBillingSettings(databaseName: string, input: BillingSettings) {
-    return this.repository.saveBillingSettings(databaseName, normalizeBillingSettings(input));
+  saveBillingSettings(databaseName: string, companyId: number, input: BillingSettings) {
+    return this.repository.saveBillingSettings(
+      databaseName,
+      companyId,
+      normalizeBillingSettings(input)
+    );
   }
 
-  getSalesSettings(databaseName: string) {
-    return this.getBillingSettings(databaseName);
+  getSalesSettings(databaseName: string, companyId: number) {
+    return this.getBillingSettings(databaseName, companyId);
   }
 
-  saveSalesSettings(databaseName: string, input: BillingSettings) {
-    return this.saveBillingSettings(databaseName, input);
+  saveSalesSettings(databaseName: string, companyId: number, input: BillingSettings) {
+    return this.saveBillingSettings(databaseName, companyId, input);
   }
 }
 
@@ -30,8 +34,8 @@ function normalizeBillingSettings(input: BillingSettings): BillingSettings {
       quotation: input.features?.quotation ?? defaultBillingSettings.features.quotation,
       tconnect: input.features?.tconnect ?? defaultBillingSettings.features.tconnect
     },
-    gstApiMode: input.gstApiMode === "eway_only" ? "eway_only" : "einvoice_eway",
-    layout: { ...defaultBillingSettings.layout, ...(input.layout ?? {}) },
+    gstApiMode: normalizedGstApiMode(input),
+    layout: normalizedLayout(input),
     numbering: {
       exportSales: {
         ...defaultBillingSettings.numbering.exportSales,
@@ -64,5 +68,21 @@ function normalizeBillingSettings(input: BillingSettings): BillingSettings {
         ...(input.printing?.letterhead ?? {})
       }
     }
+  };
+}
+
+function normalizedGstApiMode(input: BillingSettings) {
+  if (input.gstApiMode === "none") return "none" as const;
+  if (input.gstApiMode === "eway_only") return "eway_only" as const;
+  return "einvoice_eway" as const;
+}
+
+function normalizedLayout(input: BillingSettings) {
+  const layout = { ...defaultBillingSettings.layout, ...(input.layout ?? {}) };
+  const mode = normalizedGstApiMode(input);
+  return {
+    ...layout,
+    useEinvoice: mode === "einvoice_eway",
+    useEway: mode !== "none"
   };
 }

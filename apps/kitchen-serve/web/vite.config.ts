@@ -8,6 +8,11 @@ const rootPackage = JSON.parse(
   readFileSync(resolve(import.meta.dirname, "../../../package.json"), "utf8")
 ) as { version: string };
 export default defineConfig(() => ({
+  build: {
+    emptyOutDir: true,
+    outDir: "../../../dist/apps/kitchen-serve/web"
+  },
+  cacheDir: "../../../node_modules/.vite/kitchen-serve-web",
   define: { __APP_VERSION__: JSON.stringify(rootPackage.version) },
   plugins: [react(), tailwindcss()],
   server: {

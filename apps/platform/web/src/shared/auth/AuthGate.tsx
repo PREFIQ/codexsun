@@ -93,7 +93,7 @@ export function AuthGate({ children, desk }: { children: ReactElement; desk: Des
     };
   }, [desk, localValid]);
 
-  const valid = serverValid === null ? localValid : serverValid;
+  const valid = serverValid === true;
 
   if (valid) {
     return children;

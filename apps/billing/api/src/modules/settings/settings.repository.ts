@@ -1,4 +1,5 @@
-import type { Kysely } from "kysely";
+import { sql, type Generated, type Kysely } from "kysely";
+import { AppError } from "@codexsun/framework/errors";
 import { getBillingDatabase } from "../../database/billing-database.js";
 import {
   defaultBillingSettings,
@@ -18,10 +19,30 @@ type BillingSettingsRow = {
 
 type BillingSettingsDatabase = {
   billing_settings: BillingSettingsRow;
+  billing_company_settings: {
+    company_id: number;
+    created_at: Generated<string>;
+    id: Generated<number>;
+    settings_json: string | null;
+    settings_key: string;
+    updated_at: Generated<string>;
+    uuid: string;
+  };
 };
 
 export class BillingSettingsRepository {
-  async getBillingSettings(databaseName: string) {
+  async getBillingSettings(databaseName: string, companyId: number) {
+    await this.assertCompany(databaseName, companyId);
+    const companyRow = await (
+      await database(databaseName)
+    )
+      .selectFrom("billing_company_settings")
+      .selectAll()
+      .where("company_id", "=", companyId)
+      .where("settings_key", "=", "billing")
+      .executeTakeFirst();
+    if (companyRow) return normalizeSettings(companyRow.settings_json);
+
     const row = await (
       await database(databaseName)
     )
@@ -30,40 +51,64 @@ export class BillingSettingsRepository {
       .where("id", "=", "billing")
       .executeTakeFirst();
     const settings = row ? normalizeSettings(row.settings_json) : defaultBillingSettings;
-    if (!row) {
-      await this.saveBillingSettings(databaseName, settings);
-    }
-    return settings;
+    return this.saveBillingSettings(databaseName, companyId, settings);
   }
 
-  async saveBillingSettings(databaseName: string, input: BillingSettings) {
+  async saveBillingSettings(databaseName: string, companyId: number, input: BillingSettings) {
+    await this.assertCompany(databaseName, companyId);
     const db = await database(databaseName);
-    const now = new Date().toISOString();
     const settings = normalizeSettings(JSON.stringify(input));
     const payload = JSON.stringify(settings);
     await db
-      .insertInto("billing_settings")
+      .insertInto("billing_company_settings")
       .values({
-        created_at: now,
-        id: "billing",
+        company_id: companyId,
         settings_json: payload,
-        updated_at: now
+        settings_key: "billing",
+        uuid: publicUuid()
       })
       .onDuplicateKeyUpdate({
         settings_json: payload,
-        updated_at: now
+        updated_at: sql`CURRENT_TIMESTAMP(3)`
       })
       .execute();
     return settings;
   }
 
-  async getSalesSettings(databaseName: string) {
-    return this.getBillingSettings(databaseName);
+  async getSalesSettings(databaseName: string, companyId: number) {
+    return this.getBillingSettings(databaseName, companyId);
   }
 
-  async saveSalesSettings(databaseName: string, input: BillingSettings) {
-    return this.saveBillingSettings(databaseName, input);
+  async saveSalesSettings(databaseName: string, companyId: number, input: BillingSettings) {
+    return this.saveBillingSettings(databaseName, companyId, input);
   }
+
+  async defaultCompanyId(databaseName: string) {
+    const result = await sql<{ company_id: number }>`
+      SELECT company_id FROM default_company_settings
+      WHERE singleton_key = 1 AND status = 'active'
+      LIMIT 1
+    `.execute(await database(databaseName));
+    const companyId = Number(result.rows[0]?.company_id ?? 0);
+    if (!companyId)
+      throw AppError.conflict("An active Default Company is required for Billing settings.");
+    return companyId;
+  }
+
+  private async assertCompany(databaseName: string, companyId: number) {
+    if (!Number.isInteger(companyId) || companyId <= 0) {
+      throw AppError.validation("x-company-id is required for Billing settings.");
+    }
+    const result = await sql<{ id: number }>`
+      SELECT id FROM companies WHERE id = ${companyId} AND status = 'active' LIMIT 1
+    `.execute(await database(databaseName));
+    if (!result.rows[0])
+      throw AppError.validation("The selected company is not active or does not exist.");
+  }
+}
+
+function publicUuid() {
+  return crypto.randomUUID().replaceAll("-", "").slice(0, 8);
 }
 
 function database(databaseName: string) {
@@ -89,8 +134,17 @@ function normalizeSettings(value: string | null): BillingSettings {
     if (typeof parsed.useSize === "boolean") legacyLayout.useSize = parsed.useSize;
     const hasLegacyLayout = Object.values(legacyLayout).some((value) => typeof value === "boolean");
     const normalizedLegacyLayout = hasLegacyLayout ? normalizeLayout(legacyLayout) : undefined;
+    const savedLayout = normalizeSavedLayout(parsed.layout, normalizedLegacyLayout);
     const gstApiMode: BillingGstApiMode =
-      parsed.gstApiMode === "eway_only" ? "eway_only" : "einvoice_eway";
+      parsed.gstApiMode === "none" ||
+      parsed.gstApiMode === "eway_only" ||
+      parsed.gstApiMode === "einvoice_eway"
+        ? parsed.gstApiMode
+        : !savedLayout.useEway
+          ? "none"
+          : savedLayout.useEinvoice
+            ? "einvoice_eway"
+            : "eway_only";
     return {
       ...defaultBillingSettings,
       features: {
@@ -102,7 +156,11 @@ function normalizeSettings(value: string | null): BillingSettings {
         tconnect: parsed.features?.tconnect ?? defaultBillingSettings.features.tconnect
       },
       gstApiMode,
-      layout: normalizeSavedLayout(parsed.layout, normalizedLegacyLayout),
+      layout: {
+        ...savedLayout,
+        useEinvoice: gstApiMode === "einvoice_eway",
+        useEway: gstApiMode !== "none"
+      },
       numbering: normalizeNumbering(parsed.numbering),
       customise: {
         documentTitles: {

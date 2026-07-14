@@ -1,11 +1,27 @@
 export type PurchaseStatus = "draft" | "confirmed" | "cancelled";
 export type PurchaseTaxType = "cgst-sgst" | "igst";
 
+export type PurchaseEwayDetails = {
+  billDate: string;
+  billNo: string;
+  transport: string;
+  vehicleNo: string;
+};
+
+export type PurchaseEinvoiceDetails = {
+  ackDate: string;
+  ackNo: string;
+  irn: string;
+  signedQr: string;
+};
+
 export type PurchaseContext = {
   companyId: number;
   companyName: string;
   currencyCode: string;
   currencyId: number;
+  einvoice: PurchaseEinvoiceDetails;
+  eway: PurchaseEwayDetails;
   financialYearId: number;
   financialYearName: string;
 };
@@ -50,6 +66,8 @@ export type Purchase = {
   createdAt: string;
   currencyCode: string;
   currencyId: number;
+  einvoice: PurchaseEinvoiceDetails;
+  eway: PurchaseEwayDetails;
   supplierEmail: string;
   supplierId: number;
   supplierName: string;
@@ -86,6 +104,8 @@ export type PurchaseSavePayload = {
   companyId: number;
   currencyCode?: string;
   currencyId: number;
+  einvoice: PurchaseEinvoiceDetails;
+  eway: PurchaseEwayDetails;
   supplierEmail: string;
   supplierId: number;
   supplierName: string;
@@ -121,6 +141,8 @@ export function createEmptyPurchase(): PurchaseSavePayload {
     companyId: 0,
     currencyCode: "INR",
     currencyId: 0,
+    einvoice: { ackDate: "", ackNo: "", irn: "", signedQr: "" },
+    eway: { billDate: "", billNo: "", transport: "", vehicleNo: "" },
     supplierEmail: "",
     supplierId: 0,
     supplierName: "",

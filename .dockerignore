@@ -5,6 +5,8 @@ node_modules
 *.log
 .env
 .env.*
+.container/deploy.env
+.temp
 dist
 storage
 coverage

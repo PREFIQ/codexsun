@@ -29,7 +29,7 @@ export class PaymentService {
       throw AppError.conflict(
         "Default Company, Financial Year, and INR currency context must be configured before creating payments."
       );
-    const settings = await this.settings.getBillingSettings(databaseName);
+    const settings = await this.settings.getBillingSettings(databaseName, context.companyId);
     return {
       ...context,
       suggestedPaymentNumber: formatBillingDocumentNumber(settings.numbering.payment)
@@ -50,11 +50,11 @@ export class PaymentService {
       throw AppError.conflict("Payment number already exists for this company and financial year.");
     const record = await this.repository.create(databaseName, input);
     if (!record) throw AppError.notFound("Created payment could not be reloaded.");
-    const settings = await this.settings.getBillingSettings(databaseName);
+    const settings = await this.settings.getBillingSettings(databaseName, input.companyId);
     const sequence = settings.numbering.payment;
     const nextNumber = nextBillingDocumentNumber(sequence, input.paymentNumber);
     if (sequence.automatic && nextNumber > sequence.nextNumber) {
-      await this.settings.saveBillingSettings(databaseName, {
+      await this.settings.saveBillingSettings(databaseName, input.companyId, {
         ...settings,
         numbering: { ...settings.numbering, payment: { ...sequence, nextNumber } }
       });
@@ -109,7 +109,7 @@ export class PaymentService {
     return this.repository.deleteDraft(databaseName, id);
   }
   private async prepare(databaseName: string, payload: PaymentSavePayload, excludeId?: string) {
-    const settings = await this.settings.getBillingSettings(databaseName);
+    const settings = await this.settings.getBillingSettings(databaseName, payload.companyId);
     const paymentNumber =
       payload.paymentNumber.trim() || formatBillingDocumentNumber(settings.numbering.payment);
     const allocations = payload.allocations.map((item) => ({

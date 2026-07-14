@@ -21,7 +21,7 @@ export class ReceiptService {
       throw AppError.conflict(
         "Default Company, Financial Year, and INR currency context must be configured before creating receipts."
       );
-    const settings = await this.settings.getBillingSettings(databaseName);
+    const settings = await this.settings.getBillingSettings(databaseName, context.companyId);
     return {
       ...context,
       suggestedReceiptNumber: formatBillingDocumentNumber(settings.numbering.receipt)
@@ -41,11 +41,11 @@ export class ReceiptService {
     if (duplicate)
       throw AppError.conflict("Receipt number already exists for this company and financial year.");
     const record = await this.repository.create(databaseName, input);
-    const settings = await this.settings.getBillingSettings(databaseName);
+    const settings = await this.settings.getBillingSettings(databaseName, input.companyId);
     const sequence = settings.numbering.receipt;
     const nextNumber = nextBillingDocumentNumber(sequence, input.receiptNumber);
     if (sequence.automatic && nextNumber > sequence.nextNumber) {
-      await this.settings.saveBillingSettings(databaseName, {
+      await this.settings.saveBillingSettings(databaseName, input.companyId, {
         ...settings,
         numbering: { ...settings.numbering, receipt: { ...sequence, nextNumber } }
       });
@@ -93,7 +93,7 @@ export class ReceiptService {
     return this.repository.deleteDraft(databaseName, id);
   }
   private async prepare(databaseName: string, payload: ReceiptSavePayload, excludeId?: string) {
-    const settings = await this.settings.getBillingSettings(databaseName);
+    const settings = await this.settings.getBillingSettings(databaseName, payload.companyId);
     const receiptNumber =
       payload.receiptNumber.trim() || formatBillingDocumentNumber(settings.numbering.receipt);
     const allocations = payload.allocations.map((item) => ({

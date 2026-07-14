@@ -49,7 +49,10 @@ export class QuotationService {
       await this.repository.resolveMissingReferences(databaseName, input)
     );
     await this.validateReferences(databaseName, normalized);
-    const billingSettings = await this.settings.getBillingSettings(databaseName);
+    const billingSettings = await this.settings.getBillingSettings(
+      databaseName,
+      normalized.companyId
+    );
     const numbering = billingSettings.numbering.quotation;
     const numbered = await resolveNextQuotationNumber(
       databaseName,
@@ -61,7 +64,7 @@ export class QuotationService {
     const quotation = await this.repository.create(databaseName, numbered.input, totals);
     if (!quotation) throw AppError.validation("Quotation could not be created.");
     if (numbering.automatic && (numbered.generated || numbered.nextNumber > numbering.nextNumber)) {
-      await this.settings.saveBillingSettings(databaseName, {
+      await this.settings.saveBillingSettings(databaseName, normalized.companyId, {
         ...billingSettings,
         numbering: {
           ...billingSettings.numbering,
@@ -146,7 +149,10 @@ export class QuotationService {
     const quotation = await this.repository.get(databaseName, id);
     if (!quotation) return null;
     this.assertConvertible(quotation);
-    const billingSettings = await this.settings.getBillingSettings(databaseName);
+    const billingSettings = await this.settings.getBillingSettings(
+      databaseName,
+      quotation.companyId
+    );
     const sale = await this.sales.createSale(databaseName, {
       billingAddress: quotation.billingAddress,
       billingAddressId: quotation.billingAddressId,
@@ -194,7 +200,7 @@ export class QuotationService {
     if (quotations.some((quotation) => quotation.customerId !== first.customerId))
       throw AppError.conflict("Selected quotations must belong to the same contact.");
     quotations.forEach((quotation) => this.assertConvertible(quotation));
-    const billingSettings = await this.settings.getBillingSettings(databaseName);
+    const billingSettings = await this.settings.getBillingSettings(databaseName, first.companyId);
     const sale = await this.sales.createSale(databaseName, {
       billingAddress: first.billingAddress,
       billingAddressId: first.billingAddressId,

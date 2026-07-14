@@ -34,6 +34,8 @@ export async function migratePurchaseModule<Database>(database: Kysely<Database>
       notes TEXT NULL,
       status VARCHAR(24) NOT NULL DEFAULT 'draft',
       generated_sales_invoice_no VARCHAR(120) NULL,
+      purchase_eway_json JSON NULL,
+      purchase_einvoice_json JSON NULL,
       created_by INT NULL,
       updated_by INT NULL,
       confirmed_by INT NULL,
@@ -146,7 +148,7 @@ async function ensurePurchaseHeaderColumns<Database>(database: Kysely<Database>)
     SELECT COLUMN_NAME AS column_name FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = DATABASE()
       AND TABLE_NAME = 'billing_purchases'
-      AND COLUMN_NAME IN ('supplier_bill_number', 'supplier_bill_date')
+      AND COLUMN_NAME IN ('supplier_bill_number', 'supplier_bill_date', 'purchase_eway_json', 'purchase_einvoice_json')
   `.execute(database);
   const columns = new Set(result.rows.map((row) => row.column_name));
   if (!columns.has("supplier_bill_number")) {
@@ -160,6 +162,20 @@ async function ensurePurchaseHeaderColumns<Database>(database: Kysely<Database>)
     await sql
       .raw(
         "ALTER TABLE billing_purchases ADD COLUMN supplier_bill_date DATE NULL AFTER supplier_bill_number"
+      )
+      .execute(database);
+  }
+  if (!columns.has("purchase_eway_json")) {
+    await sql
+      .raw(
+        "ALTER TABLE billing_purchases ADD COLUMN purchase_eway_json JSON NULL AFTER generated_sales_invoice_no"
+      )
+      .execute(database);
+  }
+  if (!columns.has("purchase_einvoice_json")) {
+    await sql
+      .raw(
+        "ALTER TABLE billing_purchases ADD COLUMN purchase_einvoice_json JSON NULL AFTER purchase_eway_json"
       )
       .execute(database);
   }
