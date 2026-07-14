@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.31
+Current version: 1.0.32
 
-Release tag: v-1.0.31
+Release tag: v-1.0.32
 
-Changelog label: v 1.0.31
+Changelog label: v 1.0.32
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,20 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.32
+
+### [v 1.0.32] 2026-07-14 11:47 am - Production Docker Setup Notes
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Added `assist/execution/setup.md` as the production Docker setup helper, documenting the active `.container/` deployment bundle, image build inputs, runtime services, environment requirements, upgrade path, clean reinstall flow, storage, admin tooling, reverse proxy notes, and pre-production checks.
+- Recorded the installed Docker image base and runtime packages used by the production build: Node.js 22 Bookworm slim with `ca-certificates`, `curl`, `git`, `mariadb-client`, `nano`, `redis-tools`, and `sudo`.
+- Bumped workspace version to 1.0.32.
 
 ## v-1.0.31
 
