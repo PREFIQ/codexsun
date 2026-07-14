@@ -5,9 +5,9 @@ import {
   requireTenantAccess
 } from "@codexsun/framework/api";
 import type { HealthCheck } from "@codexsun/framework/health";
+import { authorizeCoreRequest } from "./auth/tenant-permission.js";
 import {
   bootstrapCoreDatabase,
-  bootstrapRegisteredCoreDatabases,
   closeCoreDatabase,
   resolveCoreDatabaseName,
   runWithCoreDatabase
@@ -52,7 +52,6 @@ export async function createApp() {
 
   registerRequestLogging(app);
   registerHealthRoute(app, healthChecks);
-  await bootstrapRegisteredCoreDatabases();
   app.addHook("onRequest", (request, _reply, done) => {
     if (request.url === "/health" || request.url === "/") return done();
     try {
@@ -67,13 +66,14 @@ export async function createApp() {
     if (request.url === "/health" || request.url === "/") return;
     const value = request.headers["x-tenant-db"];
     const tenantDatabase = resolveCoreDatabaseName(Array.isArray(value) ? value[0] : value);
-    requireTenantAccess({
+    const claims = requireTenantAccess({
       authorization: request.headers.authorization,
       secret: env.JWT_SECRET,
       tenantDatabase,
       tenantId: request.headers["x-tenant-id"]
     });
     await bootstrapCoreDatabase(tenantDatabase);
+    await authorizeCoreRequest(request, tenantDatabase, claims.email ?? "");
   });
   await commonModule.register(app);
   await organisationModule.register(app);

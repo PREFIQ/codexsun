@@ -115,8 +115,27 @@ const contextSchema = z.object({
   financialYearId: z.number().int().positive(),
   financialYearName: z.string()
 });
+const pageQuerySchema = z.object({
+  customer: z.string().default("all"),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(10).max(200).default(100),
+  search: z.string().default(""),
+  status: z.enum(["all", "draft", "confirmed", "cancelled"]).default("all")
+});
+const quotationPageSchema = z.object({
+  items: z.array(quotationSchema),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  total: z.number().int().nonnegative()
+});
 
 export async function registerQuotationRoutes(app: FastifyInstance) {
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/quotations/page",
+    schemas: { querystring: pageQuerySchema, response: quotationPageSchema },
+    handler: ({ query, request }) => service.listPage(databaseName(request), query)
+  });
   registerContractRoute(app, {
     method: "GET",
     url: "/billing/quotations",

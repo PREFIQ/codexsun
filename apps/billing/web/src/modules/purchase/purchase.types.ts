@@ -188,3 +188,10 @@ export function createEmptyPurchaseItem(): PurchaseLineItemInput {
     unitId: 0
   };
 }
+
+export type PurchasePageResult = {
+  items: Purchase[];
+  page: number;
+  pageSize: number;
+  total: number;
+};

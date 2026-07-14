@@ -27,6 +27,12 @@ export class ExportSalesService {
   listExportSales(databaseName: string) {
     return this.repository.list(databaseName);
   }
+  listExportSalesPage(
+    databaseName: string,
+    query: { customer: string; page: number; pageSize: number; search: string; status: string }
+  ) {
+    return this.repository.listPage(databaseName, query);
+  }
 
   getExportSale(databaseName: string, id: string) {
     return this.repository.get(databaseName, id);

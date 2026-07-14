@@ -25,7 +25,7 @@ import {
   totalPurchaseQuantity,
   updatePurchase
 } from "./purchase.services";
-import { usePurchaseList } from "./purchase.hooks";
+import { usePurchasePage } from "./purchase.hooks";
 import { PurchaseForm } from "./purchase.form";
 import { canSelectPurchase, PurchaseList } from "./purchase.list";
 import { getToken } from "../../shared/api/tenant-context";
@@ -62,7 +62,6 @@ function isAdminSession() {
 
 export function PurchaseWorkspace() {
   const queryClient = useQueryClient();
-  const purchasesQuery = usePurchaseList();
   const settingsQuery = useBillingSettings();
   const settings = settingsQuery.data ?? defaultBillingSettings;
   const purchaseLayout = settings.layout;
@@ -77,6 +76,13 @@ export function PurchaseWorkspace() {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
+  const purchasesQuery = usePurchasePage({
+    customer: contactFilter,
+    page: currentPage,
+    pageSize: rowsPerPage,
+    search: searchValue,
+    status: statusFilter
+  });
 
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: PurchaseSavePayload }) =>
@@ -176,37 +182,11 @@ export function PurchaseWorkspace() {
     }
   });
 
-  const entries = purchasesQuery.data ?? [];
+  const entries = purchasesQuery.data?.items ?? [];
   const contactOptions = useMemo(() => buildPurchaseContactFilterOptions(entries), [entries]);
-  const filteredEntries = useMemo(() => {
-    const term = searchValue.trim().toLowerCase();
-    return entries.filter((purchase) => {
-      const matchesSearch =
-        !term ||
-        [
-          purchase.invoiceNumber,
-          purchase.supplierName,
-          purchase.workOrderNo,
-          purchase.issuedOn,
-          purchase.status,
-          String(purchase.amount)
-        ].some((value) =>
-          String(value ?? "")
-            .toLowerCase()
-            .includes(term)
-        );
-      const matchesStatus = statusFilter === "all" || purchase.status === statusFilter;
-      const matchesContact =
-        contactFilter === "all" || purchaseContactKey(purchase) === contactFilter;
-      return matchesSearch && matchesStatus && matchesContact;
-    });
-  }, [contactFilter, entries, searchValue, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / rowsPerPage));
-  const pageEntries = filteredEntries.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  const totalCount = purchasesQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / rowsPerPage));
+  const pageEntries = entries;
   const pageTotals = useMemo(
     () =>
       pageEntries.reduce(
@@ -472,9 +452,9 @@ export function PurchaseWorkspace() {
       <WorkspacePagination
         page={currentPage}
         rowsPerPage={rowsPerPage}
-        showingLabel={buildShowingLabel(currentPage, rowsPerPage, filteredEntries.length)}
+        showingLabel={buildShowingLabel(currentPage, rowsPerPage, totalCount)}
         singularLabel="purchases"
-        totalCount={filteredEntries.length}
+        totalCount={totalCount}
         totalPages={totalPages}
         onNextPage={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
         onPageChange={setCurrentPage}

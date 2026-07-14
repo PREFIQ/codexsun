@@ -112,6 +112,24 @@ export async function listPurchases() {
     records.map(fromApiPurchase)
   );
 }
+export async function listPurchasesPage(query: {
+  customer: string;
+  page: number;
+  pageSize: number;
+  search: string;
+  status: string;
+}) {
+  const params = new URLSearchParams({
+    customer: query.customer,
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+    search: query.search,
+    status: query.status
+  });
+  return billingApiGet<import("./purchase.types").PurchasePageResult>(
+    `/billing/purchases/page?${params}`
+  ).then((result) => ({ ...result, items: result.items.map(fromApiPurchase) }));
+}
 
 export async function getPurchase(id: string) {
   return billingApiGet<Purchase>(`/billing/purchases/${id}`).then(fromApiPurchase);

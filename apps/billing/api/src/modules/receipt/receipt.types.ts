@@ -98,3 +98,5 @@ export type ReceiptJob = {
   receiptId: string;
   tenantDatabase: string;
 };
+
+export type ReceiptPage = { items: Receipt[]; page: number; pageSize: number; total: number };

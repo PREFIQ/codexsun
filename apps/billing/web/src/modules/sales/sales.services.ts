@@ -9,6 +9,7 @@ import {
   createEmptySaleEway,
   type Sale,
   type SaleContext,
+  type SalePageResult,
   type SaleSavePayload,
   type SaleStatus
 } from "./sales.types";
@@ -121,6 +122,24 @@ export type SaleTransportSavePayload = {
 
 export async function listSales() {
   return billingApiGet<Sale[]>("/billing/sales").then((records) => records.map(fromApiSale));
+}
+
+export async function listSalesPage(query: {
+  page: number;
+  pageSize: number;
+  search: string;
+  status: string;
+}) {
+  const params = new URLSearchParams({
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+    search: query.search,
+    status: query.status
+  });
+  return billingApiGet<SalePageResult>(`/billing/sales/page?${params}`).then((result) => ({
+    ...result,
+    items: result.items.map(fromApiSale)
+  }));
 }
 
 export async function getSale(id: string) {
@@ -478,6 +497,7 @@ function fromApiSale(record: Sale): Sale {
     customerPhone: record.customerPhone || "",
     einvoice: record.einvoice ?? createEmptySaleEinvoice(),
     invoiceNumber,
+    numberingWarning: record.numberingWarning || "",
     saleNumber: record.saleNumber || invoiceNumber,
     salesLedger: record.salesLedger || "",
     taxType: record.taxType || "cgst-sgst",

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Plus, Save, Trash2, X } from "lucide-react";
+import { Plus, Save, Sparkles, Trash2, X } from "lucide-react";
 import type { WorkspaceLookupOption } from "@codexsun/ui/workspace/lookup";
 import { Button } from "@codexsun/ui/components/button";
 import { DialogDescription, DialogHeader, DialogTitle } from "@codexsun/ui/components/dialog";
@@ -197,6 +197,10 @@ function DetailsTab({
   lookups: ContactLookups;
   set: <Key extends keyof ContactSavePayload>(key: Key, value: ContactSavePayload[Key]) => void;
 }) {
+  const [legalNameManual, setLegalNameManual] = useState(
+    Boolean(form.legalName && form.legalName !== form.name.trim().toUpperCase())
+  );
+
   return (
     <WorkspaceFormGrid columns={2}>
       <WorkspaceFormField label="Name" required>
@@ -205,6 +209,9 @@ function DetailsTab({
           className={invalid("name") ? "border-destructive" : undefined}
           value={form.name}
           onChange={(event) => set("name", event.target.value)}
+          onBlur={() => {
+            if (!legalNameManual) set("legalName", nullable(form.name.trim().toUpperCase()));
+          }}
         />
         {invalid("name") ? <FieldError>Contact name is required.</FieldError> : null}
       </WorkspaceFormField>
@@ -217,10 +224,36 @@ function DetailsTab({
         />
         {invalid("code") ? <FieldError>Use letters, numbers, and hyphens only.</FieldError> : null}
       </WorkspaceFormField>
-      <WorkspaceFormField label="Legal name">
+      <WorkspaceFormField
+        label={
+          <span className="flex w-full items-center justify-between gap-2">
+            <span>Legal name</span>
+            <Button
+              aria-label="Refresh legal name from contact name"
+              className="size-7 rounded-md p-0"
+              title="Refresh legal name from contact name"
+              type="button"
+              variant="outline"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setLegalNameManual(false);
+                set("legalName", nullable(form.name.trim().toUpperCase()));
+              }}
+            >
+              <Sparkles className="size-3.5" />
+            </Button>
+          </span>
+        }
+      >
         <Input
+          autoCapitalize="characters"
+          className="uppercase"
           value={form.legalName ?? ""}
-          onChange={(event) => set("legalName", nullable(event.target.value))}
+          onChange={(event) => {
+            setLegalNameManual(true);
+            set("legalName", nullable(event.target.value.toUpperCase()));
+          }}
         />
       </WorkspaceFormField>
       <WorkspaceFormField label="Contact type" required>
@@ -463,7 +496,7 @@ function AddressesTab({
                   <RemoveButton onClick={() => removeAddress(setForm, index)} />
                 </div>
                 <WorkspaceFormGrid columns={2}>
-                  <WorkspaceFormField label="Address type">
+                  <WorkspaceFormField className="md:col-span-2" label="Address type">
                     <WorkspaceLookup
                       allowTextValue={false}
                       createLabel="Create address type"

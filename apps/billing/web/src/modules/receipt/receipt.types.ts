@@ -138,6 +138,8 @@ export type ReceiptView =
   | { mode: "upsert"; receipt: Receipt | null; returnTo: "list" | "show" }
   | { mode: "show"; receipt: Receipt };
 
+export type ReceiptPageResult = { items: Receipt[]; page: number; pageSize: number; total: number };
+
 export function emptyReceipt(context?: ReceiptContext | null): ReceiptSavePayload {
   return {
     allocations: [],

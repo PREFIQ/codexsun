@@ -206,3 +206,10 @@ export function createEmptyExportSaleItem(): ExportSaleLineItemInput {
     unitId: 0
   };
 }
+
+export type ExportSalePageResult = {
+  items: ExportSale[];
+  page: number;
+  pageSize: number;
+  total: number;
+};

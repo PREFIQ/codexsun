@@ -2,7 +2,7 @@ import { sql } from "kysely";
 import { getCoreDatabase } from "../../../../database/core-database.js";
 
 export const countrySeed = {
-  description: "Seed country records with the unknown fallback first.",
+  description: "Seed India as the first and default country, followed by supported countries.",
   key: "core.common.location.country.seed"
 };
 
@@ -16,9 +16,13 @@ export async function seedCountryModule() {
   }
 }
 
+export async function removeUnknownCountrySeed() {
+  await sql`DELETE FROM countries
+    WHERE (code='UNKNOWN' OR name='-') AND code<>'IN'`.execute(getCoreDatabase());
+}
+
 const countrySeeds = [
-  { code: "UNKNOWN", name: "-", sortOrder: 0, status: "active" as const },
-  { code: "IN", name: "India", sortOrder: 1, status: "active" as const },
+  { code: "IN", name: "India", sortOrder: 0, status: "active" as const },
   { code: "US", name: "United States", sortOrder: 20, status: "active" as const },
   { code: "GB", name: "United Kingdom", sortOrder: 30, status: "active" as const },
   { code: "AE", name: "United Arab Emirates", sortOrder: 40, status: "active" as const },

@@ -197,6 +197,46 @@ export function ReceiptContactDialog({
             onChange={(addressLine2) => setForm((current) => ({ ...current, addressLine2 }))}
           />
           <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-2">
+              <Label>Country</Label>
+              <WorkspaceLookup
+                allowTextValue={false}
+                emptyLabel="No country found."
+                loading={countries.isLoading}
+                options={(countries.data ?? [])
+                  .filter((record) => record.status !== "inactive")
+                  .map(locationOption)}
+                placeholder="Search country"
+                value={
+                  form.countryId ||
+                  String(
+                    (countries.data ?? []).find(
+                      (record) => record.name.toLowerCase() === form.countryName.toLowerCase()
+                    )?.id ?? ""
+                  )
+                }
+                onValueChange={(selected, option) => {
+                  const record =
+                    ((option as ReceiptLookupOption | undefined)?.record as
+                      ReceiptLocationRecord | undefined) ??
+                    (countries.data ?? []).find((item) => item.id === selected);
+                  if (!record) return;
+                  setForm((current) => ({
+                    ...current,
+                    countryId: record.id,
+                    countryName: record.name,
+                    stateId: "",
+                    stateName: "",
+                    districtId: "",
+                    districtName: "",
+                    cityId: "",
+                    cityName: "",
+                    pincodeId: "",
+                    pincodeName: ""
+                  }));
+                }}
+              />
+            </label>
             <LocationLookup
               kind="states"
               label="State"

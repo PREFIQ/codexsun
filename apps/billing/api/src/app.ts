@@ -5,8 +5,8 @@ import {
   requireTenantAccess
 } from "@codexsun/framework/api";
 import type { HealthCheck } from "@codexsun/framework/health";
+import { authorizeBillingRequest } from "./auth/tenant-permission.js";
 import {
-  bootstrapRegisteredBillingDatabases,
   closeAllBillingDatabases,
   resolveBillingDatabaseName
 } from "./database/billing-database.js";
@@ -56,19 +56,19 @@ export async function createApp() {
 
   registerRequestLogging(app);
   registerHealthRoute(app, healthChecks);
-  await bootstrapRegisteredBillingDatabases();
   app.addHook("preHandler", async (request) => {
     if (!request.url.startsWith("/billing/")) return;
     const requestedDatabase = request.headers["x-tenant-db"];
     const tenantDatabase = resolveBillingDatabaseName(
       Array.isArray(requestedDatabase) ? requestedDatabase[0] : requestedDatabase
     );
-    requireTenantAccess({
+    const claims = requireTenantAccess({
       authorization: request.headers.authorization,
       secret: env.JWT_SECRET,
       tenantDatabase,
       tenantId: request.headers["x-tenant-id"]
     });
+    await authorizeBillingRequest(request, tenantDatabase, claims.email ?? "");
   });
   await salesModule.register(app);
   await purchaseModule.register(app);

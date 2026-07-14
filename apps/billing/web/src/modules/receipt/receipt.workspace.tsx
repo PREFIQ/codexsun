@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Printer, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -7,7 +7,7 @@ import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
-import { useReceiptContext, useReceiptList, receiptQueryKey } from "./receipt.hooks";
+import { useReceiptContext, useReceiptPage, receiptQueryKey } from "./receipt.hooks";
 import { ReceiptForm } from "./receipt.form";
 import { ReceiptList } from "./receipt.list";
 import { ReceiptPrint } from "./receipt.print";
@@ -30,13 +30,18 @@ const statusFilters = [
 
 export function ReceiptWorkspace() {
   const queryClient = useQueryClient();
-  const receiptsQuery = useReceiptList();
   const contextQuery = useReceiptContext();
   const [view, setView] = useState<ReceiptView>({ mode: "list" });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const receiptsQuery = useReceiptPage({
+    page,
+    pageSize: rowsPerPage,
+    search,
+    status: statusFilter
+  });
   const save = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: ReceiptSavePayload }) =>
       id ? updateReceipt(id, payload) : createReceipt(payload),
@@ -65,30 +70,13 @@ export function ReceiptWorkspace() {
     },
     onError: (error) => toast.error("Receipt could not be deleted", { description: message(error) })
   });
-  const entries = receiptsQuery.data ?? [];
-  const filtered = useMemo(
-    () =>
-      entries.filter(
-        (receipt) =>
-          (statusFilter === "all" || receipt.status === statusFilter) &&
-          [
-            receipt.receiptNumber,
-            receipt.customerName,
-            receipt.ledgerName,
-            receipt.receiptMode,
-            receipt.status
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(search.toLowerCase())
-      ),
-    [entries, search, statusFilter]
-  );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+  const entries = receiptsQuery.data?.items ?? [];
+  const totalCount = receiptsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / rowsPerPage));
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
-  const pageEntries = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  const pageEntries = entries;
   if (view.mode === "upsert")
     return (
       <ReceiptForm
@@ -189,9 +177,9 @@ export function ReceiptWorkspace() {
         }}
         page={page}
         rowsPerPage={rowsPerPage}
-        showingLabel={showingLabel(filtered.length, page, rowsPerPage)}
+        showingLabel={showingLabel(totalCount, page, rowsPerPage)}
         singularLabel="receipt"
-        totalCount={filtered.length}
+        totalCount={totalCount}
         totalPages={totalPages}
       />
     </WorkspacePage>

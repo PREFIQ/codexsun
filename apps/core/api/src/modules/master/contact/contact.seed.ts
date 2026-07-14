@@ -2,6 +2,11 @@ import { randomBytes } from "node:crypto";
 import { sql } from "kysely";
 import { getCoreDatabase } from "../../../database/core-database.js";
 export async function seedContactModule() {
+  await sql`UPDATE contacts_addresses AS address
+    INNER JOIN countries AS current_country ON current_country.id=address.country_id
+    INNER JOIN countries AS india ON india.code='IN'
+    SET address.country_id=india.id,address.country_name=india.name
+    WHERE current_country.code='UNKNOWN' OR current_country.name='-'`.execute(getCoreDatabase());
   await sql`UPDATE contacts AS legacy
     LEFT JOIN contacts AS canonical
       ON canonical.id<>legacy.id AND canonical.code=REPLACE(legacy.code, '_', '-')

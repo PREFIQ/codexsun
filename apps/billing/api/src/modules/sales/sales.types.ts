@@ -86,6 +86,7 @@ export type Sale = {
   ledgerId: number | null;
   lineNumber: number;
   notes: string;
+  numberingWarning: string;
   roundOff: number;
   salesLedger: string;
   shippingAddress: string;
@@ -127,4 +128,11 @@ export type SaleSavePayload = {
   terms?: string | undefined;
   workOrderId: number | null;
   workOrderNo?: string | undefined;
+};
+
+export type SalePage = {
+  items: Sale[];
+  page: number;
+  pageSize: number;
+  total: number;
 };

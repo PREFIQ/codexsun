@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { sql, type Kysely, type Transaction } from "kysely";
+import { AppError } from "@codexsun/framework/errors";
 import { getBillingDatabase } from "../../database/billing-database.js";
 import type {
   Payment,
@@ -57,6 +58,34 @@ export class PaymentRepository {
     const database = await paymentDatabase(databaseName);
     const result = await selectHeaders().execute(database);
     return Promise.all(result.rows.map((row) => this.hydrate(database, row)));
+  }
+  async listPage(
+    databaseName: string,
+    options: { page: number; pageSize: number; search: string; status: string }
+  ) {
+    const database = await paymentDatabase(databaseName);
+    const search = `%${options.search.trim()}%`;
+    const page = {
+      limit: options.pageSize,
+      offset: (options.page - 1) * options.pageSize,
+      search,
+      status: options.status
+    };
+    const result = await selectHeaders(undefined, false, page).execute(database);
+    const count = await sql<{
+      total: string | number;
+    }>`SELECT COUNT(*) AS total FROM billing_payments r
+      INNER JOIN contacts supplier ON supplier.id=r.supplier_id INNER JOIN ledgers ledger ON ledger.id=r.ledger_id
+      WHERE r.deleted_at IS NULL AND (${page.status}='all' OR r.status=${page.status})
+      AND (${search}='%%' OR r.payment_number LIKE ${search} OR supplier.name LIKE ${search}
+        OR ledger.name LIKE ${search} OR r.payment_mode LIKE ${search} OR r.status LIKE ${search}
+        OR COALESCE(r.reference_no,'') LIKE ${search})`.execute(database);
+    return {
+      items: await Promise.all(result.rows.map((row) => this.hydrate(database, row))),
+      page: options.page,
+      pageSize: options.pageSize,
+      total: Number(count.rows[0]?.total ?? 0)
+    };
   }
 
   async get(databaseName: string, uuid: string) {
@@ -228,29 +257,41 @@ export class PaymentRepository {
   async create(databaseName: string, input: PaymentSavePayload & PaymentTotals) {
     const database = await paymentDatabase(databaseName);
     const uuid = publicId();
-    await database.transaction().execute(async (transaction) => {
-      const lineResult = await sql<{ next_line: number }>`
-        SELECT COALESCE(MAX(line_number), 0) + 1 AS next_line FROM billing_payments
-        WHERE company_id = ${input.companyId} AND financial_year_id = ${input.financialYearId}
-      `.execute(transaction);
-      const insert = await sql`
-        INSERT INTO billing_payments (
-          uuid, company_id, financial_year_id, currency_id, line_number, payment_number,
-          payment_date, supplier_id, payment_mode, ledger_id, reference_no, reference_date,
-          amount, tds_amount, discount_amount, round_off, total_amount, allocated_amount,
-          unallocated_amount, status, notes
-        ) VALUES (
-          ${uuid}, ${input.companyId}, ${input.financialYearId}, ${input.currencyId}, ${Number(lineResult.rows[0]?.next_line ?? 1)},
-          ${input.paymentNumber}, ${input.paymentDate}, ${input.supplierId}, ${input.paymentMode}, ${input.ledgerId},
-          ${input.referenceNo || null}, ${input.referenceDate || null}, ${input.amount}, ${input.tdsAmount},
-          ${input.discountAmount}, ${input.roundOff}, ${input.totalAmount}, ${input.allocatedAmount},
-          ${input.unallocatedAmount}, 'draft', ${input.notes || null}
-        )
-      `.execute(transaction);
-      const paymentId = Number(insert.insertId);
-      await replaceAllocations(transaction, paymentId, input.allocations);
-      await addActivity(transaction, paymentId, "created", "Payment created.", null, "draft");
-    });
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        await database.transaction().execute(async (transaction) => {
+          await assertPaymentAllocationsAvailable(transaction, input);
+          const lineResult = await sql<{ next_line: number }>`
+            SELECT COALESCE(MAX(line_number), 0) + 1 AS next_line FROM billing_payments
+            WHERE company_id = ${input.companyId} AND financial_year_id = ${input.financialYearId}
+          `.execute(transaction);
+          const insert = await sql`
+            INSERT INTO billing_payments (
+              uuid, company_id, financial_year_id, currency_id, line_number, payment_number,
+              payment_date, supplier_id, payment_mode, ledger_id, reference_no, reference_date,
+              amount, tds_amount, discount_amount, round_off, total_amount, allocated_amount,
+              unallocated_amount, status, notes
+            ) VALUES (
+              ${uuid}, ${input.companyId}, ${input.financialYearId}, ${input.currencyId}, ${Number(lineResult.rows[0]?.next_line ?? 1)},
+              ${input.paymentNumber}, ${input.paymentDate}, ${input.supplierId}, ${input.paymentMode}, ${input.ledgerId},
+              ${input.referenceNo || null}, ${input.referenceDate || null}, ${input.amount}, ${input.tdsAmount},
+              ${input.discountAmount}, ${input.roundOff}, ${input.totalAmount}, ${input.allocatedAmount},
+              ${input.unallocatedAmount}, 'draft', ${input.notes || null}
+            )
+          `.execute(transaction);
+          const paymentId = Number(insert.insertId);
+          await replaceAllocations(transaction, paymentId, input.allocations);
+          await addActivity(transaction, paymentId, "created", "Payment created.", null, "draft");
+        });
+        break;
+      } catch (error) {
+        if (isDuplicateKey(error, "billing_payments_line_unique") && attempt < 4) continue;
+        if (isDuplicateKey(error, "billing_payments_number_unique")) {
+          throw AppError.conflict("Payment number is already reserved. Refresh and try again.");
+        }
+        throw error;
+      }
+    }
     return this.get(databaseName, uuid);
   }
 
@@ -259,6 +300,7 @@ export class PaymentRepository {
     const internal = await internalPayment(database, uuid);
     if (!internal) return null;
     await database.transaction().execute(async (transaction) => {
+      await assertPaymentAllocationsAvailable(transaction, input, internal.id);
       await sql`
         UPDATE billing_payments SET company_id=${input.companyId}, financial_year_id=${input.financialYearId},
           currency_id=${input.currencyId}, payment_number=${input.paymentNumber}, payment_date=${input.paymentDate},
@@ -374,9 +416,19 @@ export class PaymentRepository {
   }
 }
 
+function isDuplicateKey(error: unknown, keyName: string) {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: string; message?: string };
+  return candidate.code === "ER_DUP_ENTRY" && candidate.message?.includes(keyName) === true;
+}
+
 type PaymentTotals = { allocatedAmount: number; totalAmount: number; unallocatedAmount: number };
 
-function selectHeaders(uuid?: string, includeDeleted = false) {
+function selectHeaders(
+  uuid?: string,
+  includeDeleted = false,
+  page?: { limit: number; offset: number; search: string; status: string }
+) {
   return sql<HeaderRow>`
     SELECT r.*, c.name AS company_name, f.name AS financial_year_name, currency.name AS currency_code,
            supplier.name AS supplier_name, ledger.name AS ledger_name
@@ -387,8 +439,52 @@ function selectHeaders(uuid?: string, includeDeleted = false) {
     INNER JOIN contacts supplier ON supplier.id=r.supplier_id
     INNER JOIN ledgers ledger ON ledger.id=r.ledger_id
     WHERE ${uuid ? sql`r.uuid=${uuid}` : sql`1=1`} ${includeDeleted ? sql`` : sql`AND r.deleted_at IS NULL`}
+      ${
+        page
+          ? sql`AND (${page.status}='all' OR r.status=${page.status})
+        AND (${page.search}='%%' OR r.payment_number LIKE ${page.search} OR supplier.name LIKE ${page.search}
+          OR ledger.name LIKE ${page.search} OR r.payment_mode LIKE ${page.search}
+          OR r.status LIKE ${page.search} OR COALESCE(r.reference_no,'') LIKE ${page.search})`
+          : sql``
+      }
     ORDER BY r.payment_date DESC, r.line_number DESC
+    ${page ? sql`LIMIT ${page.limit} OFFSET ${page.offset}` : sql``}
   `;
+}
+
+async function assertPaymentAllocationsAvailable(
+  transaction: PaymentTransaction,
+  input: PaymentSavePayload,
+  excludePaymentId?: number
+) {
+  const allocations = [...input.allocations].sort((left, right) =>
+    left.purchaseId.localeCompare(right.purchaseId)
+  );
+  for (const allocation of allocations) {
+    const purchaseResult = await sql<{ amount: string | number; id: number; supplier_id: number }>`
+      SELECT id, supplier_id, amount FROM billing_purchases
+      WHERE uuid=${allocation.purchaseId} AND status='confirmed' AND deleted_at IS NULL
+      FOR UPDATE
+    `.execute(transaction);
+    const purchase = purchaseResult.rows[0];
+    if (!purchase || purchase.supplier_id !== input.supplierId) {
+      throw AppError.validation("Payment allocation purchase is no longer available.");
+    }
+    const allocatedResult = await sql<{ allocated_amount: string | number }>`
+      SELECT COALESCE(SUM(a.allocated_amount), 0) AS allocated_amount
+      FROM billing_payment_allocations a
+      INNER JOIN billing_payments p ON p.id=a.payment_id
+      WHERE a.purchase_id=${purchase.id} AND p.deleted_at IS NULL AND p.status<>'cancelled'
+        ${excludePaymentId ? sql`AND p.id<>${excludePaymentId}` : sql``}
+    `.execute(transaction);
+    const outstanding =
+      Number(purchase.amount) - Number(allocatedResult.rows[0]?.allocated_amount ?? 0);
+    if (outstanding + 0.000001 < allocation.allocatedAmount) {
+      throw AppError.conflict(
+        "Purchase outstanding balance changed while this payment was being saved. Refresh and try again."
+      );
+    }
+  }
 }
 
 async function replaceAllocations(

@@ -6,7 +6,7 @@ import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
   WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTableLoadingState
 } from "@codexsun/ui/workspace/table";
 import type { ProductRecord } from "./product.types";
 export const productColumns = [
@@ -92,7 +92,7 @@ export function ProductList({
           </tbody>
         </table>
       </div>
-      {loading ? <WorkspaceTableSkeletonRows columns={5} rows={4} /> : null}
+      {loading && !records.length ? <WorkspaceTableLoadingState /> : null}
       {!loading && !records.length ? (
         <WorkspaceTableEmptyState>No products found.</WorkspaceTableEmptyState>
       ) : null}

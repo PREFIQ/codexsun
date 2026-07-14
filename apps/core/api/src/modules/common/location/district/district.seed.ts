@@ -9,7 +9,7 @@ export const districtSeed = {
 export async function seedDistrictModule() {
   const defaultStates = await sql<{ id: number }>`SELECT states.id FROM states
     INNER JOIN countries ON countries.id = states.country_id
-    WHERE countries.code='UNKNOWN' AND states.code='UNKNOWN' LIMIT 1`.execute(getCoreDatabase());
+    WHERE countries.code='IN' AND states.code='UNKNOWN' LIMIT 1`.execute(getCoreDatabase());
   const defaultStateId = defaultStates.rows[0]?.id;
   const states = await sql<{ id: number }>`SELECT states.id FROM states
     INNER JOIN countries ON countries.id = states.country_id

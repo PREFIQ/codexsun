@@ -19,7 +19,7 @@ import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
   WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTableLoadingState
 } from "@codexsun/ui/workspace/table";
 import {
   WorkspaceFormBanner,
@@ -305,7 +305,7 @@ export function TenantDomainList() {
           </table>
         </div>
         {pageDomains.length === 0 && domainsQuery.isFetching ? (
-          <WorkspaceTableSkeletonRows columns={8} />
+          <WorkspaceTableLoadingState />
         ) : null}
         {pageDomains.length === 0 && !domainsQuery.isFetching ? (
           <WorkspaceTableEmptyState>No domains found.</WorkspaceTableEmptyState>

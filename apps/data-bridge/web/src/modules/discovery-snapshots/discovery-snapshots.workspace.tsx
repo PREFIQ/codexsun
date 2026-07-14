@@ -9,7 +9,7 @@ import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
   WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTableLoadingState
 } from "@codexsun/ui/workspace/table";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
 import { WorkspaceShowCard, WorkspaceDetailTable } from "@codexsun/ui/workspace/show";
@@ -632,9 +632,7 @@ export function DiscoverySnapshotsWorkspace() {
             ))}
           </tbody>
         </table>
-        {!snapshots.data?.length && snapshots.isFetching ? (
-          <WorkspaceTableSkeletonRows columns={7} />
-        ) : null}
+        {!snapshots.data?.length && snapshots.isFetching ? <WorkspaceTableLoadingState /> : null}
         {!snapshots.data?.length && !snapshots.isFetching ? (
           <WorkspaceTableEmptyState>No discovery snapshots yet.</WorkspaceTableEmptyState>
         ) : null}

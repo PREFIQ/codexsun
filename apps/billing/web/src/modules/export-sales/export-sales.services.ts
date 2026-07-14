@@ -124,6 +124,24 @@ export async function listExportSales() {
     records.map(fromApiExportSale)
   );
 }
+export async function listExportSalesPage(query: {
+  customer: string;
+  page: number;
+  pageSize: number;
+  search: string;
+  status: string;
+}) {
+  const params = new URLSearchParams({
+    customer: query.customer,
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+    search: query.search,
+    status: query.status
+  });
+  return billingApiGet<import("./export-sales.types").ExportSalePageResult>(
+    `/billing/export-sales/page?${params}`
+  ).then((result) => ({ ...result, items: result.items.map(fromApiExportSale) }));
+}
 
 export async function getExportSale(id: string) {
   return billingApiGet<ExportSale>(`/billing/export-sales/${id}`).then(fromApiExportSale);

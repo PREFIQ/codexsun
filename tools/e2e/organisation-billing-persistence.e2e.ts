@@ -18,6 +18,9 @@ import { SalesService } from "../../apps/billing/api/src/modules/sales/sales.ser
 import { registerSalesRoutes } from "../../apps/billing/api/src/modules/sales/sales.routes.js";
 import { registerProductRoutes } from "../../apps/core/api/src/modules/master/product/product.routes.js";
 import { registerContactRoutes } from "../../apps/core/api/src/modules/master/contact/contact.routes.js";
+import { seedContactModule } from "../../apps/core/api/src/modules/master/contact/contact.seed.js";
+import { removeUnknownCountrySeed } from "../../apps/core/api/src/modules/common/location/country/country.seed.js";
+import { seedStateModule } from "../../apps/core/api/src/modules/common/location/state/state.seed.js";
 import {
   bootstrapCoreDatabase,
   closeCoreDatabase,
@@ -41,6 +44,7 @@ try {
   await prepareTenant(isolatedDatabaseName);
 
   await admin.changeUser({ database: databaseName });
+  await assertIndiaCountryDefault(admin);
   const references = await loadReferences(admin);
   const quotationService = new QuotationService();
   const paymentService = new PaymentService();
@@ -68,6 +72,8 @@ try {
   assert.equal(context.currencyId, references.currencyId);
 
   await assertTenantBoundary(api, databaseName, isolatedDatabaseName);
+  await assertLegacyCountryCleanup(admin, isolatedDatabaseName);
+  await admin.changeUser({ database: databaseName });
 
   await runWithCoreDatabase(databaseName, async () => {
     await assertMinimalProduct(api!, databaseName, timings);
@@ -90,6 +96,56 @@ try {
   );
   assert.equal(quotation.customerId, references.customerId);
   assert.equal(quotation.items.length, 1);
+
+  const contactAfterReferencedAddressUpdate = await runWithCoreDatabase(databaseName, async () => {
+    const contactBeforeReferencedAddressUpdate = await requestData(
+      api!,
+      "GET",
+      `/core/master/contacts/${references.customerId}`,
+      databaseName,
+      undefined,
+      timings
+    );
+    const referencedAddress = (contactBeforeReferencedAddressUpdate.addresses as ApiRecord[])[0];
+    assert.ok(referencedAddress, "The Billing test contact must have a persisted address.");
+    return requestData(
+      api!,
+      "PUT",
+      `/core/master/contacts/${references.customerId}`,
+      databaseName,
+      {
+        addresses: [
+          {
+            addressLine1: referencedAddress.addressLine1,
+            addressLine2: referencedAddress.addressLine2,
+            addressTypeId: referencedAddress.addressTypeId,
+            addressTypeName: referencedAddress.addressTypeName,
+            cityId: referencedAddress.cityId,
+            cityName: referencedAddress.cityName,
+            countryId: referencedAddress.countryId,
+            countryName: referencedAddress.countryName,
+            districtId: referencedAddress.districtId,
+            districtName: referencedAddress.districtName,
+            isDefault: true,
+            pincodeId: referencedAddress.pincodeId,
+            pincodeName: referencedAddress.pincodeName,
+            stateId: referencedAddress.stateId,
+            stateName: referencedAddress.stateName
+          }
+        ],
+        isActive: true,
+        legalName: contactBeforeReferencedAddressUpdate.legalName,
+        name: contactBeforeReferencedAddressUpdate.name,
+        typeId: references.contactTypeId
+      },
+      timings
+    );
+  });
+  assert.equal(
+    Number((contactAfterReferencedAddressUpdate.addresses as ApiRecord[])[0]?.id),
+    references.addressId,
+    "Editing a contact must preserve an address ID already referenced by Billing."
+  );
 
   const listedQuotations = await requestList(api, "/billing/quotations", databaseName, timings);
   assert.equal(
@@ -209,6 +265,147 @@ try {
     timings
   );
   assert.equal(fetchedSale.invoiceNumber, "INV-PERSIST-001");
+
+  const concurrentSales = await Promise.all([
+    requestData(
+      api,
+      "POST",
+      "/billing/sales",
+      databaseName,
+      { ...salePayload, invoiceNumber: "INV-CONCURRENT-001" },
+      timings
+    ),
+    requestData(
+      api,
+      "POST",
+      "/billing/sales",
+      databaseName,
+      { ...salePayload, invoiceNumber: "INV-CONCURRENT-001" },
+      timings
+    )
+  ]);
+  assert.equal(new Set(concurrentSales.map((entry) => entry.id)).size, 2);
+  assert.equal(new Set(concurrentSales.map((entry) => entry.lineNumber)).size, 2);
+  assert.equal(new Set(concurrentSales.map((entry) => entry.invoiceNumber)).size, 2);
+  assert.equal(
+    concurrentSales.filter((entry) => entry.invoiceNumber === "INV-CONCURRENT-001").length,
+    1
+  );
+  assert.equal(
+    concurrentSales.some((entry) =>
+      String(entry.numberingWarning ?? "").includes("already reserved")
+    ),
+    true
+  );
+  const salesPage = await requestData(
+    api,
+    "GET",
+    "/billing/sales/page?page=1&pageSize=10&search=INV-CONCURRENT&status=all",
+    databaseName,
+    undefined,
+    timings
+  );
+  assert.equal(salesPage.items.length, 1);
+  assert.equal(salesPage.total, 1);
+
+  const sale12Payload = {
+    ...salePayload,
+    invoiceNumber: "INV-PERSIST-012",
+    items: documentItems(references, 12, "Sale 12 item")
+  };
+  const sale12 = await requestData(
+    api,
+    "POST",
+    "/billing/sales",
+    databaseName,
+    sale12Payload,
+    timings
+  );
+  const sale12CreateMs = timings["POST /billing/sales"] ?? Number.POSITIVE_INFINITY;
+  assert.equal(sale12.items.length, 12);
+  const fetchedSale12 = await requestData(
+    api,
+    "GET",
+    `/billing/sales/${sale12.id}`,
+    databaseName,
+    undefined,
+    timings
+  );
+  const sale12LoadMs = timings[`GET /billing/sales/${sale12.id}`] ?? Number.POSITIVE_INFINITY;
+  assert.equal(fetchedSale12.items.length, 12);
+
+  const sale24Payload = {
+    ...salePayload,
+    invoiceNumber: "INV-PERSIST-024",
+    items: documentItems(references, 24, "Sale 24 item")
+  };
+  const sale24 = await requestData(
+    api,
+    "POST",
+    "/billing/sales",
+    databaseName,
+    sale24Payload,
+    timings
+  );
+  const sale24CreateMs = timings["POST /billing/sales"] ?? Number.POSITIVE_INFINITY;
+  assert.equal(sale24.items.length, 24);
+  const fetchedSale24 = await requestData(
+    api,
+    "GET",
+    `/billing/sales/${sale24.id}`,
+    databaseName,
+    undefined,
+    timings
+  );
+  const sale24LoadMs = timings[`GET /billing/sales/${sale24.id}`] ?? Number.POSITIVE_INFINITY;
+  assert.equal(fetchedSale24.items.length, 24);
+
+  const mergeQuotationItems = documentItems(references, 12, "Merged quotation item");
+  const mergeQuotationA = await requestData(
+    api,
+    "POST",
+    "/billing/quotations",
+    databaseName,
+    {
+      ...quotationPayload,
+      items: mergeQuotationItems,
+      quotationNumber: "QT-MERGE-001"
+    },
+    timings
+  );
+  const mergeQuotationB = await requestData(
+    api,
+    "POST",
+    "/billing/quotations",
+    databaseName,
+    {
+      ...quotationPayload,
+      items: mergeQuotationItems.map((item) => ({ ...item, quantity: item.quantity + 1 })),
+      quotationNumber: "QT-MERGE-002"
+    },
+    timings
+  );
+  assert.equal(mergeQuotationA.items.length, 12);
+  assert.equal(mergeQuotationB.items.length, 12);
+  const mergedConversion = await requestData(
+    api,
+    "POST",
+    "/billing/quotations/convert-to-sale",
+    databaseName,
+    { quotationIds: [mergeQuotationA.id, mergeQuotationB.id] },
+    timings
+  );
+  const quotationMergeMs =
+    timings["POST /billing/quotations/convert-to-sale"] ?? Number.POSITIVE_INFINITY;
+  assert.equal(mergedConversion.quotations.length, 2);
+  assert.equal(mergedConversion.sale.items.length, 12);
+  for (const [index, item] of mergedConversion.sale.items.entries()) {
+    assert.equal(
+      item.quantity,
+      index * 2 + 3,
+      `Merged quotation line ${index + 1} quantity mismatch.`
+    );
+  }
   const updatedSale = await requestData(
     api,
     "PUT",
@@ -498,10 +695,16 @@ try {
   const persistedPaymentActivity = await paymentService.activity(databaseName, payment.id);
   const persistedPurchase = await purchaseService.get(databaseName, purchase.id);
   const persistedSale = await salesService.getSale(databaseName, sale.id);
+  const persistedSale12 = await salesService.getSale(databaseName, sale12.id);
+  const persistedSale24 = await salesService.getSale(databaseName, sale24.id);
+  const persistedMergedSale = await salesService.getSale(databaseName, mergedConversion.sale.id);
   assert.equal(persistedQuotation?.quotationNumber, "QT-PERSIST-001");
   assert.equal(persistedQuotation?.items[0]?.description, "Dummy persisted product");
   assert.equal(persistedSale?.invoiceNumber, "INV-PERSIST-001");
   assert.equal(persistedSale?.items[0]?.description, "");
+  assert.equal(persistedSale12?.items.length, 12);
+  assert.equal(persistedSale24?.items.length, 24);
+  assert.equal(persistedMergedSale?.items.length, 12);
   assert.equal(persistedPurchase?.items[0]?.description, "");
   assert.equal(persistedPayment?.paymentNumber, payment.paymentNumber);
   assert.equal(persistedPayment?.status, "cancelled");
@@ -571,6 +774,19 @@ try {
   const maxRequestMs = Math.max(...Object.values(timings));
   assert.ok(maxRequestMs < 2_000, `Warm API request exceeded 2s: ${maxRequestMs.toFixed(1)}ms`);
 
+  for (const path of [
+    "/billing/quotations/page?page=1&pageSize=10&search=&status=all&customer=all",
+    "/billing/purchases/page?page=1&pageSize=10&search=&status=all&customer=all",
+    "/billing/export-sales/page?page=1&pageSize=10&search=&status=all&customer=all",
+    "/billing/payments/page?page=1&pageSize=10&search=&status=all",
+    "/billing/receipts/page?page=1&pageSize=10&search=&status=all"
+  ]) {
+    const pageResult = await requestData(api, "GET", path, databaseName, undefined, timings);
+    assert.ok(Array.isArray(pageResult.items), `${path} did not return page items.`);
+    assert.ok(pageResult.items.length <= 10, `${path} exceeded the requested page size.`);
+    assert.ok(pageResult.total >= pageResult.items.length, `${path} returned an invalid total.`);
+  }
+
   const [counts] = await admin.query<Array<RowDataPacket & CountRow>>(
     `SELECT
       (SELECT COUNT(*) FROM billing_quotations WHERE deleted_at IS NULL) AS quotations,
@@ -582,10 +798,10 @@ try {
       (SELECT COUNT(*) FROM billing_payment_activities activity INNER JOIN billing_payments parent ON parent.id=activity.payment_id WHERE parent.deleted_at IS NULL) AS payment_activities,
       (SELECT COUNT(*) FROM billing_payment_allocations allocation INNER JOIN billing_payments parent ON parent.id=allocation.payment_id WHERE parent.deleted_at IS NULL) AS payment_allocations`
   );
-  assert.equal(Number(counts[0]?.quotations), 1);
-  assert.equal(Number(counts[0]?.quotation_items), 1);
-  assert.equal(Number(counts[0]?.sales), 1);
-  assert.equal(Number(counts[0]?.sales_items), 1);
+  assert.equal(Number(counts[0]?.quotations), 3);
+  assert.equal(Number(counts[0]?.quotation_items), 25);
+  assert.equal(Number(counts[0]?.sales), 6);
+  assert.equal(Number(counts[0]?.sales_items), 51);
   assert.equal(Number(counts[0]?.purchases), 1);
   assert.equal(Number(counts[0]?.payments), 1);
   assert.equal(Number(counts[0]?.payment_activities), 4);
@@ -596,9 +812,14 @@ try {
     databaseName,
     isolatedDatabaseName,
     maxRequestMs: Number(maxRequestMs.toFixed(1)),
+    quotationMergeMs: Number(quotationMergeMs.toFixed(1)),
     paymentId: payment.id,
     purchaseId: purchase.id,
     quotationId: quotation.id,
+    sale12CreateMs: Number(sale12CreateMs.toFixed(1)),
+    sale12LoadMs: Number(sale12LoadMs.toFixed(1)),
+    sale24CreateMs: Number(sale24CreateMs.toFixed(1)),
+    sale24LoadMs: Number(sale24LoadMs.toFixed(1)),
     saleId: conversion.sale.id
   });
 } finally {
@@ -609,6 +830,90 @@ try {
   await admin.query(`DROP DATABASE IF EXISTS \`${databaseName}\``);
   await admin.query(`DROP DATABASE IF EXISTS \`${isolatedDatabaseName}\``);
   await admin.end();
+}
+
+async function assertIndiaCountryDefault(connection: Awaited<ReturnType<typeof createConnection>>) {
+  const [countries] = await connection.query<RowDataPacket[]>(
+    "SELECT code,name,sort_order FROM countries ORDER BY sort_order,name"
+  );
+  assert.equal(countries[0]?.code, "IN", "India must be the first seeded Country.");
+  assert.equal(countries[0]?.name, "India", "India must be the default seeded Country.");
+  assert.equal(
+    countries.some((country) => country.code === "UNKNOWN" || country.name === "-"),
+    false,
+    "The removed hyphen Country must not be seeded."
+  );
+  const [fallbackStates] = await connection.query<RowDataPacket[]>(
+    `SELECT countries.code country_code FROM states
+      INNER JOIN countries ON countries.id=states.country_id
+      WHERE states.code='UNKNOWN' OR states.name='-'`
+  );
+  assert.equal(
+    fallbackStates[0]?.country_code,
+    "IN",
+    "The fallback State chain must remain valid under India."
+  );
+  const [states] = await connection.query<RowDataPacket[]>(
+    "SELECT code,name,sort_order FROM states ORDER BY sort_order,name"
+  );
+  assert.equal(states[0]?.name, "-", "The fallback State must remain first.");
+  assert.equal(states[1]?.name, "Tamil Nadu", "Tamil Nadu must be the second seeded State.");
+  assert.equal(states[1]?.sort_order, 1, "Tamil Nadu must have State sort order one.");
+}
+
+async function assertLegacyCountryCleanup(
+  connection: Awaited<ReturnType<typeof createConnection>>,
+  tenantDatabase: string
+) {
+  await connection.changeUser({ database: tenantDatabase });
+  await connection.query(
+    "INSERT INTO countries (code,name,sort_order,status) VALUES ('UNKNOWN','-',-1,'active')"
+  );
+  const [legacyCountries] = await connection.query<RowDataPacket[]>(
+    "SELECT id FROM countries WHERE code='UNKNOWN'"
+  );
+  const legacyCountryId = Number(legacyCountries[0]?.id);
+  assert.ok(legacyCountryId > 0);
+  await connection.query("UPDATE states SET country_id=? WHERE code='UNKNOWN'", [legacyCountryId]);
+  await connection.query(
+    "INSERT INTO states (country_id,code,name,sort_order,status) VALUES (?,'LEGACY-STATE','Legacy State',999,'active')",
+    [legacyCountryId]
+  );
+  await connection.query(
+    "UPDATE contacts_addresses SET country_id=?,country_name='-' ORDER BY id LIMIT 1",
+    [legacyCountryId]
+  );
+
+  await runWithCoreDatabase(tenantDatabase, async () => {
+    await seedStateModule();
+    await seedContactModule();
+    await removeUnknownCountrySeed();
+  });
+
+  const [remainingLegacyCountries] = await connection.query<RowDataPacket[]>(
+    "SELECT id FROM countries WHERE code='UNKNOWN' OR name='-'"
+  );
+  assert.equal(
+    remainingLegacyCountries.length,
+    0,
+    "Legacy hyphen Country cleanup must be repeatable."
+  );
+  const [invalidStates] = await connection.query<RowDataPacket[]>(
+    `SELECT states.id FROM states
+      INNER JOIN countries ON countries.id=states.country_id
+      WHERE states.code IN ('UNKNOWN','LEGACY-STATE') AND countries.code<>'IN'`
+  );
+  assert.equal(invalidStates.length, 0, "Legacy States must be reparented to India.");
+  const [invalidAddresses] = await connection.query<RowDataPacket[]>(
+    `SELECT contacts_addresses.id FROM contacts_addresses
+      LEFT JOIN countries ON countries.id=contacts_addresses.country_id
+      WHERE contacts_addresses.country_id IS NOT NULL AND countries.id IS NULL`
+  );
+  assert.equal(
+    invalidAddresses.length,
+    0,
+    "Contact addresses must retain a valid Country reference."
+  );
 }
 
 function purchaseDocumentPayload(references: References) {
@@ -1139,6 +1444,15 @@ function documentPayload(references: References) {
   };
 }
 
+function documentItems(references: References, count: number, descriptionPrefix: string) {
+  const template = documentPayload(references).items[0]!;
+  return Array.from({ length: count }, (_, index) => ({
+    ...template,
+    description: `${descriptionPrefix} ${index + 1}`,
+    quantity: index + 1
+  }));
+}
+
 type References = {
   addressId: number;
   colourId: number;
@@ -1194,12 +1508,13 @@ type ApiRecord = Record<string, unknown> & {
   generatedSalesInvoiceNo: string;
   id: string;
   invoiceNumber: string;
-  items: Array<{ description: string }>;
+  items: Array<{ description: string; quantity: number }>;
   notes: string;
   outstandingAmount: number;
   paymentNumber: string;
   purchaseId: string;
   quotation: ApiRecord;
+  quotations: ApiRecord[];
   quotationNumber: string;
   sale: ApiRecord;
   suggestedPaymentNumber: string;

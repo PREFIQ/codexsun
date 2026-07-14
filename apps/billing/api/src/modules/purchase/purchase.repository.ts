@@ -111,6 +111,40 @@ export class PurchaseRepository {
     return Promise.all(result.rows.map((row) => this.hydrate(database, row)));
   }
 
+  async listPage(
+    databaseName: string,
+    options: { customer: string; page: number; pageSize: number; search: string; status: string }
+  ) {
+    const database = await purchaseDatabase(databaseName);
+    const search = `%${options.search.trim()}%`;
+    const customer = options.customer.trim().toLowerCase();
+    const page = {
+      customer,
+      limit: options.pageSize,
+      offset: (options.page - 1) * options.pageSize,
+      search,
+      status: options.status
+    };
+    const result = await selectPurchaseHeaders(undefined, page).execute(database);
+    const count = await sql<{ total: string | number }>`
+      SELECT COUNT(*) AS total FROM billing_purchases s
+      INNER JOIN contacts supplier ON supplier.id=s.supplier_id
+      LEFT JOIN work_orders work_order ON work_order.id=s.work_order_id
+      WHERE s.deleted_at IS NULL AND (${page.status}='all' OR s.status=${page.status})
+        AND (${customer}='all' OR LOWER(supplier.name)=${customer})
+        AND (${search}='%%' OR s.purchase_number LIKE ${search} OR supplier.name LIKE ${search}
+          OR s.supplier_bill_number LIKE ${search} OR COALESCE(work_order.code,'') LIKE ${search}
+          OR DATE_FORMAT(s.purchase_date,'%Y-%m-%d') LIKE ${search}
+          OR s.status LIKE ${search} OR CAST(s.amount AS CHAR) LIKE ${search})
+    `.execute(database);
+    return {
+      items: await Promise.all(result.rows.map((row) => this.hydrate(database, row))),
+      page: options.page,
+      pageSize: options.pageSize,
+      total: Number(count.rows[0]?.total ?? 0)
+    };
+  }
+
   async get(databaseName: string, uuid: string) {
     const database = await purchaseDatabase(databaseName);
     const result = await selectPurchaseHeaders(uuid).execute(database);
@@ -355,14 +389,16 @@ export class PurchaseRepository {
   ) {
     const database = await purchaseDatabase(databaseName);
     const uuid = publicUuid();
-    await database.transaction().execute(async (transaction) => {
-      const lineResult = await sql<{ line_number: number }>`
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        await database.transaction().execute(async (transaction) => {
+          const lineResult = await sql<{ line_number: number }>`
         SELECT COALESCE(MAX(line_number), 0) + 1 AS line_number
         FROM billing_purchases
         WHERE company_id = ${input.companyId} AND financial_year_id = ${input.financialYearId}
       `.execute(transaction);
-      const lineNumber = Number(lineResult.rows[0]?.line_number ?? 1);
-      const inserted = await sql`
+          const lineNumber = Number(lineResult.rows[0]?.line_number ?? 1);
+          const inserted = await sql`
         INSERT INTO billing_purchases (
           uuid, company_id, financial_year_id, line_number, purchase_number, supplier_id,
           supplier_bill_number, supplier_bill_date,
@@ -380,10 +416,16 @@ export class PurchaseRepository {
           ${JSON.stringify(input.einvoice ?? emptyPurchaseEinvoice())}
         )
       `.execute(transaction);
-      const purchaseId = Number(inserted.insertId);
-      await insertItems(transaction, purchaseId, totals.items);
-      await insertActivity(transaction, purchaseId, "created", "create", null, input.status);
-    });
+          const purchaseId = Number(inserted.insertId);
+          await insertItems(transaction, purchaseId, totals.items);
+          await insertActivity(transaction, purchaseId, "created", "create", null, input.status);
+        });
+        break;
+      } catch (error) {
+        if (isDuplicateKey(error, "billing_purchases_line_unique") && attempt < 4) continue;
+        throw error;
+      }
+    }
     return this.get(databaseName, uuid);
   }
 
@@ -537,11 +579,20 @@ export class PurchaseRepository {
   }
 }
 
+function isDuplicateKey(error: unknown, keyName: string) {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: string; message?: string };
+  return candidate.code === "ER_DUP_ENTRY" && candidate.message?.includes(keyName) === true;
+}
+
 function purchaseDatabase(databaseName: string) {
   return getBillingDatabase(databaseName) as unknown as Promise<Kysely<PurchaseDatabase>>;
 }
 
-function selectPurchaseHeaders(uuid?: string) {
+function selectPurchaseHeaders(
+  uuid?: string,
+  page?: { customer: string; limit: number; offset: number; search: string; status: string }
+) {
   return sql<PurchaseHeaderRow>`
     SELECT s.id, s.uuid, s.company_id, company.name AS company_name,
            s.financial_year_id, financial_year.name AS financial_year_name,
@@ -574,7 +625,19 @@ function selectPurchaseHeaders(uuid?: string) {
     LEFT JOIN work_orders work_order ON work_order.id = s.work_order_id
     LEFT JOIN ledgers ledger ON ledger.id = s.ledger_id
     WHERE s.deleted_at IS NULL ${uuid ? sql`AND s.uuid = ${uuid}` : sql``}
+      ${
+        page
+          ? sql`AND (${page.status}='all' OR s.status=${page.status})
+        AND (${page.customer}='all' OR LOWER(supplier.name)=${page.customer})
+        AND (${page.search}='%%' OR s.purchase_number LIKE ${page.search}
+          OR supplier.name LIKE ${page.search} OR s.supplier_bill_number LIKE ${page.search}
+          OR COALESCE(work_order.code,'') LIKE ${page.search}
+          OR DATE_FORMAT(s.purchase_date,'%Y-%m-%d') LIKE ${page.search}
+          OR s.status LIKE ${page.search} OR CAST(s.amount AS CHAR) LIKE ${page.search})`
+          : sql``
+      }
     ORDER BY s.purchase_date DESC, s.line_number DESC
+    ${page ? sql`LIMIT ${page.limit} OFFSET ${page.offset}` : sql``}
   `;
 }
 

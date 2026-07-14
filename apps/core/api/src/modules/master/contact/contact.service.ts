@@ -199,6 +199,11 @@ export class ContactService {
       return await work();
     } catch (error) {
       if (isDuplicate(error)) throw AppError.conflict("Contact code already exists.");
+      if (isReferenced(error)) {
+        throw AppError.conflict(
+          "This contact address is used by an existing billing record and cannot be removed."
+        );
+      }
       throw error;
     }
   }
@@ -231,5 +236,14 @@ function isDuplicate(error: unknown): error is { code: string } {
     error !== null &&
     "code" in error &&
     (error as { code?: unknown }).code === "ER_DUP_ENTRY"
+  );
+}
+
+function isReferenced(error: unknown): error is { code: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "ER_ROW_IS_REFERENCED_2"
   );
 }

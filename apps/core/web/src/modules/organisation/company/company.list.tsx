@@ -5,7 +5,7 @@ import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
   WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTableLoadingState
 } from "@codexsun/ui/workspace/table";
 import type { CompanyRecord } from "./company.types";
 export function CompanyList({
@@ -86,7 +86,7 @@ export function CompanyList({
           </tbody>
         </table>
       </div>
-      {loading ? <WorkspaceTableSkeletonRows columns={6} rows={4} /> : null}
+      {loading && !records.length ? <WorkspaceTableLoadingState /> : null}
       {!loading && !records.length ? (
         <WorkspaceTableEmptyState>No companies found.</WorkspaceTableEmptyState>
       ) : null}

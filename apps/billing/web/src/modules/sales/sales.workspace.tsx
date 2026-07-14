@@ -23,7 +23,7 @@ import {
   totalSaleQuantity,
   updateSale
 } from "./sales.services";
-import { useSaleList } from "./sales.hooks";
+import { useSalesPage } from "./sales.hooks";
 import { SalesForm } from "./sales.form";
 import { canSelectSale, SalesList } from "./sales.list";
 import { getToken } from "../../shared/api/tenant-context";
@@ -60,7 +60,6 @@ function isAdminSession() {
 
 export function SalesWorkspace() {
   const queryClient = useQueryClient();
-  const salesQuery = useSaleList();
   const settingsQuery = useSalesSettings();
   const settings = settingsQuery.data ?? defaultBillingSettings;
   const saleLayout = settings.layout;
@@ -75,6 +74,12 @@ export function SalesWorkspace() {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
+  const salesQuery = useSalesPage({
+    page: currentPage,
+    pageSize: rowsPerPage,
+    search: searchValue,
+    status: statusFilter
+  });
 
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: SaleSavePayload }) =>
@@ -88,6 +93,9 @@ export function SalesWorkspace() {
       toast.success(view.mode === "upsert" && view.sale ? "Sale updated" : "Sale created", {
         description: `${sale.saleNumber} is ready.`
       });
+      if (sale.numberingWarning) {
+        toast.warning("Sale number changed", { description: sale.numberingWarning });
+      }
       setView({ mode: "show", sale });
     },
     onError: (error) => {
@@ -140,36 +148,17 @@ export function SalesWorkspace() {
     }
   });
 
-  const entries = salesQuery.data ?? [];
+  const entries = salesQuery.data?.items ?? [];
   const contactOptions = useMemo(() => buildSaleContactFilterOptions(entries), [entries]);
   const filteredEntries = useMemo(() => {
-    const term = searchValue.trim().toLowerCase();
     return entries.filter((sale) => {
-      const matchesSearch =
-        !term ||
-        [
-          sale.saleNumber,
-          sale.customerName,
-          sale.workOrderNo,
-          sale.issuedOn,
-          sale.status,
-          String(sale.amount)
-        ].some((value) =>
-          String(value ?? "")
-            .toLowerCase()
-            .includes(term)
-        );
-      const matchesStatus = statusFilter === "all" || sale.status === statusFilter;
       const matchesContact = contactFilter === "all" || saleContactKey(sale) === contactFilter;
-      return matchesSearch && matchesStatus && matchesContact;
+      return matchesContact;
     });
-  }, [contactFilter, entries, searchValue, statusFilter]);
+  }, [contactFilter, entries]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / rowsPerPage));
-  const pageEntries = filteredEntries.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  const totalPages = Math.max(1, Math.ceil((salesQuery.data?.total ?? 0) / rowsPerPage));
+  const pageEntries = filteredEntries;
   const pageTotals = useMemo(
     () =>
       pageEntries.reduce(
@@ -405,9 +394,9 @@ export function SalesWorkspace() {
       <WorkspacePagination
         page={currentPage}
         rowsPerPage={rowsPerPage}
-        showingLabel={buildShowingLabel(currentPage, rowsPerPage, filteredEntries.length)}
+        showingLabel={buildShowingLabel(currentPage, rowsPerPage, salesQuery.data?.total ?? 0)}
         singularLabel="sales"
-        totalCount={filteredEntries.length}
+        totalCount={salesQuery.data?.total ?? 0}
         totalPages={totalPages}
         onNextPage={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
         onPageChange={setCurrentPage}

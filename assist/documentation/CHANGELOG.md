@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.32
+Current version: 1.0.33
 
-Release tag: v-1.0.32
+Release tag: v-1.0.33
 
-Changelog label: v 1.0.32
+Changelog label: v 1.0.33
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -20,7 +20,92 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
 
+## v-1.0.33
+
+### [v 1.0.33] 2026-07-14 11:25 pm - Billing Concurrency and Tenant Runtime Hardening
+
+#### Database Changes
+
+- Database update: Yes (automatic repeatable tenant authorization seeds; no schema migration).
+- Added module-owned Core and Billing permission seeds that upsert the new view, create, update, delete, lifecycle, and compliance permissions and grant them to each tenant administrator role during lazy tenant bootstrap.
+- Existing tenant databases receive the authorization repair automatically on their first Core or Billing bootstrap after deployment; no table alteration or manual data backfill is required.
+
+#### App Codebase Changes
+
+- Added concurrent Sales invoice reservation recovery: conflicting create or draft-update requests save with the next configured number and return a user-visible warning, while the persisted next-number setting advances atomically.
+- Added retry-safe document line numbering across Quotation, Sales, Purchase, Export Sales, Payment, and Receipt to prevent simultaneous same-tenant inserts from failing on line-number collisions.
+- Serialized Payment and Receipt allocation validation with row locks and deterministic lock ordering so two users cannot allocate the same outstanding Purchase or Sale balance.
+- Enforced tenant role permissions for Core and Billing read, mutation, lifecycle, and compliance requests instead of relying on tenant-token membership alone.
+- Limited Core and Billing tenant connection pools, evicted pools after ten minutes of inactivity, and replaced startup-wide tenant migration and seeding with lazy per-tenant bootstrap while retaining the explicit database-stack migration command.
+- Added module-owned SQL pagination, server-side search and status filtering, bounded hydration, and accurate totals for Quotation, Sales, Purchase, Export Sales, Payment, and Receipt workspaces; page size is capped at 200 records.
+- Extended persistence and five-tenant mass E2E coverage for concurrent Sales numbering, bounded document pages, tenant isolation, authorization seed upgrades, fresh bootstrap, and restart bootstrap behavior.
+- Bumped workspace version to 1.0.33.
+
 ## v-1.0.32
+
+### [v 1.0.32] 2026-07-14 09:32 pm - Tamil Nadu State Priority
+
+#### Database Changes
+
+- Database update: Yes (automatic repeatable Core seed ordering; no schema migration).
+- Kept the fallback `-` State first, made Tamil Nadu the second State with sort order one, and shifted the earlier seeded States down to preserve unique deterministic ordering.
+
+#### App Codebase Changes
+
+- Extended persistence E2E coverage to require `-` first and Tamil Nadu second in the database-backed State lookup order.
+- Verified the same ordering in the live tenant database after Core startup reseeding.
+
+### [v 1.0.32] 2026-07-14 09:29 pm - India-First Country Default
+
+#### Database Changes
+
+- Database update: Yes (automatic repeatable Core seed cleanup; no schema migration).
+- Removed the `-`/`UNKNOWN` Country seed and made India the first Country seed with sort order zero.
+- Reparented the fallback and legacy user-created States plus existing Contact address Country references from the removed Country to India before deleting the obsolete Country row.
+- Kept the fallback State, District, City, and Pincode chain valid under India for minimal Contact defaults.
+
+#### App Codebase Changes
+
+- Made new Contact popups resolve their initial India label to the persisted India Country ID in Quotation, Sales, Purchase, Export Sales, Payment, and Receipt while retaining full Country override support.
+- Extended tenant persistence E2E coverage for fresh India-first seeds, absence of the hyphen Country, fallback hierarchy validity, legacy State and Contact-address cleanup, and repeatable reseeding.
+- Verified the live Sales new-Contact popup starts with India and can be overridden with United States.
+
+### [v 1.0.32] 2026-07-14 09:16 pm - Contact Country Selection
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Added a visible, database-backed Country lookup before State in the Quotation, Sales, Purchase, Export Sales, Payment, and Receipt contact popups.
+- Made a Country change clear the dependent State, District, City, and Pincode values so each lower lookup is filtered through one consistent persisted hierarchy.
+- Verified in the live Sales popup that changing the default `-` Country to India exposes and selects Tamil Nadu without changing persisted contact data during the test.
+
+### [v 1.0.32] 2026-07-14 09:07 pm - Referenced Contact Address Persistence
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Changed Contact address persistence to update retained addresses in place, preserving IDs already referenced by Quotation, Sales, Purchase, and Export Sales records instead of deleting and recreating them during a Contact edit.
+- Added a clear conflict response when an address that is still referenced by a Billing record is intentionally removed.
+- Added a tenant-database persistence regression that edits a Contact after its address is referenced by a Quotation and verifies that the address ID remains stable.
+- Verified the live Sales contact popup through Chrome, the Core and Billing production builds, module boundaries, dependency layout, and the complete tenant-isolated Billing persistence E2E.
+
+### [v 1.0.32] 2026-07-14 08:51 pm - Calm Workspace Data Loading
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Replaced animated workspace table and lookup skeletons with plain loading states so initial data requests no longer shimmer or fade the surrounding interface.
+- Kept the last settled table rows visible while Company, Contact, Product, and Work Order searches request their next server-filtered result, preventing table collapse and flicker during typing.
+- Applied the plain table-loading state across Core, Platform, Billing, and Data Bridge workspaces through the shared workspace table primitive and the remaining module-owned custom tables.
 
 ### [v 1.0.32] 2026-07-14 06:37 pm - Company Billing Compliance Bootstrap
 
@@ -72,6 +157,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 - Fixed Quotation, Sales, Purchase, and Export Sales quick-product requests so persisted Product Category, HSN Code, Unit, and GST Tax IDs are submitted as numeric foreign IDs instead of invalid strings.
 - Expanded the Core Product response with its resolved type, category, HSN, unit, and GST tax relationship values and made minimal product creation reuse the existing fallback masters.
 - Added default-address enrichment to minimal Contact creation so inline contacts created without address details still return a persisted address owned by that contact.
+- Aligned the Core Contact Legal Name interaction with the Billing contact popup: leaving Name derives an uppercase Legal Name until it is manually edited, and the magic action restores and refreshes that derived value on demand.
 - Allowed contact-only draft creation for Quotation, Sales, Purchase, and Export Sales and zero-value draft creation for Receipt and Payment while preserving line-item requirements for confirmation and positive-total requirements for posting.
 - Added fallback Ledger and Work Order resolution for minimal Billing drafts and fallback cash/bank Ledger resolution for Receipt and Payment without creating placeholder business records.
 - Extended the tenant-isolated persistence E2E to cover minimal Product and Contact creation, all six minimal Billing draft flows, default foreign-reference resolution, cleanup, and rejection of empty confirmation/posting actions.

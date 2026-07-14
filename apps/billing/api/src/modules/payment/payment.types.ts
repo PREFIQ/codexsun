@@ -99,3 +99,5 @@ export type PaymentJob = {
   paymentId: string;
   tenantDatabase: string;
 };
+
+export type PaymentPage = { items: Payment[]; page: number; pageSize: number; total: number };

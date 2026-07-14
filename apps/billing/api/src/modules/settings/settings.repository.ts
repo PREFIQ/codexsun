@@ -7,6 +7,7 @@ import {
   type BillingDocumentKind,
   type BillingDocumentLayoutSettings,
   type BillingGstApiMode,
+  type BillingNumberDocumentKind,
   type BillingSettings
 } from "./settings.types.js";
 
@@ -81,6 +82,29 @@ export class BillingSettingsRepository {
 
   async saveSalesSettings(databaseName: string, companyId: number, input: BillingSettings) {
     return this.saveBillingSettings(databaseName, companyId, input);
+  }
+
+  async advanceNextNumber(
+    databaseName: string,
+    companyId: number,
+    kind: BillingNumberDocumentKind,
+    minimumNextNumber: number
+  ) {
+    await this.getBillingSettings(databaseName, companyId);
+    const path = `$.numbering.${kind}.nextNumber`;
+    await sql`
+      UPDATE billing_company_settings
+      SET settings_json = JSON_SET(
+        settings_json,
+        ${path},
+        GREATEST(
+          COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(settings_json, ${path})) AS UNSIGNED), 1),
+          ${Math.max(1, Math.trunc(minimumNextNumber))}
+        )
+      ), updated_at = CURRENT_TIMESTAMP(3)
+      WHERE company_id = ${companyId} AND settings_key = 'billing'
+    `.execute(await database(databaseName));
+    return this.getBillingSettings(databaseName, companyId);
   }
 
   async defaultCompanyId(databaseName: string) {

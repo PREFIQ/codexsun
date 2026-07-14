@@ -4,11 +4,24 @@ import {
   listReceiptAllocations,
   listReceiptContacts,
   listReceiptLedgers,
-  listReceipts
+  listReceipts,
+  listReceiptsPage
 } from "./receipt.services";
 export const receiptQueryKey = ["billing", "receipts"] as const;
 export function useReceiptList() {
   return useQuery({ queryFn: listReceipts, queryKey: receiptQueryKey });
+}
+export function useReceiptPage(query: {
+  page: number;
+  pageSize: number;
+  search: string;
+  status: string;
+}) {
+  return useQuery({
+    placeholderData: (previous) => previous,
+    queryFn: () => listReceiptsPage(query),
+    queryKey: [...receiptQueryKey, "page", query]
+  });
 }
 export function useReceiptContext() {
   return useQuery({ queryFn: getReceiptContext, queryKey: [...receiptQueryKey, "context"] });

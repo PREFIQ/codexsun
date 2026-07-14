@@ -108,8 +108,5 @@ export function CountryList({
 }
 
 export function isProtectedCountry(record: CountryRecord) {
-  return (
-    ["UNKNOWN", "IN"].includes(record.code.trim().toUpperCase()) ||
-    ["-", "india"].includes(record.name.trim().toLowerCase())
-  );
+  return record.code.trim().toUpperCase() === "IN" || record.name.trim().toLowerCase() === "india";
 }

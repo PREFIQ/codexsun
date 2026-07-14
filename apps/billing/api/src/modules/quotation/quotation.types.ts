@@ -104,3 +104,10 @@ export type QuotationSavePayload = {
   workOrderId: number | null;
   workOrderNo?: string | undefined;
 };
+
+export type QuotationPage = {
+  items: Quotation[];
+  page: number;
+  pageSize: number;
+  total: number;
+};

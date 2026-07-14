@@ -24,8 +24,7 @@ import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
 import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
-  WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTablePanel
 } from "@codexsun/ui/workspace/table";
 import {
   WorkspaceFormBanner,
@@ -437,7 +436,14 @@ export function WorkAutomationWorkspace({
               </thead>
               <tbody>
                 {activeQuery.isLoading ? (
-                  <WorkspaceTableSkeletonRows columns={usesPriority(kind) ? 8 : 7} rows={6} />
+                  <tr>
+                    <td
+                      className="px-6 py-10 text-center text-sm text-muted-foreground"
+                      colSpan={usesPriority(kind) ? 8 : 7}
+                    >
+                      Loading records...
+                    </td>
+                  </tr>
                 ) : (
                   pageRecords.map((record, index) => (
                     <tr className="border-b last:border-0" key={record.id}>

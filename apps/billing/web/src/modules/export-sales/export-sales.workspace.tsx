@@ -26,7 +26,7 @@ import {
   totalExportSaleQuantity,
   updateExportSale
 } from "./export-sales.services";
-import { useExportSaleList } from "./export-sales.hooks";
+import { useExportSalesPage } from "./export-sales.hooks";
 import { ExportSalesForm } from "./export-sales.form";
 import { canSelectExportSale, ExportSalesList } from "./export-sales.list";
 import { getToken } from "../../shared/api/tenant-context";
@@ -63,7 +63,6 @@ function isAdminSession() {
 
 export function ExportSalesWorkspace() {
   const queryClient = useQueryClient();
-  const exportSalesQuery = useExportSaleList();
   const settingsQuery = useBillingSettings();
   const settings = settingsQuery.data ?? defaultBillingSettings;
   const exportSaleLayout = settings.layout;
@@ -78,6 +77,13 @@ export function ExportSalesWorkspace() {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
+  const exportSalesQuery = useExportSalesPage({
+    customer: contactFilter,
+    page: currentPage,
+    pageSize: rowsPerPage,
+    search: searchValue,
+    status: statusFilter
+  });
 
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: ExportSaleSavePayload }) =>
@@ -149,37 +155,11 @@ export function ExportSalesWorkspace() {
     }
   });
 
-  const entries = exportSalesQuery.data ?? [];
+  const entries = exportSalesQuery.data?.items ?? [];
   const contactOptions = useMemo(() => buildExportSaleContactFilterOptions(entries), [entries]);
-  const filteredEntries = useMemo(() => {
-    const term = searchValue.trim().toLowerCase();
-    return entries.filter((exportSale) => {
-      const matchesSearch =
-        !term ||
-        [
-          exportSale.invoiceNumber,
-          exportSale.customerName,
-          exportSale.workOrderNo,
-          exportSale.issuedOn,
-          exportSale.status,
-          String(exportSale.amount)
-        ].some((value) =>
-          String(value ?? "")
-            .toLowerCase()
-            .includes(term)
-        );
-      const matchesStatus = statusFilter === "all" || exportSale.status === statusFilter;
-      const matchesContact =
-        contactFilter === "all" || exportSaleContactKey(exportSale) === contactFilter;
-      return matchesSearch && matchesStatus && matchesContact;
-    });
-  }, [contactFilter, entries, searchValue, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / rowsPerPage));
-  const pageEntries = filteredEntries.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  const totalCount = exportSalesQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / rowsPerPage));
+  const pageEntries = entries;
   const pageTotals = useMemo(
     () =>
       pageEntries.reduce(
@@ -418,9 +398,9 @@ export function ExportSalesWorkspace() {
       <WorkspacePagination
         page={currentPage}
         rowsPerPage={rowsPerPage}
-        showingLabel={buildShowingLabel(currentPage, rowsPerPage, filteredEntries.length)}
+        showingLabel={buildShowingLabel(currentPage, rowsPerPage, totalCount)}
         singularLabel="export sales"
-        totalCount={filteredEntries.length}
+        totalCount={totalCount}
         totalPages={totalPages}
         onNextPage={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
         onPageChange={setCurrentPage}

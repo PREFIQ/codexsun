@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getSale, getSaleContext, listSales } from "./sales.services";
+import { getSale, getSaleContext, listSales, listSalesPage } from "./sales.services";
 
 export function useSalesList() {
   return useQuery({
@@ -9,6 +9,19 @@ export function useSalesList() {
 }
 
 export const useSaleList = useSalesList;
+
+export function useSalesPage(query: {
+  page: number;
+  pageSize: number;
+  search: string;
+  status: string;
+}) {
+  return useQuery({
+    placeholderData: (previous) => previous,
+    queryFn: () => listSalesPage(query),
+    queryKey: ["billing", "sales", "page", query]
+  });
+}
 
 export function useSaleRecord(id: string | null, enabled = true) {
   return useQuery({

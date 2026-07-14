@@ -101,7 +101,10 @@ async function loadState() {
 
   await admin.changeUser({ database: tenantDatabaseName });
   const tenant = {
-    billingSettings: await count("billing_settings"),
+    billingSettings: await countWhere(
+      "billing_company_settings",
+      "settings_key = 'billing' AND company_id = (SELECT company_id FROM default_company_settings WHERE singleton_key = 1)"
+    ),
     billingTables: await countBillingRootTables(),
     codexsunCompanies: await countWhere("companies", "name = 'codexsun'"),
     companies: await count("companies"),

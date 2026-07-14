@@ -9,8 +9,7 @@ import {
   type SortingState
 } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
-import { useState, type ReactNode, type ThHTMLAttributes } from "react";
-import { Skeleton } from "../components/skeleton";
+import { useRef, useState, type ReactNode, type ThHTMLAttributes } from "react";
 import { cn } from "../lib/utils";
 
 export const workspaceTablePanelClass =
@@ -40,10 +39,14 @@ export function WorkspaceTable<T>({
   onRowClick?: (row: T) => void;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
+  const settledData = useRef(data);
+
+  if (!isLoading) settledData.current = data;
+  const visibleData = isLoading && data.length === 0 ? settledData.current : data;
 
   const table = useReactTable({
     columns,
-    data,
+    data: visibleData,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
@@ -100,7 +103,7 @@ export function WorkspaceTable<T>({
       </div>
       {table.getRowModel().rows.length === 0 ? (
         isLoading ? (
-          <WorkspaceTableSkeletonRows columns={columns.length} />
+          <WorkspaceTableLoadingState />
         ) : (
           <WorkspaceTableEmptyState>{emptyState ?? "No records found."}</WorkspaceTableEmptyState>
         )
@@ -145,26 +148,6 @@ export function WorkspaceTableEmptyState({
   );
 }
 
-export function WorkspaceTableSkeletonRows({
-  columns,
-  rows = 5
-}: {
-  columns: number;
-  rows?: number;
-}) {
-  return (
-    <div className="space-y-2 px-4 py-4">
-      {Array.from({ length: rows }).map((_, rowIndex) => (
-        <div
-          key={rowIndex}
-          className="grid gap-3"
-          style={{ gridTemplateColumns: `repeat(${Math.max(columns, 1)}, minmax(0, 1fr))` }}
-        >
-          {Array.from({ length: Math.max(columns, 1) }).map((__, columnIndex) => (
-            <Skeleton key={columnIndex} className="h-5 w-full" />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
+export function WorkspaceTableLoadingState({ label = "Loading records..." }: { label?: string }) {
+  return <WorkspaceTableEmptyState className="py-10">{label}</WorkspaceTableEmptyState>;
 }

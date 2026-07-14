@@ -12,6 +12,12 @@ export class ReceiptService {
   list(databaseName: string) {
     return this.repository.list(databaseName);
   }
+  listPage(
+    databaseName: string,
+    query: { page: number; pageSize: number; search: string; status: string }
+  ) {
+    return this.repository.listPage(databaseName, query);
+  }
   get(databaseName: string, id: string) {
     return this.repository.get(databaseName, id);
   }

@@ -6,7 +6,7 @@ import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
   WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTableLoadingState
 } from "@codexsun/ui/workspace/table";
 import type { WorkOrderRecord } from "./work-order.types";
 
@@ -119,7 +119,7 @@ export function WorkOrderList({
           })}
         </div>
       ) : null}
-      {loading ? <WorkspaceTableSkeletonRows columns={columns.length + 1} rows={4} /> : null}
+      {loading && !records.length ? <WorkspaceTableLoadingState /> : null}
       {!loading && !records.length ? (
         <WorkspaceTableEmptyState>No work orders found.</WorkspaceTableEmptyState>
       ) : null}

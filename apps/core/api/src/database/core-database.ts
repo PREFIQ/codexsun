@@ -2,9 +2,11 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { Kysely, MysqlDialect, sql } from "kysely";
 import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
+import { seedCoreTenantPermissions } from "../auth/tenant-permission.seed.js";
 import { env } from "../env.js";
 import { commonMigration, migrateCommonModule } from "../modules/common/common.migration.js";
 import { seedCommonModule } from "../modules/common/common.seed.js";
+import { removeUnknownCountrySeed } from "../modules/common/location/country/index.js";
 import { masterMigration, migrateMasterModule, seedMasterModule } from "../modules/master/index.js";
 import {
   migrateOrganisationModule,
@@ -15,9 +17,14 @@ import {
 export type CoreDatabase = Record<string, unknown>;
 
 const context = new AsyncLocalStorage<string>();
-const connections = new Map<string, Kysely<CoreDatabase>>();
+type CoreConnectionEntry = { database: Kysely<CoreDatabase>; lastUsedAt: number };
+
+const connections = new Map<string, CoreConnectionEntry>();
 const migrated = new Set<string>();
 const bootstrapping = new Map<string, Promise<void>>();
+const connectionIdleMs = 10 * 60 * 1000;
+const evictionTimer = setInterval(() => void evictIdleCoreDatabases(), 60_000);
+evictionTimer.unref();
 
 export function resolveCoreDatabaseName(value: unknown) {
   const requested = typeof value === "string" ? value.trim() : "";
@@ -35,7 +42,10 @@ export function runWithCoreDatabase<T>(databaseName: string, callback: () => T) 
 export function getCoreDatabase(databaseName = context.getStore()) {
   const name = resolveCoreDatabaseName(databaseName);
   const existing = connections.get(name);
-  if (existing) return existing;
+  if (existing) {
+    existing.lastUsedAt = Date.now();
+    return existing.database;
+  }
   const database = new Kysely<CoreDatabase>({
     dialect: new MysqlDialect({
       pool: createPool({
@@ -43,12 +53,16 @@ export function getCoreDatabase(databaseName = context.getStore()) {
         host: env.DB_HOST,
         password: env.DB_PASSWORD,
         port: env.DB_PORT,
+        connectionLimit: 4,
+        idleTimeout: 60_000,
+        maxIdle: 1,
+        queueLimit: 100,
         timezone: "Z",
         user: env.DB_USER
       } satisfies PoolOptions)
     })
   });
-  connections.set(name, database);
+  connections.set(name, { database, lastUsedAt: Date.now() });
   return database;
 }
 
@@ -72,6 +86,8 @@ export async function bootstrapCoreDatabase(databaseName: string) {
     await seedCommonModule();
     await seedOrganisationModule();
     await seedMasterModule();
+    await removeUnknownCountrySeed();
+    await seedCoreTenantPermissions(database as unknown as Kysely<unknown>);
     migrated.add(name);
   });
   bootstrapping.set(name, promise);
@@ -128,10 +144,22 @@ export async function bootstrapRegisteredCoreDatabases() {
 }
 
 export async function closeCoreDatabase() {
-  const open = [...connections.values()];
+  const open = Array.from(connections.values(), (entry) => entry.database);
   connections.clear();
   migrated.clear();
   await Promise.all(open.map((database) => database.destroy()));
+}
+
+export async function evictIdleCoreDatabases(now = Date.now()) {
+  const idle = Array.from(connections.entries()).filter(
+    ([name, entry]) => now - entry.lastUsedAt >= connectionIdleMs && !bootstrapping.has(name)
+  );
+  for (const [name, entry] of idle) {
+    if (connections.get(name) !== entry) continue;
+    connections.delete(name);
+    await entry.database.destroy();
+  }
+  return idle.length;
 }
 
 async function ensureDatabase(databaseName: string) {

@@ -326,7 +326,7 @@ function normalizeContact(input: ContactSaveInput, current: ContactRecord | null
     isActive: status === "active",
     emails,
     phones,
-    addresses: normalizeAddresses(input.addresses ?? current?.addresses ?? []),
+    addresses: normalizeAddresses(input.addresses ?? current?.addresses ?? [], current?.addresses),
     bankAccounts: normalizeBankAccounts(input.bankAccounts ?? current?.bankAccounts ?? []),
     socialLinks: normalizeSocialLinks(input.socialLinks ?? current?.socialLinks ?? []),
     createdAt: current?.createdAt ?? now,
@@ -363,10 +363,13 @@ function normalizePhones(items: ContactSaveInput["phones"] | ContactPhone[]) {
   return normalized;
 }
 
-function normalizeAddresses(items: ContactSaveInput["addresses"] | ContactAddress[]) {
+function normalizeAddresses(
+  items: ContactSaveInput["addresses"] | ContactAddress[],
+  current: ContactAddress[] = []
+) {
   const normalized = (items ?? [])
     .map((item, index) => ({
-      id: Number(item.id ?? 0),
+      id: Number(item.id ?? current[index]?.id ?? 0),
       addressTypeId: nullableNumber(item.addressTypeId),
       addressTypeName: nullableText(item.addressTypeName),
       addressLine1: text(item.addressLine1),
@@ -649,10 +652,6 @@ async function replaceContactChildren(
     .where("parent_id" as never, "=", contactId as never)
     .execute();
   await database
-    .deleteFrom("contacts_addresses" as never)
-    .where("parent_id" as never, "=", contactId as never)
-    .execute();
-  await database
     .deleteFrom("contacts_bank_accounts" as never)
     .where("parent_id" as never, "=", contactId as never)
     .execute();
@@ -689,32 +688,7 @@ async function replaceContactChildren(
       )
       .execute();
   }
-  if (record.addresses.length) {
-    await database
-      .insertInto("contacts_addresses" as never)
-      .values(
-        record.addresses.map((item) => ({
-          parent_id: contactId,
-          address_type_id: item.addressTypeId,
-          address_type_name: item.addressTypeName,
-          address_line1: item.addressLine1,
-          address_line2: item.addressLine2,
-          country_id: item.countryId,
-          country_name: item.countryName,
-          state_id: item.stateId,
-          state_name: item.stateName,
-          district_id: item.districtId,
-          district_name: item.districtName,
-          city_id: item.cityId,
-          city_name: item.cityName,
-          pincode_id: item.pincodeId,
-          pincode_name: item.pincodeName,
-          is_default: item.isDefault ? 1 : 0,
-          sort_order: item.sortOrder
-        })) as never
-      )
-      .execute();
-  }
+  await syncContactAddresses(database, contactId, record.addresses);
   if (record.bankAccounts.length) {
     await database
       .insertInto("contacts_bank_accounts" as never)
@@ -748,6 +722,75 @@ async function replaceContactChildren(
       )
       .execute();
   }
+}
+
+async function syncContactAddresses(
+  database: ContactDatabase,
+  contactId: number,
+  addresses: ContactAddress[]
+) {
+  const existingRows = (await database
+    .selectFrom("contacts_addresses" as never)
+    .select(["id" as never])
+    .where("parent_id" as never, "=", contactId as never)
+    .execute()) as Row[];
+  const existingIds = new Set(existingRows.map((row) => Number(row.id)));
+  const retainedIds = addresses
+    .map((address) => Number(address.id))
+    .filter((id) => id > 0 && existingIds.has(id));
+  const retainedIdSet = new Set(retainedIds);
+
+  for (const address of addresses) {
+    if (!retainedIdSet.has(Number(address.id))) continue;
+    await database
+      .updateTable("contacts_addresses" as never)
+      .set(toAddressRow(address) as never)
+      .where("id" as never, "=", Number(address.id) as never)
+      .where("parent_id" as never, "=", contactId as never)
+      .execute();
+  }
+
+  let deleteQuery = database
+    .deleteFrom("contacts_addresses" as never)
+    .where("parent_id" as never, "=", contactId as never);
+  if (retainedIds.length) {
+    deleteQuery = deleteQuery.where("id" as never, "not in", retainedIds as never);
+  }
+  await deleteQuery.execute();
+
+  const newAddresses = addresses.filter((address) => !retainedIdSet.has(Number(address.id)));
+  if (newAddresses.length) {
+    await database
+      .insertInto("contacts_addresses" as never)
+      .values(
+        newAddresses.map((address) => ({
+          parent_id: contactId,
+          ...toAddressRow(address)
+        })) as never
+      )
+      .execute();
+  }
+}
+
+function toAddressRow(address: ContactAddress) {
+  return {
+    address_type_id: address.addressTypeId,
+    address_type_name: address.addressTypeName,
+    address_line1: address.addressLine1,
+    address_line2: address.addressLine2,
+    country_id: address.countryId,
+    country_name: address.countryName,
+    state_id: address.stateId,
+    state_name: address.stateName,
+    district_id: address.districtId,
+    district_name: address.districtName,
+    city_id: address.cityId,
+    city_name: address.cityName,
+    pincode_id: address.pincodeId,
+    pincode_name: address.pincodeName,
+    is_default: address.isDefault ? 1 : 0,
+    sort_order: address.sortOrder
+  };
 }
 
 function primaryValue<T extends { isPrimary: boolean }>(items: T[], key: keyof T) {

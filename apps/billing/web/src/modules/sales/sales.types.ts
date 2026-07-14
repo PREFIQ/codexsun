@@ -85,6 +85,7 @@ export type Sale = {
   items: SaleLineItem[];
   issuedOn: string;
   notes: string;
+  numberingWarning: string;
   ledgerId: number | null;
   lineNumber: number;
   roundOff: number;
@@ -138,6 +139,13 @@ export type SaleView =
   | { mode: "upsert"; sale: Sale | null; returnTo: "list" | "show" };
 
 export type SalesView = SaleView;
+
+export type SalePageResult = {
+  items: Sale[];
+  page: number;
+  pageSize: number;
+  total: number;
+};
 
 export function createEmptySale(): SaleSavePayload {
   return {

@@ -4,7 +4,7 @@ import {
   formatBillingDocumentNumber,
   nextBillingDocumentNumber
 } from "../settings/settings.types.js";
-import { SalesRepository } from "./sales.repository.js";
+import { SalesInvoiceReservationConflict, SalesRepository } from "./sales.repository.js";
 import type {
   Sale,
   SaleEinvoiceDetails,
@@ -23,6 +23,13 @@ export class SalesService {
 
   listSales(databaseName: string) {
     return this.repository.list(databaseName);
+  }
+
+  listSalesPage(
+    databaseName: string,
+    query: { page: number; pageSize: number; search: string; status: string }
+  ) {
+    return this.repository.listPage(databaseName, query);
   }
 
   getSale(databaseName: string, id: string) {
@@ -49,25 +56,41 @@ export class SalesService {
       normalized.companyId
     );
     const numbering = billingSettings.numbering.sales;
-    const numbered = await resolveNextSaleNumber(
+    const requestedNumber = normalized.invoiceNumber.trim().toUpperCase();
+    let numbered = await resolveNextSaleNumber(
       databaseName,
       normalized,
       numbering,
       this.repository
     );
-    const totals = buildSaleTotals(numbered.input);
-    const sale = await this.repository.create(databaseName, numbered.input, totals);
-    if (!sale) throw AppError.validation("Sales invoice could not be created.");
-    if (numbering.automatic && (numbered.generated || numbered.nextNumber > numbering.nextNumber)) {
-      await this.settings.saveBillingSettings(databaseName, normalized.companyId, {
-        ...billingSettings,
-        numbering: {
-          ...billingSettings.numbering,
-          sales: { ...numbering, nextNumber: numbered.nextNumber }
-        }
-      });
+    let sale: Sale | null = null;
+    for (let attempt = 0; attempt < 20 && !sale; attempt += 1) {
+      try {
+        sale = await this.repository.create(
+          databaseName,
+          numbered.input,
+          buildSaleTotals(numbered.input)
+        );
+      } catch (error) {
+        if (!(error instanceof SalesInvoiceReservationConflict)) throw error;
+        numbered = await resolveNextSaleNumber(
+          databaseName,
+          { ...numbered.input, invoiceNumber: error.invoiceNumber },
+          { ...numbering, automatic: true, nextNumber: numbered.nextNumber },
+          this.repository
+        );
+      }
     }
-    return sale;
+    if (!sale) throw AppError.conflict("A sales invoice number could not be reserved.");
+    if (numbering.automatic && (numbered.generated || numbered.nextNumber > numbering.nextNumber)) {
+      await this.settings.advanceNextNumber(
+        databaseName,
+        normalized.companyId,
+        "sales",
+        numbered.nextNumber
+      );
+    }
+    return withNumberingWarning(sale, requestedNumber, numbered.input.invoiceNumber);
   }
 
   async updateSale(databaseName: string, id: string, input: SaleSavePayload) {
@@ -76,15 +99,52 @@ export class SalesService {
     if (current.status !== "draft") throw AppError.conflict("Only draft sales can be edited.");
     const normalized = normalizeSaleInput(input);
     await this.validateReferences(databaseName, normalized);
-    const duplicateId = await this.repository.findByInvoiceNumber(
+    const billingSettings = await this.settings.getBillingSettings(
       databaseName,
-      normalized.companyId,
-      normalized.financialYearId,
-      normalized.invoiceNumber
+      normalized.companyId
     );
-    if (duplicateId && duplicateId !== id)
-      throw AppError.conflict("Sales invoice number already exists for this company and year.");
-    return this.repository.update(databaseName, id, normalized, buildSaleTotals(normalized));
+    const requestedNumber = normalized.invoiceNumber.trim().toUpperCase();
+    let numbered = await resolveNextSaleNumber(
+      databaseName,
+      normalized,
+      billingSettings.numbering.sales,
+      this.repository,
+      id
+    );
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      try {
+        const updated = await this.repository.update(
+          databaseName,
+          id,
+          numbered.input,
+          buildSaleTotals(numbered.input)
+        );
+        if (!updated) return null;
+        if (numbered.nextNumber > billingSettings.numbering.sales.nextNumber) {
+          await this.settings.advanceNextNumber(
+            databaseName,
+            normalized.companyId,
+            "sales",
+            numbered.nextNumber
+          );
+        }
+        return withNumberingWarning(updated, requestedNumber, numbered.input.invoiceNumber);
+      } catch (error) {
+        if (!(error instanceof SalesInvoiceReservationConflict)) throw error;
+        numbered = await resolveNextSaleNumber(
+          databaseName,
+          { ...numbered.input, invoiceNumber: error.invoiceNumber },
+          {
+            ...billingSettings.numbering.sales,
+            automatic: true,
+            nextNumber: numbered.nextNumber
+          },
+          this.repository,
+          id
+        );
+      }
+    }
+    throw AppError.conflict("A sales invoice number could not be reserved.");
   }
 
   async confirmSale(databaseName: string, id: string) {
@@ -287,7 +347,8 @@ async function resolveNextSaleNumber(
   databaseName: string,
   input: SaleSavePayload,
   numbering: Parameters<typeof formatBillingDocumentNumber>[0],
-  repository: SalesRepository
+  repository: SalesRepository,
+  excludeId?: string
 ) {
   const enteredNumber = input.invoiceNumber.trim();
   const configuredNumber = formatBillingDocumentNumber(numbering);
@@ -299,15 +360,15 @@ async function resolveNextSaleNumber(
       databaseName,
       input.companyId,
       input.financialYearId,
-      enteredNumber.toUpperCase()
+      enteredNumber.toUpperCase(),
+      excludeId
     );
-    if (duplicate)
-      throw AppError.conflict("Sales invoice number already exists for this company and year.");
-    return {
-      generated: false,
-      input,
-      nextNumber: nextBillingDocumentNumber(numbering, enteredNumber)
-    };
+    if (!duplicate)
+      return {
+        generated: false,
+        input: { ...input, invoiceNumber: enteredNumber.toUpperCase() },
+        nextNumber: nextBillingDocumentNumber(numbering, enteredNumber)
+      };
   }
   let nextNumber = Math.max(1, numbering.nextNumber);
   while (true) {
@@ -316,12 +377,21 @@ async function resolveNextSaleNumber(
       databaseName,
       input.companyId,
       input.financialYearId,
-      invoiceNumber
+      invoiceNumber,
+      excludeId
     );
     if (!duplicate)
       return { generated: true, input: { ...input, invoiceNumber }, nextNumber: nextNumber + 1 };
     nextNumber += 1;
   }
+}
+
+function withNumberingWarning(sale: Sale, requestedNumber: string, reservedNumber: string): Sale {
+  if (!requestedNumber || requestedNumber === reservedNumber) return sale;
+  return {
+    ...sale,
+    numberingWarning: `Sales invoice ${requestedNumber} was already reserved. Saved as ${reservedNumber}.`
+  };
 }
 
 export function buildSaleTotals(

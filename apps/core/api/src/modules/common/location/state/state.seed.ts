@@ -10,21 +10,24 @@ export async function seedStateModule() {
   const countries = await sql<{
     id: number;
     code: string;
-  }>`SELECT id,code FROM countries WHERE code IN ('UNKNOWN','IN')`.execute(getCoreDatabase());
+  }>`SELECT id,code FROM countries WHERE code='IN'`.execute(getCoreDatabase());
   const countryIds = new Map(countries.rows.map((country) => [country.code, country.id]));
-  const defaultCountryId = countryIds.get("UNKNOWN");
   const indiaId = countryIds.get("IN");
-  if (!defaultCountryId || !indiaId)
-    throw new Error("Default and India country seeds must exist before state seeds are applied.");
+  if (!indiaId) throw new Error("India country seed must exist before state seeds are applied.");
+
+  await sql`UPDATE states AS legacy_state
+    INNER JOIN countries AS legacy_country ON legacy_country.id=legacy_state.country_id
+    SET legacy_state.country_id=${indiaId}
+    WHERE legacy_country.code='UNKNOWN' OR legacy_country.name='-'`.execute(getCoreDatabase());
 
   const fallback = await sql<{ id: number }>`SELECT id FROM states
     WHERE code='UNKNOWN' OR name='-' ORDER BY id LIMIT 1`.execute(getCoreDatabase());
   if (fallback.rows[0]?.id) {
-    await sql`UPDATE states SET country_id=${defaultCountryId},code='UNKNOWN',name='-',sort_order=0,status='active'
+    await sql`UPDATE states SET country_id=${indiaId},code='UNKNOWN',name='-',sort_order=0,status='active'
       WHERE id=${fallback.rows[0].id}`.execute(getCoreDatabase());
   } else {
     await sql`INSERT INTO states (country_id,code,name,sort_order,status)
-      VALUES (${defaultCountryId},'UNKNOWN','-',0,'active')`.execute(getCoreDatabase());
+      VALUES (${indiaId},'UNKNOWN','-',0,'active')`.execute(getCoreDatabase());
   }
 
   for (const state of stateSeeds) {
@@ -36,7 +39,7 @@ export async function seedStateModule() {
   }
 }
 
-const stateSeeds = [
+const stateSeedRows = [
   { code: "01", name: "Jammu and Kashmir", sortOrder: 1, status: "active" as const },
   { code: "02", name: "Himachal Pradesh", sortOrder: 2, status: "active" as const },
   { code: "03", name: "Punjab", sortOrder: 3, status: "active" as const },
@@ -80,3 +83,8 @@ const stateSeeds = [
   { code: "38", name: "Ladakh", sortOrder: 38, status: "active" as const },
   { code: "97", name: "Other Territory", sortOrder: 97, status: "active" as const }
 ];
+
+const stateSeeds = stateSeedRows.map((state) => ({
+  ...state,
+  sortOrder: state.code === "33" ? 1 : state.sortOrder < 33 ? state.sortOrder + 1 : state.sortOrder
+}));

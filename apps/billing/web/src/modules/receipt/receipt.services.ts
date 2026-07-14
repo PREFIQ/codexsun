@@ -17,6 +17,22 @@ import type {
 } from "./receipt.types";
 
 export const listReceipts = () => billingApiGet<Receipt[]>("/billing/receipts");
+export const listReceiptsPage = (query: {
+  page: number;
+  pageSize: number;
+  search: string;
+  status: string;
+}) => {
+  const params = new URLSearchParams({
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+    search: query.search,
+    status: query.status
+  });
+  return billingApiGet<import("./receipt.types").ReceiptPageResult>(
+    `/billing/receipts/page?${params}`
+  );
+};
 export const getReceiptContext = () => billingApiGet<ReceiptContext>("/billing/receipts/context");
 export const createReceipt = (input: ReceiptSavePayload) =>
   billingApiPost<Receipt>("/billing/receipts", input);

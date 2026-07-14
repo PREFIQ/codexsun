@@ -1088,6 +1088,46 @@ function QuotationContactQuickForm({
             onChange={(addressLine2) => setForm((current) => ({ ...current, addressLine2 }))}
           />
           <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-2">
+              <Label>Country</Label>
+              <WorkspaceLookup
+                allowTextValue={false}
+                emptyLabel="No country found."
+                loading={countriesQuery.isLoading}
+                options={(countriesQuery.data ?? [])
+                  .filter((record) => record.status !== "inactive")
+                  .map(quotationLocationOption)}
+                placeholder="Search country"
+                value={
+                  form.countryId ||
+                  String(
+                    (countriesQuery.data ?? []).find(
+                      (record) => record.name.toLowerCase() === form.countryName.toLowerCase()
+                    )?.id ?? ""
+                  )
+                }
+                onValueChange={(selected, option) => {
+                  const record =
+                    ((option as QuotationLookupOption | undefined)?.record as
+                      QuotationLocationRecord | undefined) ??
+                    (countriesQuery.data ?? []).find((item) => String(item.id) === selected);
+                  if (!record) return;
+                  setForm((current) => ({
+                    ...current,
+                    countryId: String(record.id),
+                    countryName: record.name,
+                    stateId: "",
+                    stateName: "",
+                    districtId: "",
+                    districtName: "",
+                    cityId: "",
+                    cityName: "",
+                    pincodeId: "",
+                    pincodeName: ""
+                  }));
+                }}
+              />
+            </label>
             <ContactLocationLookup
               label="State"
               kind="states"

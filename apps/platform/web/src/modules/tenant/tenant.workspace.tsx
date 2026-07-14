@@ -22,7 +22,7 @@ import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
   WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTableLoadingState
 } from "@codexsun/ui/workspace/table";
 import {
   WorkspaceFormBanner,
@@ -479,7 +479,7 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
           </table>
         </div>
         {pageTenants.length === 0 && tenantsQuery.isFetching ? (
-          <WorkspaceTableSkeletonRows columns={8} />
+          <WorkspaceTableLoadingState />
         ) : null}
         {pageTenants.length === 0 && !tenantsQuery.isFetching ? (
           <WorkspaceTableEmptyState>No tenants found.</WorkspaceTableEmptyState>

@@ -100,8 +100,26 @@ const activitySchema = z.object({
   newStatus: statusSchema.nullable(),
   previousStatus: statusSchema.nullable()
 });
+const pageQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(10).max(200).default(20),
+  search: z.string().default(""),
+  status: z.enum(["all", "draft", "posted", "cancelled"]).default("all")
+});
+const paymentPageSchema = z.object({
+  items: z.array(paymentSchema),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  total: z.number().int().nonnegative()
+});
 
 export async function registerPaymentRoutes(app: FastifyInstance) {
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/payments/page",
+    schemas: { querystring: pageQuerySchema, response: paymentPageSchema },
+    handler: ({ query, request }) => service.listPage(databaseName(request), query)
+  });
   registerContractRoute(app, {
     method: "GET",
     url: "/billing/payments",

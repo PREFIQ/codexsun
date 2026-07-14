@@ -137,8 +137,27 @@ const contextSchema = z.object({
   financialYearId: z.number().int().positive(),
   financialYearName: z.string()
 });
+const pageQuerySchema = z.object({
+  customer: z.string().default("all"),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(10).max(200).default(100),
+  search: z.string().default(""),
+  status: z.enum(["all", "draft", "confirmed", "cancelled"]).default("all")
+});
+const exportSalePageSchema = z.object({
+  items: z.array(exportSaleSchema),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  total: z.number().int().nonnegative()
+});
 
 export async function registerExportSalesRoutes(app: FastifyInstance) {
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/export-sales/page",
+    schemas: { querystring: pageQuerySchema, response: exportSalePageSchema },
+    handler: ({ query, request }) => service.listExportSalesPage(databaseName(request), query)
+  });
   registerContractRoute(app, {
     method: "GET",
     url: "/billing/export-sales",

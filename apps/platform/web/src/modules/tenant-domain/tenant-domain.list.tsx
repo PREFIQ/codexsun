@@ -4,7 +4,7 @@ import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
   WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTableLoadingState
 } from "@codexsun/ui/workspace/table";
 import type { TenantDomainRecord } from "./tenant-domain.types";
 
@@ -58,7 +58,7 @@ export function TenantDomainTable({
           </tbody>
         </table>
       </div>
-      {domains.length === 0 && loading ? <WorkspaceTableSkeletonRows columns={5} /> : null}
+      {domains.length === 0 && loading ? <WorkspaceTableLoadingState /> : null}
       {domains.length === 0 && !loading ? (
         <WorkspaceTableEmptyState>No domains found.</WorkspaceTableEmptyState>
       ) : null}

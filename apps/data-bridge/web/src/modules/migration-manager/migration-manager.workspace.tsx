@@ -10,7 +10,7 @@ import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
   WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTableLoadingState
 } from "@codexsun/ui/workspace/table";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
@@ -168,7 +168,7 @@ export function MigrationManagerWorkspace() {
             </tbody>
           </table>
         </div>
-        {!jobs.length && query.isFetching ? <WorkspaceTableSkeletonRows columns={7} /> : null}
+        {!jobs.length && query.isFetching ? <WorkspaceTableLoadingState /> : null}
         {!jobs.length && !query.isFetching ? (
           <WorkspaceTableEmptyState>No migration jobs found.</WorkspaceTableEmptyState>
         ) : null}

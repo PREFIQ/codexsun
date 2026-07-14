@@ -14,6 +14,12 @@ import type {
 type SalesDatabase = Record<string, never>;
 type SalesTransaction = Transaction<SalesDatabase>;
 
+export class SalesInvoiceReservationConflict extends Error {
+  constructor(readonly invoiceNumber: string) {
+    super(`Sales invoice number ${invoiceNumber} is already reserved.`);
+  }
+}
+
 type SaleHeaderRow = {
   amount: string | number;
   billing_address_id: number;
@@ -106,6 +112,39 @@ export class SalesRepository {
     const database = await salesDatabase(databaseName);
     const result = await selectSaleHeaders().execute(database);
     return Promise.all(result.rows.map((row) => this.hydrate(database, row)));
+  }
+
+  async listPage(
+    databaseName: string,
+    options: { page: number; pageSize: number; search: string; status: string }
+  ) {
+    const database = await salesDatabase(databaseName);
+    const search = `%${options.search.trim()}%`;
+    const status = options.status;
+    const offset = (options.page - 1) * options.pageSize;
+    const [result, countResult] = await Promise.all([
+      selectSalePageHeaders(search, status, options.pageSize, offset).execute(database),
+      sql<{ total: string | number }>`
+        SELECT COUNT(*) AS total
+        FROM billing_sales s
+        INNER JOIN contacts customer ON customer.id = s.customer_id
+        LEFT JOIN work_orders work_order ON work_order.id = s.work_order_id
+        WHERE s.deleted_at IS NULL
+          AND (${status} = 'all' OR s.status = ${status})
+          AND (
+            ${search} = '%%' OR s.invoice_number LIKE ${search} OR customer.name LIKE ${search}
+            OR COALESCE(work_order.code, '') LIKE ${search}
+            OR DATE_FORMAT(s.issued_on, '%Y-%m-%d') LIKE ${search}
+            OR s.status LIKE ${search} OR CAST(s.amount AS CHAR) LIKE ${search}
+          )
+      `.execute(database)
+    ]);
+    return {
+      items: await Promise.all(result.rows.map((row) => this.hydrate(database, row))),
+      page: options.page,
+      pageSize: options.pageSize,
+      total: Number(countResult.rows[0]?.total ?? 0)
+    };
   }
 
   async get(databaseName: string, uuid: string) {
@@ -328,7 +367,8 @@ export class SalesRepository {
     databaseName: string,
     companyId: number,
     financialYearId: number,
-    invoiceNumber: string
+    invoiceNumber: string,
+    excludeUuid?: string
   ) {
     const database = await salesDatabase(databaseName);
     const result = await sql<{ uuid: string }>`
@@ -337,6 +377,7 @@ export class SalesRepository {
         AND financial_year_id = ${financialYearId}
         AND invoice_number = ${invoiceNumber}
         AND deleted_at IS NULL
+        ${excludeUuid ? sql`AND uuid <> ${excludeUuid}` : sql``}
       LIMIT 1
     `.execute(database);
     return result.rows[0]?.uuid ?? null;
@@ -349,31 +390,42 @@ export class SalesRepository {
   ) {
     const database = await salesDatabase(databaseName);
     const uuid = publicUuid();
-    await database.transaction().execute(async (transaction) => {
-      const lineResult = await sql<{ line_number: number }>`
-        SELECT COALESCE(MAX(line_number), 0) + 1 AS line_number
-        FROM billing_sales
-        WHERE company_id = ${input.companyId} AND financial_year_id = ${input.financialYearId}
-      `.execute(transaction);
-      const lineNumber = Number(lineResult.rows[0]?.line_number ?? 1);
-      const inserted = await sql`
-        INSERT INTO billing_sales (
-          uuid, company_id, financial_year_id, line_number, invoice_number, customer_id,
-          billing_address_id, shipping_address_id, work_order_id, ledger_id, tax_type,
-          currency_id, issued_on, subtotal, tax_amount, round_off, amount, terms, notes, status
-        ) VALUES (
-          ${uuid}, ${input.companyId}, ${input.financialYearId}, ${lineNumber}, ${input.invoiceNumber},
-          ${input.customerId}, ${input.billingAddressId}, ${input.shippingAddressId},
-          ${input.workOrderId}, ${input.ledgerId}, ${input.taxType ?? "cgst-sgst"},
-          ${input.currencyId}, ${input.issuedOn}, ${totals.subtotal}, ${totals.taxAmount},
-          ${input.roundOff ?? 0}, ${totals.amount}, ${input.terms ?? ""}, ${input.notes}, ${input.status}
-        )
-      `.execute(transaction);
-      const saleId = Number(inserted.insertId);
-      await insertItems(transaction, saleId, totals.items);
-      await insertActivity(transaction, saleId, "created", "create", null, input.status);
-    });
-    return this.get(databaseName, uuid);
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        await database.transaction().execute(async (transaction) => {
+          const lineResult = await sql<{ line_number: number }>`
+            SELECT COALESCE(MAX(line_number), 0) + 1 AS line_number
+            FROM billing_sales
+            WHERE company_id = ${input.companyId} AND financial_year_id = ${input.financialYearId}
+          `.execute(transaction);
+          const lineNumber = Number(lineResult.rows[0]?.line_number ?? 1);
+          const inserted = await sql`
+            INSERT INTO billing_sales (
+              uuid, company_id, financial_year_id, line_number, invoice_number, customer_id,
+              billing_address_id, shipping_address_id, work_order_id, ledger_id, tax_type,
+              currency_id, issued_on, subtotal, tax_amount, round_off, amount, terms, notes, status
+            ) VALUES (
+              ${uuid}, ${input.companyId}, ${input.financialYearId}, ${lineNumber}, ${input.invoiceNumber},
+              ${input.customerId}, ${input.billingAddressId}, ${input.shippingAddressId},
+              ${input.workOrderId}, ${input.ledgerId}, ${input.taxType ?? "cgst-sgst"},
+              ${input.currencyId}, ${input.issuedOn}, ${totals.subtotal}, ${totals.taxAmount},
+              ${input.roundOff ?? 0}, ${totals.amount}, ${input.terms ?? ""}, ${input.notes}, ${input.status}
+            )
+          `.execute(transaction);
+          const saleId = Number(inserted.insertId);
+          await insertItems(transaction, saleId, totals.items);
+          await insertActivity(transaction, saleId, "created", "create", null, input.status);
+        });
+        return this.get(databaseName, uuid);
+      } catch (error) {
+        if (isDuplicateKey(error, "billing_sales_line_unique") && attempt < 4) continue;
+        if (isDuplicateKey(error, "billing_sales_invoice_unique")) {
+          throw new SalesInvoiceReservationConflict(input.invoiceNumber);
+        }
+        throw error;
+      }
+    }
+    throw new Error("Sales line number could not be reserved after five attempts.");
   }
 
   async update(
@@ -385,8 +437,9 @@ export class SalesRepository {
     const database = await salesDatabase(databaseName);
     const existing = await internalSale(database, uuid);
     if (!existing) return null;
-    await database.transaction().execute(async (transaction) => {
-      await sql`
+    try {
+      await database.transaction().execute(async (transaction) => {
+        await sql`
         UPDATE billing_sales SET
           company_id = ${input.companyId}, financial_year_id = ${input.financialYearId},
           invoice_number = ${input.invoiceNumber}, customer_id = ${input.customerId},
@@ -397,20 +450,26 @@ export class SalesRepository {
           round_off = ${input.roundOff ?? 0}, amount = ${totals.amount}, terms = ${input.terms ?? ""},
           notes = ${input.notes}, status = ${input.status}, updated_at = CURRENT_TIMESTAMP(3)
         WHERE id = ${existing.id}
-      `.execute(transaction);
-      await sql`DELETE FROM billing_sales_items WHERE sales_id = ${existing.id}`.execute(
-        transaction
-      );
-      await insertItems(transaction, existing.id, totals.items);
-      await insertActivity(
-        transaction,
-        existing.id,
-        "updated",
-        "update",
-        existing.status,
-        input.status
-      );
-    });
+        `.execute(transaction);
+        await sql`DELETE FROM billing_sales_items WHERE sales_id = ${existing.id}`.execute(
+          transaction
+        );
+        await insertItems(transaction, existing.id, totals.items);
+        await insertActivity(
+          transaction,
+          existing.id,
+          "updated",
+          "update",
+          existing.status,
+          input.status
+        );
+      });
+    } catch (error) {
+      if (isDuplicateKey(error, "billing_sales_invoice_unique")) {
+        throw new SalesInvoiceReservationConflict(input.invoiceNumber);
+      }
+      throw error;
+    }
     return this.get(databaseName, uuid);
   }
 
@@ -555,6 +614,7 @@ export class SalesRepository {
       ledgerId: row.ledger_id,
       lineNumber: row.line_number,
       notes: row.notes ?? "",
+      numberingWarning: "",
       roundOff: money(row.round_off),
       salesLedger: row.ledger_name ?? "",
       shippingAddress: formatAddress(row, "shipping"),
@@ -606,6 +666,48 @@ function selectSaleHeaders(uuid?: string) {
     LEFT JOIN ledgers ledger ON ledger.id = s.ledger_id
     WHERE s.deleted_at IS NULL ${uuid ? sql`AND s.uuid = ${uuid}` : sql``}
     ORDER BY s.issued_on DESC, s.line_number DESC
+  `;
+}
+
+function selectSalePageHeaders(search: string, status: string, limit: number, offset: number) {
+  return sql<SaleHeaderRow>`
+    SELECT s.id, s.uuid, s.company_id, company.name AS company_name,
+           s.financial_year_id, financial_year.name AS financial_year_name,
+           s.line_number, s.invoice_number, s.customer_id, customer.name AS customer_name,
+           customer.primary_email AS customer_email, customer.primary_phone AS customer_phone,
+           s.billing_address_id, billing.address_line1 AS billing_address_line1,
+           billing.address_line2 AS billing_address_line2, billing.city_name AS billing_city,
+           billing.district_name AS billing_district, billing.state_name AS billing_state,
+           billing.pincode_name AS billing_pincode, billing.country_name AS billing_country,
+           s.shipping_address_id, shipping.address_line1 AS shipping_address_line1,
+           shipping.address_line2 AS shipping_address_line2, shipping.city_name AS shipping_city,
+           shipping.district_name AS shipping_district, shipping.state_name AS shipping_state,
+           shipping.pincode_name AS shipping_pincode, shipping.country_name AS shipping_country,
+           s.work_order_id, work_order.code AS work_order_no, s.ledger_id,
+           ledger.name AS ledger_name, s.tax_type, s.currency_id, currency.name AS currency_code,
+           DATE_FORMAT(s.issued_on, '%Y-%m-%d') AS issued_on,
+           s.subtotal, s.tax_amount, s.round_off, s.amount, s.terms, s.notes, s.status,
+           DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%s') AS created_at,
+           DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%s') AS updated_at
+    FROM billing_sales s
+    INNER JOIN companies company ON company.id = s.company_id
+    INNER JOIN financial_years financial_year ON financial_year.id = s.financial_year_id
+    INNER JOIN contacts customer ON customer.id = s.customer_id
+    INNER JOIN contacts_addresses billing ON billing.id = s.billing_address_id
+    INNER JOIN contacts_addresses shipping ON shipping.id = s.shipping_address_id
+    INNER JOIN currencies currency ON currency.id = s.currency_id
+    LEFT JOIN work_orders work_order ON work_order.id = s.work_order_id
+    LEFT JOIN ledgers ledger ON ledger.id = s.ledger_id
+    WHERE s.deleted_at IS NULL
+      AND (${status} = 'all' OR s.status = ${status})
+      AND (
+        ${search} = '%%' OR s.invoice_number LIKE ${search} OR customer.name LIKE ${search}
+        OR COALESCE(work_order.code, '') LIKE ${search}
+        OR DATE_FORMAT(s.issued_on, '%Y-%m-%d') LIKE ${search}
+        OR s.status LIKE ${search} OR CAST(s.amount AS CHAR) LIKE ${search}
+      )
+    ORDER BY s.issued_on DESC, s.line_number DESC
+    LIMIT ${limit} OFFSET ${offset}
   `;
 }
 
@@ -790,4 +892,9 @@ function publicUuid() {
 
 function money(value: string | number | null | undefined) {
   return Number(Number(value ?? 0).toFixed(2));
+}
+
+function isDuplicateKey(error: unknown, key: string) {
+  const candidate = error as { code?: string; message?: string };
+  return candidate?.code === "ER_DUP_ENTRY" && String(candidate.message ?? "").includes(key);
 }

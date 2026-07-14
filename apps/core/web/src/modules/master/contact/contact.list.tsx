@@ -6,7 +6,7 @@ import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
   WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTableLoadingState
 } from "@codexsun/ui/workspace/table";
 import type { ContactRecord } from "./contact.types";
 export function ContactList({
@@ -87,7 +87,7 @@ export function ContactList({
           </tbody>
         </table>
       </div>
-      {loading ? <WorkspaceTableSkeletonRows columns={6} rows={4} /> : null}
+      {loading && !records.length ? <WorkspaceTableLoadingState /> : null}
       {!loading && !records.length ? (
         <WorkspaceTableEmptyState>No contacts found.</WorkspaceTableEmptyState>
       ) : null}

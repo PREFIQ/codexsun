@@ -25,7 +25,7 @@ import {
   totalQuotationQuantity,
   updateQuotation
 } from "./quotation.services";
-import { useQuotationList } from "./quotation.hooks";
+import { useQuotationPage } from "./quotation.hooks";
 import { QuotationForm } from "./quotation.form";
 import { canSelectQuotation, QuotationList } from "./quotation.list";
 import { getToken } from "../../shared/api/tenant-context";
@@ -62,7 +62,6 @@ function isAdminSession() {
 
 export function QuotationWorkspace() {
   const queryClient = useQueryClient();
-  const quotationsQuery = useQuotationList();
   const settingsQuery = useSalesSettings();
   const settings = settingsQuery.data ?? defaultBillingSettings;
   const quotationLayout = settings.layout;
@@ -77,6 +76,13 @@ export function QuotationWorkspace() {
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(100);
+  const quotationsQuery = useQuotationPage({
+    customer: contactFilter,
+    page: currentPage,
+    pageSize: rowsPerPage,
+    search: searchValue,
+    status: statusFilter
+  });
 
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: QuotationSavePayload }) =>
@@ -178,37 +184,11 @@ export function QuotationWorkspace() {
     }
   });
 
-  const entries = quotationsQuery.data ?? [];
+  const entries = quotationsQuery.data?.items ?? [];
   const contactOptions = useMemo(() => buildQuotationContactFilterOptions(entries), [entries]);
-  const filteredEntries = useMemo(() => {
-    const term = searchValue.trim().toLowerCase();
-    return entries.filter((quotation) => {
-      const matchesSearch =
-        !term ||
-        [
-          quotation.quotationNumber,
-          quotation.customerName,
-          quotation.workOrderNo,
-          quotation.date,
-          quotation.status,
-          String(quotation.amount)
-        ].some((value) =>
-          String(value ?? "")
-            .toLowerCase()
-            .includes(term)
-        );
-      const matchesStatus = statusFilter === "all" || quotation.status === statusFilter;
-      const matchesContact =
-        contactFilter === "all" || quotationContactKey(quotation) === contactFilter;
-      return matchesSearch && matchesStatus && matchesContact;
-    });
-  }, [contactFilter, entries, searchValue, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / rowsPerPage));
-  const pageEntries = filteredEntries.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  const totalCount = quotationsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / rowsPerPage));
+  const pageEntries = entries;
   const pageTotals = useMemo(
     () =>
       pageEntries.reduce(
@@ -471,9 +451,9 @@ export function QuotationWorkspace() {
       <WorkspacePagination
         page={currentPage}
         rowsPerPage={rowsPerPage}
-        showingLabel={buildShowingLabel(currentPage, rowsPerPage, filteredEntries.length)}
+        showingLabel={buildShowingLabel(currentPage, rowsPerPage, totalCount)}
         singularLabel="quotations"
-        totalCount={filteredEntries.length}
+        totalCount={totalCount}
         totalPages={totalPages}
         onNextPage={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
         onPageChange={setCurrentPage}

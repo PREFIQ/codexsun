@@ -18,6 +18,22 @@ import type {
 } from "./payment.types";
 
 export const listPayments = () => billingApiGet<Payment[]>("/billing/payments");
+export const listPaymentsPage = (query: {
+  page: number;
+  pageSize: number;
+  search: string;
+  status: string;
+}) => {
+  const params = new URLSearchParams({
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+    search: query.search,
+    status: query.status
+  });
+  return billingApiGet<import("./payment.types").PaymentPageResult>(
+    `/billing/payments/page?${params}`
+  );
+};
 export const getPaymentContext = () => billingApiGet<PaymentContext>("/billing/payments/context");
 export const listPaymentActivity = (id: string) =>
   billingApiGet<PaymentActivity[]>(`/billing/payments/${id}/activity`);

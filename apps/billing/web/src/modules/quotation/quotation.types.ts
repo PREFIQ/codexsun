@@ -160,3 +160,10 @@ export function createEmptyQuotationItem(): QuotationLineItemInput {
     unitId: 0
   };
 }
+
+export type QuotationPageResult = {
+  items: Quotation[];
+  page: number;
+  pageSize: number;
+  total: number;
+};

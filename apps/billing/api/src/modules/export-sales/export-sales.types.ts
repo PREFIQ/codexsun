@@ -128,3 +128,5 @@ export type ExportSaleSavePayload = {
   workOrderId: number | null;
   workOrderNo?: string | undefined;
 };
+
+export type ExportSalePage = { items: ExportSale[]; page: number; pageSize: number; total: number };

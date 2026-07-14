@@ -22,7 +22,7 @@ import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
   WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTableLoadingState
 } from "@codexsun/ui/workspace/table";
 import {
   WorkspaceFormBanner,
@@ -368,9 +368,7 @@ export function RegistryList<T extends RegistryRecord>({
           </tbody>
         </table>
       </div>
-      {records.length === 0 && loading ? (
-        <WorkspaceTableSkeletonRows columns={columns.length + 2} />
-      ) : null}
+      {records.length === 0 && loading ? <WorkspaceTableLoadingState /> : null}
       {records.length === 0 && !loading ? (
         <WorkspaceTableEmptyState>No records found.</WorkspaceTableEmptyState>
       ) : null}

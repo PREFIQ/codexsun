@@ -74,8 +74,7 @@ function normalize(input: CountrySavePayload): CountrySavePayload {
 
 function isProtectedCountry(country: Country) {
   return (
-    ["UNKNOWN", "IN"].includes(country.code.trim().toUpperCase()) ||
-    ["-", "india"].includes(country.name.trim().toLowerCase())
+    country.code.trim().toUpperCase() === "IN" || country.name.trim().toLowerCase() === "india"
   );
 }
 

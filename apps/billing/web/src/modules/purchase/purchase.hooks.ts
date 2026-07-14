@@ -1,10 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
-import { getPurchase, getPurchaseContext, listPurchases } from "./purchase.services";
+import {
+  getPurchase,
+  getPurchaseContext,
+  listPurchases,
+  listPurchasesPage
+} from "./purchase.services";
 
 export function usePurchaseList() {
   return useQuery({
     queryFn: listPurchases,
     queryKey: ["billing", "purchases"]
+  });
+}
+export function usePurchasePage(query: {
+  customer: string;
+  page: number;
+  pageSize: number;
+  search: string;
+  status: string;
+}) {
+  return useQuery({
+    placeholderData: (previous) => previous,
+    queryFn: () => listPurchasesPage(query),
+    queryKey: ["billing", "purchases", "page", query]
   });
 }
 

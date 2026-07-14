@@ -22,7 +22,6 @@ import {
 } from "../components/dialog";
 import { Input } from "../components/input";
 import { Label } from "../components/label";
-import { Skeleton } from "../components/skeleton";
 import { cn } from "../lib/utils";
 
 export interface WorkspaceLookupOption {
@@ -592,13 +591,8 @@ function DefaultCreateForm({
 
 function LookupLoadingRows() {
   return (
-    <div className="grid gap-1 p-1">
-      {[0, 1, 2].map((item) => (
-        <div key={item} className="grid gap-1 rounded-md px-2 py-1.5">
-          <Skeleton className="h-4 w-2/3" />
-          <Skeleton className="h-3 w-1/2" />
-        </div>
-      ))}
+    <div className="px-3 py-4 text-sm text-muted-foreground" role="status">
+      Loading options...
     </div>
   );
 }

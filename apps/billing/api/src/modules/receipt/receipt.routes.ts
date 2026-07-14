@@ -92,8 +92,26 @@ const candidateSchema = z.object({
   outstandingAmount: z.number(),
   saleId: z.string()
 });
+const pageQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(10).max(200).default(20),
+  search: z.string().default(""),
+  status: z.enum(["all", "draft", "posted", "cancelled"]).default("all")
+});
+const receiptPageSchema = z.object({
+  items: z.array(receiptSchema),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  total: z.number().int().nonnegative()
+});
 
 export async function registerReceiptRoutes(app: FastifyInstance) {
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/page",
+    schemas: { querystring: pageQuerySchema, response: receiptPageSchema },
+    handler: ({ query, request }) => service.listPage(databaseName(request), query)
+  });
   registerContractRoute(app, {
     method: "GET",
     url: "/billing/receipts",

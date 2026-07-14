@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { listCompanies, listCompanyLookups } from "./company.services";
 
 export const companiesQueryKey = ["core", "organisation", "companies"] as const;
@@ -6,6 +6,7 @@ export const companyLookupsQueryKey = ["core", "organisation", "companies", "loo
 
 export function useCompanies(search = "") {
   return useQuery({
+    placeholderData: keepPreviousData,
     queryFn: () => listCompanies(search),
     queryKey: [...companiesQueryKey, search]
   });

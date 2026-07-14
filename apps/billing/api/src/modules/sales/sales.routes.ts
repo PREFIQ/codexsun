@@ -116,6 +116,7 @@ const saleSchema = z.object({
   ledgerId: z.number().int().positive().nullable(),
   lineNumber: z.number().int().positive(),
   notes: z.string(),
+  numberingWarning: z.string(),
   roundOff: z.number(),
   salesLedger: z.string(),
   shippingAddress: z.string(),
@@ -137,6 +138,18 @@ const contextSchema = z.object({
   financialYearId: z.number().int().positive(),
   financialYearName: z.string()
 });
+const pageQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(10).max(200).default(100),
+  search: z.string().default(""),
+  status: z.enum(["all", "draft", "confirmed", "cancelled"]).default("all")
+});
+const salePageSchema = z.object({
+  items: z.array(saleSchema),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  total: z.number().int().nonnegative()
+});
 
 export async function registerSalesRoutes(app: FastifyInstance) {
   registerContractRoute(app, {
@@ -144,6 +157,12 @@ export async function registerSalesRoutes(app: FastifyInstance) {
     url: "/billing/sales",
     schemas: { response: z.array(saleSchema) },
     handler: ({ request }) => service.listSales(databaseName(request))
+  });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/sales/page",
+    schemas: { querystring: pageQuerySchema, response: salePageSchema },
+    handler: ({ query, request }) => service.listSalesPage(databaseName(request), query)
   });
   registerContractRoute(app, {
     method: "GET",

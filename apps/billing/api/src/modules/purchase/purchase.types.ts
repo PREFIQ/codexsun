@@ -126,3 +126,5 @@ export type PurchaseSavePayload = {
   workOrderId: number | null;
   workOrderNo?: string | undefined;
 };
+
+export type PurchasePage = { items: Purchase[]; page: number; pageSize: number; total: number };

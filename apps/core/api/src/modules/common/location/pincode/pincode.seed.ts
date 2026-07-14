@@ -11,7 +11,7 @@ export async function seedPincodeModule() {
     INNER JOIN districts ON districts.id=cities.district_id
     INNER JOIN states ON states.id=districts.state_id
     INNER JOIN countries ON countries.id=states.country_id
-    WHERE countries.code='UNKNOWN' AND states.code='UNKNOWN'
+    WHERE countries.code='IN' AND states.code='UNKNOWN'
       AND districts.name='-' AND cities.name='-' LIMIT 1`.execute(getCoreDatabase());
   const defaultCityId = defaultCities.rows[0]?.id;
   const rows = await sql<{ id: number; name: string }>`SELECT cities.id, cities.name FROM cities

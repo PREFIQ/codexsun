@@ -10,8 +10,18 @@ import type { Tenant } from "../../apps/platform/api/src/modules/tenant/tenant.t
 import { signAuthToken } from "../../apps/platform/api/src/auth/jwt.js";
 import {
   bootstrapCoreDatabase,
-  closeCoreDatabase
+  closeCoreDatabase,
+  runWithCoreDatabase
 } from "../../apps/core/api/src/database/core-database.js";
+import { CityService } from "../../apps/core/api/src/modules/common/location/city/city.service.js";
+import { CountryService } from "../../apps/core/api/src/modules/common/location/country/country.service.js";
+import { DistrictService } from "../../apps/core/api/src/modules/common/location/district/district.service.js";
+import { PincodeService } from "../../apps/core/api/src/modules/common/location/pincode/pincode.service.js";
+import { StateService } from "../../apps/core/api/src/modules/common/location/state/state.service.js";
+import { HsnCodesService } from "../../apps/core/api/src/modules/common/products/hsn-codes/hsn-codes.service.js";
+import { TaxesService } from "../../apps/core/api/src/modules/common/products/taxes/taxes.service.js";
+import { ContactService } from "../../apps/core/api/src/modules/master/contact/contact.service.js";
+import { ProductService } from "../../apps/core/api/src/modules/master/product/product.service.js";
 import {
   bootstrapBillingDatabase,
   closeAllBillingDatabases
@@ -30,8 +40,13 @@ import type { ReceiptSavePayload } from "../../apps/billing/api/src/modules/rece
 import { SalesService } from "../../apps/billing/api/src/modules/sales/sales.service.js";
 import type { SaleSavePayload } from "../../apps/billing/api/src/modules/sales/sales.types.js";
 
-const recordsPerTenant = 12;
 const runToken = Date.now().toString(36).slice(-6).toUpperCase();
+const randomSeed = Number.parseInt(
+  createHash("sha256").update(runToken).digest("hex").slice(0, 8),
+  16
+);
+const minimumRecordsPerTenant = 8;
+const maximumRecordsPerTenant = 16;
 const tenantDefinitions = [
   { code: "CODEXSUN", databaseName: "codexsun_db", name: "Codexsun" },
   { code: "LOAD01", databaseName: "codexsun_load_01", name: "Load Tenant 01" },
@@ -60,6 +75,7 @@ let billingApp: Awaited<ReturnType<typeof createBillingApp>> | null = null;
 try {
   const tenants = await provisionTenants();
   const generated = await Promise.all(tenants.map((tenant) => generateTenantLoad(tenant)));
+  await verifyRandomReferenceIsolation(admin, tenants);
   const databaseAudits = [];
   let tenantSchema: SchemaColumn[] | null = null;
   for (const tenant of tenants) {
@@ -93,26 +109,32 @@ try {
 
   await closeAllBillingDatabases();
   await closeCoreDatabase();
-  for (const tenant of tenants) {
+  for (const [tenantIndex, tenant] of tenants.entries()) {
     await bootstrapCoreDatabase(tenant.dbName);
     await bootstrapBillingDatabase(tenant.dbName);
-    assert.equal((await paymentService.list(tenant.dbName)).length >= recordsPerTenant, true);
-    assert.equal((await receiptService.list(tenant.dbName)).length >= recordsPerTenant, true);
+    const expected = generated[tenantIndex]?.documentCount ?? maximumRecordsPerTenant;
+    assert.equal((await paymentService.list(tenant.dbName)).length >= expected, true);
+    assert.equal((await receiptService.list(tenant.dbName)).length >= expected, true);
   }
 
   console.log("Live five-tenant mass E2E passed", {
     databaseAudits: databaseAudits.map(summarizeAudit),
     generated: generated.map((entry) => ({
       databaseName: entry.tenant.dbName,
-      documents: recordsPerTenant * 6,
+      contacts: entry.referenceCounts.contacts,
+      documents: entry.documentCount * 6,
+      lineItems: entry.lineItems,
+      products: entry.referenceCounts.products,
       tenantCode: entry.tenant.tenantCode
     })),
     masterAudit: summarizeAudit(masterAudit),
-    recordsPerTenant,
+    randomSeed,
+    recordRange: [minimumRecordsPerTenant, maximumRecordsPerTenant],
     routeAudit,
     runToken,
     tenants: tenants.length,
-    totalDocuments: tenants.length * recordsPerTenant * 6
+    totalDocuments: generated.reduce((sum, entry) => sum + entry.documentCount * 6, 0),
+    totalLineItems: generated.reduce((sum, entry) => sum + entry.lineItems, 0)
   });
 } finally {
   await billingApp?.close();
@@ -184,6 +206,8 @@ async function provisionTenants() {
 }
 
 async function generateTenantLoad(tenant: Tenant) {
+  const random = seededRandom(`${randomSeed}:${tenant.uuid}`);
+  const documentCount = randomInteger(random, minimumRecordsPerTenant, maximumRecordsPerTenant);
   const tenantConnection = await createConnection({
     database: tenant.dbName,
     host: platformEnv.DB_HOST,
@@ -194,43 +218,53 @@ async function generateTenantLoad(tenant: Tenant) {
   });
   try {
     await createMassReferences(tenantConnection, tenant);
-    const references = await loadReferences(tenantConnection, tenant);
+    const randomizedReferences = await createRandomizedReferences(tenantConnection, tenant, random);
+    const references = await loadReferences(tenantConnection, tenant, randomizedReferences);
     const firstIds: { payment?: string; quotation?: string; receipt?: string } = {};
+    let lineItems = 0;
 
-    for (let index = 1; index <= recordsPerTenant; index += 1) {
+    for (let index = 1; index <= documentCount; index += 1) {
+      const customer = randomChoice(random, references.customers);
+      const supplier = randomChoice(random, references.suppliers);
+      const quotationItems = randomDocumentItems(references, tenant, index, "quotation", random);
+      const saleItems = randomDocumentItems(references, tenant, index, "sale", random);
+      const purchaseItems = randomDocumentItems(references, tenant, index, "purchase", random);
+      const exportItems = randomDocumentItems(references, tenant, index, "export", random);
+      lineItems +=
+        quotationItems.length + saleItems.length + purchaseItems.length + exportItems.length;
       const quotation = await quotationService.create(
         tenant.dbName,
-        quotationPayload(references, tenant, index)
+        quotationPayload(references, tenant, index, customer, quotationItems)
       );
       await quotationService.confirm(tenant.dbName, quotation.id);
 
       const sale = await salesService.createSale(
         tenant.dbName,
-        salePayload(references, tenant, index)
+        salePayload(references, tenant, index, customer, saleItems)
       );
       await salesService.confirmSale(tenant.dbName, sale.id);
 
       const purchase = await purchaseService.create(
         tenant.dbName,
-        purchasePayload(references, tenant, index)
+        purchasePayload(references, tenant, index, customer, supplier, purchaseItems)
       );
       await purchaseService.confirm(tenant.dbName, purchase.id);
 
       const exportSale = await exportSalesService.createExportSale(
         tenant.dbName,
-        exportSalePayload(references, tenant, index)
+        exportSalePayload(references, tenant, index, customer, exportItems)
       );
       await exportSalesService.confirmExportSale(tenant.dbName, exportSale.id);
 
       const payment = await paymentService.create(
         tenant.dbName,
-        paymentPayload(references, tenant, index, purchase.id, purchase.amount)
+        paymentPayload(references, tenant, index, supplier.id, purchase.id, purchase.amount)
       );
       await paymentService.post(tenant.dbName, payment.id);
 
       const receipt = await receiptService.create(
         tenant.dbName,
-        receiptPayload(references, tenant, index, sale.id, sale.amount)
+        receiptPayload(references, tenant, index, customer.id, sale.id, sale.amount)
       );
       await receiptService.post(tenant.dbName, receipt.id);
 
@@ -244,8 +278,19 @@ async function generateTenantLoad(tenant: Tenant) {
     }
 
     const counts = await loadBillingCounts(tenantConnection, tenant.dbName);
-    for (const count of Object.values(counts)) assert.ok(count >= recordsPerTenant);
-    return { counts, firstIds, tenant };
+    for (const count of Object.values(counts)) assert.ok(count >= documentCount);
+    await assertRandomizedReferencesPersisted(tenantConnection, tenant, randomizedReferences);
+    return {
+      counts,
+      documentCount,
+      firstIds,
+      lineItems,
+      referenceCounts: {
+        contacts: randomizedReferences.customers.length + randomizedReferences.suppliers.length,
+        products: randomizedReferences.products.length
+      },
+      tenant
+    };
   } finally {
     await tenantConnection.end();
   }
@@ -253,6 +298,20 @@ async function generateTenantLoad(tenant: Tenant) {
 
 async function createMassReferences(connection: Connection, tenant: Tenant) {
   const token = stableId(tenant.uuid);
+  const actorEmail = `mass-${tenant.tenantCode.toLowerCase()}@example.test`;
+  await connection.query(
+    `INSERT INTO users (uuid,email,name,password_hash,role,status,is_protected)
+     VALUES (?,?,?,'e2e-not-login','admin','active',TRUE)
+     ON DUPLICATE KEY UPDATE name=VALUES(name),role='admin',status='active',is_protected=TRUE`,
+    [stableId(actorEmail), actorEmail, `${tenant.tenantName} Mass Actor`]
+  );
+  await connection.query(
+    `INSERT INTO user_roles (uuid,user_id,role_id,status,is_protected)
+     SELECT ?,user.id,role.id,'active',TRUE FROM users user
+     INNER JOIN roles role ON role.key='admin' WHERE user.email=?
+     ON DUPLICATE KEY UPDATE status='active',is_protected=TRUE`,
+    [stableId(`user-role:${actorEmail}:admin`), actorEmail]
+  );
   await connection.query(`
     INSERT INTO contacts (uuid,code,name,status)
     VALUES ('${token.slice(0, 8)}','C-MASS','${tenant.tenantName} Mass Contact','active')
@@ -278,7 +337,228 @@ async function createMassReferences(connection: Connection, tenant: Tenant) {
   `);
 }
 
-async function loadReferences(connection: Connection, tenant: Tenant): Promise<References> {
+async function createRandomizedReferences(
+  connection: Connection,
+  tenant: Tenant,
+  random: () => number
+): Promise<RandomizedReferences> {
+  const locationCount = randomInteger(random, 2, 4);
+  const hsnCount = randomInteger(random, 2, 4);
+  const taxCount = randomInteger(random, 2, 4);
+  const productCount = randomInteger(random, 3, 7);
+  const customerCount = randomInteger(random, 3, 6);
+  const supplierCount = randomInteger(random, 3, 6);
+  const token = stableId(`${tenant.uuid}:${runToken}:random`).toUpperCase();
+  const countryService = new CountryService();
+  const stateService = new StateService();
+  const districtService = new DistrictService();
+  const cityService = new CityService();
+  const pincodeService = new PincodeService();
+  const hsnService = new HsnCodesService();
+  const taxService = new TaxesService();
+  const productService = new ProductService();
+  const contactService = new ContactService();
+
+  const createLocations = async () => {
+    const country = await countryService.create({
+      code: `R${token.slice(0, 5)}`,
+      name: `${tenant.tenantName} Random Country ${runToken}`,
+      sortOrder: 800 + randomInteger(random, 1, 99),
+      status: "active"
+    });
+    const state = await stateService.create({
+      code: `RS${token.slice(0, 4)}`,
+      countryId: country.id,
+      name: `${tenant.tenantName} Random State ${runToken}`,
+      sortOrder: 800 + randomInteger(random, 1, 99),
+      status: "active"
+    });
+    const district = await districtService.create({
+      name: `${tenant.tenantName} Random District ${runToken}`,
+      sortOrder: 800 + randomInteger(random, 1, 99),
+      stateId: state.id,
+      status: "active"
+    });
+    const locations: LocationReference[] = [];
+    for (let index = 1; index <= locationCount; index += 1) {
+      const city = await cityService.create({
+        districtId: district.id,
+        name: `${tenant.tenantName} Random City ${runToken} ${index}`,
+        sortOrder: 800 + index,
+        status: "active"
+      });
+      const pincode = await pincodeService.create({
+        area: `${tenant.tenantName} Random Area ${index}`,
+        cityId: city.id,
+        name: `${700000 + (Number.parseInt(token.slice(0, 5), 16) % 90000) + index}`,
+        sortOrder: 800 + index,
+        status: "active"
+      });
+      locations.push({ city, country, district, pincode, state });
+    }
+    return locations;
+  };
+
+  const createCommodities = async () => {
+    const hsnCodes = [];
+    for (let index = 1; index <= hsnCount; index += 1) {
+      hsnCodes.push(
+        await hsnService.create({
+          code: `${Number.parseInt(token.slice(0, 7), 16) + index}`,
+          description: `${tenant.tenantName} Random HSN ${runToken} ${index}`,
+          isActive: true,
+          sortOrder: 800 + index
+        })
+      );
+    }
+    const existingTaxes = await taxService.list();
+    const usedRates = new Set(existingTaxes.map((tax) => Number(tax.ratePercent).toFixed(4)));
+    const taxes = [];
+    let candidateRate = 30 + (Number.parseInt(token.slice(0, 2), 16) % 40) + random() / 10;
+    for (let index = 1; index <= taxCount; index += 1) {
+      while (usedRates.has(candidateRate.toFixed(4))) candidateRate += 0.0137;
+      const ratePercent = Number(candidateRate.toFixed(4));
+      usedRates.add(ratePercent.toFixed(4));
+      taxes.push(
+        await taxService.create({
+          description: `${tenant.tenantName} Random Tax ${runToken} ${index}`,
+          isActive: true,
+          ratePercent,
+          sortOrder: 800 + index
+        })
+      );
+      candidateRate += 0.137;
+    }
+    return { hsnCodes, taxes };
+  };
+
+  const [locations, commodities] = await runWithCoreDatabase(tenant.dbName, async () => {
+    if (random() < 0.5) {
+      const createdLocations = await createLocations();
+      return [createdLocations, await createCommodities()] as const;
+    }
+    const createdCommodities = await createCommodities();
+    return [await createLocations(), createdCommodities] as const;
+  });
+
+  const [contactTypeRows] = await connection.query<
+    Array<RowDataPacket & { id: number; name: string }>
+  >("SELECT id,name FROM contact_types WHERE status='active' ORDER BY id");
+  assert.ok(contactTypeRows.length, `${tenant.tenantCode} has no active contact types.`);
+  const customerType =
+    contactTypeRows.find((entry) => /customer|client/i.test(entry.name)) ?? contactTypeRows[0]!;
+  const supplierType =
+    contactTypeRows.find((entry) => /supplier|vendor/i.test(entry.name)) ??
+    contactTypeRows.at(1) ??
+    contactTypeRows[0]!;
+
+  return runWithCoreDatabase(tenant.dbName, async () => {
+    const products: ProductReference[] = [];
+    for (let index = 1; index <= productCount; index += 1) {
+      const hsn = randomChoice(random, commodities.hsnCodes);
+      const tax = randomChoice(random, commodities.taxes);
+      const product = await productService.create({
+        hsnCodeId: hsn.id,
+        isActive: true,
+        name: `${tenant.tenantName} Random Product ${runToken} ${index}`,
+        openingRate: randomInteger(random, 10, 500),
+        openingStock: randomInteger(random, 0, 500),
+        status: "active",
+        taxId: tax.id
+      });
+      assert.ok(product.unitId, "Random product did not resolve a default unit.");
+      products.push({
+        hsnCode: hsn.code,
+        hsnCodeId: hsn.id,
+        id: product.id,
+        name: product.name,
+        taxId: tax.id,
+        taxRate: tax.ratePercent,
+        unit: product.unitName ?? "Nos",
+        unitId: product.unitId
+      });
+    }
+
+    const createContacts = async (count: number, role: "Customer" | "Supplier") => {
+      const contacts: ContactReference[] = [];
+      for (let index = 1; index <= count; index += 1) {
+        const location = randomChoice(random, locations);
+        const type = role === "Customer" ? customerType : supplierType;
+        const contact = await contactService.create({
+          addresses: [
+            {
+              addressLine1: `${tenant.tenantName} ${role} Street ${index}`,
+              addressLine2: `${location.city.name} ${runToken}`,
+              addressTypeId: null,
+              addressTypeName: null,
+              cityId: location.city.id,
+              cityName: location.city.name,
+              countryId: location.country.id,
+              countryName: location.country.name,
+              districtId: location.district.id,
+              districtName: location.district.name,
+              isDefault: true,
+              pincodeId: location.pincode.id,
+              pincodeName: location.pincode.name,
+              stateId: location.state.id,
+              stateName: location.state.name
+            }
+          ],
+          code: `${role === "Customer" ? "RC" : "RS"}-${token.slice(0, 4)}-${index}`,
+          emails: [
+            {
+              email: `${role.toLowerCase()}-${tenant.tenantCode.toLowerCase()}-${runToken.toLowerCase()}-${index}@example.test`,
+              emailType: "Work",
+              isPrimary: true
+            }
+          ],
+          isActive: true,
+          legalName: `${tenant.tenantName} Random ${role} ${runToken} ${index}`,
+          name: `${tenant.tenantName} Random ${role} ${runToken} ${index}`,
+          phones: [
+            {
+              isPrimary: true,
+              phone: `9${String(Number.parseInt(token.slice(0, 6), 16) + index)
+                .padStart(9, "0")
+                .slice(-9)}`,
+              phoneType: "Mobile"
+            }
+          ],
+          status: "active",
+          typeId: type.id,
+          typeName: type.name
+        });
+        contacts.push({
+          addressId: contact.addresses[0]!.id,
+          email: contact.primaryEmail ?? "",
+          id: contact.id,
+          name: contact.name,
+          phone: contact.primaryPhone ?? ""
+        });
+      }
+      return contacts;
+    };
+
+    const customers = await createContacts(customerCount, "Customer");
+    const suppliers = await createContacts(supplierCount, "Supplier");
+    const verificationOrder = shuffle(random, [
+      ...locations.map((location) => () => cityService.get(String(location.city.id))),
+      ...commodities.hsnCodes.map((hsn) => () => hsnService.get(String(hsn.id))),
+      ...commodities.taxes.map((tax) => () => taxService.get(String(tax.id))),
+      ...products.map((product) => () => productService.find(String(product.id))),
+      ...customers.map((contact) => () => contactService.find(String(contact.id))),
+      ...suppliers.map((contact) => () => contactService.find(String(contact.id)))
+    ]);
+    for (const getRecord of verificationOrder) assert.ok(await getRecord());
+    return { customers, locations, products, suppliers };
+  });
+}
+
+async function loadReferences(
+  connection: Connection,
+  tenant: Tenant,
+  randomized: RandomizedReferences
+): Promise<References> {
   const [rows] = await connection.query<Array<RowDataPacket & ReferenceRow>>(`
     SELECT defaults.company_id,defaults.financial_year_id,
       DATE_FORMAT(financial_year.start_date,'%Y-%m-%d') AS document_date,
@@ -317,47 +597,38 @@ async function loadReferences(connection: Connection, tenant: Tenant): Promise<R
     sizeId: Number(row.size_id),
     taxId: Number(row.tax_id),
     unitId: Number(row.unit_id),
-    workOrderId: Number(row.work_order_id)
+    workOrderId: Number(row.work_order_id),
+    customers: randomized.customers,
+    products: randomized.products,
+    suppliers: randomized.suppliers
   };
 }
 
-function documentBase(references: References, tenant: Tenant, index: number) {
+function documentBase(
+  references: References,
+  tenant: Tenant,
+  index: number,
+  contact: ContactReference,
+  items: RandomDocumentItem[]
+) {
   return {
-    billingAddress: `${tenant.tenantCode} Mass Address`,
-    billingAddressId: references.addressId,
+    billingAddress: `${contact.name} persisted address`,
+    billingAddressId: contact.addressId,
     companyId: references.companyId,
     currencyCode: "INR",
     currencyId: references.currencyId,
-    customerEmail: `mass-${tenant.tenantCode.toLowerCase()}@example.test`,
-    customerId: references.contactId,
-    customerName: `${tenant.tenantName} Mass Contact`,
-    customerPhone: `90000${String(index).padStart(5, "0")}`,
+    customerEmail: contact.email,
+    customerId: contact.id,
+    customerName: contact.name,
+    customerPhone: contact.phone,
     financialYearId: references.financialYearId,
-    items: [
-      {
-        colour: "Blue",
-        colourId: references.colourId,
-        description: `${tenant.tenantName} Mass Product ${index}`,
-        hsnCode: "MASS",
-        hsnCodeId: references.hsnCodeId,
-        productId: references.productId,
-        productName: `${tenant.tenantName} Mass Product`,
-        quantity: 2,
-        rate: 100 + index,
-        size: "M",
-        sizeId: references.sizeId,
-        taxId: references.taxId,
-        taxRate: 18,
-        unit: "Nos",
-        unitId: references.unitId
-      }
-    ],
+    items,
     ledgerId: references.ledgerId,
     notes: `Live mass E2E ${runToken}`,
     roundOff: 0,
     salesLedger: "General Ledger",
-    shippingAddress: `${tenant.tenantCode} Mass Address`,
-    shippingAddressId: references.addressId,
+    shippingAddress: `${contact.name} persisted address`,
+    shippingAddressId: contact.addressId,
     status: "draft" as const,
     taxType: "cgst-sgst" as const,
     terms: "Live mass E2E terms",
@@ -369,18 +640,26 @@ function documentBase(references: References, tenant: Tenant, index: number) {
 function quotationPayload(
   references: References,
   tenant: Tenant,
-  index: number
+  index: number,
+  customer: ContactReference,
+  items: RandomDocumentItem[]
 ): QuotationSavePayload {
   return {
-    ...documentBase(references, tenant, index),
+    ...documentBase(references, tenant, index, customer, items),
     date: references.documentDate,
     quotationNumber: number("QT", tenant, index)
   };
 }
 
-function salePayload(references: References, tenant: Tenant, index: number): SaleSavePayload {
+function salePayload(
+  references: References,
+  tenant: Tenant,
+  index: number,
+  customer: ContactReference,
+  items: RandomDocumentItem[]
+): SaleSavePayload {
   return {
-    ...documentBase(references, tenant, index),
+    ...documentBase(references, tenant, index, customer, items),
     invoiceNumber: number("INV", tenant, index),
     issuedOn: references.documentDate
   };
@@ -389,29 +668,38 @@ function salePayload(references: References, tenant: Tenant, index: number): Sal
 function purchasePayload(
   references: References,
   tenant: Tenant,
-  index: number
+  index: number,
+  customer: ContactReference,
+  supplier: ContactReference,
+  items: RandomDocumentItem[]
 ): PurchaseSavePayload {
-  const base = documentBase(references, tenant, index);
+  const base = documentBase(references, tenant, index, customer, items);
   return {
     ...base,
+    billingAddress: `${supplier.name} persisted address`,
+    billingAddressId: supplier.addressId,
     invoiceNumber: number("PUR", tenant, index),
     issuedOn: references.documentDate,
+    shippingAddress: `${supplier.name} persisted address`,
+    shippingAddressId: supplier.addressId,
     supplierBillDate: references.documentDate,
     supplierBillNo: number("SB", tenant, index),
-    supplierEmail: base.customerEmail,
-    supplierId: references.contactId,
-    supplierName: base.customerName,
-    supplierPhone: base.customerPhone
+    supplierEmail: supplier.email,
+    supplierId: supplier.id,
+    supplierName: supplier.name,
+    supplierPhone: supplier.phone
   };
 }
 
 function exportSalePayload(
   references: References,
   tenant: Tenant,
-  index: number
+  index: number,
+  customer: ContactReference,
+  items: RandomDocumentItem[]
 ): ExportSaleSavePayload {
   return {
-    ...documentBase(references, tenant, index),
+    ...documentBase(references, tenant, index, customer, items),
     invoiceNumber: number("EXP", tenant, index),
     issuedOn: references.documentDate
   };
@@ -421,6 +709,7 @@ function paymentPayload(
   references: References,
   tenant: Tenant,
   index: number,
+  supplierId: number,
   purchaseId: string,
   amount: number
 ): PaymentSavePayload {
@@ -439,7 +728,7 @@ function paymentPayload(
     referenceDate: references.documentDate,
     referenceNo: number("PREF", tenant, index),
     roundOff: 0,
-    supplierId: references.contactId,
+    supplierId,
     tdsAmount: 0
   };
 }
@@ -448,6 +737,7 @@ function receiptPayload(
   references: References,
   tenant: Tenant,
   index: number,
+  customerId: number,
   saleId: string,
   amount: number
 ): ReceiptSavePayload {
@@ -456,7 +746,7 @@ function receiptPayload(
     amount,
     companyId: references.companyId,
     currencyId: references.currencyId,
-    customerId: references.contactId,
+    customerId,
     discountAmount: 0,
     financialYearId: references.financialYearId,
     ledgerId: references.ledgerId,
@@ -471,19 +761,115 @@ function receiptPayload(
   };
 }
 
+function randomDocumentItems(
+  references: References,
+  tenant: Tenant,
+  documentIndex: number,
+  documentKind: string,
+  random: () => number
+): RandomDocumentItem[] {
+  const lineCount = randomInteger(random, 1, 24);
+  return Array.from({ length: lineCount }, (_, lineIndex) => {
+    const product = randomChoice(random, references.products);
+    return {
+      colour: "Blue",
+      colourId: references.colourId,
+      description: `${tenant.tenantCode} ${documentKind} ${runToken} ${documentIndex}-${lineIndex + 1}`,
+      hsnCode: product.hsnCode,
+      hsnCodeId: product.hsnCodeId,
+      productId: product.id,
+      productName: product.name,
+      quantity: randomInteger(random, 1, 50),
+      rate: randomInteger(random, 10, 5_000) + randomInteger(random, 0, 99) / 100,
+      size: "M",
+      sizeId: references.sizeId,
+      taxId: product.taxId,
+      taxRate: product.taxRate,
+      unit: product.unit,
+      unitId: product.unitId
+    };
+  });
+}
+
+async function assertRandomizedReferencesPersisted(
+  connection: Connection,
+  tenant: Tenant,
+  references: RandomizedReferences
+) {
+  await connection.changeUser({ database: tenant.dbName });
+  const [rows] = await connection.query<Array<RowDataPacket & RandomReferenceCounts>>(
+    `SELECT
+      (SELECT COUNT(*) FROM contacts WHERE name LIKE ?) AS contacts,
+      (SELECT COUNT(*) FROM products WHERE name LIKE ?) AS products,
+      (SELECT COUNT(*) FROM hsn_codes WHERE description LIKE ?) AS hsn_codes,
+      (SELECT COUNT(*) FROM taxes WHERE description LIKE ?) AS taxes,
+      (SELECT COUNT(*) FROM cities WHERE name LIKE ?) AS cities`,
+    Array(5).fill(`%${runToken}%`)
+  );
+  const counts = rows[0];
+  assert.ok(counts, `${tenant.tenantCode} randomized references could not be counted.`);
+  assert.equal(
+    Number(counts.contacts),
+    references.customers.length + references.suppliers.length,
+    `${tenant.tenantCode} randomized contacts did not persist.`
+  );
+  assert.equal(Number(counts.products), references.products.length);
+  assert.equal(Number(counts.cities), references.locations.length);
+  assert.ok(Number(counts.hsn_codes) >= 2);
+  assert.ok(Number(counts.taxes) >= 2);
+}
+
+async function verifyRandomReferenceIsolation(connection: Connection, tenants: Tenant[]) {
+  for (const tenant of tenants) {
+    await connection.changeUser({ database: tenant.dbName });
+    for (const otherTenant of tenants) {
+      if (otherTenant.id === tenant.id) continue;
+      const [rows] = await connection.query<Array<RowDataPacket & { count: number }>>(
+        `SELECT
+          (SELECT COUNT(*) FROM contacts WHERE name LIKE ?) +
+          (SELECT COUNT(*) FROM products WHERE name LIKE ?) AS count`,
+        [
+          `${otherTenant.tenantName} Random % ${runToken}%`,
+          `${otherTenant.tenantName} Random % ${runToken}%`
+        ]
+      );
+      assert.equal(
+        Number(rows[0]?.count ?? 0),
+        0,
+        `${tenant.tenantCode} contains randomized master data from ${otherTenant.tenantCode}.`
+      );
+    }
+  }
+}
+
 async function verifyLiveRoutes(
   tenants: Tenant[],
   generated: Array<Awaited<ReturnType<typeof generateTenantLoad>>>
 ) {
   assert.ok(billingApp);
-  for (const tenant of tenants) {
-    const response = await billingApp.inject({
-      headers: tenantHeaders(tenant),
-      method: "GET",
-      url: "/billing/payments"
-    });
-    assert.equal(response.statusCode, 200, response.body);
-    assert.ok((response.json() as { data: unknown[] }).data.length >= recordsPerTenant);
+  for (const [index, tenant] of tenants.entries()) {
+    const expected = generated[index]?.documentCount ?? maximumRecordsPerTenant;
+    for (const path of [
+      "/billing/quotations/page?page=1&pageSize=200&search=&status=all&customer=all",
+      "/billing/sales/page?page=1&pageSize=200&search=&status=all",
+      "/billing/purchases/page?page=1&pageSize=200&search=&status=all&customer=all",
+      "/billing/export-sales/page?page=1&pageSize=200&search=&status=all&customer=all",
+      "/billing/payments/page?page=1&pageSize=200&search=&status=all",
+      "/billing/receipts/page?page=1&pageSize=200&search=&status=all"
+    ]) {
+      const response = await billingApp.inject({
+        headers: tenantHeaders(tenant),
+        method: "GET",
+        url: path
+      });
+      assert.equal(response.statusCode, 200, response.body);
+      const page = (response.json() as { data: { items: unknown[]; total: number } }).data;
+      assert.ok(
+        page.total >= expected,
+        `${tenant.tenantCode} ${path} returned an incomplete total.`
+      );
+      assert.ok(page.items.length <= 200, `${tenant.tenantCode} ${path} exceeded its page size.`);
+    }
   }
   const source = generated[0];
   const target = tenants[1];
@@ -500,7 +886,7 @@ async function verifyLiveRoutes(
       "x-tenant-db": source.tenant.dbName
     },
     method: "GET",
-    url: "/billing/payments"
+    url: "/billing/payments/page?page=1&pageSize=20&search=&status=all"
   });
   return {
     crossTenantRecordStatus: isolated.statusCode,
@@ -626,6 +1012,35 @@ function stableId(value: string) {
   return createHash("sha256").update(value).digest("hex").slice(0, 8);
 }
 
+function seededRandom(value: string) {
+  let state = Number.parseInt(createHash("sha256").update(value).digest("hex").slice(0, 8), 16);
+  return () => {
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let next = Math.imul(state ^ (state >>> 15), 1 | state);
+    next = (next + Math.imul(next ^ (next >>> 7), 61 | next)) ^ next;
+    return ((next ^ (next >>> 14)) >>> 0) / 4_294_967_296;
+  };
+}
+
+function randomInteger(random: () => number, minimum: number, maximum: number) {
+  return Math.floor(random() * (maximum - minimum + 1)) + minimum;
+}
+
+function randomChoice<T>(random: () => number, values: readonly T[]) {
+  const value = values[Math.floor(random() * values.length)];
+  assert.ok(value, "Randomized E2E cannot choose from an empty collection.");
+  return value;
+}
+
+function shuffle<T>(random: () => number, values: T[]) {
+  for (let index = values.length - 1; index > 0; index -= 1) {
+    const target = randomInteger(random, 0, index);
+    [values[index], values[target]] = [values[target]!, values[index]!];
+  }
+  return values;
+}
+
 type References = {
   addressId: number;
   colourId: number;
@@ -641,6 +1056,63 @@ type References = {
   taxId: number;
   unitId: number;
   workOrderId: number;
+  customers: ContactReference[];
+  products: ProductReference[];
+  suppliers: ContactReference[];
+};
+type ContactReference = {
+  addressId: number;
+  email: string;
+  id: number;
+  name: string;
+  phone: string;
+};
+type ProductReference = {
+  hsnCode: string;
+  hsnCodeId: number;
+  id: number;
+  name: string;
+  taxId: number;
+  taxRate: number;
+  unit: string;
+  unitId: number;
+};
+type LocationReference = {
+  city: { id: number; name: string };
+  country: { id: number; name: string };
+  district: { id: number; name: string };
+  pincode: { id: number; name: string };
+  state: { id: number; name: string };
+};
+type RandomizedReferences = {
+  customers: ContactReference[];
+  locations: LocationReference[];
+  products: ProductReference[];
+  suppliers: ContactReference[];
+};
+type RandomDocumentItem = {
+  colour: string;
+  colourId: number;
+  description: string;
+  hsnCode: string;
+  hsnCodeId: number;
+  productId: number;
+  productName: string;
+  quantity: number;
+  rate: number;
+  size: string;
+  sizeId: number;
+  taxId: number;
+  taxRate: number;
+  unit: string;
+  unitId: number;
+};
+type RandomReferenceCounts = {
+  cities: number;
+  contacts: number;
+  hsn_codes: number;
+  products: number;
+  taxes: number;
 };
 type ReferenceRow = {
   address_id: number;

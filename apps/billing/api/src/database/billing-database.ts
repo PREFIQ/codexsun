@@ -2,6 +2,7 @@ import { Kysely, MysqlDialect, sql } from "kysely";
 import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
 import { AppError } from "@codexsun/framework/errors";
+import { seedBillingTenantPermissions } from "../auth/tenant-permission.seed.js";
 import { env } from "../env.js";
 import {
   migrateQuotationModule,
@@ -21,7 +22,6 @@ import {
 import { migrateSalesModule, salesMigration } from "../modules/sales/sales.migration.js";
 import { migrateReceiptModule, receiptMigration } from "../modules/receipt/receipt.migration.js";
 import { seedReceiptModule } from "../modules/receipt/receipt.seed.js";
-import { SalesRepository } from "../modules/sales/sales.repository.js";
 import { seedSalesModule } from "../modules/sales/sales.seed.js";
 import {
   billingSettingsMigration,
@@ -66,10 +66,15 @@ export type BillingSalesTable = {
   uuid: string;
 };
 
-const connections = new Map<string, Kysely<BillingDatabase>>();
+type BillingConnectionEntry = { database: Kysely<BillingDatabase>; lastUsedAt: number };
+
+const connections = new Map<string, BillingConnectionEntry>();
 const migrated = new Set<string>();
 const bootstrapping = new Map<string, Promise<void>>();
 const bootstrapTimeoutMs = 5_000;
+const connectionIdleMs = 10 * 60 * 1000;
+const evictionTimer = setInterval(() => void evictIdleBillingDatabases(), 60_000);
+evictionTimer.unref();
 
 export function resolveBillingDatabaseName(value: unknown) {
   const requested = typeof value === "string" ? value.trim() : "";
@@ -106,15 +111,19 @@ export async function bootstrapBillingDatabase(databaseName: string) {
 
   const bootstrapPromise = bootstrapBillingDatabaseOnce(name);
   bootstrapping.set(name, bootstrapPromise);
-  try {
-    await withTimeout(
-      bootstrapPromise,
-      bootstrapTimeoutMs,
-      `Billing database bootstrap timed out after ${bootstrapTimeoutMs}ms for ${name}`
-    );
-  } finally {
-    bootstrapping.delete(name);
-  }
+  void bootstrapPromise.then(
+    () => {
+      if (bootstrapping.get(name) === bootstrapPromise) bootstrapping.delete(name);
+    },
+    () => {
+      if (bootstrapping.get(name) === bootstrapPromise) bootstrapping.delete(name);
+    }
+  );
+  await withTimeout(
+    bootstrapPromise,
+    bootstrapTimeoutMs,
+    `Billing database bootstrap timed out after ${bootstrapTimeoutMs}ms for ${name}`
+  );
 }
 
 async function bootstrapBillingDatabaseOnce(name: string) {
@@ -134,6 +143,7 @@ async function bootstrapBillingDatabaseOnce(name: string) {
   await recordBillingMigration(db, receiptMigration.key);
   await migrateBillingSettingsModule(db);
   await recordBillingMigration(db, billingSettingsMigration.key);
+  await seedBillingTenantPermissions(db as unknown as Kysely<unknown>);
   migrated.add(name);
   try {
     await seedSalesModule(db);
@@ -142,19 +152,7 @@ async function bootstrapBillingDatabaseOnce(name: string) {
     await seedReceiptModule(db);
     const settingsRepository = new BillingSettingsRepository();
     const companyId = await settingsRepository.defaultCompanyId(name);
-    const settings = await settingsRepository.getSalesSettings(name, companyId);
-    const sales = await new SalesRepository().list(name);
-    const nextNumber = nextAvailableSalesNumber(
-      sales.map((sale) => sale.invoiceNumber),
-      settings.numbering.sales
-    );
-    await settingsRepository.saveSalesSettings(name, companyId, {
-      ...settings,
-      numbering: {
-        ...settings.numbering,
-        sales: { ...settings.numbering.sales, nextNumber }
-      }
-    });
+    await settingsRepository.getBillingSettings(name, companyId);
   } catch (error) {
     migrated.delete(name);
     throw error;
@@ -170,35 +168,12 @@ export async function bootstrapRegisteredBillingDatabases() {
   await Promise.all(databaseNames.map((databaseName) => bootstrapBillingDatabase(databaseName)));
 }
 
-function nextAvailableSalesNumber(
-  invoiceNumbers: string[],
-  settings: {
-    nextNumber: number;
-    prefix: string;
-    separator: string;
-    suffix: string;
-    usePrefix: boolean;
-    useSeparator: boolean;
-    useSuffix: boolean;
-  }
-) {
-  const prefix = `${settings.usePrefix ? settings.prefix : ""}${settings.useSeparator ? settings.separator : ""}`;
-  const suffix = settings.useSuffix ? settings.suffix : "";
-  const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const escapedSuffix = suffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`^${escapedPrefix}(\\d+)${escapedSuffix}$`, "i");
-  const highestExisting = invoiceNumbers.reduce((highest, invoiceNumber) => {
-    const match = invoiceNumber.trim().match(pattern);
-    return Math.max(highest, match ? Number(match[1]) : 0);
-  }, 0);
-  return Math.max(1, settings.nextNumber, highestExisting + 1);
-}
-
 function openBillingDatabase(databaseName: string) {
   const name = assertDatabaseName(databaseName);
   const existing = connections.get(name);
   if (existing) {
-    return existing;
+    existing.lastUsedAt = Date.now();
+    return existing.database;
   }
 
   const db = new Kysely<BillingDatabase>({
@@ -208,13 +183,17 @@ function openBillingDatabase(databaseName: string) {
         host: env.DB_HOST,
         password: env.DB_PASSWORD,
         port: env.DB_PORT,
+        connectionLimit: 4,
+        idleTimeout: 60_000,
+        maxIdle: 1,
+        queueLimit: 100,
         timezone: "Z",
         user: env.DB_USER,
         connectTimeout: 5_000
       } satisfies PoolOptions)
     })
   });
-  connections.set(name, db);
+  connections.set(name, { database: db, lastUsedAt: Date.now() });
   return db;
 }
 
@@ -260,10 +239,22 @@ async function registeredTenantDatabaseNames() {
 }
 
 export async function closeAllBillingDatabases() {
-  const openConnections = Array.from(connections.values());
+  const openConnections = Array.from(connections.values(), (entry) => entry.database);
   connections.clear();
   migrated.clear();
   await Promise.all(openConnections.map(async (database) => database.destroy()));
+}
+
+export async function evictIdleBillingDatabases(now = Date.now()) {
+  const idle = Array.from(connections.entries()).filter(
+    ([name, entry]) => now - entry.lastUsedAt >= connectionIdleMs && !bootstrapping.has(name)
+  );
+  for (const [name, entry] of idle) {
+    if (connections.get(name) !== entry) continue;
+    connections.delete(name);
+    await entry.database.destroy();
+  }
+  return idle.length;
 }
 
 function assertDatabaseName(value: string) {

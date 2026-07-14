@@ -113,6 +113,25 @@ export async function listQuotations() {
   );
 }
 
+export async function listQuotationsPage(query: {
+  customer: string;
+  page: number;
+  pageSize: number;
+  search: string;
+  status: string;
+}) {
+  const params = new URLSearchParams({
+    customer: query.customer,
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+    search: query.search,
+    status: query.status
+  });
+  return billingApiGet<import("./quotation.types").QuotationPageResult>(
+    `/billing/quotations/page?${params}`
+  ).then((result) => ({ ...result, items: result.items.map(fromApiQuotation) }));
+}
+
 export async function getQuotation(id: string) {
   return billingApiGet<Quotation>(`/billing/quotations/${id}`).then(fromApiQuotation);
 }

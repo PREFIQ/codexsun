@@ -29,6 +29,12 @@ export class PurchaseService {
   list(databaseName: string) {
     return this.repository.list(databaseName);
   }
+  listPage(
+    databaseName: string,
+    query: { customer: string; page: number; pageSize: number; search: string; status: string }
+  ) {
+    return this.repository.listPage(databaseName, query);
+  }
 
   get(databaseName: string, id: string) {
     return this.repository.get(databaseName, id);

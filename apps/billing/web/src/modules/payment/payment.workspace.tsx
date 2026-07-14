@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Printer, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -11,7 +11,7 @@ import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
 import {
   usePaymentActivity,
   usePaymentContext,
-  usePaymentList,
+  usePaymentPage,
   paymentQueryKey
 } from "./payment.hooks";
 import { PaymentForm } from "./payment.form";
@@ -36,13 +36,18 @@ const statusFilters = [
 
 export function PaymentWorkspace() {
   const queryClient = useQueryClient();
-  const paymentsQuery = usePaymentList();
   const contextQuery = usePaymentContext();
   const [view, setView] = useState<PaymentView>({ mode: "list" });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const paymentsQuery = usePaymentPage({
+    page,
+    pageSize: rowsPerPage,
+    search,
+    status: statusFilter
+  });
   const save = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: PaymentSavePayload }) =>
       id ? updatePayment(id, payload) : createPayment(payload),
@@ -71,30 +76,13 @@ export function PaymentWorkspace() {
     },
     onError: (error) => toast.error("Payment could not be deleted", { description: message(error) })
   });
-  const entries = paymentsQuery.data ?? [];
-  const filtered = useMemo(
-    () =>
-      entries.filter(
-        (payment) =>
-          (statusFilter === "all" || payment.status === statusFilter) &&
-          [
-            payment.paymentNumber,
-            payment.supplierName,
-            payment.ledgerName,
-            payment.paymentMode,
-            payment.status
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(search.toLowerCase())
-      ),
-    [entries, search, statusFilter]
-  );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+  const entries = paymentsQuery.data?.items ?? [];
+  const totalCount = paymentsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / rowsPerPage));
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
-  const pageEntries = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+  const pageEntries = entries;
   if (view.mode === "upsert")
     return (
       <PaymentForm
@@ -195,9 +183,9 @@ export function PaymentWorkspace() {
         }}
         page={page}
         rowsPerPage={rowsPerPage}
-        showingLabel={showingLabel(filtered.length, page, rowsPerPage)}
+        showingLabel={showingLabel(totalCount, page, rowsPerPage)}
         singularLabel="payment"
-        totalCount={filtered.length}
+        totalCount={totalCount}
         totalPages={totalPages}
       />
     </WorkspacePage>

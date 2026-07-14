@@ -10,7 +10,7 @@ export {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
   WorkspaceTablePanel,
-  WorkspaceTableSkeletonRows
+  WorkspaceTableLoadingState
 } from "./table";
 export { WorkspaceFilters } from "./filters";
 export { WorkspacePagination } from "./pagination";

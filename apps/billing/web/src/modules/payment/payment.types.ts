@@ -146,6 +146,8 @@ export type PaymentView =
   | { mode: "upsert"; payment: Payment | null; returnTo: "list" | "show" }
   | { mode: "show"; payment: Payment };
 
+export type PaymentPageResult = { items: Payment[]; page: number; pageSize: number; total: number };
+
 export function emptyPayment(context?: PaymentContext | null): PaymentSavePayload {
   return {
     allocations: [],
