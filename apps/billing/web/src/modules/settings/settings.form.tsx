@@ -1,7 +1,7 @@
 import { Save } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
-import { Switch } from "@codexsun/ui/components/switch";
 import { WorkspaceFormField, WorkspaceFormPanel, WorkspaceSelect } from "@codexsun/ui/workspace";
+import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import type { BillingDocumentLayoutSettings, BillingSettings } from "./settings.types";
 
 const layoutKeys: Array<keyof BillingDocumentLayoutSettings> = [
@@ -51,16 +51,12 @@ export function SalesSettingsForm({
         </WorkspaceFormField>
         <div className="space-y-3">
           {layoutKeys.map((key) => (
-            <label
-              className="flex items-center justify-between gap-3 rounded-md border p-3 text-sm font-medium"
+            <WorkspaceSwitchCard
+              checked={settings.layout[key]}
               key={key}
-            >
-              {key.replace(/^use/, "")}
-              <Switch
-                checked={settings.layout[key]}
-                onCheckedChange={(checked) => patchLayout(key, checked)}
-              />
-            </label>
+              label={key.replace(/^use/, "")}
+              onCheckedChange={(checked) => patchLayout(key, checked)}
+            />
           ))}
         </div>
       </div>

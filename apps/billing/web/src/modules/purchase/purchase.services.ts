@@ -42,12 +42,14 @@ export type PurchaseLookupRecord = {
   unitId?: string | null;
   hsnCodeId?: string | null;
   taxId?: string | null;
+  typeId?: string | null;
   typeName?: string | null;
   unitName?: string | null;
   workOrderNo?: string | null;
 };
 
 export type PurchaseContactSavePayload = {
+  addressTypeId: string;
   addressTypeName: string;
   addressLine1: string;
   addressLine2: string;
@@ -66,6 +68,8 @@ export type PurchaseContactSavePayload = {
   primaryPhone: string;
   stateId: string;
   stateName: string;
+  typeId: string;
+  typeName: string;
 };
 
 export type PurchaseLocationKind = "cities" | "districts" | "pincodes" | "states";
@@ -160,13 +164,19 @@ export function createPurchaseContact(payload: PurchaseContactSavePayload) {
   return billingApiPost<PurchaseLookupRecord>(
     "/billing/purchases/lookups/contacts",
     contactPayload(payload)
-  );
+  ).then(normalizeLookupRecord);
 }
 
 export function updatePurchaseContact(id: string, payload: PurchaseContactSavePayload) {
   return billingApiPut<PurchaseLookupRecord>(
     `/billing/purchases/lookups/contacts/${id}`,
     contactPayload(payload)
+  ).then(normalizeLookupRecord);
+}
+
+export function listPurchaseContactTypes() {
+  return billingApiGet<PurchaseLookupRecord[]>("/billing/purchases/lookups/contact-types").then(
+    (records) => records.map(normalizeLookupRecord)
   );
 }
 
@@ -180,7 +190,9 @@ export function listPurchaseLocations(
     pincodes: "/billing/purchases/lookups/pincodes",
     states: "/billing/purchases/lookups/states"
   } as const;
-  return billingApiGet<PurchaseLocationRecord[]>(paths[kind]);
+  return billingApiGet<PurchaseLocationRecord[]>(paths[kind]).then((records) =>
+    records.map(normalizeLocationRecord)
+  );
 }
 
 export function createPurchaseLocation(
@@ -193,7 +205,7 @@ export function createPurchaseLocation(
     pincodes: "/billing/purchases/lookups/pincodes",
     states: "/billing/purchases/lookups/states"
   } as const;
-  return billingApiPost<PurchaseLocationRecord>(paths[kind], payload);
+  return billingApiPost<PurchaseLocationRecord>(paths[kind], payload).then(normalizeLocationRecord);
 }
 
 export function listPurchaseAddressTypes() {
@@ -471,17 +483,18 @@ function contactPayload(payload: PurchaseContactSavePayload) {
             {
               addressLine1: payload.addressLine1.trim(),
               addressLine2: payload.addressLine2.trim(),
+              addressTypeId: nullableNumericId(payload.addressTypeId),
               addressTypeName: payload.addressTypeName.trim() || "Billing",
-              cityId: payload.cityId || null,
+              cityId: nullableNumericId(payload.cityId),
               cityName: payload.cityName || null,
-              countryId: payload.countryId || null,
+              countryId: nullableNumericId(payload.countryId),
               countryName: payload.countryName || "India",
-              districtId: payload.districtId || null,
+              districtId: nullableNumericId(payload.districtId),
               districtName: payload.districtName || null,
               isDefault: true,
-              pincodeId: payload.pincodeId || null,
+              pincodeId: nullableNumericId(payload.pincodeId),
               pincodeName: payload.pincodeName || null,
-              stateId: payload.stateId || null,
+              stateId: nullableNumericId(payload.stateId),
               stateName: payload.stateName || null
             }
           ]
@@ -490,7 +503,36 @@ function contactPayload(payload: PurchaseContactSavePayload) {
     isActive: true,
     legalName: payload.legalName.trim(),
     name: payload.name.trim(),
-    primaryEmail: payload.primaryEmail.trim(),
-    primaryPhone: payload.primaryPhone.trim()
+    emails: payload.primaryEmail.trim()
+      ? [{ email: payload.primaryEmail.trim(), emailType: "Work", isPrimary: true }]
+      : [],
+    phones: payload.primaryPhone.trim()
+      ? [{ isPrimary: true, phone: payload.primaryPhone.trim(), phoneType: "Mobile" }]
+      : [],
+    typeId: Number(payload.typeId)
   };
+}
+
+function normalizeLocationRecord(record: PurchaseLocationRecord): PurchaseLocationRecord {
+  return {
+    ...record,
+    cityId: nullableStringId(record.cityId),
+    countryId: nullableStringId(record.countryId),
+    districtId: nullableStringId(record.districtId),
+    id: String(record.id),
+    stateId: nullableStringId(record.stateId)
+  };
+}
+
+function normalizeLookupRecord(record: PurchaseLookupRecord): PurchaseLookupRecord {
+  return { ...record, id: String(record.id) };
+}
+
+function nullableNumericId(value: unknown) {
+  const numeric = Number(value);
+  return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
+}
+
+function nullableStringId(value: unknown) {
+  return value === null || value === undefined || value === "" ? null : String(value);
 }

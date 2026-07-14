@@ -205,33 +205,37 @@ export class PurchaseRepository {
           `.execute(database)
         : null;
     const addressIds = addressResult?.rows.map((row) => Number(row.id)) ?? [];
-    const workOrderResult =
-      !input.workOrderId && input.workOrderNo
-        ? await sql<{ id: number }>`
+    const workOrderResult = !input.workOrderId
+      ? await sql<{ id: number }>`
             SELECT id FROM work_orders
-            WHERE code = ${input.workOrderNo} AND status = 'active' LIMIT 1
+            WHERE status = 'active'
+            ORDER BY CASE WHEN code=${input.workOrderNo} AND ${input.workOrderNo}<>'' THEN 0
+              WHEN TRIM(code)='-' THEN 1 ELSE 2 END,id LIMIT 1
           `.execute(database)
-        : null;
-    const ledgerResult =
-      !input.ledgerId && input.salesLedger
-        ? await sql<{ id: number }>`
+      : null;
+    const ledgerResult = !input.ledgerId
+      ? await sql<{ id: number }>`
             SELECT id FROM ledgers
-            WHERE LOWER(name) = LOWER(${input.salesLedger}) AND status = 'active' LIMIT 1
+            WHERE status = 'active'
+            ORDER BY CASE WHEN LOWER(name)=LOWER(${input.salesLedger}) AND ${input.salesLedger}<>'' THEN 0
+              WHEN TRIM(name)='-' THEN 1 ELSE 2 END,id LIMIT 1
           `.execute(database)
-        : null;
+      : null;
 
     const items: PurchaseSavePayload["items"] = [];
     for (const item of input.items) {
       const product =
-        !item.productId && item.productName
+        item.productId || item.productName
           ? await sql<{
               id: number;
               hsn_code_id: number | null;
               tax_id: number | null;
               unit_id: number | null;
             }>`
-              SELECT id, hsn_code_id, tax_id, unit_id FROM products
-              WHERE LOWER(name) = LOWER(${item.productName}) AND status = 'active' AND deleted_at IS NULL
+              SELECT id, hsn_code_id, gst_tax_id AS tax_id, unit_id FROM products
+              WHERE (${item.productId || 0} > 0 AND id=${item.productId || 0}
+                OR ${item.productId || 0}=0 AND LOWER(name)=LOWER(${item.productName}))
+                AND status = 'active' AND deleted_at IS NULL
               LIMIT 1
             `.execute(database)
           : null;

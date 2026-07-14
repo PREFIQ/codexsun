@@ -2,11 +2,11 @@ import { useState } from "react";
 import { Save } from "lucide-react";
 import {
   Input,
-  Switch,
   WorkspaceDatePicker,
   WorkspaceFormField,
   WorkspaceFormFooter,
   WorkspaceFormGrid,
+  WorkspaceSwitchCard,
   WorkspaceUpsertDialog
 } from "@codexsun/ui";
 import { WorkspaceFormBanner } from "@codexsun/ui/workspace/upsert";
@@ -153,14 +153,7 @@ function StatusRow({
   label: string;
   onChange: (value: boolean) => void;
 }) {
-  return (
-    <div
-      className={`flex h-11 items-center rounded-md border px-3 ${checked ? "border-emerald-200 bg-emerald-50/70" : "border-border bg-muted/30"}`}
-    >
-      <span className="text-sm font-medium">{label}</span>
-      <Switch className="ml-auto" checked={checked} onCheckedChange={onChange} />
-    </div>
-  );
+  return <WorkspaceSwitchCard checked={checked} label={label} onCheckedChange={onChange} />;
 }
 function recordLabel(_value: FinancialYearSavePayload) {
   return "Save financial year";

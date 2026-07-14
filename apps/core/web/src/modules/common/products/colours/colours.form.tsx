@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
 import { Input } from "@codexsun/ui/components/input";
-import { Switch } from "@codexsun/ui/components/switch";
+import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import {
   WorkspaceFormBanner,
   WorkspaceFormField,
@@ -68,6 +68,7 @@ function ColoursFormBody({
   const [value, setValue] = useState(initialValue);
   const [validationError, setValidationError] = useState("");
   const shownError = validationError || error;
+  const pickerValue = toPickerValue(value.name);
   return (
     <form
       noValidate
@@ -79,20 +80,40 @@ function ColoursFormBody({
           return;
         }
         setValidationError("");
-        onSubmit(value);
+        onSubmit(parsed.data);
       }}
     >
       {shownError ? (
         <WorkspaceFormBanner title="Unable to save">{shownError}</WorkspaceFormBanner>
       ) : null}
-      <WorkspaceFormGrid columns={1}>
-        <WorkspaceFormField label="Name">
+      <WorkspaceFormGrid columns={2}>
+        <WorkspaceFormField label="Name or colour code" required>
           <Input
             autoFocus
-            type="color"
+            aria-invalid={Boolean(validationError && !value.name.trim())}
+            placeholder="Black or #000000"
+            type="text"
             value={value.name}
-            onChange={(event) => setValue((current) => ({ ...current, name: event.target.value }))}
+            onChange={(event) => {
+              setValidationError("");
+              setValue((current) => ({ ...current, name: event.target.value }));
+            }}
           />
+        </WorkspaceFormField>
+        <WorkspaceFormField label="Colour picker">
+          <div className="flex h-10 items-center gap-3 rounded-md border border-input bg-background px-2">
+            <Input
+              aria-label="Pick colour"
+              className="h-8 w-14 cursor-pointer border-0 p-0 shadow-none"
+              type="color"
+              value={pickerValue}
+              onChange={(event) => {
+                setValidationError("");
+                setValue((current) => ({ ...current, name: event.target.value }));
+              }}
+            />
+            <span className="font-mono text-sm text-muted-foreground">{pickerValue}</span>
+          </div>
         </WorkspaceFormField>
         <WorkspaceFormField label="Sort order">
           <Input
@@ -104,17 +125,12 @@ function ColoursFormBody({
             }
           />
         </WorkspaceFormField>
-        <div className="flex h-11 items-center gap-3 rounded-md border border-border/80 px-3">
-          <span className="text-sm font-medium">Active</span>
-          <Switch
-            aria-label="Colour active status"
-            checked={value.isActive}
-            className="ml-auto"
-            onCheckedChange={(checked) =>
-              setValue((current) => ({ ...current, isActive: checked }))
-            }
-          />
-        </div>
+        <WorkspaceSwitchCard
+          fieldLabel="Status"
+          ariaLabel="Colour active status"
+          checked={value.isActive}
+          onCheckedChange={(checked) => setValue((current) => ({ ...current, isActive: checked }))}
+        />
       </WorkspaceFormGrid>
       <WorkspaceFormFooter
         className="mt-6 border-t pt-4"
@@ -135,4 +151,24 @@ function ColoursFormBody({
 }
 function toPayload(record: ColoursRecord): ColoursSavePayload {
   return { name: record.name, isActive: record.isActive, sortOrder: record.sortOrder };
+}
+
+function toPickerValue(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (/^#[0-9a-f]{6}$/.test(normalized)) return normalized;
+  if (/^#[0-9a-f]{3}$/.test(normalized)) {
+    return `#${normalized
+      .slice(1)
+      .split("")
+      .map((character) => character.repeat(2))
+      .join("")}`;
+  }
+  if (typeof document === "undefined" || !normalized) return "#000000";
+  const context = document.createElement("canvas").getContext("2d");
+  if (!context) return "#000000";
+  context.fillStyle = "#000001";
+  context.fillStyle = normalized;
+  return /^#[0-9a-f]{6}$/.test(context.fillStyle) && context.fillStyle !== "#000001"
+    ? context.fillStyle
+    : "#000000";
 }

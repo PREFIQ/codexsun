@@ -1,4 +1,5 @@
 import { env } from "../../env.js";
+import { AppError } from "@codexsun/framework/errors";
 
 export type PurchaseLookupHeaders = {
   authorization?: string | string[] | undefined;
@@ -9,6 +10,9 @@ export type PurchaseLookupHeaders = {
 export class PurchaseLookupService {
   contacts(headers: PurchaseLookupHeaders) {
     return this.get("/core/master/contacts", headers);
+  }
+  contactTypes(headers: PurchaseLookupHeaders) {
+    return this.get("/core/common/contacts/contact-types", headers);
   }
   createContact(headers: PurchaseLookupHeaders, input: unknown) {
     return this.post("/core/master/contacts", headers, input);
@@ -144,8 +148,15 @@ async function responseData(response: Response) {
     error?: { message?: string };
     success?: boolean;
   };
-  if (!response.ok || payload.success === false)
-    throw new Error(payload.error?.message || "Purchase lookup could not be loaded.");
+  if (!response.ok || payload.success === false) {
+    const message = payload.error?.message || "Purchase lookup could not be loaded.";
+    if (response.status === 400 || response.status === 422) throw AppError.validation(message);
+    if (response.status === 401) throw AppError.unauthorized(message);
+    if (response.status === 403) throw AppError.forbidden(message);
+    if (response.status === 404) throw AppError.notFound(message);
+    if (response.status === 409) throw AppError.conflict(message);
+    throw new Error(message);
+  }
   return payload.data ?? [];
 }
 

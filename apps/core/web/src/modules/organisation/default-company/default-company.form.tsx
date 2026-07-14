@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
 import {
-  Switch,
   WorkspaceFormField,
   WorkspaceFormFooter,
   WorkspaceFormGrid,
   WorkspaceLookup,
   WorkspaceSelect,
+  WorkspaceSwitchCard,
   WorkspaceUpsertDialog
 } from "@codexsun/ui";
 import { WorkspaceFormBanner } from "@codexsun/ui/workspace/upsert";
@@ -136,18 +136,14 @@ function Body({
             onValueChange={(landingApp) => setValue((current) => ({ ...current, landingApp }))}
           />
         </WorkspaceFormField>
-        <div
-          className={`flex h-11 items-center rounded-md border px-3 ${value.status === "active" ? "border-emerald-200 bg-emerald-50/70" : "border-border bg-muted/30"}`}
-        >
-          <span className="text-sm font-medium">Active</span>
-          <Switch
-            className="ml-auto"
-            checked={value.status === "active"}
-            onCheckedChange={(active) =>
-              setValue((current) => ({ ...current, status: active ? "active" : "inactive" }))
-            }
-          />
-        </div>
+        <WorkspaceSwitchCard
+          ariaLabel="Default company active status"
+          checked={value.status === "active"}
+          fieldLabel="Status"
+          onCheckedChange={(active) =>
+            setValue((current) => ({ ...current, status: active ? "active" : "inactive" }))
+          }
+        />
       </WorkspaceFormGrid>
       <WorkspaceFormFooter
         className="mt-6 border-t pt-4"

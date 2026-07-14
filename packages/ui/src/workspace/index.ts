@@ -4,7 +4,7 @@ export { WorkspaceHeader } from "./header";
 export { WorkspaceActionBar } from "./actions";
 export { WorkspaceField, WorkspaceFieldGroup } from "./field";
 export { WorkspaceSection } from "./section";
-export { WorkspaceStatusBadge, WorkspaceStatusToggle } from "./status";
+export { WorkspaceStatusBadge, WorkspaceStatusToggle, WorkspaceSwitchCard } from "./status";
 export {
   WorkspaceTable,
   WorkspaceTableEmptyState,

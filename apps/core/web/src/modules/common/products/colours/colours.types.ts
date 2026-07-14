@@ -6,7 +6,7 @@ export type ColoursRecord = {
 };
 
 export type ColoursSavePayload = {
-  name?: string;
+  name: string;
   isActive: boolean;
   sortOrder: number;
 };

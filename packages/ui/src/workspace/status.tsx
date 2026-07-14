@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 import { CheckCircle2, Minus, XCircle } from "lucide-react";
+import { Label } from "../components/label";
+import { Switch } from "../components/switch";
 import { cn } from "../lib/utils";
 import type { WorkspaceStatusTone } from "./types";
 
@@ -80,5 +82,65 @@ export function WorkspaceStatusToggle({
       {active ? <CheckCircle2 className="size-3" /> : <Minus className="size-3" />}
       {active ? activeLabel : inactiveLabel}
     </button>
+  );
+}
+
+export function WorkspaceSwitchCard({
+  activeLabel = "Active",
+  ariaLabel,
+  checked,
+  className,
+  description,
+  disabled,
+  fieldLabel,
+  inactiveLabel = "Inactive",
+  label,
+  onCheckedChange
+}: {
+  activeLabel?: ReactNode;
+  ariaLabel?: string;
+  checked: boolean;
+  className?: string;
+  description?: ReactNode;
+  disabled?: boolean;
+  fieldLabel?: ReactNode;
+  inactiveLabel?: ReactNode;
+  label?: ReactNode;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  const card = (
+    <div
+      className={cn(
+        "flex min-h-11 items-center justify-between gap-3 rounded-md border px-3 py-2 transition-colors",
+        checked
+          ? "border-emerald-200 bg-emerald-50/80 dark:border-emerald-800 dark:bg-emerald-950/30"
+          : "border-border bg-muted/30",
+        disabled && "opacity-60",
+        className
+      )}
+      data-state={checked ? "checked" : "unchecked"}
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">
+          {label ?? (checked ? activeLabel : inactiveLabel)}
+        </p>
+        {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
+      </div>
+      <Switch
+        aria-label={ariaLabel}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+      />
+    </div>
+  );
+
+  return fieldLabel ? (
+    <div className="grid gap-2">
+      <Label className="text-sm font-medium text-muted-foreground">{fieldLabel}</Label>
+      {card}
+    </div>
+  ) : (
+    card
   );
 }

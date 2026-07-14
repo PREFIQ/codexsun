@@ -4,13 +4,13 @@ import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
-import { Switch } from "@codexsun/ui/components/switch";
 import { Textarea } from "@codexsun/ui/components/textarea";
 import {
   WorkspaceAnimatedTabs,
   type WorkspaceAnimatedTab
 } from "@codexsun/ui/workspace/animated-tabs";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
+import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import { getBillingSettings, saveBillingSettings } from "./settings.services";
 import {
   defaultBillingSettings,
@@ -333,10 +333,12 @@ function ToggleRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex min-h-16 items-center justify-between gap-3 rounded-md border border-border/70 bg-card px-4 py-3">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="text-sm font-semibold">{label}</div>
+    <WorkspaceSwitchCard
+      checked={checked}
+      disabled={disabled}
+      label={
+        <span className="flex flex-wrap items-center gap-2">
+          <span>{label}</span>
           <span
             className={
               badge === "Industry"
@@ -346,11 +348,11 @@ function ToggleRow({
           >
             {badge}
           </span>
-        </div>
-        <div className="mt-1 text-sm text-muted-foreground">{note}</div>
-      </div>
-      <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} />
-    </div>
+        </span>
+      }
+      description={note}
+      onCheckedChange={onChange}
+    />
   );
 }
 

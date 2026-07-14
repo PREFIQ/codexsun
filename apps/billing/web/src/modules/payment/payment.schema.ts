@@ -7,13 +7,13 @@ export const paymentSchema = z.object({
       purchaseId: z.string().regex(/^[0-9a-f]{8}$/)
     })
   ),
-  amount: z.number().positive("Amount must be greater than zero."),
+  amount: z.number().nonnegative("Amount must be zero or more."),
   companyId: z.number().int().positive("Default Company is required."),
   currencyId: z.number().int().positive("Currency is required."),
   supplierId: z.number().int().positive("Supplier is required."),
   discountAmount: z.number().nonnegative(),
   financialYearId: z.number().int().positive("Financial Year is required."),
-  ledgerId: z.number().int().positive("Cash or bank ledger is required."),
+  ledgerId: z.number().int().nonnegative(),
   notes: z.string(),
   paymentDate: z.iso.date("Payment date is required."),
   paymentMode: z.enum(["cash", "bank", "upi", "transfer"]),

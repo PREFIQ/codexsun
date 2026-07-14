@@ -103,6 +103,8 @@ export class QuotationService {
     if (!current) return null;
     if (current.status !== "draft")
       throw AppError.conflict("Only draft quotations can be confirmed.");
+    if (!current.items.length)
+      throw AppError.conflict("Add at least one quotation item before confirming.");
     const quotation = await this.repository.setStatus(databaseName, id, "confirmed");
     if (quotation) await this.publish("confirmed", quotation, databaseName);
     return quotation;
@@ -303,7 +305,7 @@ export class QuotationService {
 export function normalizeQuotationInput(input: QuotationSavePayload): QuotationSavePayload {
   const items = input.items
     .map(normalizeQuotationLineItem)
-    .filter((item) => item.description.length > 0 && item.quantity > 0);
+    .filter((item) => (item.productId || (item.productName?.length ?? 0) > 0) && item.quantity > 0);
   if (!Number.isInteger(input.companyId) || input.companyId <= 0)
     throw AppError.validation("Default Company is required.");
   if (!Number.isInteger(input.financialYearId) || input.financialYearId <= 0)
@@ -319,7 +321,7 @@ export function normalizeQuotationInput(input: QuotationSavePayload): QuotationS
   if (!input.quotationNumber.trim()) throw AppError.validation("Quotation number is required.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date.trim()))
     throw AppError.validation("Quotation date is required.");
-  if (items.length === 0)
+  if (input.status !== "draft" && items.length === 0)
     throw AppError.validation("Add at least one quotation item with a persisted unit.");
   if (items.some((item) => !Number.isInteger(item.unitId) || item.unitId <= 0))
     throw AppError.validation("Every quotation item requires a persisted unit.");
@@ -358,7 +360,7 @@ function normalizeQuotationLineItem(item: QuotationLineItemInput): QuotationLine
     colour: item.colour?.trim() ?? "",
     colourId: positiveOrNull(item.colourId),
     dcNo: item.dcNo?.trim().toUpperCase() ?? "",
-    description: item.description.trim() || productName,
+    description: item.description?.trim() ?? "",
     hsnCode: item.hsnCode.trim().toUpperCase(),
     hsnCodeId: positiveOrNull(item.hsnCodeId),
     poNo: item.poNo?.trim().toUpperCase() ?? "",

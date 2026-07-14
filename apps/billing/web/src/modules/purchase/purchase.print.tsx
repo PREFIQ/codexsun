@@ -279,13 +279,11 @@ function PurchasePrintItemRow({ item, index }: { item: Purchase["items"][number]
     <tr className="align-top">
       <td className="border-r border-slate-200 px-2 py-2 text-center">{index + 1}</td>
       <td className="border-r border-slate-200 px-2 py-2">
-        <div className="font-medium">{item.productName}</div>
+        <div className="font-medium">
+          {[item.productName, item.description].filter(Boolean).join(" - ")}
+        </div>
         <div>
-          {[
-            item.description,
-            item.colour ? `Colour : ${item.colour}` : "",
-            item.size ? `Size : ${item.size}` : ""
-          ]
+          {[item.colour ? `Colour : ${item.colour}` : "", item.size ? `Size : ${item.size}` : ""]
             .filter(Boolean)
             .join(" - ")}
         </div>

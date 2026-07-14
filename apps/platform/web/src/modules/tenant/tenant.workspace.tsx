@@ -1,10 +1,9 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CheckCircle2, Pencil, Plus, RefreshCw, Save, X } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, RefreshCw, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
-import { Switch } from "@codexsun/ui/components/switch";
 import {
   WorkspaceAnimatedTabs,
   type WorkspaceAnimatedTab
@@ -18,7 +17,7 @@ import {
   WorkspaceShowLayout,
   WorkspaceDetailTable
 } from "@codexsun/ui/workspace/show";
-import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
+import { WorkspaceStatusBadge, WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
@@ -880,25 +879,15 @@ function TenantUpsertPage({
               onTouched={() => setPrimaryDomainTouched(true)}
               onChange={(primaryDomain) => setForm((current) => ({ ...current, primaryDomain }))}
             />
-            <div className="flex items-end">
-              <div className="flex h-[4.5rem] w-full items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 px-4 text-emerald-800">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-sm font-semibold">
-                    <CheckCircle2 className="size-4" />
-                    Active
-                  </div>
-                  <p className="mt-1 text-sm">
-                    Active tenants can be selected for workspace access.
-                  </p>
-                </div>
-                <Switch
-                  checked={form.status === "active"}
-                  onCheckedChange={(checked) =>
-                    setForm((current) => ({ ...current, status: checked ? "active" : "inactive" }))
-                  }
-                />
-              </div>
-            </div>
+            <WorkspaceSwitchCard
+              fieldLabel="Status"
+              ariaLabel="Tenant active status"
+              checked={form.status === "active"}
+              description="Active tenants can be selected for workspace access."
+              onCheckedChange={(checked) =>
+                setForm((current) => ({ ...current, status: checked ? "active" : "inactive" }))
+              }
+            />
           </WorkspaceFormGrid>
         </WorkspaceFormPanel>
       )
@@ -1169,36 +1158,36 @@ function TenantAppCard({
 }) {
   const locked = app.alwaysEnabled || app.moduleKey === "platform.application";
   return (
-    <div
-      className={cn(
-        "flex min-h-32 gap-3 rounded-md border border-border/70 p-4",
-        app.enabled ? "bg-muted/40" : "bg-background"
-      )}
-    >
-      <div
-        className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-md text-white",
-          app.color
-        )}
-      >
-        {app.icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-sm font-semibold text-foreground">{app.name}</h3>
+    <WorkspaceSwitchCard
+      checked={app.enabled}
+      className="min-h-32 p-4"
+      disabled={locked}
+      label={
+        <span className="flex items-center gap-3">
           <span
             className={cn(
-              "rounded-md px-2 py-0.5 text-[11px]",
-              app.enabled ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
+              "flex size-10 shrink-0 items-center justify-center rounded-md text-white",
+              app.color
             )}
           >
-            {app.enabled ? "Enabled" : "Disabled"}
+            {app.icon}
           </span>
-        </div>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{app.description}</p>
-      </div>
-      <Switch checked={app.enabled} disabled={locked} onCheckedChange={onToggle} className="mt-1" />
-    </div>
+          <span className="flex flex-wrap items-center gap-2">
+            <span>{app.name}</span>
+            <span
+              className={cn(
+                "rounded-md px-2 py-0.5 text-[11px]",
+                app.enabled ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
+              )}
+            >
+              {app.enabled ? "Enabled" : "Disabled"}
+            </span>
+          </span>
+        </span>
+      }
+      description={app.description}
+      onCheckedChange={onToggle}
+    />
   );
 }
 

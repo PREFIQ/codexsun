@@ -88,6 +88,8 @@ export class SalesService {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
     if (current.status !== "draft") throw AppError.conflict("Only draft sales can be confirmed.");
+    if (!current.items.length)
+      throw AppError.conflict("Add at least one sale item before confirming.");
     return this.repository.setStatus(databaseName, id, "confirmed");
   }
 
@@ -175,7 +177,7 @@ export class SalesService {
 export function normalizeSaleInput(input: SaleSavePayload): SaleSavePayload {
   const items = input.items
     .map(normalizeSaleLineItem)
-    .filter((item) => item.description.length > 0 && item.quantity > 0);
+    .filter((item) => (item.productId || (item.productName?.length ?? 0) > 0) && item.quantity > 0);
   if (!Number.isInteger(input.companyId) || input.companyId <= 0)
     throw AppError.validation("Default Company is required.");
   if (!Number.isInteger(input.financialYearId) || input.financialYearId <= 0)
@@ -191,7 +193,7 @@ export function normalizeSaleInput(input: SaleSavePayload): SaleSavePayload {
   if (!input.invoiceNumber.trim()) throw AppError.validation("Invoice number is required.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.issuedOn.trim()))
     throw AppError.validation("Invoice date is required.");
-  if (items.length === 0)
+  if (input.status !== "draft" && items.length === 0)
     throw AppError.validation("Add at least one sale item with a persisted unit.");
   if (items.some((item) => !Number.isInteger(item.unitId) || item.unitId <= 0))
     throw AppError.validation("Every sale item requires a persisted unit.");
@@ -232,7 +234,7 @@ function normalizeSaleLineItem(item: SaleLineItemInput): SaleLineItemInput {
     colour: item.colour?.trim() ?? "",
     colourId: positiveOrNull(item.colourId),
     dcNo: item.dcNo?.trim().toUpperCase() ?? "",
-    description: item.description.trim() || productName,
+    description: item.description?.trim() ?? "",
     hsnCode: item.hsnCode.trim().toUpperCase(),
     hsnCodeId: positiveOrNull(item.hsnCodeId),
     poNo: item.poNo?.trim().toUpperCase() ?? "",

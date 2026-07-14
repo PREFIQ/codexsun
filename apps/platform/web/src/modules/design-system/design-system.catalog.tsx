@@ -166,7 +166,6 @@ import {
   Slider,
   Spinner,
   StatusBadge,
-  Switch,
   Table,
   TableBody,
   TableCaption,
@@ -195,6 +194,7 @@ import {
   TooltipTrigger,
   Tree
 } from "@codexsun/ui";
+import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import {
   AlertCircleIcon,
   BoxesIcon,
@@ -217,7 +217,7 @@ import {
   UserIcon
 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
-import type { ComponentType, ReactNode } from "react";
+import { useState, type ComponentType, type ReactNode } from "react";
 
 export type CatalogCategory =
   "Control" | "Form" | "Feedback" | "Navigation" | "Overlay" | "Data" | "Layout";
@@ -550,9 +550,9 @@ export const catalogItems: CatalogItem[] = [
     variant("red", "Red", <StatusBadge tone="red">Blocked</StatusBadge>),
     variant("neutral", "Neutral", <StatusBadge>Archived</StatusBadge>)
   ]),
-  item("switch", "Switch", "Form", "Binary on/off switch.", [
-    variant("on", "On", <Switch defaultChecked />),
-    variant("off", "Off", <Switch />)
+  item("switch", "Switch Card", "Form", "Binary on/off switch with workspace state tone.", [
+    variant("on", "On", <SwitchCardPreview checked />),
+    variant("off", "Off", <SwitchCardPreview checked={false} />)
   ]),
   item("table", "Table", "Data", "Basic data table primitives.", [
     variant("default", "Default", <TablePreview />)
@@ -1212,6 +1212,12 @@ function StatusRow() {
       <strong>12</strong>
     </div>
   );
+}
+
+function SwitchCardPreview({ checked: initialChecked }: { checked: boolean }) {
+  const [checked, setChecked] = useState(initialChecked);
+
+  return <WorkspaceSwitchCard checked={checked} onCheckedChange={setChecked} />;
 }
 
 function TablePreview() {

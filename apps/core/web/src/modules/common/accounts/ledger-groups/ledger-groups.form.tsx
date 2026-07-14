@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
 import { Input } from "@codexsun/ui/components/input";
-import { Switch } from "@codexsun/ui/components/switch";
+import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import {
   WorkspaceFormBanner,
   WorkspaceFormField,
@@ -85,17 +85,14 @@ function Body({
             onChange={(event) => setValue((current) => ({ ...current, name: event.target.value }))}
           />
         </WorkspaceFormField>
-        <div className="flex h-11 items-center gap-3 rounded-md border border-border/80 px-3">
-          <span className="text-sm font-medium">Active</span>
-          <Switch
-            aria-label="Ledger group active status"
-            checked={value.status === "active"}
-            className="ml-auto"
-            onCheckedChange={(checked) =>
-              setValue((current) => ({ ...current, status: checked ? "active" : "inactive" }))
-            }
-          />
-        </div>
+        <WorkspaceSwitchCard
+          fieldLabel="Status"
+          ariaLabel="Ledger group active status"
+          checked={value.status === "active"}
+          onCheckedChange={(checked) =>
+            setValue((current) => ({ ...current, status: checked ? "active" : "inactive" }))
+          }
+        />
       </WorkspaceFormGrid>
       <WorkspaceFormFooter
         className="mt-6 border-t pt-4"

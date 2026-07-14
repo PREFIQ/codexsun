@@ -5,8 +5,8 @@ import type { MonthsListFilters, MonthsRecord, MonthsSavePayload } from "./month
 type MonthsRow = {
   id: number;
   name: string;
-  start_date: string;
-  end_date: string;
+  start_date: Date | string;
+  end_date: Date | string;
   status: string;
   sort_order: number;
 };
@@ -77,11 +77,16 @@ function toMonths(row: MonthsRow): MonthsRecord {
   return {
     id: Number(row.id),
     name: row.name,
-    startDate: row.start_date,
-    endDate: row.end_date,
+    startDate: dateOnly(row.start_date),
+    endDate: dateOnly(row.end_date),
     isActive: row.status === "active",
     sortOrder: Number(row.sort_order)
   };
+}
+
+function dateOnly(value: Date | string) {
+  const serialized = value instanceof Date ? value.toISOString() : String(value);
+  return serialized.slice(0, 10);
 }
 
 function like(value?: string) {

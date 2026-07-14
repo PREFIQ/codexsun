@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.30
+Current version: 1.0.31
 
-Release tag: v-1.0.30
+Release tag: v-1.0.31
 
-Changelog label: v 1.0.30
+Changelog label: v 1.0.31
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,27 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.31
+
+### [v 1.0.31] 2026-07-14 11:08 am - Minimal Billing Draft and Default Reference Fixes
+
+#### Database Changes
+
+- Database update: Yes (manual).
+- Updated the Product seed so the protected `-` product resolves its Product Type, Product Category, HSN Code, Unit, and GST Tax foreign IDs from the existing `-` records, falling back to the first active persisted record without creating anonymous masters.
+- Updated the Contact seed to resolve the demo contact's persisted Contact Type and Contact Group and to backfill one default `-` address for every active contact that has no address, using the connected seeded Country -> State -> District -> City -> Pincode hierarchy.
+- Existing tenant databases require the normal repeatable Core seed pass to receive the Product relationship repair and missing-address backfill; no new table or schema migration is required.
+
+#### App Codebase Changes
+
+- Fixed Quotation, Sales, Purchase, and Export Sales quick-product requests so persisted Product Category, HSN Code, Unit, and GST Tax IDs are submitted as numeric foreign IDs instead of invalid strings.
+- Expanded the Core Product response with its resolved type, category, HSN, unit, and GST tax relationship values and made minimal product creation reuse the existing fallback masters.
+- Added default-address enrichment to minimal Contact creation so inline contacts created without address details still return a persisted address owned by that contact.
+- Allowed contact-only draft creation for Quotation, Sales, Purchase, and Export Sales and zero-value draft creation for Receipt and Payment while preserving line-item requirements for confirmation and positive-total requirements for posting.
+- Added fallback Ledger and Work Order resolution for minimal Billing drafts and fallback cash/bank Ledger resolution for Receipt and Payment without creating placeholder business records.
+- Extended the tenant-isolated persistence E2E to cover minimal Product and Contact creation, all six minimal Billing draft flows, default foreign-reference resolution, cleanup, and rejection of empty confirmation/posting actions.
+- Bumped workspace version to 1.0.31.
 
 ## v-1.0.30
 

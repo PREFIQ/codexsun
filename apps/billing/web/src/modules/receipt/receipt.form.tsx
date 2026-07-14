@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Save, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
 import { Textarea } from "@codexsun/ui/components/textarea";
@@ -19,8 +20,9 @@ import {
   WorkspaceFormPanel
 } from "@codexsun/ui/workspace/upsert";
 import { useReceiptFormLookups } from "./receipt.hooks";
+import { emptyReceiptContact, ReceiptContactDialog } from "./receipt.contact-dialog";
 import { validateReceipt, type ReceiptFormErrors } from "./receipt.schema";
-import { formatReceiptMoney } from "./receipt.services";
+import { createReceiptContact, formatReceiptMoney } from "./receipt.services";
 import {
   emptyReceipt,
   receiptToPayload,
@@ -95,12 +97,34 @@ export function ReceiptForm({
       <WorkspaceFormField label="Customer name" required>
         <WorkspaceLookup
           allowTextValue={false}
+          createLabel="New customer"
+          createMode="popup"
+          createTitle="New customer"
+          createDescription="Add customer details without leaving this receipt."
           invalid={Boolean(errors.customerId)}
           loading={lookups.contacts.isLoading}
           options={lookups.contacts.data ?? []}
           placeholder="Search customer"
           required
           value={form.customerId ? String(form.customerId) : ""}
+          renderCreateForm={({ initialName, onCancel, onCreated }) => (
+            <ReceiptContactDialog
+              initialValue={emptyReceiptContact(initialName)}
+              onCancel={onCancel}
+              onSave={async (payload) => {
+                const created = await createReceiptContact(payload);
+                await lookups.contacts.refetch();
+                const option: ReceiptLookupOption = {
+                  label: created.name || String(created.id),
+                  record: created,
+                  value: String(created.id)
+                };
+                onCreated(option);
+                changeCustomer(option.value, option);
+                toast.success("Contact saved", { description: option.label });
+              }}
+            />
+          )}
           onValueChange={(value, option) =>
             changeCustomer(value, option as ReceiptLookupOption | null | undefined)
           }

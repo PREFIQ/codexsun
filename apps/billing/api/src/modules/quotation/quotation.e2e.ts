@@ -47,7 +47,7 @@ export async function runQuotationE2e() {
           colour: "Blue",
           colourId: 1,
           dcNo: "DC-1",
-          description: "E2E Product",
+          description: "",
           hsnCode: "6109",
           hsnCodeId: 1,
           poNo: "PO-1",
@@ -80,6 +80,7 @@ export async function runQuotationE2e() {
     const created = await service.create(databaseName, payload);
     assert.match(created.id, /^[0-9a-f]{8}$/);
     assert.equal(created.items[0]?.productId, 1);
+    assert.equal(created.items[0]?.description, "");
     assert.equal(created.amount, 236);
     assert.equal((await service.list(databaseName)).length, 1);
     assert.equal((await service.get(databaseName, created.id))?.customerId, 1);
@@ -118,6 +119,7 @@ export async function runQuotationE2e() {
 }
 
 const parentSchema = [
+  "CREATE TABLE schema_migrations (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(160) NOT NULL UNIQUE, applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
   "CREATE TABLE companies (id INT PRIMARY KEY, name VARCHAR(180) NOT NULL, status VARCHAR(24) NOT NULL)",
   "CREATE TABLE financial_years (id INT PRIMARY KEY, name VARCHAR(180) NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, status VARCHAR(24) NOT NULL)",
   "CREATE TABLE contacts (id INT PRIMARY KEY, name VARCHAR(180) NOT NULL, legal_name VARCHAR(180) NULL, primary_email VARCHAR(180) NULL, primary_phone VARCHAR(40) NULL, status VARCHAR(24) NOT NULL)",

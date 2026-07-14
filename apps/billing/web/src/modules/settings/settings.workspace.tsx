@@ -3,13 +3,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
-import { Switch } from "@codexsun/ui/components/switch";
 import {
   WorkspaceAnimatedTabs,
   type WorkspaceAnimatedTab
 } from "@codexsun/ui/workspace/animated-tabs";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
+import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import { useRouterState } from "@tanstack/react-router";
 import { PageTitle } from "../../shared/document/PageTitle";
 import { BillingLayout } from "../../shared/layout/BillingLayout";
@@ -303,18 +303,20 @@ function SettingsToggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex min-h-16 items-center justify-between gap-4 rounded-md border border-border/70 bg-background px-4 py-3 shadow-sm">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">{label}</span>
+    <WorkspaceSwitchCard
+      checked={checked}
+      disabled={disabled}
+      label={
+        <span className="flex flex-wrap items-center gap-2">
+          <span>{label}</span>
           <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
             Industry
           </span>
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">{note}</p>
-      </div>
-      <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} />
-    </div>
+        </span>
+      }
+      description={note}
+      onCheckedChange={onChange}
+    />
   );
 }
 

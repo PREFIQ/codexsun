@@ -46,6 +46,13 @@ type HeaderRow = {
 };
 
 export class PaymentRepository {
+  async defaultLedgerId(databaseName: string) {
+    const database = await paymentDatabase(databaseName);
+    const result = await sql<{ id: number }>`SELECT id FROM ledgers WHERE status='active'
+      ORDER BY CASE WHEN TRIM(name)='-' THEN 0 ELSE 1 END,id LIMIT 1`.execute(database);
+    return Number(result.rows[0]?.id ?? 0);
+  }
+
   async list(databaseName: string) {
     const database = await paymentDatabase(databaseName);
     const result = await selectHeaders().execute(database);

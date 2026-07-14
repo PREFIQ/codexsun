@@ -4,6 +4,7 @@ import { getCoreDatabase } from "../../../database/core-database.js";
 import type {
   ProductListFilters,
   ProductRecord,
+  ProductReferenceDefaults,
   ProductSaveInput,
   ProductStatus
 } from "./product.types.js";
@@ -17,6 +18,12 @@ type ProductRow = {
   hsn_code_id: number | string | null;
   unit_id: number | string | null;
   gst_tax_id: number | string | null;
+  product_type_name: string | null;
+  product_category_name: string | null;
+  hsn_code: string | null;
+  unit_name: string | null;
+  tax_name: string | null;
+  tax_rate: number | string | null;
   opening_qty: number | string;
   opening_price: number | string;
   status: string;
@@ -26,6 +33,31 @@ type ProductRow = {
 };
 
 export class ProductRepository {
+  async defaultReferences(): Promise<ProductReferenceDefaults> {
+    const result = await sql<{
+      type_id: number | string | null;
+      category_id: number | string | null;
+      hsn_id: number | string | null;
+      unit_id: number | string | null;
+      tax_id: number | string | null;
+    }>`SELECT
+      (SELECT id FROM product_types WHERE status='active' ORDER BY CASE WHEN TRIM(name)='-' THEN 0 ELSE 1 END, id LIMIT 1) AS type_id,
+      (SELECT id FROM product_categories WHERE status='active' ORDER BY CASE WHEN TRIM(name)='-' THEN 0 ELSE 1 END, id LIMIT 1) AS category_id,
+      (SELECT id FROM hsn_codes WHERE status='active' ORDER BY CASE WHEN TRIM(code)='-' THEN 0 ELSE 1 END, id LIMIT 1) AS hsn_id,
+      (SELECT id FROM units WHERE status='active' ORDER BY CASE WHEN TRIM(name)='-' THEN 0 ELSE 1 END, id LIMIT 1) AS unit_id,
+      (SELECT id FROM taxes WHERE status='active' ORDER BY CASE WHEN TRIM(description)='-' THEN 0 ELSE 1 END, id LIMIT 1) AS tax_id`.execute(
+      getCoreDatabase()
+    );
+    const row = result.rows[0];
+    return {
+      typeId: nullableNumber(row?.type_id),
+      productCategoryId: nullableNumber(row?.category_id),
+      hsnCodeId: nullableNumber(row?.hsn_id),
+      unitId: nullableNumber(row?.unit_id),
+      taxId: nullableNumber(row?.tax_id)
+    };
+  }
+
   async hasActiveProductType(id: number) {
     const result = await sql<{ id: number }>`SELECT id FROM product_types
       WHERE id=${id} AND status='active' LIMIT 1`.execute(getCoreDatabase());
@@ -58,15 +90,17 @@ export class ProductRepository {
 
   async list(filters: ProductListFilters = {}) {
     const search = filters.search?.trim().toLowerCase() ?? "";
-    const result = await sql<ProductRow>`SELECT * FROM products
-      WHERE deleted_at IS NULL AND (${search} = '' OR LOWER(name) LIKE ${`%${search}%`})
-      ORDER BY name, id`.execute(getCoreDatabase());
+    const result = await sql<ProductRow>`${productSelect()}
+      WHERE products.deleted_at IS NULL AND (${search} = '' OR LOWER(products.name) LIKE ${`%${search}%`})
+      ORDER BY products.name, products.id`.execute(getCoreDatabase());
     return result.rows.map(toProduct);
   }
 
   async find(id: string | number) {
-    const result = await sql<ProductRow>`SELECT * FROM products
-      WHERE id=${Number(id)} AND deleted_at IS NULL LIMIT 1`.execute(getCoreDatabase());
+    const result = await sql<ProductRow>`${productSelect()}
+      WHERE products.id=${Number(id)} AND products.deleted_at IS NULL LIMIT 1`.execute(
+      getCoreDatabase()
+    );
     return result.rows[0] ? toProduct(result.rows[0]) : null;
   }
 
@@ -142,6 +176,12 @@ function toProduct(row: ProductRow): ProductRecord {
     hsnCodeId: nullableNumber(row.hsn_code_id),
     unitId: nullableNumber(row.unit_id),
     taxId: nullableNumber(row.gst_tax_id),
+    typeName: nullableText(row.product_type_name),
+    productCategoryName: nullableText(row.product_category_name),
+    hsnCode: nullableText(row.hsn_code),
+    unitName: nullableText(row.unit_name),
+    taxName: nullableText(row.tax_name),
+    taxRate: nullableNumber(row.tax_rate),
     openingStock: numberValue(row.opening_qty),
     openingRate: numberValue(row.opening_price),
     status: row.status as ProductStatus,
@@ -150,6 +190,21 @@ function toProduct(row: ProductRow): ProductRecord {
     updatedAt: dateValue(row.updated_at),
     deletedAt: row.deleted_at ? dateValue(row.deleted_at) : null
   };
+}
+function productSelect() {
+  return sql`SELECT products.*, product_types.name AS product_type_name,
+    product_categories.name AS product_category_name, hsn_codes.code AS hsn_code,
+    units.name AS unit_name, taxes.description AS tax_name, taxes.rate_percent AS tax_rate
+    FROM products
+    LEFT JOIN product_types ON product_types.id=products.product_type_id
+    LEFT JOIN product_categories ON product_categories.id=products.product_category_id
+    LEFT JOIN hsn_codes ON hsn_codes.id=products.hsn_code_id
+    LEFT JOIN units ON units.id=products.unit_id
+    LEFT JOIN taxes ON taxes.id=products.gst_tax_id`;
+}
+function nullableText(value: unknown) {
+  const text = String(value ?? "").trim();
+  return text || null;
 }
 function nullableNumber(value: unknown) {
   if (value === null || value === undefined || value === "") return null;

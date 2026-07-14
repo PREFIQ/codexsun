@@ -9,6 +9,9 @@ import type {
   PaymentActivity,
   PaymentAllocationCandidate,
   PaymentContext,
+  PaymentContactSavePayload,
+  PaymentLocationKind,
+  PaymentLocationRecord,
   PaymentLookupOption,
   PaymentLookupRecord,
   PaymentSavePayload
@@ -36,6 +39,47 @@ export const listPaymentContacts = () =>
   billingApiGet<PaymentLookupRecord[]>("/billing/payments/lookups/contacts").then((rows) =>
     options(rows, "contact")
   );
+export const listPaymentContactTypes = () =>
+  billingApiGet<PaymentLookupRecord[]>("/billing/payments/lookups/contact-types").then((rows) =>
+    options(rows, "contact")
+  );
+export const createPaymentContact = (payload: PaymentContactSavePayload) =>
+  billingApiPost<PaymentLookupRecord>("/billing/payments/lookups/contacts", {
+    addresses: contactAddresses(payload),
+    emails: payload.primaryEmail.trim()
+      ? [{ email: payload.primaryEmail.trim(), emailType: "Work", isPrimary: true }]
+      : [],
+    gstin: payload.gstin.trim().toUpperCase(),
+    isActive: true,
+    legalName: payload.legalName.trim(),
+    name: payload.name.trim(),
+    phones: payload.primaryPhone.trim()
+      ? [{ isPrimary: true, phone: payload.primaryPhone.trim(), phoneType: "Mobile" }]
+      : [],
+    typeId: Number(payload.typeId)
+  }).then((record) => ({ ...record, id: String(record.id) }));
+export const listPaymentLocations = (
+  kind: "cities" | "countries" | "districts" | "pincodes" | "states"
+) =>
+  billingApiGet<PaymentLocationRecord[]>(paymentLocationListPaths[kind]).then((records) =>
+    records.map(normalizeLocationRecord)
+  );
+export const createPaymentLocation = (
+  kind: PaymentLocationKind,
+  payload: Record<string, unknown>
+) =>
+  billingApiPost<PaymentLocationRecord>(paymentLocationCreatePaths[kind], payload).then(
+    normalizeLocationRecord
+  );
+export const listPaymentAddressTypes = () =>
+  billingApiGet<PaymentLookupRecord[]>("/billing/payments/lookups/address-types").then((records) =>
+    records.map(normalizeLookupRecord)
+  );
+export const createPaymentAddressType = (name: string) =>
+  billingApiPost<PaymentLookupRecord>("/billing/payments/lookups/address-types", {
+    isActive: true,
+    name: name.trim()
+  }).then(normalizeLookupRecord);
 export const listPaymentLedgers = () =>
   billingApiGet<PaymentLookupRecord[]>("/billing/payments/lookups/ledgers").then((rows) =>
     options(rows, "ledger")
@@ -51,6 +95,22 @@ export function formatPaymentDate(value: string) {
         date
       );
 }
+
+const paymentLocationListPaths = {
+  cities: "/billing/payments/lookups/cities",
+  countries: "/billing/payments/lookups/countries",
+  districts: "/billing/payments/lookups/districts",
+  pincodes: "/billing/payments/lookups/pincodes",
+  states: "/billing/payments/lookups/states"
+} as const;
+
+const paymentLocationCreatePaths = {
+  cities: "/billing/payments/lookups/cities",
+  districts: "/billing/payments/lookups/districts",
+  pincodes: "/billing/payments/lookups/pincodes",
+  states: "/billing/payments/lookups/states"
+} as const;
+
 function options(rows: PaymentLookupRecord[], kind: "contact" | "ledger"): PaymentLookupOption[] {
   return rows
     .filter((row) => row.isActive !== false)
@@ -64,4 +124,56 @@ function options(rows: PaymentLookupRecord[], kind: "contact" | "ledger"): Payme
         value
       };
     });
+}
+
+function contactAddresses(payload: PaymentContactSavePayload) {
+  if (
+    !payload.addressLine1.trim() &&
+    !payload.addressLine2.trim() &&
+    !payload.stateId &&
+    !payload.districtId &&
+    !payload.cityId &&
+    !payload.pincodeId
+  )
+    return [];
+  return [
+    {
+      addressLine1: payload.addressLine1.trim(),
+      addressLine2: payload.addressLine2.trim(),
+      addressTypeId: nullableNumericId(payload.addressTypeId),
+      addressTypeName: payload.addressTypeName.trim() || "Billing",
+      cityId: nullableNumericId(payload.cityId),
+      cityName: payload.cityName || null,
+      countryId: nullableNumericId(payload.countryId),
+      countryName: payload.countryName || "India",
+      districtId: nullableNumericId(payload.districtId),
+      districtName: payload.districtName || null,
+      isDefault: true,
+      pincodeId: nullableNumericId(payload.pincodeId),
+      pincodeName: payload.pincodeName || null,
+      stateId: nullableNumericId(payload.stateId),
+      stateName: payload.stateName || null
+    }
+  ];
+}
+
+function normalizeLocationRecord(record: PaymentLocationRecord): PaymentLocationRecord {
+  return {
+    ...record,
+    cityId: nullableStringId(record.cityId),
+    countryId: nullableStringId(record.countryId),
+    districtId: nullableStringId(record.districtId),
+    id: String(record.id),
+    stateId: nullableStringId(record.stateId)
+  };
+}
+function normalizeLookupRecord(record: PaymentLookupRecord): PaymentLookupRecord {
+  return { ...record, id: String(record.id) };
+}
+function nullableNumericId(value: unknown) {
+  const numeric = Number(value);
+  return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
+}
+function nullableStringId(value: unknown) {
+  return value === null || value === undefined || value === "" ? null : String(value);
 }

@@ -10,12 +10,18 @@ import { QuotationService } from "../../apps/billing/api/src/modules/quotation/q
 import { registerQuotationRoutes } from "../../apps/billing/api/src/modules/quotation/quotation.routes.js";
 import { PaymentService } from "../../apps/billing/api/src/modules/payment/payment.service.js";
 import { registerPaymentRoutes } from "../../apps/billing/api/src/modules/payment/payment.routes.js";
+import { registerReceiptRoutes } from "../../apps/billing/api/src/modules/receipt/receipt.routes.js";
+import { registerExportSalesRoutes } from "../../apps/billing/api/src/modules/export-sales/export-sales.routes.js";
 import { registerPurchaseRoutes } from "../../apps/billing/api/src/modules/purchase/purchase.routes.js";
+import { PurchaseService } from "../../apps/billing/api/src/modules/purchase/purchase.service.js";
 import { SalesService } from "../../apps/billing/api/src/modules/sales/sales.service.js";
 import { registerSalesRoutes } from "../../apps/billing/api/src/modules/sales/sales.routes.js";
+import { registerProductRoutes } from "../../apps/core/api/src/modules/master/product/product.routes.js";
+import { registerContactRoutes } from "../../apps/core/api/src/modules/master/contact/contact.routes.js";
 import {
   bootstrapCoreDatabase,
-  closeCoreDatabase
+  closeCoreDatabase,
+  runWithCoreDatabase
 } from "../../apps/core/api/src/database/core-database.js";
 import { env } from "../../apps/core/api/src/env.js";
 
@@ -38,6 +44,7 @@ try {
   const references = await loadReferences(admin);
   const quotationService = new QuotationService();
   const paymentService = new PaymentService();
+  const purchaseService = new PurchaseService();
   const salesService = new SalesService();
   api = await createApiApp({
     appName: "CODEXSUN Billing persistence E2E",
@@ -48,7 +55,11 @@ try {
   await registerQuotationRoutes(api);
   await registerPurchaseRoutes(api);
   await registerPaymentRoutes(api);
+  await registerReceiptRoutes(api);
+  await registerExportSalesRoutes(api);
   await registerSalesRoutes(api);
+  await registerProductRoutes(api);
+  await registerContactRoutes(api);
   await api.ready();
   const timings: Record<string, number> = {};
   const context = await quotationService.getContext(databaseName);
@@ -57,6 +68,12 @@ try {
   assert.equal(context.currencyId, references.currencyId);
 
   await assertTenantBoundary(api, databaseName, isolatedDatabaseName);
+
+  await runWithCoreDatabase(databaseName, async () => {
+    await assertMinimalProduct(api!, databaseName, timings);
+    await assertMinimalContact(api!, databaseName, references.contactTypeId, timings);
+  });
+  await assertMinimalDrafts(api, databaseName, references, timings);
 
   const quotationPayload = {
     ...documentPayload(references),
@@ -161,11 +178,13 @@ try {
   const salePayload = {
     ...documentPayload(references),
     invoiceNumber: "INV-PERSIST-001",
+    items: documentPayload(references).items.map((item) => ({ ...item, description: "" })),
     issuedOn: references.documentDate
   };
   const sale = await requestData(api, "POST", "/billing/sales", databaseName, salePayload, timings);
   assert.equal(sale.customerId, references.customerId);
   assert.equal(sale.items.length, 1);
+  assert.equal(sale.items[0]?.description, "");
 
   const listedSales = await requestList(api, "/billing/sales", databaseName, timings);
   assert.equal(
@@ -306,6 +325,7 @@ try {
     timings
   );
   assert.equal(purchase.supplierId, references.customerId);
+  assert.equal(purchase.items[0]?.description, "");
   assert.equal(
     (
       await requestData(
@@ -476,11 +496,13 @@ try {
   const persistedQuotation = await quotationService.get(databaseName, quotation.id);
   const persistedPayment = await paymentService.get(databaseName, payment.id);
   const persistedPaymentActivity = await paymentService.activity(databaseName, payment.id);
+  const persistedPurchase = await purchaseService.get(databaseName, purchase.id);
   const persistedSale = await salesService.getSale(databaseName, sale.id);
   assert.equal(persistedQuotation?.quotationNumber, "QT-PERSIST-001");
   assert.equal(persistedQuotation?.items[0]?.description, "Dummy persisted product");
   assert.equal(persistedSale?.invoiceNumber, "INV-PERSIST-001");
-  assert.equal(persistedSale?.items[0]?.description, "Dummy persisted product");
+  assert.equal(persistedSale?.items[0]?.description, "");
+  assert.equal(persistedPurchase?.items[0]?.description, "");
   assert.equal(persistedPayment?.paymentNumber, payment.paymentNumber);
   assert.equal(persistedPayment?.status, "cancelled");
   assert.equal(persistedPayment?.allocations[0]?.purchaseId, purchase.id);
@@ -594,6 +616,7 @@ function purchaseDocumentPayload(references: References) {
   return {
     ...base,
     invoiceNumber: "PUR-PERSIST-001",
+    items: base.items.map((item) => ({ ...item, description: "" })),
     issuedOn: references.documentDate,
     supplierBillDate: "",
     supplierBillNo: "",
@@ -623,6 +646,261 @@ function paymentDocumentPayload(references: References, purchase: ApiRecord) {
     supplierId: references.customerId,
     tdsAmount: 0
   };
+}
+
+async function assertMinimalDrafts(
+  app: FastifyInstance,
+  tenantDatabase: string,
+  references: References,
+  timings: Record<string, number>
+) {
+  const base = {
+    ...documentPayload(references),
+    items: [],
+    ledgerId: null,
+    salesLedger: "",
+    workOrderId: null,
+    workOrderNo: ""
+  };
+  const drafts = [
+    await requestData(
+      app,
+      "POST",
+      "/billing/quotations",
+      tenantDatabase,
+      {
+        ...base,
+        date: references.documentDate,
+        quotationNumber: "QT-MINIMAL-001"
+      },
+      timings
+    ),
+    await requestData(
+      app,
+      "POST",
+      "/billing/sales",
+      tenantDatabase,
+      {
+        ...base,
+        invoiceNumber: "INV-MINIMAL-001",
+        issuedOn: references.documentDate
+      },
+      timings
+    ),
+    await requestData(
+      app,
+      "POST",
+      "/billing/purchases",
+      tenantDatabase,
+      {
+        ...base,
+        invoiceNumber: "PUR-MINIMAL-001",
+        issuedOn: references.documentDate,
+        supplierBillDate: "",
+        supplierBillNo: "",
+        supplierEmail: "",
+        supplierId: references.customerId,
+        supplierName: "Dummy persisted supplier",
+        supplierPhone: ""
+      },
+      timings
+    ),
+    await requestData(
+      app,
+      "POST",
+      "/billing/export-sales",
+      tenantDatabase,
+      {
+        ...base,
+        invoiceNumber: "EXP-MINIMAL-001",
+        issuedOn: references.documentDate
+      },
+      timings
+    )
+  ];
+  for (const draft of drafts) {
+    assert.equal(draft.status, "draft");
+    assert.deepEqual(draft.items, []);
+    assert.ok(Number(draft.ledgerId) > 0);
+    assert.ok(Number(draft.workOrderId) > 0);
+  }
+  await expectApiError(
+    app,
+    "POST",
+    `/billing/sales/${drafts[1]!.id}/confirm`,
+    tenantDatabase,
+    undefined,
+    409,
+    "CONFLICT"
+  );
+
+  const zeroPayment = await requestData(
+    app,
+    "POST",
+    "/billing/payments",
+    tenantDatabase,
+    {
+      allocations: [],
+      amount: 0,
+      companyId: references.companyId,
+      currencyId: references.currencyId,
+      discountAmount: 0,
+      financialYearId: references.financialYearId,
+      ledgerId: 0,
+      notes: "",
+      paymentDate: references.documentDate,
+      paymentMode: "cash",
+      paymentNumber: "PAY-MINIMAL-001",
+      referenceDate: "",
+      referenceNo: "",
+      roundOff: 0,
+      supplierId: references.customerId,
+      tdsAmount: 0
+    },
+    timings
+  );
+  const zeroReceipt = await requestData(
+    app,
+    "POST",
+    "/billing/receipts",
+    tenantDatabase,
+    {
+      allocations: [],
+      amount: 0,
+      companyId: references.companyId,
+      currencyId: references.currencyId,
+      customerId: references.customerId,
+      discountAmount: 0,
+      financialYearId: references.financialYearId,
+      ledgerId: 0,
+      notes: "",
+      receiptDate: references.documentDate,
+      receiptMode: "cash",
+      receiptNumber: "REC-MINIMAL-001",
+      referenceDate: "",
+      referenceNo: "",
+      roundOff: 0,
+      tdsAmount: 0
+    },
+    timings
+  );
+  assert.equal(zeroPayment.totalAmount, 0);
+  assert.ok(Number(zeroPayment.ledgerId) > 0);
+  assert.equal(zeroReceipt.totalAmount, 0);
+  assert.ok(Number(zeroReceipt.ledgerId) > 0);
+  await expectApiError(
+    app,
+    "POST",
+    `/billing/payments/${zeroPayment.id}/post`,
+    tenantDatabase,
+    undefined,
+    409,
+    "CONFLICT"
+  );
+  await expectApiError(
+    app,
+    "POST",
+    `/billing/receipts/${zeroReceipt.id}/post`,
+    tenantDatabase,
+    undefined,
+    409,
+    "CONFLICT"
+  );
+
+  const paths = ["quotations", "sales", "purchases", "export-sales"];
+  for (let index = 0; index < paths.length; index += 1)
+    await requestData(
+      app,
+      "DELETE",
+      `/billing/${paths[index]}/${drafts[index]!.id}`,
+      tenantDatabase,
+      undefined,
+      timings
+    );
+  await requestData(
+    app,
+    "DELETE",
+    `/billing/payments/${zeroPayment.id}`,
+    tenantDatabase,
+    undefined,
+    timings
+  );
+  await requestData(
+    app,
+    "DELETE",
+    `/billing/receipts/${zeroReceipt.id}`,
+    tenantDatabase,
+    undefined,
+    timings
+  );
+}
+
+async function assertMinimalProduct(
+  app: FastifyInstance,
+  tenantDatabase: string,
+  timings: Record<string, number>
+) {
+  const created = await requestData(
+    app,
+    "POST",
+    "/core/master/products",
+    tenantDatabase,
+    { name: "E2E Minimal Product" },
+    timings
+  );
+  assert.equal(created.hsnCode, "-");
+  assert.equal(created.unitName, "-");
+  assert.equal(created.productCategoryName, "-");
+  assert.ok(Number(created.hsnCodeId) > 0);
+  const updated = await requestData(
+    app,
+    "PUT",
+    `/core/master/products/${created.id}`,
+    tenantDatabase,
+    { name: "E2E Minimal Product Updated", hsnCodeId: Number(created.hsnCodeId) },
+    timings
+  );
+  assert.equal(updated.hsnCode, "-");
+  await requestData(
+    app,
+    "DELETE",
+    `/core/master/products/${created.id}/force`,
+    tenantDatabase,
+    undefined,
+    timings
+  );
+}
+
+async function assertMinimalContact(
+  app: FastifyInstance,
+  tenantDatabase: string,
+  contactTypeId: number,
+  timings: Record<string, number>
+) {
+  const contact = await requestData(
+    app,
+    "POST",
+    "/core/master/contacts",
+    tenantDatabase,
+    {
+      name: "E2E Minimal Contact",
+      typeId: contactTypeId
+    },
+    timings
+  );
+  const addresses = contact.addresses as ApiRecord[];
+  assert.equal(addresses.length, 1);
+  assert.equal(addresses[0]?.addressLine1, "-");
+  assert.ok(Number(addresses[0]?.countryId) > 0);
+  assert.ok(Number(addresses[0]?.addressTypeId) > 0);
+  await requestData(
+    app,
+    "DELETE",
+    `/core/master/contacts/${contact.id}/force`,
+    tenantDatabase,
+    undefined,
+    timings
+  );
 }
 
 async function prepareTenant(tenantDatabase: string) {
@@ -769,6 +1047,7 @@ async function loadReferences(connection: typeof admin): Promise<References> {
       DATE_FORMAT(financial_year.start_date,'%Y-%m-%d') AS document_date,
       currency.id AS currency_id,
       contact.id AS customer_id,
+      contact.type_id AS contact_type_id,
       address.id AS address_id,
       work_order.id AS work_order_id,
       ledger.id AS ledger_id,
@@ -802,6 +1081,7 @@ async function loadReferences(connection: typeof admin): Promise<References> {
     companyId: Number(row.company_id),
     currencyId: Number(row.currency_id),
     customerId: Number(row.customer_id),
+    contactTypeId: Number(row.contact_type_id),
     documentDate: String(row.document_date),
     financialYearId: Number(row.financial_year_id),
     hsnCodeId: Number(row.hsn_code_id),
@@ -865,6 +1145,7 @@ type References = {
   companyId: number;
   currencyId: number;
   customerId: number;
+  contactTypeId: number;
   documentDate: string;
   financialYearId: number;
   hsnCodeId: number;
@@ -882,6 +1163,7 @@ type ReferenceRow = {
   company_id: number;
   currency_id: number;
   customer_id: number;
+  contact_type_id: number;
   document_date: string;
   financial_year_id: number;
   hsn_code_id: number;

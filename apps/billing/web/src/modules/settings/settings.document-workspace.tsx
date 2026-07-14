@@ -4,7 +4,7 @@ import { Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
-import { Switch } from "@codexsun/ui/components/switch";
+import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import { getDocumentSettings, saveDocumentSettings } from "./settings.services";
 import {
   defaultBillingSettings,
@@ -114,13 +114,11 @@ function NumberingPanel({
             Next automatic number: <span className="font-semibold text-foreground">{preview}</span>
           </p>
         </div>
-        <label className="flex items-center gap-3 text-sm font-semibold">
-          Automatic{" "}
-          <Switch
-            checked={settings.automatic}
-            onCheckedChange={(automatic) => onChange({ automatic })}
-          />
-        </label>
+        <WorkspaceSwitchCard
+          checked={settings.automatic}
+          label="Automatic"
+          onCheckedChange={(automatic) => onChange({ automatic })}
+        />
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <TextOption
@@ -179,18 +177,15 @@ function TextOption({
   value: string;
 }) {
   return (
-    <label className="rounded-md border border-border/70 bg-background p-3">
-      <span className="flex items-center justify-between gap-3 text-sm font-semibold">
-        {label}
-        <Switch checked={enabled} onCheckedChange={onEnabledChange} />
-      </span>
+    <div className="space-y-2">
+      <WorkspaceSwitchCard checked={enabled} label={label} onCheckedChange={onEnabledChange} />
       <Input
-        className="mt-2 h-10 rounded-md"
+        className="h-10 rounded-md"
         disabled={!enabled}
         value={value}
         onChange={(event) => onValueChange(event.target.value)}
       />
-    </label>
+    </div>
   );
 }
 

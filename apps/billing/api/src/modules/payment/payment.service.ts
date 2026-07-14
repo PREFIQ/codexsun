@@ -85,6 +85,8 @@ export class PaymentService {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
     this.assertDraft(current.status);
+    if (current.totalAmount <= 0)
+      throw AppError.conflict("Enter a positive payment total before posting.");
     if (current.unallocatedAmount < 0)
       throw AppError.conflict("Payment allocations exceed the payment total.");
     const posted = await this.repository.setStatus(databaseName, id, "posted");
@@ -120,7 +122,7 @@ export class PaymentService {
       payload.amount + payload.tdsAmount - payload.discountAmount + payload.roundOff
     );
     const allocatedAmount = money(allocations.reduce((sum, item) => sum + item.allocatedAmount, 0));
-    if (totalAmount <= 0) throw AppError.validation("Payment total must be greater than zero.");
+    if (totalAmount < 0) throw AppError.validation("Payment total cannot be negative.");
     if (allocations.some((item) => !item.purchaseId || item.allocatedAmount <= 0))
       throw AppError.validation(
         "Every payment allocation requires a purchase invoice and a positive amount."
@@ -133,6 +135,7 @@ export class PaymentService {
       paymentNumber,
       notes: payload.notes.trim(),
       referenceNo: payload.referenceNo.trim(),
+      ledgerId: payload.ledgerId || (await this.repository.defaultLedgerId(databaseName)),
       totalAmount,
       allocatedAmount,
       unallocatedAmount: money(totalAmount - allocatedAmount)

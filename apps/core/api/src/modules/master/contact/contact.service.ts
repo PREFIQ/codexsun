@@ -73,8 +73,11 @@ export class ContactService {
       });
     }
 
+    const requestedAddresses = input.addresses?.length
+      ? input.addresses
+      : [await this.repository.defaultAddress()];
     const addresses = await Promise.all(
-      (input.addresses ?? []).map((address) => this.resolveAddress(address))
+      requestedAddresses.map((address) => this.resolveAddress(address))
     );
     const bankAccounts = await Promise.all(
       (input.bankAccounts ?? []).map((account) => this.resolveBankAccount(account))

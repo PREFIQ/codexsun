@@ -76,6 +76,7 @@ import {
   formatMoney,
   listPurchaseAddressTypes,
   listPurchaseColours,
+  listPurchaseContactTypes,
   listPurchaseContacts,
   listPurchaseHsnCodes,
   listPurchaseLocations,
@@ -359,7 +360,7 @@ export function PurchaseForm({
       productId: numericId(record?.id),
       productName: option?.label ?? value,
       rate: Number(record?.price ?? record?.openingRate ?? itemDraft.rate ?? 0),
-      taxRate: Number(record?.taxRate ?? itemDraft.taxRate ?? 18),
+      taxRate: Math.max(0, Number(record?.taxRate ?? itemDraft.taxRate ?? 0)),
       taxId: numericId(record?.taxId),
       unit: record?.unitName ?? itemDraft.unit,
       unitId: Number(record?.unitId ?? itemDraft.unitId ?? 0)
@@ -926,6 +927,10 @@ function PurchaseContactQuickForm({
     queryFn: () => listPurchaseLocations("countries"),
     queryKey: ["billing", "purchase", "lookups", "countries"]
   });
+  const contactTypesQuery = useQuery({
+    queryFn: listPurchaseContactTypes,
+    queryKey: ["billing", "purchase", "lookups", "contact-types"]
+  });
   const statesQuery = useQuery({
     queryFn: () => listPurchaseLocations("states"),
     queryKey: ["billing", "purchase", "lookups", "states"]
@@ -948,8 +953,29 @@ function PurchaseContactQuickForm({
       (record) => record.name.toLowerCase() === "india" || record.code.toUpperCase() === "IN"
     );
     if (!india || form.countryId) return;
-    setForm((current) => ({ ...current, countryId: india.id, countryName: india.name }));
+    setForm((current) => ({ ...current, countryId: String(india.id), countryName: india.name }));
   }, [countriesQuery.data, form.countryId]);
+
+  useEffect(() => {
+    const supplier = (contactTypesQuery.data ?? []).find(
+      (record) => record.name?.trim().toLowerCase() === "supplier"
+    );
+    if (!supplier || form.typeId) return;
+    setForm((current) => ({
+      ...current,
+      typeId: String(supplier.id),
+      typeName: supplier.name ?? "Supplier"
+    }));
+  }, [contactTypesQuery.data, form.typeId]);
+
+  useEffect(() => {
+    if (form.addressTypeId) return;
+    const addressType = (addressTypesQuery.data ?? []).find(
+      (record) => record.name?.trim().toLowerCase() === form.addressTypeName.trim().toLowerCase()
+    );
+    if (!addressType) return;
+    setForm((current) => ({ ...current, addressTypeId: String(addressType.id) }));
+  }, [addressTypesQuery.data, form.addressTypeId, form.addressTypeName]);
 
   const locations = {
     cities: citiesQuery.data ?? [],
@@ -1043,17 +1069,21 @@ function PurchaseContactQuickForm({
               loading={addressTypesQuery.isLoading}
               options={(addressTypesQuery.data ?? [])
                 .filter((record) => record.isActive !== false)
-                .map(purchaseContactOption)}
+                .map(purchasePersistedOption)}
               placeholder="Search address type"
-              value={form.addressTypeName}
+              value={form.addressTypeId || form.addressTypeName}
               onCreate={async (name) => {
                 const created = await createPurchaseAddressType(name);
                 await addressTypesQuery.refetch();
                 toast.success("Address type saved", { description: name });
-                return purchaseContactOption(created);
+                return purchasePersistedOption(created);
               }}
               onValueChange={(value, option) =>
-                setForm((current) => ({ ...current, addressTypeName: option?.label ?? value }))
+                setForm((current) => ({
+                  ...current,
+                  addressTypeId: option ? value : "",
+                  addressTypeName: option?.label ?? value
+                }))
               }
             />
           </label>
@@ -1073,7 +1103,7 @@ function PurchaseContactQuickForm({
               kind="states"
               loading={statesQuery.isLoading}
               options={locations.states.filter(
-                (record) => !form.countryId || record.countryId === form.countryId
+                (record) => !form.countryId || String(record.countryId) === form.countryId
               )}
               value={form.stateId || form.stateName}
               onCreate={createLocation}
@@ -1084,7 +1114,7 @@ function PurchaseContactQuickForm({
               kind="districts"
               loading={districtsQuery.isLoading}
               options={locations.districts.filter(
-                (record) => !form.stateId || record.stateId === form.stateId
+                (record) => !form.stateId || String(record.stateId) === form.stateId
               )}
               value={form.districtId || form.districtName}
               onCreate={createLocation}
@@ -1095,7 +1125,7 @@ function PurchaseContactQuickForm({
               kind="cities"
               loading={citiesQuery.isLoading}
               options={locations.cities.filter(
-                (record) => !form.districtId || record.districtId === form.districtId
+                (record) => !form.districtId || String(record.districtId) === form.districtId
               )}
               value={form.cityId || form.cityName}
               onCreate={createLocation}
@@ -1106,7 +1136,7 @@ function PurchaseContactQuickForm({
               kind="pincodes"
               loading={pincodesQuery.isLoading}
               options={locations.pincodes.filter(
-                (record) => !form.cityId || record.cityId === form.cityId
+                (record) => !form.cityId || String(record.cityId) === form.cityId
               )}
               value={form.pincodeId || form.pincodeName}
               onCreate={createLocation}
@@ -1273,20 +1303,20 @@ function locationPayload(
     name: trimmedName,
     sortOrder: 1000,
     status: "active",
-    countryId: form.countryId || null,
+    countryId: numericId(form.countryId),
     countryName: form.countryName || "India"
   };
   if (kind !== "states") {
-    payload.stateId = form.stateId || null;
+    payload.stateId = numericId(form.stateId);
     payload.stateName = form.stateName || null;
   }
   if (kind === "cities" || kind === "pincodes") {
-    payload.districtId = form.districtId || null;
+    payload.districtId = numericId(form.districtId);
     payload.districtName = form.districtName || null;
   }
   if (kind === "pincodes") {
-    payload.areaName = trimmedName;
-    payload.cityId = form.cityId || null;
+    payload.area = trimmedName;
+    payload.cityId = numericId(form.cityId);
     payload.cityName = form.cityName || null;
     payload.pincode = trimmedName;
   }
@@ -1352,6 +1382,7 @@ function contactDraftFromRecord(
 ): PurchaseContactSavePayload {
   const address = record?.addresses?.[0] ?? {};
   return {
+    addressTypeId: String(address.addressTypeId ?? ""),
     addressTypeName: String(address.addressTypeName ?? "Billing"),
     addressLine1: String(address.addressLine1 ?? ""),
     addressLine2: String(address.addressLine2 ?? ""),
@@ -1369,7 +1400,9 @@ function contactDraftFromRecord(
     primaryEmail: record?.primaryEmail ?? "",
     primaryPhone: record?.primaryPhone ?? "",
     stateId: String(address.stateId ?? ""),
-    stateName: String(address.stateName ?? "")
+    stateName: String(address.stateName ?? ""),
+    typeId: String(record?.typeId ?? ""),
+    typeName: String(record?.typeName ?? "Supplier")
   };
 }
 
@@ -1382,6 +1415,11 @@ function purchaseContactOption(record: PurchaseLookupRecord): PurchaseLookupOpti
     record,
     value: label
   };
+}
+
+function purchasePersistedOption(record: PurchaseLookupRecord): PurchaseLookupOption {
+  const label = record.name || record.code || record.id;
+  return { label, record, value: String(record.id) };
 }
 
 function PurchaseMasterQuickForm({
@@ -1493,16 +1531,16 @@ function masterPayload(kind: "products" | "workOrders", payload: PurchaseMasterS
     ? {
         code: payload.code.trim(),
         hsnCode: payload.hsnCode.trim(),
-        hsnCodeId: payload.hsnCodeId || null,
+        hsnCodeId: numericId(payload.hsnCodeId),
         isActive: true,
         name: payload.name.trim(),
         openingRate: Number(payload.openingRate || 0),
-        productCategoryId: payload.productCategoryId || null,
+        productCategoryId: numericId(payload.productCategoryId),
         productCategoryName: payload.productCategoryName?.trim() || null,
-        taxId: payload.taxId || null,
+        taxId: numericId(payload.taxId),
         taxName: payload.taxName?.trim() || null,
         taxRate: Number(payload.taxRate || 0),
-        unitId: payload.unitId || null,
+        unitId: numericId(payload.unitId),
         unitName: payload.unitName.trim()
       }
     : {

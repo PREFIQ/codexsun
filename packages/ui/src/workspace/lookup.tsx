@@ -193,10 +193,11 @@ export function WorkspaceLookup({
   }, [isOpen]);
 
   function selectOption(option: WorkspaceLookupOption) {
-    setSelectedFallbackOption(option);
-    setSelectedDisplayValue(option.label);
-    setQuery(option.label);
-    onValueChange(option.value, option);
+    const normalizedOption = normalizeOption(option);
+    setSelectedFallbackOption(normalizedOption);
+    setSelectedDisplayValue(normalizedOption.label);
+    setQuery(normalizedOption.label);
+    onValueChange(normalizedOption.value, normalizedOption);
     setIsOpen(false);
   }
 
@@ -604,24 +605,39 @@ function LookupLoadingRows() {
 
 function mergeOptions(base: WorkspaceLookupOption[], additions: WorkspaceLookupOption[]) {
   const map = new Map<string, WorkspaceLookupOption>();
-  for (const option of base) map.set(option.value, option);
-  for (const option of additions) map.set(option.value, option);
+  for (const rawOption of base) {
+    const option = normalizeOption(rawOption);
+    map.set(option.value, option);
+  }
+  for (const rawOption of additions) {
+    const option = normalizeOption(rawOption);
+    map.set(option.value, option);
+  }
   return Array.from(map.values());
 }
 
 function findOption(options: WorkspaceLookupOption[], value: string) {
-  const normalizedValue = value.trim().toLowerCase();
+  const normalizedValue = String(value).trim().toLowerCase();
   return options.find(
     (option) =>
-      option.value.toLowerCase() === normalizedValue ||
-      option.label.toLowerCase() === normalizedValue
+      String(option.value).toLowerCase() === normalizedValue ||
+      String(option.label).toLowerCase() === normalizedValue
   );
 }
 
 function isExactMatch(option: WorkspaceLookupOption, normalizedQuery: string) {
   return (
-    option.value.toLowerCase() === normalizedQuery || option.label.toLowerCase() === normalizedQuery
+    String(option.value).toLowerCase() === normalizedQuery ||
+    String(option.label).toLowerCase() === normalizedQuery
   );
+}
+
+function normalizeOption(option: WorkspaceLookupOption): WorkspaceLookupOption {
+  return {
+    ...option,
+    label: String(option.label ?? ""),
+    value: String(option.value ?? "")
+  };
 }
 
 function normalizeLookupValue(value: string) {

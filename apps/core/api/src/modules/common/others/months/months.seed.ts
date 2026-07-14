@@ -21,8 +21,8 @@ export async function seedMonths() {
 const seeds: MonthsSavePayload[] = [
   {
     name: "-",
-    startDate: "1900-01-01",
-    endDate: "1900-01-01"
+    startDate: "2000-01-01",
+    endDate: "2000-01-01"
   },
   {
     name: "April-2026",

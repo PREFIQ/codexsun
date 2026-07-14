@@ -12,6 +12,7 @@ const idSchema = z.object({
   id: z.string().regex(/^[0-9a-f]{8}$/, "Receipt ID must be 8 hex characters.")
 });
 const customerSchema = z.object({ customerId: z.coerce.number().int().positive() });
+const lookupBodySchema = z.record(z.string(), z.unknown());
 const modeSchema = z.enum(["cash", "bank", "upi", "transfer"]);
 const statusSchema = z.enum(["draft", "posted", "cancelled"]);
 const allocationInputSchema = z.object({
@@ -20,13 +21,13 @@ const allocationInputSchema = z.object({
 });
 const payloadSchema = z.object({
   allocations: z.array(allocationInputSchema),
-  amount: z.number().positive(),
+  amount: z.number().nonnegative(),
   companyId: z.number().int().positive(),
   currencyId: z.number().int().positive(),
   customerId: z.number().int().positive(),
   discountAmount: z.number().nonnegative(),
   financialYearId: z.number().int().positive(),
-  ledgerId: z.number().int().positive(),
+  ledgerId: z.number().int().nonnegative(),
   notes: z.string(),
   receiptDate: z.iso.date(),
   receiptMode: modeSchema,
@@ -117,6 +118,84 @@ export async function registerReceiptRoutes(app: FastifyInstance) {
     url: "/billing/receipts/lookups/contacts",
     schemas: { response: z.unknown() },
     handler: ({ request }) => lookups.contacts(lookupHeaders(request))
+  });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/lookups/contact-types",
+    schemas: { response: z.unknown() },
+    handler: ({ request }) => lookups.contactTypes(lookupHeaders(request))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/receipts/lookups/contacts",
+    schemas: { body: lookupBodySchema, response: z.unknown() },
+    handler: ({ body, request }) => lookups.createContact(lookupHeaders(request), body)
+  });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/lookups/countries",
+    schemas: { response: z.unknown() },
+    handler: ({ request }) => lookups.countries(lookupHeaders(request))
+  });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/lookups/states",
+    schemas: { response: z.unknown() },
+    handler: ({ request }) => lookups.states(lookupHeaders(request))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/receipts/lookups/states",
+    schemas: { body: lookupBodySchema, response: z.unknown() },
+    handler: ({ body, request }) => lookups.createState(lookupHeaders(request), body)
+  });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/lookups/districts",
+    schemas: { response: z.unknown() },
+    handler: ({ request }) => lookups.districts(lookupHeaders(request))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/receipts/lookups/districts",
+    schemas: { body: lookupBodySchema, response: z.unknown() },
+    handler: ({ body, request }) => lookups.createDistrict(lookupHeaders(request), body)
+  });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/lookups/cities",
+    schemas: { response: z.unknown() },
+    handler: ({ request }) => lookups.cities(lookupHeaders(request))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/receipts/lookups/cities",
+    schemas: { body: lookupBodySchema, response: z.unknown() },
+    handler: ({ body, request }) => lookups.createCity(lookupHeaders(request), body)
+  });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/lookups/pincodes",
+    schemas: { response: z.unknown() },
+    handler: ({ request }) => lookups.pincodes(lookupHeaders(request))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/receipts/lookups/pincodes",
+    schemas: { body: lookupBodySchema, response: z.unknown() },
+    handler: ({ body, request }) => lookups.createPincode(lookupHeaders(request), body)
+  });
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/billing/receipts/lookups/address-types",
+    schemas: { response: z.unknown() },
+    handler: ({ request }) => lookups.addressTypes(lookupHeaders(request))
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/receipts/lookups/address-types",
+    schemas: { body: lookupBodySchema, response: z.unknown() },
+    handler: ({ body, request }) => lookups.createAddressType(lookupHeaders(request), body)
   });
   registerContractRoute(app, {
     method: "GET",

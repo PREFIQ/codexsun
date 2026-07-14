@@ -25,7 +25,7 @@ import {
 
 export type SaleAddressDraft = Omit<
   SaleContactSavePayload,
-  "gstin" | "legalName" | "name" | "primaryEmail" | "primaryPhone"
+  "gstin" | "legalName" | "name" | "primaryEmail" | "primaryPhone" | "typeId" | "typeName"
 >;
 
 export type SaleAddressChoice = {
@@ -43,6 +43,7 @@ export function saleAddressDraftFromText(value: string, addressTypeName: string)
     .filter(Boolean);
 
   return {
+    addressTypeId: "",
     addressLine1: lines[0] ?? "",
     addressLine2: lines.slice(1).join(", "),
     addressTypeName,
@@ -212,8 +213,17 @@ export function SaleAddressDialog({
       (record) => record.name.toLowerCase() === "india" || record.code.toUpperCase() === "IN"
     );
     if (!india || form.countryId) return;
-    setForm((current) => ({ ...current, countryId: india.id, countryName: india.name }));
+    setForm((current) => ({ ...current, countryId: String(india.id), countryName: india.name }));
   }, [countriesQuery.data, form.countryId]);
+
+  useEffect(() => {
+    if (form.addressTypeId) return;
+    const addressType = (addressTypesQuery.data ?? []).find(
+      (record) => record.name?.trim().toLowerCase() === form.addressTypeName.trim().toLowerCase()
+    );
+    if (!addressType) return;
+    setForm((current) => ({ ...current, addressTypeId: String(addressType.id) }));
+  }, [addressTypesQuery.data, form.addressTypeId, form.addressTypeName]);
 
   const locations = useMemo(
     () => ({
@@ -263,7 +273,7 @@ export function SaleAddressDialog({
                 .filter((record) => record.isActive !== false)
                 .map(saleLookupOption)}
               placeholder="Search address type"
-              value={form.addressTypeName}
+              value={form.addressTypeId || form.addressTypeName}
               onCreate={async (name) => {
                 const created = await createSaleAddressType(name);
                 await addressTypesQuery.refetch();
@@ -271,7 +281,11 @@ export function SaleAddressDialog({
                 return saleLookupOption(created);
               }}
               onValueChange={(value, option) =>
-                setForm((current) => ({ ...current, addressTypeName: option?.label ?? value }))
+                setForm((current) => ({
+                  ...current,
+                  addressTypeId: option ? value : "",
+                  addressTypeName: option?.label ?? value
+                }))
               }
             />
           </label>
@@ -291,7 +305,7 @@ export function SaleAddressDialog({
               label="State"
               loading={statesQuery.isLoading}
               options={locations.states.filter(
-                (record) => !form.countryId || record.countryId === form.countryId
+                (record) => !form.countryId || String(record.countryId) === form.countryId
               )}
               value={form.stateId || form.stateName}
               onCreate={createLocation}
@@ -304,7 +318,7 @@ export function SaleAddressDialog({
               label="District"
               loading={districtsQuery.isLoading}
               options={locations.districts.filter(
-                (record) => !form.stateId || record.stateId === form.stateId
+                (record) => !form.stateId || String(record.stateId) === form.stateId
               )}
               value={form.districtId || form.districtName}
               onCreate={createLocation}
@@ -317,7 +331,7 @@ export function SaleAddressDialog({
               label="City"
               loading={citiesQuery.isLoading}
               options={locations.cities.filter(
-                (record) => !form.districtId || record.districtId === form.districtId
+                (record) => !form.districtId || String(record.districtId) === form.districtId
               )}
               value={form.cityId || form.cityName}
               onCreate={createLocation}
@@ -330,7 +344,7 @@ export function SaleAddressDialog({
               label="Pincode"
               loading={pincodesQuery.isLoading}
               options={locations.pincodes.filter(
-                (record) => !form.cityId || record.cityId === form.cityId
+                (record) => !form.cityId || String(record.cityId) === form.cityId
               )}
               value={form.pincodeId || form.pincodeName}
               onCreate={createLocation}
@@ -383,6 +397,7 @@ function saleAddressDraftFromRecord(
   fallbackType: string
 ): SaleAddressDraft {
   return {
+    addressTypeId: String(address.addressTypeId ?? ""),
     addressLine1: String(address.addressLine1 ?? ""),
     addressLine2: String(address.addressLine2 ?? ""),
     addressTypeName: String(address.addressTypeName ?? fallbackType),
@@ -401,7 +416,7 @@ function saleAddressDraftFromRecord(
 
 function saleLookupOption(record: SaleLookupRecord): SaleLookupOption {
   const label = record.name || record.code || record.id;
-  return { label, record, value: label };
+  return { label, record, value: String(record.id) };
 }
 
 function AddressEditorField({
@@ -458,7 +473,7 @@ function AddressLocationLookup({
         onValueChange={(selected, option) => {
           const record =
             ((option as SaleLookupOption | undefined)?.record as SaleLocationRecord | undefined) ??
-            options.find((item) => item.id === selected);
+            options.find((item) => String(item.id) === selected);
           if (record) onPick(record);
         }}
       />
@@ -471,7 +486,7 @@ function saleLocationOption(record: SaleLocationRecord): SaleLookupOption {
   return {
     label,
     record,
-    value: record.id
+    value: String(record.id)
   };
 }
 
@@ -479,27 +494,32 @@ function saleAddressLocationPayload(kind: SaleLocationKind, name: string, form: 
   const trimmedName = name.trim();
   const payload: Record<string, unknown> = {
     code: saleAddressLocationCode(trimmedName),
-    countryId: form.countryId || null,
+    countryId: numericAddressId(form.countryId),
     countryName: form.countryName || "India",
     name: trimmedName,
     sortOrder: 1000,
     status: "active"
   };
   if (kind !== "states") {
-    payload.stateId = form.stateId || null;
+    payload.stateId = numericAddressId(form.stateId);
     payload.stateName = form.stateName || null;
   }
   if (kind === "cities" || kind === "pincodes") {
-    payload.districtId = form.districtId || null;
+    payload.districtId = numericAddressId(form.districtId);
     payload.districtName = form.districtName || null;
   }
   if (kind === "pincodes") {
-    payload.areaName = trimmedName;
-    payload.cityId = form.cityId || null;
+    payload.area = trimmedName;
+    payload.cityId = numericAddressId(form.cityId);
     payload.cityName = form.cityName || null;
     payload.pincode = trimmedName;
   }
   return payload;
+}
+
+function numericAddressId(value: unknown) {
+  const numeric = Number(value);
+  return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
 }
 
 function saleAddressLocationPatch(

@@ -39,7 +39,7 @@ const itemInputSchema = z.object({
   colour: z.string().optional(),
   colourId: z.number().int().positive().nullable(),
   dcNo: z.string().optional(),
-  description: z.string().trim().min(1),
+  description: z.string().trim(),
   hsnCode: z.string(),
   hsnCodeId: z.number().int().positive().nullable(),
   poNo: z.string().optional(),
@@ -79,7 +79,7 @@ const salePayloadSchema = z.object({
   financialYearId: z.number().int().positive(),
   invoiceNumber: z.string(),
   issuedOn: z.iso.date(),
-  items: z.array(itemInputSchema).min(1),
+  items: z.array(itemInputSchema),
   ledgerId: z.number().int().positive().nullable(),
   notes: z.string(),
   roundOff: z.number().optional(),
@@ -254,6 +254,9 @@ function registerLookupRoutes(app: FastifyInstance) {
     });
 
   get("/billing/sales/lookups/contacts", (request) => lookups.contacts(lookupHeaders(request)));
+  get("/billing/sales/lookups/contact-types", (request) =>
+    lookups.contactTypes(lookupHeaders(request))
+  );
   post("/billing/sales/lookups/contacts", (request, body) =>
     lookups.createContact(lookupHeaders(request), body)
   );

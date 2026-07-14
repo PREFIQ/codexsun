@@ -1,4 +1,4 @@
-import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
+import { getTenantDbName, getTenantId, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
 import type { BrandsListFilters, BrandsRecord, BrandsSavePayload } from "./brands.types";
 
@@ -16,6 +16,7 @@ async function brandsRequest<T>(suffix = "", options: RequestInit = {}) {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
+      ...(getTenantId() ? { "x-tenant-id": getTenantId()! } : {}),
       ...options.headers
     }
   });

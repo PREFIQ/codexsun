@@ -4,13 +4,13 @@ export const receiptSchema = z.object({
   allocations: z.array(
     z.object({ allocatedAmount: z.number().positive(), saleId: z.string().regex(/^[0-9a-f]{8}$/) })
   ),
-  amount: z.number().positive("Amount must be greater than zero."),
+  amount: z.number().nonnegative("Amount must be zero or more."),
   companyId: z.number().int().positive("Default Company is required."),
   currencyId: z.number().int().positive("Currency is required."),
   customerId: z.number().int().positive("Customer is required."),
   discountAmount: z.number().nonnegative(),
   financialYearId: z.number().int().positive("Financial Year is required."),
-  ledgerId: z.number().int().positive("Cash or bank ledger is required."),
+  ledgerId: z.number().int().nonnegative(),
   notes: z.string(),
   receiptDate: z.iso.date("Receipt date is required."),
   receiptMode: z.enum(["cash", "bank", "upi", "transfer"]),

@@ -73,6 +73,8 @@ export class ReceiptService {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
     this.assertDraft(current.status);
+    if (current.totalAmount <= 0)
+      throw AppError.conflict("Enter a positive receipt total before posting.");
     if (current.unallocatedAmount < 0)
       throw AppError.conflict("Receipt allocations exceed the receipt total.");
     return this.repository.setStatus(databaseName, id, "posted");
@@ -104,7 +106,7 @@ export class ReceiptService {
       payload.amount + payload.tdsAmount - payload.discountAmount + payload.roundOff
     );
     const allocatedAmount = money(allocations.reduce((sum, item) => sum + item.allocatedAmount, 0));
-    if (totalAmount <= 0) throw AppError.validation("Receipt total must be greater than zero.");
+    if (totalAmount < 0) throw AppError.validation("Receipt total cannot be negative.");
     if (allocations.some((item) => !item.saleId || item.allocatedAmount <= 0))
       throw AppError.validation(
         "Every receipt allocation requires a sales invoice and a positive amount."
@@ -117,6 +119,7 @@ export class ReceiptService {
       receiptNumber,
       notes: payload.notes.trim(),
       referenceNo: payload.referenceNo.trim(),
+      ledgerId: payload.ledgerId || (await this.repository.defaultLedgerId(databaseName)),
       totalAmount,
       allocatedAmount,
       unallocatedAmount: money(totalAmount - allocatedAmount)

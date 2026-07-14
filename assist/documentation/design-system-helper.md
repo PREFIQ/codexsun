@@ -187,10 +187,10 @@ Buttons:
 
 Switch:
 
-- Use shared switch styling.
-- Enabled state is green.
-- Disabled state is grey.
-- Switch rows may use a soft green/grey background when the setting is important, such as primary domain.
+- Use `WorkspaceSwitchCard` for every switch on forms and workspace screens; modules own the label, description, value, and mutation behavior.
+- Active/status fields use `fieldLabel="Status"` and the default `Active`/`Inactive` state labels.
+- The full checked card uses the shared soft green tone; the unchecked card uses the shared neutral grey tone.
+- Do not place a raw `Switch` directly in a module form or create a module-specific switch-card wrapper.
 
 Select:
 

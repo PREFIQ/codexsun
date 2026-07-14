@@ -102,6 +102,8 @@ export class PurchaseService {
     if (!current) return null;
     if (current.status !== "draft")
       throw AppError.conflict("Only draft purchases can be confirmed.");
+    if (!current.items.length)
+      throw AppError.conflict("Add at least one purchase item before confirming.");
     const purchase = await this.repository.setStatus(databaseName, id, "confirmed");
     if (purchase) await this.publish("confirmed", purchase, databaseName);
     return purchase;
@@ -299,7 +301,7 @@ export class PurchaseService {
 export function normalizePurchaseInput(input: PurchaseSavePayload): PurchaseSavePayload {
   const items = input.items
     .map(normalizePurchaseLineItem)
-    .filter((item) => item.description.length > 0 && item.quantity > 0);
+    .filter((item) => (item.productId || (item.productName?.length ?? 0) > 0) && item.quantity > 0);
   if (!Number.isInteger(input.companyId) || input.companyId <= 0)
     throw AppError.validation("Default Company is required.");
   if (!Number.isInteger(input.financialYearId) || input.financialYearId <= 0)
@@ -315,7 +317,7 @@ export function normalizePurchaseInput(input: PurchaseSavePayload): PurchaseSave
   if (!input.invoiceNumber.trim()) throw AppError.validation("Purchase number is required.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.issuedOn.trim()))
     throw AppError.validation("Purchase date is required.");
-  if (items.length === 0)
+  if (input.status !== "draft" && items.length === 0)
     throw AppError.validation("Add at least one purchase item with a persisted unit.");
   if (items.some((item) => !Number.isInteger(item.unitId) || item.unitId <= 0))
     throw AppError.validation("Every purchase item requires a persisted unit.");
@@ -356,7 +358,7 @@ function normalizePurchaseLineItem(item: PurchaseLineItemInput): PurchaseLineIte
     colour: item.colour?.trim() ?? "",
     colourId: positiveOrNull(item.colourId),
     dcNo: item.dcNo?.trim().toUpperCase() ?? "",
-    description: item.description.trim() || productName,
+    description: item.description?.trim() ?? "",
     hsnCode: item.hsnCode.trim().toUpperCase(),
     hsnCodeId: positiveOrNull(item.hsnCodeId),
     poNo: item.poNo?.trim().toUpperCase() ?? "",

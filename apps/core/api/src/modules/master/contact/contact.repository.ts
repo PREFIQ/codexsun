@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { Kysely, Transaction } from "kysely";
+import { sql, type Kysely, type Transaction } from "kysely";
 import { getCoreDatabase, type CoreDatabase } from "../../../database/core-database.js";
 import type {
   ContactAddress,
@@ -17,6 +17,61 @@ type Row = Record<string, unknown>;
 type ContactDatabase = Kysely<CoreDatabase> | Transaction<CoreDatabase>;
 
 export class ContactRepository {
+  async defaultAddress(): Promise<NonNullable<ContactSaveInput["addresses"]>[number]> {
+    const result = await sql<{
+      address_type_id: number | string | null;
+      address_type_name: string | null;
+      country_id: number | string | null;
+      country_name: string | null;
+      state_id: number | string | null;
+      state_name: string | null;
+      district_id: number | string | null;
+      district_name: string | null;
+      city_id: number | string | null;
+      city_name: string | null;
+      pincode_id: number | string | null;
+      pincode_name: string | null;
+    }>`SELECT
+      address_types.id AS address_type_id, address_types.name AS address_type_name,
+      countries.id AS country_id, countries.name AS country_name,
+      states.id AS state_id, states.name AS state_name,
+      districts.id AS district_id, districts.name AS district_name,
+      cities.id AS city_id, cities.name AS city_name,
+      pincodes.id AS pincode_id, pincodes.name AS pincode_name
+      FROM pincodes
+      INNER JOIN cities ON cities.id=pincodes.city_id AND cities.status='active'
+      INNER JOIN districts ON districts.id=cities.district_id AND districts.status='active'
+      INNER JOIN states ON states.id=districts.state_id AND states.status='active'
+      INNER JOIN countries ON countries.id=states.country_id AND countries.status='active'
+      CROSS JOIN address_types
+      WHERE pincodes.status='active' AND address_types.status='active'
+      ORDER BY
+        CASE WHEN TRIM(address_types.name)='-' THEN 0 ELSE 1 END,
+        CASE WHEN TRIM(pincodes.name)='-' AND TRIM(cities.name)='-' AND TRIM(districts.name)='-'
+          AND TRIM(states.name)='-' AND TRIM(countries.name)='-' THEN 0 ELSE 1 END,
+        address_types.id, pincodes.id
+      LIMIT 1`.execute(getCoreDatabase());
+    const row = result.rows[0];
+    if (!row) throw new Error("Default address masters have not been seeded.");
+    return {
+      addressTypeId: nullableNumber(row.address_type_id),
+      addressTypeName: nullableText(row.address_type_name),
+      addressLine1: "-",
+      addressLine2: null,
+      countryId: nullableNumber(row.country_id),
+      countryName: nullableText(row.country_name),
+      stateId: nullableNumber(row.state_id),
+      stateName: nullableText(row.state_name),
+      districtId: nullableNumber(row.district_id),
+      districtName: nullableText(row.district_name),
+      cityId: nullableNumber(row.city_id),
+      cityName: nullableText(row.city_name),
+      pincodeId: nullableNumber(row.pincode_id),
+      pincodeName: nullableText(row.pincode_name),
+      isDefault: true
+    };
+  }
+
   async nextCode() {
     const rows = (await getCoreDatabase()
       .selectFrom("contacts" as never)

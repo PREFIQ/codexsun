@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Save } from "lucide-react";
 import { Input } from "@codexsun/ui/components/input";
-import { Switch } from "@codexsun/ui/components/switch";
+import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import {
   WorkspaceFormBanner,
   WorkspaceFormField,
@@ -104,17 +104,12 @@ function AddressTypesFormBody({
             }
           />
         </WorkspaceFormField>
-        <div className="flex h-11 items-center gap-3 rounded-md border border-border/80 px-3">
-          <span className="text-sm font-medium">Active</span>
-          <Switch
-            aria-label="Address type active status"
-            checked={value.isActive}
-            className="ml-auto"
-            onCheckedChange={(checked) =>
-              setValue((current) => ({ ...current, isActive: checked }))
-            }
-          />
-        </div>
+        <WorkspaceSwitchCard
+          fieldLabel="Status"
+          ariaLabel="Address type active status"
+          checked={value.isActive}
+          onCheckedChange={(checked) => setValue((current) => ({ ...current, isActive: checked }))}
+        />
       </WorkspaceFormGrid>
       <WorkspaceFormFooter
         className="mt-6 border-t pt-4"

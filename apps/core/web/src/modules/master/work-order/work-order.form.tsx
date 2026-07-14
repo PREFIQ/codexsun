@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ArrowLeft, Save, X } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
-import { Switch } from "@codexsun/ui/components/switch";
+import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import {
   WorkspaceFormActions,
   WorkspaceFormBanner,
@@ -118,16 +118,7 @@ function ToggleRow({
   label: string;
   onCheckedChange: (checked: boolean) => void;
 }) {
-  return (
-    <div
-      className={`flex min-h-11 items-center justify-between gap-3 rounded-md border px-3 py-2 ${
-        checked ? "border-emerald-200 bg-emerald-50" : "border-border bg-muted/30"
-      }`}
-    >
-      <p className="text-sm font-medium">{label}</p>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
-    </div>
-  );
+  return <WorkspaceSwitchCard checked={checked} label={label} onCheckedChange={onCheckedChange} />;
 }
 function nextCode(records: WorkOrderRecord[]) {
   const next =

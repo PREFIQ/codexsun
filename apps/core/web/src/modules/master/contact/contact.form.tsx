@@ -4,11 +4,11 @@ import type { WorkspaceLookupOption } from "@codexsun/ui/workspace/lookup";
 import { Button } from "@codexsun/ui/components/button";
 import { DialogDescription, DialogHeader, DialogTitle } from "@codexsun/ui/components/dialog";
 import { Input } from "@codexsun/ui/components/input";
-import { Switch } from "@codexsun/ui/components/switch";
 import { Textarea } from "@codexsun/ui/components/textarea";
 import { WorkspaceAnimatedTabs } from "@codexsun/ui/workspace/animated-tabs";
 import { WorkspaceLookup } from "@codexsun/ui/workspace/lookup";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
+import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import {
   WorkspaceFormActions,
   WorkspaceFormBanner,
@@ -943,17 +943,13 @@ function ToggleRow({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <div
-      className={`flex min-h-11 items-center justify-between gap-3 rounded-md border px-3 py-2 ${
-        checked ? "border-emerald-200 bg-emerald-50" : "border-border bg-muted/30"
-      } ${className}`}
-    >
-      <div>
-        <p className="text-sm font-medium">{label}</p>
-        {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
-      </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
-    </div>
+    <WorkspaceSwitchCard
+      checked={checked}
+      className={className}
+      description={description}
+      label={label}
+      onCheckedChange={onCheckedChange}
+    />
   );
 }
 

@@ -10,12 +10,29 @@ export class ProductService {
     return this.repository.find(id);
   }
   async create(input: ProductSaveInput) {
-    await this.validateReferences(input);
-    return this.repository.create(input);
+    const value = await this.withDefaults(input);
+    await this.validateReferences(value);
+    return this.repository.create(value);
   }
   async update(id: string, input: ProductSaveInput) {
-    await this.validateReferences(input);
-    return this.repository.update(id, input);
+    const current = await this.repository.find(id);
+    if (!current) throw AppError.notFound("Product was not found.");
+    const value = await this.withDefaults(input, current);
+    await this.validateReferences(value);
+    return this.repository.update(id, value);
+  }
+
+  private async withDefaults(input: ProductSaveInput, current?: ProductSaveInput) {
+    const defaults = await this.repository.defaultReferences();
+    return {
+      ...input,
+      typeId: input.typeId || current?.typeId || defaults.typeId,
+      productCategoryId:
+        input.productCategoryId || current?.productCategoryId || defaults.productCategoryId,
+      hsnCodeId: input.hsnCodeId || current?.hsnCodeId || defaults.hsnCodeId,
+      unitId: input.unitId || current?.unitId || defaults.unitId,
+      taxId: input.taxId || current?.taxId || defaults.taxId
+    };
   }
   setActive(id: string, active: boolean) {
     return this.repository.setActive(id, active);

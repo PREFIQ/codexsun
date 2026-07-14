@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Save, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
 import { Textarea } from "@codexsun/ui/components/textarea";
@@ -19,8 +20,9 @@ import {
   WorkspaceFormPanel
 } from "@codexsun/ui/workspace/upsert";
 import { usePaymentFormLookups } from "./payment.hooks";
+import { emptyPaymentContact, PaymentContactDialog } from "./payment.contact-dialog";
 import { validatePayment, type PaymentFormErrors } from "./payment.schema";
-import { formatPaymentMoney } from "./payment.services";
+import { createPaymentContact, formatPaymentMoney } from "./payment.services";
 import {
   emptyPayment,
   paymentToPayload,
@@ -95,12 +97,34 @@ export function PaymentForm({
       <WorkspaceFormField label="Supplier name" required>
         <WorkspaceLookup
           allowTextValue={false}
+          createLabel="New supplier"
+          createMode="popup"
+          createTitle="New supplier"
+          createDescription="Add supplier details without leaving this payment."
           invalid={Boolean(errors.supplierId)}
           loading={lookups.contacts.isLoading}
           options={lookups.contacts.data ?? []}
           placeholder="Search supplier"
           required
           value={form.supplierId ? String(form.supplierId) : ""}
+          renderCreateForm={({ initialName, onCancel, onCreated }) => (
+            <PaymentContactDialog
+              initialValue={emptyPaymentContact(initialName)}
+              onCancel={onCancel}
+              onSave={async (payload) => {
+                const created = await createPaymentContact(payload);
+                await lookups.contacts.refetch();
+                const option: PaymentLookupOption = {
+                  label: created.name || String(created.id),
+                  record: created,
+                  value: String(created.id)
+                };
+                onCreated(option);
+                changeSupplier(option.value, option);
+                toast.success("Contact saved", { description: option.label });
+              }}
+            />
+          )}
           onValueChange={(value, option) =>
             changeSupplier(value, option as PaymentLookupOption | null | undefined)
           }

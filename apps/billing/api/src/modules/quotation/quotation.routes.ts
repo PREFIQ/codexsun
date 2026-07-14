@@ -20,7 +20,7 @@ const itemInputSchema = z.object({
   colour: z.string().optional(),
   colourId: z.number().int().positive().nullable(),
   dcNo: z.string().optional(),
-  description: z.string().trim().min(1),
+  description: z.string().trim(),
   hsnCode: z.string(),
   hsnCodeId: z.number().int().positive().nullable(),
   poNo: z.string().optional(),
@@ -58,7 +58,7 @@ const quotationPayloadSchema = z.object({
   financialYearId: z.number().int().positive(),
   quotationNumber: z.string(),
   date: z.iso.date(),
-  items: z.array(itemInputSchema).min(1),
+  items: z.array(itemInputSchema),
   ledgerId: z.number().int().positive().nullable(),
   notes: z.string(),
   roundOff: z.number().optional(),
@@ -231,6 +231,9 @@ function registerLookupRoutes(app: FastifyInstance) {
 
   get("/billing/quotations/lookups/contacts", (request) =>
     lookups.contacts(lookupHeaders(request))
+  );
+  get("/billing/quotations/lookups/contact-types", (request) =>
+    lookups.contactTypes(lookupHeaders(request))
   );
   post("/billing/quotations/lookups/contacts", (request, body) =>
     lookups.createContact(lookupHeaders(request), body)

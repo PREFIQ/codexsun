@@ -1,4 +1,4 @@
-import { getTenantDbName, getToken } from "../../../../shared/api/tenant-context";
+import { getTenantDbName, getTenantId, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
 import type {
   LedgerGroupLookup,
@@ -19,6 +19,8 @@ async function request<T>(url: string, options: RequestInit = {}) {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(database ? { "x-tenant-db": database } : {}),
+
+      ...(getTenantId() ? { "x-tenant-id": getTenantId()! } : {}),
       ...options.headers
     }
   });

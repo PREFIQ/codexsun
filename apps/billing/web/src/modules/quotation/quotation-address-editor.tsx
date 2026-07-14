@@ -25,7 +25,7 @@ import {
 
 export type QuotationAddressDraft = Omit<
   QuotationContactSavePayload,
-  "gstin" | "legalName" | "name" | "primaryEmail" | "primaryPhone"
+  "gstin" | "legalName" | "name" | "primaryEmail" | "primaryPhone" | "typeId" | "typeName"
 >;
 
 export type QuotationAddressChoice = {
@@ -46,6 +46,7 @@ export function quotationAddressDraftFromText(
     .filter(Boolean);
 
   return {
+    addressTypeId: "",
     addressLine1: lines[0] ?? "",
     addressLine2: lines.slice(1).join(", "),
     addressTypeName,
@@ -215,8 +216,17 @@ export function QuotationAddressDialog({
       (record) => record.name.toLowerCase() === "india" || record.code.toUpperCase() === "IN"
     );
     if (!india || form.countryId) return;
-    setForm((current) => ({ ...current, countryId: india.id, countryName: india.name }));
+    setForm((current) => ({ ...current, countryId: String(india.id), countryName: india.name }));
   }, [countriesQuery.data, form.countryId]);
+
+  useEffect(() => {
+    if (form.addressTypeId) return;
+    const addressType = (addressTypesQuery.data ?? []).find(
+      (record) => record.name?.trim().toLowerCase() === form.addressTypeName.trim().toLowerCase()
+    );
+    if (!addressType) return;
+    setForm((current) => ({ ...current, addressTypeId: String(addressType.id) }));
+  }, [addressTypesQuery.data, form.addressTypeId, form.addressTypeName]);
 
   const locations = useMemo(
     () => ({
@@ -267,17 +277,21 @@ export function QuotationAddressDialog({
               loading={addressTypesQuery.isLoading}
               options={(addressTypesQuery.data ?? [])
                 .filter((record) => record.isActive !== false)
-                .map(quotationLookupOption)}
+                .map(quotationPersistedOption)}
               placeholder="Search address type"
-              value={form.addressTypeName}
+              value={form.addressTypeId || form.addressTypeName}
               onCreate={async (name) => {
                 const created = await createQuotationAddressType(name);
                 await addressTypesQuery.refetch();
                 toast.success("Address type saved", { description: name });
-                return quotationLookupOption(created);
+                return quotationPersistedOption(created);
               }}
               onValueChange={(value, option) =>
-                setForm((current) => ({ ...current, addressTypeName: option?.label ?? value }))
+                setForm((current) => ({
+                  ...current,
+                  addressTypeId: option ? value : "",
+                  addressTypeName: option?.label ?? value
+                }))
               }
             />
           </label>
@@ -297,7 +311,7 @@ export function QuotationAddressDialog({
               label="State"
               loading={statesQuery.isLoading}
               options={locations.states.filter(
-                (record) => !form.countryId || record.countryId === form.countryId
+                (record) => !form.countryId || String(record.countryId) === form.countryId
               )}
               value={form.stateId || form.stateName}
               onCreate={createLocation}
@@ -310,7 +324,7 @@ export function QuotationAddressDialog({
               label="District"
               loading={districtsQuery.isLoading}
               options={locations.districts.filter(
-                (record) => !form.stateId || record.stateId === form.stateId
+                (record) => !form.stateId || String(record.stateId) === form.stateId
               )}
               value={form.districtId || form.districtName}
               onCreate={createLocation}
@@ -323,7 +337,7 @@ export function QuotationAddressDialog({
               label="City"
               loading={citiesQuery.isLoading}
               options={locations.cities.filter(
-                (record) => !form.districtId || record.districtId === form.districtId
+                (record) => !form.districtId || String(record.districtId) === form.districtId
               )}
               value={form.cityId || form.cityName}
               onCreate={createLocation}
@@ -336,7 +350,7 @@ export function QuotationAddressDialog({
               label="Pincode"
               loading={pincodesQuery.isLoading}
               options={locations.pincodes.filter(
-                (record) => !form.cityId || record.cityId === form.cityId
+                (record) => !form.cityId || String(record.cityId) === form.cityId
               )}
               value={form.pincodeId || form.pincodeName}
               onCreate={createLocation}
@@ -389,6 +403,7 @@ function quotationAddressDraftFromRecord(
   fallbackType: string
 ): QuotationAddressDraft {
   return {
+    addressTypeId: String(address.addressTypeId ?? ""),
     addressLine1: String(address.addressLine1 ?? ""),
     addressLine2: String(address.addressLine2 ?? ""),
     addressTypeName: String(address.addressTypeName ?? fallbackType),
@@ -405,9 +420,9 @@ function quotationAddressDraftFromRecord(
   };
 }
 
-function quotationLookupOption(record: QuotationLookupRecord): QuotationLookupOption {
+function quotationPersistedOption(record: QuotationLookupRecord): QuotationLookupOption {
   const label = record.name || record.code || record.id;
-  return { label, record, value: label };
+  return { label, record, value: String(record.id) };
 }
 
 function AddressEditorField({
@@ -469,7 +484,8 @@ function AddressLocationLookup({
         onValueChange={(selected, option) => {
           const record =
             ((option as QuotationLookupOption | undefined)?.record as
-              QuotationLocationRecord | undefined) ?? options.find((item) => item.id === selected);
+              QuotationLocationRecord | undefined) ??
+            options.find((item) => String(item.id) === selected);
           if (record) onPick(record);
         }}
       />
@@ -482,7 +498,7 @@ function quotationLocationOption(record: QuotationLocationRecord): QuotationLook
   return {
     label,
     record,
-    value: record.id
+    value: String(record.id)
   };
 }
 
@@ -494,27 +510,32 @@ function quotationAddressLocationPayload(
   const trimmedName = name.trim();
   const payload: Record<string, unknown> = {
     code: quotationAddressLocationCode(trimmedName),
-    countryId: form.countryId || null,
+    countryId: numericAddressId(form.countryId),
     countryName: form.countryName || "India",
     name: trimmedName,
     sortOrder: 1000,
     status: "active"
   };
   if (kind !== "states") {
-    payload.stateId = form.stateId || null;
+    payload.stateId = numericAddressId(form.stateId);
     payload.stateName = form.stateName || null;
   }
   if (kind === "cities" || kind === "pincodes") {
-    payload.districtId = form.districtId || null;
+    payload.districtId = numericAddressId(form.districtId);
     payload.districtName = form.districtName || null;
   }
   if (kind === "pincodes") {
-    payload.areaName = trimmedName;
-    payload.cityId = form.cityId || null;
+    payload.area = trimmedName;
+    payload.cityId = numericAddressId(form.cityId);
     payload.cityName = form.cityName || null;
     payload.pincode = trimmedName;
   }
   return payload;
+}
+
+function numericAddressId(value: unknown) {
+  const numeric = Number(value);
+  return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
 }
 
 function quotationAddressLocationPatch(
@@ -525,7 +546,7 @@ function quotationAddressLocationPatch(
   const label = record.pincode || record.name;
   const next = { ...form };
   if (kind === "states") {
-    next.stateId = record.id;
+    next.stateId = String(record.id);
     next.stateName = record.name;
     next.districtId = "";
     next.districtName = "";
@@ -534,27 +555,27 @@ function quotationAddressLocationPatch(
     next.pincodeId = "";
     next.pincodeName = "";
   } else if (kind === "districts") {
-    next.districtId = record.id;
+    next.districtId = String(record.id);
     next.districtName = record.name;
     next.cityId = "";
     next.cityName = "";
     next.pincodeId = "";
     next.pincodeName = "";
   } else if (kind === "cities") {
-    next.cityId = record.id;
+    next.cityId = String(record.id);
     next.cityName = record.name;
     next.pincodeId = "";
     next.pincodeName = "";
   } else {
-    next.pincodeId = record.id;
+    next.pincodeId = String(record.id);
     next.pincodeName = label;
-    next.cityId = record.cityId || next.cityId;
+    next.cityId = record.cityId ? String(record.cityId) : next.cityId;
     next.cityName = record.cityName || next.cityName;
-    next.districtId = record.districtId || next.districtId;
+    next.districtId = record.districtId ? String(record.districtId) : next.districtId;
     next.districtName = record.districtName || next.districtName;
-    next.stateId = record.stateId || next.stateId;
+    next.stateId = record.stateId ? String(record.stateId) : next.stateId;
     next.stateName = record.stateName || next.stateName;
-    next.countryId = record.countryId || next.countryId;
+    next.countryId = record.countryId ? String(record.countryId) : next.countryId;
     next.countryName = record.countryName || next.countryName || "India";
   }
   return next;

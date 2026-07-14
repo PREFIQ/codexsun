@@ -83,12 +83,57 @@ export type PaymentActivity = {
   previousStatus: PaymentStatus | null;
 };
 export type PaymentLookupRecord = {
+  addresses?: Array<Record<string, unknown>>;
   code?: string | null;
+  gstin?: string | null;
   id: string;
   isActive?: boolean | null;
+  legalName?: string | null;
   name?: string | null;
   primaryEmail?: string | null;
   primaryPhone?: string | null;
+  typeId?: string | null;
+  typeName?: string | null;
+};
+export type PaymentContactSavePayload = {
+  addressLine1: string;
+  addressLine2: string;
+  addressTypeId: string;
+  addressTypeName: string;
+  cityId: string;
+  cityName: string;
+  countryId: string;
+  countryName: string;
+  districtId: string;
+  districtName: string;
+  gstin: string;
+  legalName: string;
+  name: string;
+  pincodeId: string;
+  pincodeName: string;
+  primaryEmail: string;
+  primaryPhone: string;
+  stateId: string;
+  stateName: string;
+  typeId: string;
+  typeName: string;
+};
+export type PaymentLocationKind = "cities" | "districts" | "pincodes" | "states";
+export type PaymentLocationRecord = {
+  areaName?: string | null;
+  cityId?: string | null;
+  cityName?: string | null;
+  code: string;
+  countryId?: string | null;
+  countryName?: string | null;
+  districtId?: string | null;
+  districtName?: string | null;
+  id: string;
+  name: string;
+  pincode?: string | null;
+  stateId?: string | null;
+  stateName?: string | null;
+  status?: "active" | "inactive";
 };
 export type PaymentLookupOption = {
   description?: string;
