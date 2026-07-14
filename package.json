@@ -53,6 +53,7 @@
     "changelog:append": "node tools/version/version.mjs append",
     "check:versions": "node tools/check-versions.mjs",
     "github:now": "node tools/github-helper.mjs",
+    "github:ssh-key": "node tools/github-ssh-key.mjs",
     "env:jwt-secret": "node tools/env-jwt-secret.mjs"
   },
   "devDependencies": {

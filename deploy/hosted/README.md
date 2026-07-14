@@ -10,6 +10,42 @@ These checked-in files target the current host layout:
 - Platform API: `127.0.0.1:7010`
 - Published web root: `/var/www/codexsun`
 
+## Generate the server GitHub key
+
+Generate a temporary ED25519 keypair on the server:
+
+```sh
+npm run github:ssh-key -- --comment "codexsun-server"
+```
+
+Add the printed public key under the repository's GitHub **Settings > Deploy keys** and enable write access only when
+the server must push commits. Never add or copy the private key into the repository. Install the generated pair using
+the exact temporary paths printed by the command:
+
+```sh
+install -d -m 700 ~/.ssh
+install -m 600 /tmp/codexsun-github-key-XXXXXX/github_codexsun ~/.ssh/github_codexsun
+install -m 644 /tmp/codexsun-github-key-XXXXXX/github_codexsun.pub ~/.ssh/github_codexsun.pub
+```
+
+Replace `XXXXXX` with the generated directory name. Then add this host entry to `~/.ssh/config`:
+
+```sshconfig
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/github_codexsun
+  IdentitiesOnly yes
+```
+
+After the public key is registered in GitHub, verify and switch the repository remote:
+
+```sh
+chmod 600 ~/.ssh/config
+ssh -T git@github.com
+git remote set-url origin git@github.com:PREFIQ/codexsun.git
+```
+
 ## Build and publish
 
 Run from the repository root after pulling a verified release:
