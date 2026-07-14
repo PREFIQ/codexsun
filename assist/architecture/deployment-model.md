@@ -118,6 +118,17 @@ dist/packages/ui
 
 Root build/dev workflows should clean app-local `.turbo` folders under `apps/` so package outputs and Docker build contexts stay predictable.
 
+## Hosted Platform Runtime
+
+The non-container hosted baseline serves `dist/apps/platform/web` as static files through nginx and runs
+`dist/apps/platform/api/server.js` under systemd. Production nginx must not proxy the web root to Vite, and hosted
+services must not depend on `npm run dev` remaining attached to a shell.
+
+The maintained baseline configuration and installation commands live under `deploy/hosted/`. The Platform API binds
+to loopback behind nginx, restarts automatically after failures, and exposes its existing health endpoint through
+`/api/platform/health`. The Platform web build reads client variables from the root `.env`; its dev-server port is not
+a production-build requirement.
+
 ## Container Rules
 
 - Containers should be replaceable and reproducible.

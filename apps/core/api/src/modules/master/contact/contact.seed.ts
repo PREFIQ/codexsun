@@ -2,6 +2,11 @@ import { randomBytes } from "node:crypto";
 import { sql } from "kysely";
 import { getCoreDatabase } from "../../../database/core-database.js";
 export async function seedContactModule() {
+  await sql`UPDATE contacts AS legacy
+    LEFT JOIN contacts AS canonical
+      ON canonical.id<>legacy.id AND canonical.code=REPLACE(legacy.code, '_', '-')
+    SET legacy.code=REPLACE(legacy.code, '_', '-')
+    WHERE legacy.code REGEXP '^C_[0-9]+$' AND canonical.id IS NULL`.execute(getCoreDatabase());
   await sql`
     INSERT INTO contacts (uuid, code, name, type_id, type_name, group_id, group_name, status)
     SELECT ${randomBytes(4).toString("hex")}, 'C-0000', 'Codexsun Demo Supplier',

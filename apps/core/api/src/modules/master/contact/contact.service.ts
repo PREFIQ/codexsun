@@ -218,8 +218,8 @@ function normalizeCode(code: string | undefined, name: string) {
   const value = (code ?? name)
     .trim()
     .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "_")
-    .replace(/^_|_$/g, "")
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .slice(0, 80);
   if (!value) throw AppError.validation("Contact code is required.", { field: "code" });
   return value;

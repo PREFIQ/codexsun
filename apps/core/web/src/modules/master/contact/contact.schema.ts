@@ -4,7 +4,12 @@ const nullableText = z.string().trim().nullable();
 const nullableId = z.number().int().positive().nullable();
 
 export const contactSchema = z.object({
-  code: z.string().trim().min(1, "Code is required.").max(80),
+  code: z
+    .string()
+    .trim()
+    .min(1, "Code is required.")
+    .max(80)
+    .regex(/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/, "Use letters, numbers, and hyphens only."),
   name: z.string().trim().min(1, "Contact name is required.").max(191),
   legalName: nullableText,
   typeId: z.number().int().positive("Contact type is required."),

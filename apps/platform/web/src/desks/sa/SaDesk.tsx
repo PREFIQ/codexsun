@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState, type ComponentType } from "react";
 import {
   AppWindowIcon,
   Building2Icon,
@@ -12,32 +12,77 @@ import {
 } from "lucide-react";
 import { SuperLayout } from "@codexsun/ui/layouts/super-layout";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
-import { DesignSystemGallery } from "../../modules/design-system";
-import { TenantList } from "../../modules/tenant";
-import { TenantDomainList } from "../../modules/tenant-domain";
-import { PlanWorkspace } from "../../modules/plan";
-import { SubscriptionWorkspace } from "../../modules/subscription";
-import { AppRegistryWorkspace } from "../../modules/app-registry";
-import { IndustryWorkspace } from "../../modules/industry";
-import { EntitlementWorkspace } from "../../modules/entitlement";
-import { PlanAccessWorkspace } from "../../modules/plan-access";
-import { TenantAccessWorkspace } from "../../modules/tenant-access";
-import { AccessControlWorkspace } from "../../modules/access-control";
-import { PlatformActivityWorkspace } from "../../modules/platform-activity";
-import { MasterDatabaseWorkspace } from "../../modules/master-database";
-import { TenantDatabaseWorkspace } from "../../modules/tenant-database";
-import { QueueManagementWorkspace } from "../../modules/queue-management";
-import { StorageManagerWorkspace } from "../../modules/storage-manager";
-import { PlatformRegistryWorkspace } from "../../modules/platform-registry";
-import { WorkAutomationWorkspace } from "../../modules/work-automation";
-import { TaskManagerWorkspace } from "../../modules/task-manager/task-manager.workspace";
-import {
-  AppOperationsStrip,
-  AppOrchestrationWorkspace,
-  useAppOperationsQuery,
-  type OrchestratedAppId
-} from "../../modules/app-orchestration";
+import { GlobalLoader } from "@codexsun/ui/components/global-loader";
+import { AppOperationsStrip, useAppOperationsQuery } from "../../modules/app-orchestration";
+import type { OrchestratedAppId } from "../../modules/app-orchestration";
 import { AuthGate } from "../../shared/auth/AuthGate";
+
+function lazyWorkspace<Props>(loader: () => Promise<ComponentType<Props>>) {
+  return lazy(async () => ({ default: await loader() }));
+}
+
+const DesignSystemGallery = lazyWorkspace(() =>
+  import("../../modules/design-system").then((module) => module.DesignSystemGallery)
+);
+const TenantList = lazyWorkspace(() =>
+  import("../../modules/tenant").then((module) => module.TenantList)
+);
+const TenantDomainList = lazyWorkspace(() =>
+  import("../../modules/tenant-domain").then((module) => module.TenantDomainList)
+);
+const PlanWorkspace = lazyWorkspace(() =>
+  import("../../modules/plan").then((module) => module.PlanWorkspace)
+);
+const SubscriptionWorkspace = lazyWorkspace(() =>
+  import("../../modules/subscription").then((module) => module.SubscriptionWorkspace)
+);
+const AppRegistryWorkspace = lazyWorkspace(() =>
+  import("../../modules/app-registry").then((module) => module.AppRegistryWorkspace)
+);
+const IndustryWorkspace = lazyWorkspace(() =>
+  import("../../modules/industry").then((module) => module.IndustryWorkspace)
+);
+const EntitlementWorkspace = lazyWorkspace(() =>
+  import("../../modules/entitlement").then((module) => module.EntitlementWorkspace)
+);
+const PlanAccessWorkspace = lazyWorkspace(() =>
+  import("../../modules/plan-access").then((module) => module.PlanAccessWorkspace)
+);
+const TenantAccessWorkspace = lazyWorkspace(() =>
+  import("../../modules/tenant-access").then((module) => module.TenantAccessWorkspace)
+);
+const AccessControlWorkspace = lazyWorkspace(() =>
+  import("../../modules/access-control").then((module) => module.AccessControlWorkspace)
+);
+const PlatformActivityWorkspace = lazyWorkspace(() =>
+  import("../../modules/platform-activity").then((module) => module.PlatformActivityWorkspace)
+);
+const MasterDatabaseWorkspace = lazyWorkspace(() =>
+  import("../../modules/master-database").then((module) => module.MasterDatabaseWorkspace)
+);
+const TenantDatabaseWorkspace = lazyWorkspace(() =>
+  import("../../modules/tenant-database").then((module) => module.TenantDatabaseWorkspace)
+);
+const QueueManagementWorkspace = lazyWorkspace(() =>
+  import("../../modules/queue-management").then((module) => module.QueueManagementWorkspace)
+);
+const StorageManagerWorkspace = lazyWorkspace(() =>
+  import("../../modules/storage-manager").then((module) => module.StorageManagerWorkspace)
+);
+const PlatformRegistryWorkspace = lazyWorkspace(() =>
+  import("../../modules/platform-registry").then((module) => module.PlatformRegistryWorkspace)
+);
+const WorkAutomationWorkspace = lazyWorkspace(() =>
+  import("../../modules/work-automation").then((module) => module.WorkAutomationWorkspace)
+);
+const TaskManagerWorkspace = lazyWorkspace(() =>
+  import("../../modules/task-manager").then((module) => module.TaskManagerWorkspace)
+);
+const AppOrchestrationWorkspace = lazyWorkspace(() =>
+  import("../../modules/app-orchestration/app-orchestration.workspace").then(
+    (module) => module.AppOrchestrationWorkspace
+  )
+);
 
 type SaPage =
   | "overview"
@@ -232,30 +277,35 @@ export function SaDesk() {
         versionLabel={`v ${__APP_VERSION__}`}
         workspace={page === "task-manager" ? "task-manager" : "platform"}
       >
-        {page === "overview" ? <SaOverview onOpenApp={openAppOperations} /> : null}
-        {page === "app-operations" ? (
-          <AppOrchestrationWorkspace appId={selectedAppId} onBack={() => selectPage("overview")} />
-        ) : null}
-        {page === "task-manager" ? <TaskManagerWorkspace /> : null}
-        {page === "tenants" ? <TenantList onBack={() => selectPage("overview")} /> : null}
-        {page === "domains" ? <TenantDomainList /> : null}
-        {page === "plans" ? <PlanWorkspace /> : null}
-        {page === "plan-access" ? <PlanAccessWorkspace /> : null}
-        {page === "subscriptions" ? <SubscriptionWorkspace /> : null}
-        {page === "apps" ? <AppRegistryWorkspace /> : null}
-        {page === "entitlements" ? <EntitlementWorkspace /> : null}
-        {page === "tenant-access" ? <TenantAccessWorkspace /> : null}
-        {page === "industries" ? <IndustryWorkspace /> : null}
-        {page === "master-database" ? <MasterDatabaseWorkspace /> : null}
-        {page === "tenant-database" ? <TenantDatabaseWorkspace /> : null}
-        {page === "queue-management" ? <QueueManagementWorkspace /> : null}
-        {page === "storage-manager" ? <StorageManagerWorkspace /> : null}
-        {page === "platform-registry" ? <PlatformRegistryWorkspace /> : null}
-        {page === "work-automation" ? <WorkAutomationWorkspace /> : null}
-        {page === "workflow" ? <WorkAutomationWorkspace initialView="timeline" /> : null}
-        {page === "access" ? <AccessControlWorkspace /> : null}
-        {page === "activity" ? <PlatformActivityWorkspace /> : null}
-        {page === "design-system" ? <DesignSystemGallery /> : null}
+        <Suspense fallback={<GlobalLoader className="min-h-[24rem]" fullScreen={false} />}>
+          {page === "overview" ? <SaOverview onOpenApp={openAppOperations} /> : null}
+          {page === "app-operations" ? (
+            <AppOrchestrationWorkspace
+              appId={selectedAppId}
+              onBack={() => selectPage("overview")}
+            />
+          ) : null}
+          {page === "task-manager" ? <TaskManagerWorkspace /> : null}
+          {page === "tenants" ? <TenantList onBack={() => selectPage("overview")} /> : null}
+          {page === "domains" ? <TenantDomainList /> : null}
+          {page === "plans" ? <PlanWorkspace /> : null}
+          {page === "plan-access" ? <PlanAccessWorkspace /> : null}
+          {page === "subscriptions" ? <SubscriptionWorkspace /> : null}
+          {page === "apps" ? <AppRegistryWorkspace /> : null}
+          {page === "entitlements" ? <EntitlementWorkspace /> : null}
+          {page === "tenant-access" ? <TenantAccessWorkspace /> : null}
+          {page === "industries" ? <IndustryWorkspace /> : null}
+          {page === "master-database" ? <MasterDatabaseWorkspace /> : null}
+          {page === "tenant-database" ? <TenantDatabaseWorkspace /> : null}
+          {page === "queue-management" ? <QueueManagementWorkspace /> : null}
+          {page === "storage-manager" ? <StorageManagerWorkspace /> : null}
+          {page === "platform-registry" ? <PlatformRegistryWorkspace /> : null}
+          {page === "work-automation" ? <WorkAutomationWorkspace /> : null}
+          {page === "workflow" ? <WorkAutomationWorkspace initialView="timeline" /> : null}
+          {page === "access" ? <AccessControlWorkspace /> : null}
+          {page === "activity" ? <PlatformActivityWorkspace /> : null}
+          {page === "design-system" ? <DesignSystemGallery /> : null}
+        </Suspense>
       </SuperLayout>
     </AuthGate>
   );

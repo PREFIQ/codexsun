@@ -791,8 +791,8 @@ function codeFromName(name: string) {
   return (
     name
       .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, "_")
-      .replace(/^_|_$/g, "")
-      .slice(0, 80) || `CONTACT_${Date.now()}`
+      .replace(/[^A-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || `CONTACT-${Date.now()}`
   );
 }

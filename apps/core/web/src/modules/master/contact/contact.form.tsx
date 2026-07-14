@@ -213,9 +213,9 @@ function DetailsTab({
           aria-invalid={invalid("code")}
           className={invalid("code") ? "border-destructive" : undefined}
           value={form.code}
-          onChange={(event) => set("code", event.target.value.toUpperCase())}
+          onChange={(event) => set("code", formatContactCodeInput(event.target.value))}
         />
-        {invalid("code") ? <FieldError>Code is required.</FieldError> : null}
+        {invalid("code") ? <FieldError>Use letters, numbers, and hyphens only.</FieldError> : null}
       </WorkspaceFormField>
       <WorkspaceFormField label="Legal name">
         <Input
@@ -1107,7 +1107,7 @@ function initialPayload(record: ContactRecord | null, nextCode: string): Contact
 function preparePayload(form: ContactSavePayload): ContactSavePayload {
   return {
     ...form,
-    code: form.code.trim().toUpperCase(),
+    code: canonicalContactCode(form.code),
     name: form.name.trim(),
     legalName: nullable(form.legalName),
     emails: form.emails
@@ -1132,6 +1132,19 @@ function preparePayload(form: ContactSavePayload): ContactSavePayload {
       .filter((item) => item.url.trim())
       .map((item, index) => ({ ...item, url: item.url.trim(), sortOrder: index + 1 }))
   };
+}
+
+function canonicalContactCode(value: string) {
+  return formatContactCodeInput(value).replace(/-+$/g, "");
+}
+
+function formatContactCodeInput(value: string) {
+  return value
+    .trimStart()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+/g, "")
+    .slice(0, 80);
 }
 
 function hasAddressValue(item: ContactAddress) {
