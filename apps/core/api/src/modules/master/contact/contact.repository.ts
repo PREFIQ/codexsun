@@ -17,6 +17,24 @@ type Row = Record<string, unknown>;
 type ContactDatabase = Kysely<CoreDatabase> | Transaction<CoreDatabase>;
 
 export class ContactRepository {
+  async createAddress(contactId: number, address: ContactAddress) {
+    await getCoreDatabase()
+      .insertInto("contacts_addresses" as never)
+      .values({ parent_id: contactId, ...toAddressRow(address) } as never)
+      .executeTakeFirst();
+    return this.find(String(contactId));
+  }
+
+  async updateAddress(contactId: number, address: ContactAddress) {
+    await getCoreDatabase()
+      .updateTable("contacts_addresses" as never)
+      .set(toAddressRow(address) as never)
+      .where("id" as never, "=", address.id as never)
+      .where("parent_id" as never, "=", contactId as never)
+      .executeTakeFirst();
+    return this.find(String(contactId));
+  }
+
   async defaultAddress(): Promise<NonNullable<ContactSaveInput["addresses"]>[number]> {
     const result = await sql<{
       address_type_id: number | string | null;

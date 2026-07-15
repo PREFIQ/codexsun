@@ -1,7 +1,7 @@
 import { WorkspacePrintSheet } from "@codexsun/ui/workspace/print";
 import { useBillingSettings } from "../settings";
 import { formatDate, formatMoney } from "./quotation.services";
-import type { Quotation } from "./quotation.types";
+import type { Quotation, QuotationAddressDetails } from "./quotation.types";
 
 export type QuotationPrintCopy = "duplicate" | "office-copy" | "original";
 
@@ -112,16 +112,11 @@ function QuotationPrintPage({
         <section className="grid border-b border-slate-300 text-[10px] sm:grid-cols-2">
           <div className="px-2 py-2">
             <div className="font-medium">Buyer (Bill to)</div>
-            <div className="mt-1 font-semibold">M/s. {quotation.customerName}</div>
-            <div className="mt-1 whitespace-pre-wrap">
-              {quotation.billingAddress || "Address not set"}
-            </div>
-            <div className="mt-1 grid grid-cols-[7rem_1fr] gap-x-2">
-              <span>GSTIN/UIN</span>
-              <span>:</span>
-              <span>State Name</span>
-              <span>:</span>
-            </div>
+            <QuotationBuyerAddress
+              address={quotation.billingAddressDetails}
+              gstin={quotation.customerGstin}
+              name={quotation.customerName}
+            />
           </div>
           <div className="border-l border-slate-300 px-2 py-2">
             {addressMode === "billing_only" ? (
@@ -133,16 +128,11 @@ function QuotationPrintPage({
             ) : (
               <>
                 <div className="font-medium">Buyer (Ship to)</div>
-                <div className="mt-1 font-semibold">M/s. {quotation.customerName}</div>
-                <div className="mt-1 whitespace-pre-wrap">
-                  {quotation.shippingAddress || quotation.billingAddress || "Address not set"}
-                </div>
-                <div className="mt-1 grid grid-cols-[7rem_1fr] gap-x-2">
-                  <span>GSTIN/UIN</span>
-                  <span>:</span>
-                  <span>State Name</span>
-                  <span>:</span>
-                </div>
+                <QuotationBuyerAddress
+                  address={quotation.shippingAddressDetails}
+                  gstin={quotation.customerGstin}
+                  name={quotation.customerName}
+                />
               </>
             )}
           </div>
@@ -341,6 +331,39 @@ function PrintPair({ children, label }: { children: string; label: string }) {
       <span className="font-semibold">{children}</span>
     </div>
   );
+}
+
+function QuotationBuyerAddress({
+  address,
+  gstin,
+  name
+}: {
+  address: QuotationAddressDetails;
+  gstin: string;
+  name: string;
+}) {
+  return (
+    <div className="mt-1 space-y-0.5 leading-4">
+      <div className="text-[11px] font-bold tracking-wide">M/s. {name || "-"}</div>
+      <div>{address.addressLine1 || "-"}</div>
+      <div>{address.addressLine2 || "-"}</div>
+      <div>{quotationLocationLine(address)}</div>
+      <div>GSTIN/UIN : {gstin || "-"}</div>
+      <div>
+        State : {address.stateName || "-"}, Code : {address.stateCode || "-"}
+      </div>
+    </div>
+  );
+}
+
+function quotationLocationLine(address: QuotationAddressDetails) {
+  const district = address.districtName
+    ? /district$/i.test(address.districtName)
+      ? address.districtName
+      : `${address.districtName} District`
+    : "";
+  const location = [address.cityName, district, address.pincodeName].filter(Boolean).join(" - ");
+  return `${location || "-"}.`;
 }
 
 function PrintTotal({ label, strong, value }: { label: string; strong?: boolean; value: string }) {

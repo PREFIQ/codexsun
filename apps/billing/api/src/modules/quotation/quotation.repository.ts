@@ -22,12 +22,14 @@ type QuotationHeaderRow = {
   billing_district: string | null;
   billing_pincode: string | null;
   billing_state: string | null;
+  billing_state_code: string | null;
   company_id: number;
   company_name: string;
   created_at: string;
   currency_code: string;
   currency_id: number;
   customer_email: string | null;
+  customer_gstin: string | null;
   customer_id: number;
   customer_name: string;
   customer_phone: string | null;
@@ -50,6 +52,7 @@ type QuotationHeaderRow = {
   shipping_district: string | null;
   shipping_pincode: string | null;
   shipping_state: string | null;
+  shipping_state_code: string | null;
   status: QuotationStatus;
   subtotal: string | number;
   tax_amount: string | number;
@@ -527,13 +530,17 @@ export class QuotationRepository {
     return {
       amount: money(row.amount),
       billingAddress: formatAddress(row, "billing"),
+      billingAddressDetails: addressDetails(row, "billing"),
       billingAddressId: row.billing_address_id,
+      billingStateCode: row.billing_state_code ?? "",
+      billingStateName: row.billing_state ?? "",
       companyId: row.company_id,
       companyName: row.company_name,
       createdAt: row.created_at,
       currencyCode: row.currency_code,
       currencyId: row.currency_id,
       customerEmail: row.customer_email ?? "",
+      customerGstin: row.customer_gstin ?? "",
       customerId: row.customer_id,
       customerName: row.customer_name,
       customerPhone: row.customer_phone ?? "",
@@ -550,7 +557,10 @@ export class QuotationRepository {
       roundOff: money(row.round_off),
       salesLedger: row.ledger_name ?? "",
       shippingAddress: formatAddress(row, "shipping"),
+      shippingAddressDetails: addressDetails(row, "shipping"),
       shippingAddressId: row.shipping_address_id,
+      shippingStateCode: row.shipping_state_code ?? "",
+      shippingStateName: row.shipping_state ?? "",
       status: row.status,
       subtotal: money(row.subtotal),
       taxAmount: money(row.tax_amount),
@@ -582,14 +592,17 @@ function selectQuotationHeaders(
            s.financial_year_id, financial_year.name AS financial_year_name,
            s.line_number, s.quotation_number, s.customer_id, customer.name AS customer_name,
            customer.primary_email AS customer_email, customer.primary_phone AS customer_phone,
+           customer.gstin AS customer_gstin,
            s.billing_address_id, billing.address_line1 AS billing_address_line1,
            billing.address_line2 AS billing_address_line2, billing.city_name AS billing_city,
            billing.district_name AS billing_district, billing.state_name AS billing_state,
            billing.pincode_name AS billing_pincode, billing.country_name AS billing_country,
+           billing_state_record.code AS billing_state_code,
            s.shipping_address_id, shipping.address_line1 AS shipping_address_line1,
            shipping.address_line2 AS shipping_address_line2, shipping.city_name AS shipping_city,
            shipping.district_name AS shipping_district, shipping.state_name AS shipping_state,
            shipping.pincode_name AS shipping_pincode, shipping.country_name AS shipping_country,
+           shipping_state_record.code AS shipping_state_code,
            s.work_order_id, work_order.code AS work_order_no, s.ledger_id,
            ledger.name AS ledger_name, s.tax_type, s.currency_id, currency.name AS currency_code,
            DATE_FORMAT(s.quotation_date, '%Y-%m-%d') AS quotation_date,
@@ -603,6 +616,8 @@ function selectQuotationHeaders(
     INNER JOIN contacts customer ON customer.id = s.customer_id
     INNER JOIN contacts_addresses billing ON billing.id = s.billing_address_id
     INNER JOIN contacts_addresses shipping ON shipping.id = s.shipping_address_id
+    LEFT JOIN states billing_state_record ON billing_state_record.id = billing.state_id
+    LEFT JOIN states shipping_state_record ON shipping_state_record.id = shipping.state_id
     INNER JOIN currencies currency ON currency.id = s.currency_id
     LEFT JOIN work_orders work_order ON work_order.id = s.work_order_id
     LEFT JOIN ledgers ledger ON ledger.id = s.ledger_id
@@ -748,6 +763,21 @@ function formatAddress(row: QuotationHeaderRow, kind: "billing" | "shipping") {
     .map((part) => String(part ?? "").trim())
     .filter(Boolean)
     .join("\n");
+}
+
+function addressDetails(row: QuotationHeaderRow, kind: "billing" | "shipping") {
+  const prefix = kind === "billing" ? "billing" : "shipping";
+  const value = (name: string) =>
+    String(row[`${prefix}_${name}` as keyof QuotationHeaderRow] ?? "").trim();
+  return {
+    addressLine1: value("address_line1"),
+    addressLine2: value("address_line2"),
+    cityName: value("city"),
+    districtName: value("district"),
+    pincodeName: value("pincode"),
+    stateCode: value("state_code"),
+    stateName: value("state")
+  };
 }
 
 function publicUuid() {

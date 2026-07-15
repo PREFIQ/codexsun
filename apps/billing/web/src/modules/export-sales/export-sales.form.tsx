@@ -73,6 +73,7 @@ import {
 import {
   createExportSaleAddressType,
   createExportSaleContact,
+  createExportSaleContactAddress,
   createExportSaleLookup,
   createExportSaleLocation,
   formatMoney,
@@ -93,6 +94,7 @@ import {
   listExportSaleWorkOrders,
   exportSaleToPayload,
   updateExportSaleContact,
+  updateExportSaleContactAddress,
   updateExportSaleLookup,
   type ExportSaleContactSavePayload,
   type ExportSaleLocationKind,
@@ -235,6 +237,20 @@ export function ExportSalesForm({
     mutationFn: ({ id, payload }: { id?: string; payload: ExportSaleContactSavePayload }) =>
       id ? updateExportSaleContact(id, payload) : createExportSaleContact(payload)
   });
+  const contactAddressSaveMutation = useMutation({
+    mutationFn: ({
+      addressId,
+      contactId,
+      payload
+    }: {
+      addressId: number;
+      contactId: string;
+      payload: ExportSaleAddressDraft;
+    }) =>
+      addressId
+        ? updateExportSaleContactAddress(contactId, addressId, payload)
+        : createExportSaleContactAddress(contactId, payload)
+  });
   const masterSaveMutation = useMutation({
     mutationFn: ({
       id,
@@ -305,8 +321,14 @@ export function ExportSalesForm({
     const shipping = contactAddressChoices.find(
       (choice) => choice.addressId === form.shippingAddressId
     );
-    if (billing) setBillingAddressChoice(billing.value);
-    if (shipping) setShippingAddressChoice(shipping.value);
+    if (billing) {
+      setBillingAddressChoice(billing.value);
+      setBillingAddressDraft(billing.draft);
+    }
+    if (shipping) {
+      setShippingAddressChoice(shipping.value);
+      setShippingAddressDraft(shipping.draft);
+    }
   }, [contactAddressChoices, form.billingAddressId, form.shippingAddressId]);
 
   function patch(next: Partial<ExportSaleSavePayload>) {
@@ -331,7 +353,9 @@ export function ExportSalesForm({
   ) {
     const formatted = formatExportSaleAddress(draft);
     const addressId =
-      contactAddressChoices.find((choice) => choice.value === choiceValue)?.addressId ?? 0;
+      Number(choiceValue) ||
+      contactAddressChoices.find((choice) => choice.value === choiceValue)?.addressId ||
+      0;
     if (kind === "billing") {
       setBillingAddressDraft(draft);
       setBillingAddressChoice(choiceValue);
@@ -1052,13 +1076,32 @@ export function ExportSalesForm({
                 draft={
                   editingAddressKind === "billing" ? billingAddressDraft : shippingAddressDraft
                 }
+                loading={contactAddressSaveMutation.isPending}
                 onCancel={() => setEditingAddressKind(null)}
-                onSave={(draft) => {
-                  applyAddressDraft(editingAddressKind, draft);
+                onSave={async (draft) => {
+                  const kind = editingAddressKind;
+                  const addressId =
+                    kind === "billing" ? form.billingAddressId : form.shippingAddressId;
+                  const contactId = String(selectedContact?.record?.id ?? "");
+                  if (!contactId) {
+                    toast.error("Select a contact before saving an address.");
+                    return;
+                  }
+                  const saved = await contactAddressSaveMutation.mutateAsync({
+                    addressId,
+                    contactId,
+                    payload: draft
+                  });
+                  const savedAddressId =
+                    addressId ||
+                    Math.max(
+                      0,
+                      ...(saved.addresses ?? []).map((address) => Number(address.id ?? 0))
+                    );
+                  applyAddressDraft(kind, draft, String(savedAddressId));
+                  await contactsQuery.refetch();
                   setEditingAddressKind(null);
-                  toast.success(
-                    `${editingAddressKind === "billing" ? "Billing" : "Shipping"} address saved`
-                  );
+                  toast.success(`${kind === "billing" ? "Billing" : "Shipping"} address saved`);
                 }}
                 title="Edit contact"
               />

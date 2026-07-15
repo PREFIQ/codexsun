@@ -2,7 +2,7 @@ import { loadEnv } from "@codexsun/framework/env";
 import { z } from "zod";
 
 const envSchema = z.object({
-  CORE_API_HOST: z.string().default("127.0.0.1"),
+  API_HOST: z.string().default("127.0.0.1"),
   CORE_API_PORT: z.coerce.number().int().positive(),
   CORE_WEB_ORIGIN: z.string().min(1, "CORE_WEB_ORIGIN is required"),
   PLATFORM_WEB_ORIGIN: z.string().min(1, "PLATFORM_WEB_ORIGIN is required"),

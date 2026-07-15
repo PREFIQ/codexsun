@@ -6,7 +6,7 @@ const app = await createApp();
 registerGracefulShutdown(app);
 await startApiServer({
   app,
-  host: env.CORE_API_HOST,
+  host: env.API_HOST,
   port: env.CORE_API_PORT,
   readyLabel: "  ok Core API ready: {address}"
 });

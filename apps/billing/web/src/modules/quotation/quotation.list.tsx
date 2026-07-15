@@ -59,8 +59,8 @@ export function QuotationList({
               </th>
               {[
                 "Quotation",
+                "Date",
                 ...(visibleColumns.customer ? ["Customer"] : []),
-                ...(visibleColumns.date ? ["Date"] : []),
                 ...(visibleColumns.items ? ["Items"] : []),
                 ...(visibleColumns.taxable ? ["Taxable"] : []),
                 ...(visibleColumns.gst ? ["GST"] : []),
@@ -109,6 +109,7 @@ export function QuotationList({
                     {quotation.quotationNumber}
                   </button>
                 </td>
+                <td className="whitespace-nowrap px-4 py-2.5">{formatDate(quotation.date)}</td>
                 {visibleColumns.customer ? (
                   <td className="px-4 py-2.5">
                     <button
@@ -130,9 +131,6 @@ export function QuotationList({
                       {quotation.customerName}
                     </button>
                   </td>
-                ) : null}
-                {visibleColumns.date ? (
-                  <td className="px-4 py-2.5">{formatDate(quotation.date)}</td>
                 ) : null}
                 {visibleColumns.items ? (
                   <td className="px-4 py-2.5">{totalQuotationQuantity(quotation)}</td>

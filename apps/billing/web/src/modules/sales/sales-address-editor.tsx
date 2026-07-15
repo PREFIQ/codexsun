@@ -16,17 +16,14 @@ import {
   createSaleLocation,
   listSaleAddressTypes,
   listSaleLocations,
-  type SaleContactSavePayload,
+  type SaleContactAddressSavePayload,
   type SaleLocationKind,
   type SaleLocationRecord,
   type SaleLookupOption,
   type SaleLookupRecord
 } from "./sales.services";
 
-export type SaleAddressDraft = Omit<
-  SaleContactSavePayload,
-  "gstin" | "legalName" | "name" | "primaryEmail" | "primaryPhone" | "typeId" | "typeName"
->;
+export type SaleAddressDraft = SaleContactAddressSavePayload;
 
 export type SaleAddressChoice = {
   addressId: number;
@@ -228,11 +225,18 @@ export function SaleAddressDialog({
   const locations = useMemo(
     () => ({
       cities: citiesQuery.data ?? [],
+      countries: countriesQuery.data ?? [],
       districts: districtsQuery.data ?? [],
       pincodes: pincodesQuery.data ?? [],
       states: statesQuery.data ?? []
     }),
-    [citiesQuery.data, districtsQuery.data, pincodesQuery.data, statesQuery.data]
+    [
+      citiesQuery.data,
+      countriesQuery.data,
+      districtsQuery.data,
+      pincodesQuery.data,
+      statesQuery.data
+    ]
   );
 
   async function createLocation(kind: SaleLocationKind, name: string) {
@@ -299,6 +303,34 @@ export function SaleAddressDialog({
             value={form.addressLine2}
             onChange={(addressLine2) => setForm((current) => ({ ...current, addressLine2 }))}
           />
+          <label className="grid gap-2">
+            <Label>Country</Label>
+            <WorkspaceLookup
+              allowTextValue={false}
+              emptyLabel="No countries found."
+              loading={countriesQuery.isLoading}
+              options={locations.countries.map(saleLocationOption)}
+              placeholder="Search country"
+              value={form.countryId || form.countryName}
+              onValueChange={(value) => {
+                const country = locations.countries.find((record) => String(record.id) === value);
+                if (!country) return;
+                setForm((current) => ({
+                  ...current,
+                  countryId: String(country.id),
+                  countryName: country.name,
+                  stateId: "",
+                  stateName: "",
+                  districtId: "",
+                  districtName: "",
+                  cityId: "",
+                  cityName: "",
+                  pincodeId: "",
+                  pincodeName: ""
+                }));
+              }}
+            />
+          </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <AddressLocationLookup
               kind="states"

@@ -75,6 +75,10 @@ export type SaleContactSavePayload = {
   typeId: string;
   typeName: string;
 };
+export type SaleContactAddressSavePayload = Omit<
+  SaleContactSavePayload,
+  "gstin" | "legalName" | "name" | "primaryEmail" | "primaryPhone" | "typeId" | "typeName"
+>;
 
 export type SaleLocationKind = "cities" | "districts" | "pincodes" | "states";
 
@@ -193,6 +197,27 @@ export function updateSaleContact(id: string, payload: SaleContactSavePayload) {
   return billingApiPut<SaleLookupRecord>(
     `/billing/sales/lookups/contacts/${id}`,
     contactPayload(payload)
+  ).then(normalizeLookupRecord);
+}
+
+export function updateSaleContactAddress(
+  contactId: string,
+  addressId: number,
+  payload: SaleContactAddressSavePayload
+) {
+  return billingApiPut<SaleLookupRecord>(
+    `/billing/sales/lookups/contacts/${contactId}/addresses/${addressId}`,
+    contactAddressPayload(payload)
+  ).then(normalizeLookupRecord);
+}
+
+export function createSaleContactAddress(
+  contactId: string,
+  payload: SaleContactAddressSavePayload
+) {
+  return billingApiPost<SaleLookupRecord>(
+    `/billing/sales/lookups/contacts/${contactId}/addresses`,
+    contactAddressPayload(payload)
   ).then(normalizeLookupRecord);
 }
 
@@ -547,6 +572,25 @@ function contactPayload(payload: SaleContactSavePayload) {
       ? [{ isPrimary: true, phone: payload.primaryPhone.trim(), phoneType: "Mobile" }]
       : [],
     typeId: Number(payload.typeId)
+  };
+}
+
+function contactAddressPayload(payload: SaleContactAddressSavePayload) {
+  return {
+    addressLine1: payload.addressLine1.trim(),
+    addressLine2: payload.addressLine2.trim(),
+    addressTypeId: nullableNumericId(payload.addressTypeId),
+    addressTypeName: payload.addressTypeName.trim() || "Billing",
+    cityId: nullableNumericId(payload.cityId),
+    cityName: payload.cityName || null,
+    countryId: nullableNumericId(payload.countryId),
+    countryName: payload.countryName || "India",
+    districtId: nullableNumericId(payload.districtId),
+    districtName: payload.districtName || null,
+    pincodeId: nullableNumericId(payload.pincodeId),
+    pincodeName: payload.pincodeName || null,
+    stateId: nullableNumericId(payload.stateId),
+    stateName: payload.stateName || null
   };
 }
 

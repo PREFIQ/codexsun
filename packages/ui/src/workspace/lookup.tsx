@@ -36,13 +36,17 @@ export type WorkspaceLookupCreateMode = "none" | "inline" | "popup";
 export function WorkspaceLookup({
   allowTextValue = true,
   className,
+  clearable = true,
+  compactOptions = false,
   createDescription,
   createDialogClassName,
   createLabel,
   createMode = "none",
   createTitle,
   disabled = false,
+  dropdownClassName,
   dropdownMode = "portal",
+  dropdownMinWidth = 260,
   dropdownPlacement = "bottom",
   emptyLabel = "No matches found.",
   loading = false,
@@ -53,6 +57,9 @@ export function WorkspaceLookup({
   options,
   placeholder = "",
   sanitizeInput,
+  showDropdownIcon = true,
+  showAllOptionsOnFocus = false,
+  showSearchIcon = true,
   renderCreateForm,
   required = false,
   trailingAction,
@@ -60,13 +67,17 @@ export function WorkspaceLookup({
 }: {
   allowTextValue?: boolean | undefined;
   className?: string | undefined;
+  clearable?: boolean | undefined;
+  compactOptions?: boolean | undefined;
   createDescription?: string | undefined;
   createDialogClassName?: string | undefined;
   createLabel?: string | undefined;
   createMode?: WorkspaceLookupCreateMode | undefined;
   createTitle?: string | undefined;
   disabled?: boolean;
+  dropdownClassName?: string | undefined;
   dropdownMode?: "inline" | "portal" | undefined;
+  dropdownMinWidth?: number | undefined;
   dropdownPlacement?: "bottom" | "top" | undefined;
   emptyLabel?: string;
   loading?: boolean;
@@ -82,6 +93,9 @@ export function WorkspaceLookup({
   options: WorkspaceLookupOption[];
   placeholder?: string;
   sanitizeInput?: ((value: string) => string) | undefined;
+  showDropdownIcon?: boolean | undefined;
+  showAllOptionsOnFocus?: boolean | undefined;
+  showSearchIcon?: boolean | undefined;
   required?: boolean;
   trailingAction?: ReactNode | undefined;
   renderCreateForm?:
@@ -100,6 +114,7 @@ export function WorkspaceLookup({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [selectedDisplayValue, setSelectedDisplayValue] = useState("");
+  const [showAllOptions, setShowAllOptions] = useState(false);
   const [selectedFallbackOption, setSelectedFallbackOption] =
     useState<WorkspaceLookupOption | null>(null);
   const [query, setQuery] = useState("");
@@ -117,7 +132,7 @@ export function WorkspaceLookup({
       (selectedFallbackOption?.value === value ? selectedFallbackOption : undefined),
     [allOptions, selectedFallbackOption, value]
   );
-  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedQuery = (showAllOptions ? "" : query).trim().toLowerCase();
   const filteredOptions = useMemo(
     () =>
       allOptions.filter((option) =>
@@ -178,7 +193,7 @@ export function WorkspaceLookup({
         left: rect.left,
         maxHeight,
         top,
-        width: Math.max(rect.width, 260)
+        width: Math.max(rect.width, dropdownMinWidth)
       });
     }
 
@@ -189,9 +204,10 @@ export function WorkspaceLookup({
       window.removeEventListener("resize", updateListPosition);
       window.removeEventListener("scroll", updateListPosition, true);
     };
-  }, [isOpen]);
+  }, [dropdownMinWidth, isOpen]);
 
   function selectOption(option: WorkspaceLookupOption) {
+    setShowAllOptions(false);
     const normalizedOption = normalizeOption(option);
     setSelectedFallbackOption(normalizedOption);
     setSelectedDisplayValue(normalizedOption.label);
@@ -250,7 +266,9 @@ export function WorkspaceLookup({
     <>
       <div className={cn("relative z-10 w-full focus-within:z-[90]", className)}>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          {showSearchIcon ? (
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          ) : null}
           <Input
             ref={inputRef}
             aria-autocomplete="list"
@@ -258,6 +276,8 @@ export function WorkspaceLookup({
             aria-invalid={invalid}
             className={cn(
               "h-11 w-full rounded-md bg-white pl-9 pr-9 shadow-sm hover:bg-white focus-visible:bg-white",
+              !showSearchIcon && "pl-3",
+              !showDropdownIcon && (!clearable || !value) && "pr-3",
               invalid && "border-destructive focus-visible:ring-destructive/30"
             )}
             disabled={disabled}
@@ -266,6 +286,7 @@ export function WorkspaceLookup({
             role="combobox"
             value={query}
             onBlur={() => {
+              setShowAllOptions(false);
               if (exactOption) {
                 selectOption(exactOption);
                 return;
@@ -284,6 +305,7 @@ export function WorkspaceLookup({
                 isExactMatch(option, nextQuery.trim().toLowerCase())
               );
               setQuery(nextQuery);
+              setShowAllOptions(false);
               setSelectedDisplayValue("");
               setIsOpen(true);
               setActiveIndex(0);
@@ -291,7 +313,14 @@ export function WorkspaceLookup({
               if (allowTextValue)
                 onValueChange(matchingOption?.value ?? nextQuery, matchingOption ?? null);
             }}
-            onFocus={() => setIsOpen(true)}
+            onFocus={() => {
+              setIsOpen(true);
+              setShowAllOptions(showAllOptionsOnFocus);
+              if (showAllOptionsOnFocus) {
+                const selectedIndex = allOptions.findIndex((option) => option.value === value);
+                setActiveIndex(Math.max(0, selectedIndex));
+              }
+            }}
             onKeyDown={(event) => {
               if (event.key === "ArrowDown") {
                 event.preventDefault();
@@ -321,7 +350,7 @@ export function WorkspaceLookup({
               }
             }}
           />
-          {value ? (
+          {value && clearable ? (
             <button
               aria-label="Clear selection"
               className="absolute right-8 top-1/2 flex size-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
@@ -332,9 +361,10 @@ export function WorkspaceLookup({
               <X className="size-3.5" />
             </button>
           ) : null}
-          {trailingAction ?? (
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          )}
+          {trailingAction ??
+            (showDropdownIcon ? (
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            ) : null)}
         </div>
         {isOpen && dropdownMode === "inline" ? (
           <LookupList
@@ -342,7 +372,9 @@ export function WorkspaceLookup({
             activeIndex={activeIndex}
             canCreate={canCreate}
             createLabel={createLabel}
+            compactOptions={compactOptions}
             dropdownPlacement={dropdownPlacement}
+            className={dropdownClassName}
             emptyLabel={emptyLabel}
             filteredOptions={filteredOptions}
             isCreating={isCreating}
@@ -360,7 +392,9 @@ export function WorkspaceLookup({
                 activeIndex={activeIndex}
                 canCreate={canCreate}
                 createLabel={createLabel}
+                compactOptions={compactOptions}
                 dropdownPlacement="bottom"
+                className={dropdownClassName}
                 emptyLabel={emptyLabel}
                 filteredOptions={filteredOptions}
                 isCreating={isCreating}
@@ -428,6 +462,8 @@ const LookupList = forwardRef<
   {
     activeIndex: number;
     canCreate: boolean;
+    className?: string | undefined;
+    compactOptions: boolean;
     createLabel?: string | undefined;
     dropdownPlacement: "bottom" | "top";
     emptyLabel: string;
@@ -445,6 +481,8 @@ const LookupList = forwardRef<
     {
       activeIndex,
       canCreate,
+      className,
+      compactOptions,
       createLabel,
       dropdownPlacement,
       emptyLabel,
@@ -469,7 +507,8 @@ const LookupList = forwardRef<
           ? "fixed"
           : dropdownPlacement === "top"
             ? "absolute bottom-[calc(100%+0.25rem)] left-0 right-0"
-            : "absolute left-0 right-0 top-[calc(100%+0.25rem)]"
+            : "absolute left-0 right-0 top-[calc(100%+0.25rem)]",
+        className
       )}
       onMouseDown={(event) => event.preventDefault()}
     >
@@ -488,6 +527,7 @@ const LookupList = forwardRef<
             type="button"
             className={cn(
               "grid w-full cursor-pointer grid-cols-[1fr_auto] items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors",
+              compactOptions && "gap-1 px-2",
               activeIndex === index ? "bg-accent/80" : "bg-card hover:bg-accent/60"
             )}
             onMouseDown={(event) => {
@@ -495,8 +535,18 @@ const LookupList = forwardRef<
               onSelect(option);
             }}
           >
-            <span className="min-w-0 whitespace-normal break-words [overflow-wrap:anywhere]">
-              <span className="block whitespace-normal break-words font-medium [overflow-wrap:anywhere]">
+            <span
+              className={cn(
+                "min-w-0 whitespace-normal break-words [overflow-wrap:anywhere]",
+                compactOptions && "whitespace-nowrap break-normal [overflow-wrap:normal]"
+              )}
+            >
+              <span
+                className={cn(
+                  "block whitespace-normal break-words font-medium [overflow-wrap:anywhere]",
+                  compactOptions && "whitespace-nowrap break-normal [overflow-wrap:normal]"
+                )}
+              >
                 {option.label}
               </span>
               {option.description || option.meta ? (

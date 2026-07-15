@@ -20,6 +20,25 @@ export class SaleLookupService {
   updateContact(headers: SaleLookupHeaders, id: string, input: unknown) {
     return this.put(`/core/master/contacts/${encodeURIComponent(id)}`, headers, input);
   }
+  updateContactAddress(
+    headers: SaleLookupHeaders,
+    contactId: string,
+    addressId: string,
+    input: unknown
+  ) {
+    return this.put(
+      `/core/master/contacts/${encodeURIComponent(contactId)}/addresses/${encodeURIComponent(addressId)}`,
+      headers,
+      input
+    );
+  }
+  createContactAddress(headers: SaleLookupHeaders, contactId: string, input: unknown) {
+    return this.post(
+      `/core/master/contacts/${encodeURIComponent(contactId)}/addresses`,
+      headers,
+      input
+    );
+  }
   countries(headers: SaleLookupHeaders) {
     return this.get("/core/common/location/countries", headers);
   }

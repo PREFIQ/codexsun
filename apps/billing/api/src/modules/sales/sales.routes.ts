@@ -12,6 +12,7 @@ const idSchema = z.object({
   id: z.string().regex(/^[0-9a-f]{8}$/, "Sale ID must be 8 hex characters.")
 });
 const lookupIdSchema = z.object({ id: z.string().regex(/^\d+$/, "Lookup ID must be numeric.") });
+const lookupAddressIdSchema = lookupIdSchema.extend({ addressId: z.string().regex(/^\d+$/) });
 const lookupBodySchema = z.record(z.string(), z.unknown());
 const lookupResponseSchema = z.unknown();
 const statusSchema = z.enum(["draft", "confirmed", "cancelled"]);
@@ -282,6 +283,24 @@ function registerLookupRoutes(app: FastifyInstance) {
   put("/billing/sales/lookups/contacts/:id", (request, id, body) =>
     lookups.updateContact(lookupHeaders(request), id, body)
   );
+  registerContractRoute(app, {
+    method: "PUT",
+    url: "/billing/sales/lookups/contacts/:id/addresses/:addressId",
+    schemas: {
+      body: lookupBodySchema,
+      params: lookupAddressIdSchema,
+      response: lookupResponseSchema
+    },
+    handler: ({ body, params, request }) =>
+      lookups.updateContactAddress(lookupHeaders(request), params.id, params.addressId, body)
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/sales/lookups/contacts/:id/addresses",
+    schemas: { body: lookupBodySchema, params: lookupIdSchema, response: lookupResponseSchema },
+    handler: ({ body, params, request }) =>
+      lookups.createContactAddress(lookupHeaders(request), params.id, body)
+  });
   get("/billing/sales/lookups/countries", (request) => lookups.countries(lookupHeaders(request)));
   get("/billing/sales/lookups/states", (request) => lookups.states(lookupHeaders(request)));
   post("/billing/sales/lookups/states", (request, body) =>

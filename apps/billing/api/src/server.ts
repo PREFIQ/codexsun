@@ -6,7 +6,7 @@ const app = await createApp();
 registerGracefulShutdown(app);
 await startApiServer({
   app,
-  host: env.BILLING_API_HOST,
+  host: env.API_HOST,
   port: env.BILLING_API_PORT,
   readyLabel: "  ok Billing API ready: {address}"
 });

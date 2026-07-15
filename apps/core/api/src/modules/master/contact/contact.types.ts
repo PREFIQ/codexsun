@@ -161,3 +161,10 @@ export type ContactListFilters = { search?: string };
 
 export type ContactReference = { id: number; name: string };
 export type ContactLocationReference = ContactReference & { parentId: number | null };
+
+export type ContactAddressUpdateInput = {
+  [Key in keyof Omit<ContactAddress, "id" | "sortOrder">]?: Omit<
+    ContactAddress,
+    "id" | "sortOrder"
+  >[Key] | undefined;
+};

@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.33
+Current version: 1.0.34
 
-Release tag: v-1.0.33
+Release tag: v-1.0.34
 
-Changelog label: v 1.0.33
+Changelog label: v 1.0.34
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,26 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.34
+
+### [v 1.0.34] 2026-07-15 11:13 pm - Billing Address and Date Picker Reliability
+
+#### Database Changes
+
+- Database update: No. Existing tenant schemas and seed data remain compatible; the release adds API and UI behavior only.
+
+#### App Codebase Changes
+
+- Corrected Quotation address and compliance presentation by exposing the document date in the list and resolving customer GSTIN plus Billing/Shipping State names and codes for show and print output.
+- Added a narrow Core Contact-address create/update contract that preserves sibling addresses and validates the persisted Country, State, District, City, Pincode, and Address Type hierarchy.
+- Wired Quotation, Sales, Purchase, and Export Sales address editors through their module-owned Billing lookup routes so an address popup can append a missing address or update the selected address without replacing the Contact or collapsing formatted location lines into Address line 2.
+- Added visible Country selection to the Billing and Shipping address editors, retained India as the create default, cleared dependent location values when Country changes, and hydrated edit forms from structured address records.
+- Confirmed Receipt and Payment continue to use their structured Contact popup with visible Country and India default behavior.
+- Refined the shared workspace date picker with compact Month and Year autocomplete controls, equal fixed-height scrollable lists, narrow aligned dropdowns, ultra-thin scrollbars, single-line options, typed filtering, and full-list display with the current value highlighted whenever either control receives focus.
+- Added opt-in presentation controls to `WorkspaceLookup` for compact option rows, dropdown width/class overrides, icon visibility, clearing behavior, and full-list-on-focus behavior without changing existing lookup defaults.
+- Verified Core API, Billing API, Billing web, and UI package formatting, lint, TypeScript, production builds, module boundaries, dependency layout, diff integrity, and database-backed Quotation persistence/conversion coverage during the implementation batch.
+- Bumped workspace version to 1.0.34.
 
 ## v-1.0.33
 

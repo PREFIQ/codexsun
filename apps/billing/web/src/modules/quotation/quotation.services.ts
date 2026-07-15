@@ -71,6 +71,10 @@ export type QuotationContactSavePayload = {
   typeId: string;
   typeName: string;
 };
+export type QuotationContactAddressSavePayload = Omit<
+  QuotationContactSavePayload,
+  "gstin" | "legalName" | "name" | "primaryEmail" | "primaryPhone" | "typeId" | "typeName"
+>;
 
 export type QuotationLocationKind = "cities" | "districts" | "pincodes" | "states";
 
@@ -190,6 +194,27 @@ export function updateQuotationContact(id: string, payload: QuotationContactSave
   return billingApiPut<QuotationLookupRecord>(
     `/billing/quotations/lookups/contacts/${id}`,
     contactPayload(payload)
+  ).then(normalizeLookupRecord);
+}
+
+export function updateQuotationContactAddress(
+  contactId: string,
+  addressId: number,
+  payload: QuotationContactAddressSavePayload
+) {
+  return billingApiPut<QuotationLookupRecord>(
+    `/billing/quotations/lookups/contacts/${contactId}/addresses/${addressId}`,
+    contactAddressPayload(payload)
+  ).then(normalizeLookupRecord);
+}
+
+export function createQuotationContactAddress(
+  contactId: string,
+  payload: QuotationContactAddressSavePayload
+) {
+  return billingApiPost<QuotationLookupRecord>(
+    `/billing/quotations/lookups/contacts/${contactId}/addresses`,
+    contactAddressPayload(payload)
   ).then(normalizeLookupRecord);
 }
 
@@ -476,9 +501,14 @@ function fromApiQuotation(record: Quotation): Quotation {
     ...record,
     currencyCode: record.currencyCode || "INR",
     customerEmail: record.customerEmail || "",
+    customerGstin: record.customerGstin || "",
     customerPhone: record.customerPhone || "",
+    billingStateCode: record.billingStateCode || "",
+    billingStateName: record.billingStateName || "",
     quotationNumber: record.quotationNumber || "",
     salesLedger: record.salesLedger || "",
+    shippingStateCode: record.shippingStateCode || "",
+    shippingStateName: record.shippingStateName || "",
     taxType: record.taxType || "cgst-sgst",
     terms: record.terms || "",
     workOrderNo: record.workOrderNo || ""
@@ -537,6 +567,25 @@ function contactPayload(payload: QuotationContactSavePayload) {
         ]
       : [],
     typeId: Number(payload.typeId)
+  };
+}
+
+function contactAddressPayload(payload: QuotationContactAddressSavePayload) {
+  return {
+    addressLine1: payload.addressLine1.trim(),
+    addressLine2: payload.addressLine2.trim(),
+    addressTypeId: nullableNumericId(payload.addressTypeId),
+    addressTypeName: payload.addressTypeName.trim() || "Billing",
+    cityId: nullableNumericId(payload.cityId),
+    cityName: payload.cityName || null,
+    countryId: nullableNumericId(payload.countryId),
+    countryName: payload.countryName || "India",
+    districtId: nullableNumericId(payload.districtId),
+    districtName: payload.districtName || null,
+    pincodeId: nullableNumericId(payload.pincodeId),
+    pincodeName: payload.pincodeName || null,
+    stateId: nullableNumericId(payload.stateId),
+    stateName: payload.stateName || null
   };
 }
 

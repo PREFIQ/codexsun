@@ -38,7 +38,6 @@ const statusFilters = [
 ];
 
 const quotationColumnCatalog = [
-  { id: "date", label: "Date" },
   { id: "customer", label: "Customer" },
   { id: "items", label: "Items" },
   { id: "taxable", label: "Taxable" },

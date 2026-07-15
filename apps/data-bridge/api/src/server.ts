@@ -6,7 +6,7 @@ const app = await createApp();
 registerGracefulShutdown(app);
 await startApiServer({
   app,
-  host: env.DATA_BRIDGE_API_HOST,
+  host: env.API_HOST,
   port: env.DATA_BRIDGE_API_PORT,
   readyLabel: "  ok Data Bridge API ready: {address}"
 });

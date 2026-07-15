@@ -2,6 +2,7 @@ name: codexsun-billing
 
 x-api-env: &api-env
   NODE_ENV: production
+  API_HOST: 0.0.0.0
   CODEXSUN_ALLOW_MISSING_ENV: "1"
   AUTH_MODE: ${AUTH_MODE:-jwt}
   DB_DRIVER: mariadb
@@ -99,7 +100,6 @@ services:
       <<: *api-env
       CODEXSUN_RUNTIME: platform-api
       HEALTH_PORT: 7010
-      PLATFORM_API_HOST: 0.0.0.0
       PLATFORM_API_PORT: 7010
     ports:
       - "${CODEXSUN_BIND_ADDRESS:-127.0.0.1}:${PLATFORM_API_HOST_PORT:-7010}:7010"
@@ -131,7 +131,6 @@ services:
       <<: *api-env
       CODEXSUN_RUNTIME: core-api
       HEALTH_PORT: 7030
-      CORE_API_HOST: 0.0.0.0
       CORE_API_PORT: 7030
     depends_on:
       platform-api:
@@ -157,7 +156,6 @@ services:
       <<: *api-env
       CODEXSUN_RUNTIME: billing-api
       HEALTH_PORT: 7050
-      BILLING_API_HOST: 0.0.0.0
       BILLING_API_PORT: 7050
     depends_on:
       core-api:

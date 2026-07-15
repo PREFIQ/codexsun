@@ -14,7 +14,7 @@ const apps = {
     displayName: "billing-api",
     cwd: "apps/billing/api",
     envKey: "BILLING_API_PORT",
-    hostKey: "BILLING_API_HOST",
+    hostKey: "API_HOST",
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
@@ -32,7 +32,7 @@ const apps = {
     displayName: "data-bridge-api",
     cwd: "apps/data-bridge/api",
     envKey: "DATA_BRIDGE_API_PORT",
-    hostKey: "DATA_BRIDGE_API_HOST",
+    hostKey: "API_HOST",
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
@@ -50,7 +50,7 @@ const apps = {
     displayName: "kitchen-serve-api",
     cwd: "apps/kitchen-serve/api",
     envKey: "KITCHEN_SERVE_API_PORT",
-    hostKey: "KITCHEN_SERVE_API_HOST",
+    hostKey: "API_HOST",
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
@@ -68,7 +68,7 @@ const apps = {
     displayName: "core-api",
     cwd: "apps/core/api",
     envKey: "CORE_API_PORT",
-    hostKey: "CORE_API_HOST",
+    hostKey: "API_HOST",
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
@@ -86,7 +86,7 @@ const apps = {
     displayName: "api",
     cwd: "apps/platform/api",
     envKey: "PLATFORM_API_PORT",
-    hostKey: "PLATFORM_API_HOST",
+    hostKey: "API_HOST",
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]

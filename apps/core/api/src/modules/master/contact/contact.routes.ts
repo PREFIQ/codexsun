@@ -8,6 +8,9 @@ export const CONTACT_COLLECTION_PATH = "/core/master/contacts";
 
 const service = new ContactService();
 const idSchema = z.object({ id: z.string().regex(/^\d+$/, "Contact ID must be numeric.") });
+const addressIdSchema = idSchema.extend({
+  addressId: z.string().regex(/^\d+$/, "Address ID must be numeric.")
+});
 const nullableString = z.string().trim().nullable();
 const nullableId = z.number().int().positive().nullable();
 const contactStatusSchema = z.enum(["active", "suspend", "deleted"]);
@@ -114,6 +117,7 @@ const addressPayloadSchema = addressSchema.omit({ id: true, sortOrder: true }).e
   id: z.number().int().nonnegative().optional(),
   sortOrder: z.number().int().positive().optional()
 });
+const addressUpdateSchema = addressPayloadSchema.omit({ id: true, sortOrder: true }).partial();
 const bankAccountPayloadSchema = bankAccountSchema.omit({ id: true, sortOrder: true }).extend({
   id: z.number().int().nonnegative().optional(),
   sortOrder: z.number().int().positive().optional()
@@ -184,6 +188,18 @@ export async function registerContactRoutes(app: FastifyInstance) {
     method: "PUT",
     schemas: { body: payloadSchema, params: idSchema, response: contactSchema },
     url: `${CONTACT_COLLECTION_PATH}/:id`
+  });
+  registerContractRoute(app, {
+    handler: ({ body, params }) => service.updateAddress(params.id, params.addressId, body),
+    method: "PUT",
+    schemas: { body: addressUpdateSchema, params: addressIdSchema, response: contactSchema },
+    url: `${CONTACT_COLLECTION_PATH}/:id/addresses/:addressId`
+  });
+  registerContractRoute(app, {
+    handler: ({ body, params }) => service.createAddress(params.id, body),
+    method: "POST",
+    schemas: { body: addressUpdateSchema, params: idSchema, response: contactSchema },
+    url: `${CONTACT_COLLECTION_PATH}/:id/addresses`
   });
   registerLifecycleRoute(app, "activate", true);
   registerLifecycleRoute(app, "deactivate", false);

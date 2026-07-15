@@ -41,16 +41,30 @@ export type QuotationLineItem = QuotationLineItemInput & {
   taxAmount: number;
 };
 
+export type QuotationAddressDetails = {
+  addressLine1: string;
+  addressLine2: string;
+  cityName: string;
+  districtName: string;
+  pincodeName: string;
+  stateCode: string;
+  stateName: string;
+};
+
 export type Quotation = {
   amount: number;
   billingAddress: string;
+  billingAddressDetails: QuotationAddressDetails;
   billingAddressId: number;
+  billingStateCode: string;
+  billingStateName: string;
   companyId: number;
   companyName: string;
   createdAt: string;
   currencyCode: string;
   currencyId: number;
   customerEmail: string;
+  customerGstin: string;
   customerId: number;
   customerName: string;
   customerPhone: string;
@@ -67,7 +81,10 @@ export type Quotation = {
   roundOff: number;
   salesLedger: string;
   shippingAddress: string;
+  shippingAddressDetails: QuotationAddressDetails;
   shippingAddressId: number;
+  shippingStateCode: string;
+  shippingStateName: string;
   status: QuotationStatus;
   subtotal: number;
   taxAmount: number;

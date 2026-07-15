@@ -12,6 +12,7 @@ const idSchema = z.object({
   id: z.string().regex(/^[0-9a-f]{8}$/, "Quotation ID must be 8 hex characters.")
 });
 const lookupIdSchema = z.object({ id: z.string().regex(/^\d+$/, "Lookup ID must be numeric.") });
+const lookupAddressIdSchema = lookupIdSchema.extend({ addressId: z.string().regex(/^\d+$/) });
 const lookupBodySchema = z.record(z.string(), z.unknown());
 const lookupResponseSchema = z.unknown();
 const statusSchema = z.enum(["draft", "confirmed", "cancelled"]);
@@ -45,6 +46,15 @@ const itemSchema = itemInputSchema.extend({
   taxableAmount: z.number(),
   taxAmount: z.number()
 });
+const addressDetailsSchema = z.object({
+  addressLine1: z.string(),
+  addressLine2: z.string(),
+  cityName: z.string(),
+  districtName: z.string(),
+  pincodeName: z.string(),
+  stateCode: z.string(),
+  stateName: z.string()
+});
 const quotationPayloadSchema = z.object({
   billingAddress: z.string(),
   billingAddressId: z.number().int().positive(),
@@ -74,13 +84,17 @@ const quotationPayloadSchema = z.object({
 const quotationSchema = z.object({
   amount: z.number(),
   billingAddress: z.string(),
+  billingAddressDetails: addressDetailsSchema,
   billingAddressId: z.number().int().positive(),
+  billingStateCode: z.string(),
+  billingStateName: z.string(),
   companyId: z.number().int().positive(),
   companyName: z.string(),
   createdAt: z.string(),
   currencyCode: z.string(),
   currencyId: z.number().int().positive(),
   customerEmail: z.string(),
+  customerGstin: z.string(),
   customerId: z.number().int().positive(),
   customerName: z.string(),
   customerPhone: z.string(),
@@ -97,7 +111,10 @@ const quotationSchema = z.object({
   roundOff: z.number(),
   salesLedger: z.string(),
   shippingAddress: z.string(),
+  shippingAddressDetails: addressDetailsSchema,
   shippingAddressId: z.number().int().positive(),
+  shippingStateCode: z.string(),
+  shippingStateName: z.string(),
   status: statusSchema,
   subtotal: z.number(),
   taxAmount: z.number(),
@@ -260,6 +277,24 @@ function registerLookupRoutes(app: FastifyInstance) {
   put("/billing/quotations/lookups/contacts/:id", (request, id, body) =>
     lookups.updateContact(lookupHeaders(request), id, body)
   );
+  registerContractRoute(app, {
+    method: "PUT",
+    url: "/billing/quotations/lookups/contacts/:id/addresses/:addressId",
+    schemas: {
+      body: lookupBodySchema,
+      params: lookupAddressIdSchema,
+      response: lookupResponseSchema
+    },
+    handler: ({ body, params, request }) =>
+      lookups.updateContactAddress(lookupHeaders(request), params.id, params.addressId, body)
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: "/billing/quotations/lookups/contacts/:id/addresses",
+    schemas: { body: lookupBodySchema, params: lookupIdSchema, response: lookupResponseSchema },
+    handler: ({ body, params, request }) =>
+      lookups.createContactAddress(lookupHeaders(request), params.id, body)
+  });
   get("/billing/quotations/lookups/countries", (request) =>
     lookups.countries(lookupHeaders(request))
   );

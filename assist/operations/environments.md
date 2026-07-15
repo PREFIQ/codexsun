@@ -88,3 +88,5 @@ Configuration should include:
 Secrets must not be committed to source control.
 
 CODEXSUN should use one active `.env` file per running environment to avoid confusion. `.env.example` documents required variables without secrets. Environment variables must be validated with Zod at startup.
+
+All API applications use the shared `API_HOST` bind address while retaining their app-specific API ports. Container bundles override the shared bind address to `0.0.0.0` inside the API environment anchor.

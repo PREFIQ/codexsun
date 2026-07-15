@@ -6,7 +6,7 @@ import { addMonths, format, parseISO } from "date-fns";
 import { Button } from "../components/button";
 import { Calendar } from "../components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "../components/popover";
-import { WorkspaceSelect } from "./select";
+import { WorkspaceLookup } from "./lookup";
 import { cn } from "../lib/utils";
 
 const monthOptions = Array.from({ length: 12 }, (_, index) => ({
@@ -66,21 +66,44 @@ export function WorkspaceDatePicker({
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="grid min-w-0 grid-cols-[6.5rem_5.75rem] gap-2">
-            <WorkspaceSelect
-              ariaLabel="Month"
+            <WorkspaceLookup
+              allowTextValue={false}
+              clearable={false}
+              compactOptions
+              dropdownClassName="[&::-webkit-scrollbar]:w-0.5"
+              dropdownMode="portal"
+              dropdownMinWidth={0}
+              emptyLabel="No matching month."
               options={monthOptions}
+              placeholder="Type or select month"
+              showAllOptionsOnFocus
+              showSearchIcon={false}
               value={String(displayMonth.getMonth())}
-              onValueChange={(month) =>
-                setDisplayMonth((current) => new Date(current.getFullYear(), Number(month), 1))
-              }
+              onValueChange={(month, option) => {
+                const selectedMonth = Number(option?.value ?? month);
+                if (!Number.isInteger(selectedMonth)) return;
+                setDisplayMonth((current) => new Date(current.getFullYear(), selectedMonth, 1));
+              }}
             />
-            <WorkspaceSelect
-              ariaLabel="Year"
+            <WorkspaceLookup
+              allowTextValue={false}
+              clearable={false}
+              compactOptions
+              dropdownClassName="[&::-webkit-scrollbar]:w-0.5"
+              dropdownMode="portal"
+              dropdownMinWidth={0}
+              emptyLabel="No matching year."
               options={yearOptions}
+              placeholder="Type or select year"
+              showAllOptionsOnFocus
+              showDropdownIcon={false}
+              showSearchIcon={false}
               value={String(displayMonth.getFullYear())}
-              onValueChange={(year) =>
-                setDisplayMonth((current) => new Date(Number(year), current.getMonth(), 1))
-              }
+              onValueChange={(year, option) => {
+                const selectedYear = Number(option?.value ?? year);
+                if (!Number.isInteger(selectedYear)) return;
+                setDisplayMonth((current) => new Date(selectedYear, current.getMonth(), 1));
+              }}
             />
           </div>
           <div className="flex shrink-0 items-center gap-1">

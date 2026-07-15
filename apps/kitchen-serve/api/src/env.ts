@@ -7,7 +7,7 @@ const schema = z.object({
   DB_PORT: z.coerce.number().int().positive(),
   DB_USER: z.string().min(1),
   JWT_SECRET: z.string().min(1),
-  KITCHEN_SERVE_API_HOST: z.string().default("127.0.0.1"),
+  API_HOST: z.string().default("127.0.0.1"),
   KITCHEN_SERVE_API_PORT: z.coerce.number().int().positive(),
   KITCHEN_SERVE_WEB_ORIGIN: z.string().min(1),
   NODE_ENV: z.enum(["development", "test", "staging", "production"]).default("development"),

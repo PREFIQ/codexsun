@@ -1,6 +1,11 @@
 import { AppError } from "@codexsun/framework/errors";
 import { ContactRepository } from "./contact.repository.js";
-import type { ContactListFilters, ContactSaveInput } from "./contact.types.js";
+import type {
+  ContactAddress,
+  ContactAddressUpdateInput,
+  ContactListFilters,
+  ContactSaveInput
+} from "./contact.types.js";
 
 export class ContactService {
   constructor(private readonly repository = new ContactRepository()) {}
@@ -32,6 +37,54 @@ export class ContactService {
       if (!updated) throw AppError.notFound("Contact was not found.");
       return updated;
     });
+  }
+
+  async updateAddress(id: string, addressId: string, input: ContactAddressUpdateInput) {
+    const contact = await this.mutable(id);
+    const current = contact.addresses.find((address) => address.id === Number(addressId));
+    if (!current) throw AppError.notFound("Contact address was not found.");
+    const definedInput = Object.fromEntries(
+      Object.entries(input).filter(([, value]) => value !== undefined)
+    ) as Partial<Omit<ContactAddress, "id" | "sortOrder">>;
+    const resolved = await this.resolveAddress({ ...current, ...definedInput, id: current.id });
+    const updated = await this.repository.updateAddress(contact.id, {
+      ...current,
+      ...resolved,
+      id: current.id,
+      sortOrder: current.sortOrder
+    });
+    if (!updated) throw AppError.notFound("Contact address was not found.");
+    return updated;
+  }
+
+  async createAddress(id: string, input: ContactAddressUpdateInput) {
+    const contact = await this.mutable(id);
+    const definedInput = Object.fromEntries(
+      Object.entries(input).filter(([, value]) => value !== undefined)
+    ) as Partial<Omit<ContactAddress, "id" | "sortOrder">>;
+    const address = await this.resolveAddress({
+      id: 0,
+      addressTypeId: null,
+      addressTypeName: null,
+      addressLine1: "",
+      addressLine2: null,
+      countryId: null,
+      countryName: null,
+      stateId: null,
+      stateName: null,
+      districtId: null,
+      districtName: null,
+      cityId: null,
+      cityName: null,
+      pincodeId: null,
+      pincodeName: null,
+      isDefault: contact.addresses.length === 0,
+      sortOrder: Math.max(0, ...contact.addresses.map((item) => item.sortOrder)) + 1,
+      ...definedInput
+    });
+    const created = await this.repository.createAddress(contact.id, address as ContactAddress);
+    if (!created) throw AppError.notFound("Contact was not found.");
+    return created;
   }
 
   async setActive(id: string, active: boolean) {
