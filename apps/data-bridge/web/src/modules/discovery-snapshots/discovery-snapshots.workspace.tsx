@@ -62,7 +62,125 @@ async function api<T>(path: string, init?: RequestInit) {
   return body.data;
 }
 
-function UngroupedSplitTableMapper({
+function SingleRowTableMapper({
+  snapshot,
+  disabled,
+  onSkip,
+  onMap,
+  onGroup
+}: {
+  snapshot: Snapshot;
+  disabled: boolean;
+  onSkip: (table: string, checked: boolean) => void;
+  onMap: (target: string, source: string) => void;
+  onGroup: (target: string, group: string) => Promise<void>;
+}) {
+  const targets = snapshot.target
+    .filter((table) => !snapshot.omittedTables.includes(table.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const knownGroups = Array.from(
+    new Set([
+      "Sales",
+      "Purchase",
+      "Accounts",
+      "Inventory",
+      "Contacts",
+      "Products",
+      ...Object.values(snapshot.tableGroups)
+    ])
+  )
+    .filter(Boolean)
+    .map((value) => ({ label: value, value }));
+
+  return (
+    <WorkspaceTablePanel className="min-w-0">
+      <div className="max-h-[36rem] w-full overflow-auto">
+        <table className="w-full min-w-[900px] table-fixed border-collapse text-sm">
+          <colgroup>
+            <col className="w-[6%]" />
+            <col className="w-[16%]" />
+            <col className="w-[27%]" />
+            <col className="w-[39%]" />
+            <col className="w-[12%]" />
+          </colgroup>
+          <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur">
+            <tr>
+              <WorkspaceTableHeaderCell className="border-r text-center">
+                Skip
+              </WorkspaceTableHeaderCell>
+              <WorkspaceTableHeaderCell className="border-r">Group</WorkspaceTableHeaderCell>
+              <WorkspaceTableHeaderCell className="border-r">
+                {`Target — ${snapshot.targetDatabase}`}
+              </WorkspaceTableHeaderCell>
+              <WorkspaceTableHeaderCell className="border-r">
+                {`Source — ${snapshot.sourceDatabase}`}
+              </WorkspaceTableHeaderCell>
+              <WorkspaceTableHeaderCell className="text-center">Status</WorkspaceTableHeaderCell>
+            </tr>
+          </thead>
+          <tbody>
+            {targets.map((target) => {
+              const sourceName = sourceForTarget(snapshot.tableMappings, target.name);
+              const group = snapshot.tableGroups[target.name] ?? "";
+              return (
+                <tr className="border-b last:border-0" key={target.name}>
+                  <td className="border-r px-2 py-2 text-center align-middle">
+                    <Checkbox
+                      disabled={disabled}
+                      checked={false}
+                      aria-label={`Skip ${target.name}`}
+                      onCheckedChange={(checked) => onSkip(target.name, checked === true)}
+                    />
+                  </td>
+                  <td className="border-r px-2 py-1.5 align-middle">
+                    <TableGroupLookup
+                      disabled={disabled}
+                      options={knownGroups}
+                      value={group}
+                      onSave={(value) => onGroup(target.name, value)}
+                    />
+                  </td>
+                  <td className="border-r px-3 py-2 align-middle font-mono text-xs font-medium">
+                    {target.name}
+                  </td>
+                  <td className="border-r px-2 py-1.5 align-middle">
+                    <WorkspaceLookup
+                      key={`${target.name}-${sourceName}`}
+                      className="[&_input]:h-9 [&_input]:font-mono [&_input]:text-xs"
+                      createMode="none"
+                      disabled={disabled}
+                      emptyLabel="No Source table found."
+                      options={snapshot.source.map((table) => ({
+                        label: table.name,
+                        value: table.name
+                      }))}
+                      placeholder="Select Source table"
+                      value={sourceName}
+                      onValueChange={(value, option) => {
+                        if (!value || option) onMap(target.name, value);
+                      }}
+                    />
+                  </td>
+                  <td className="px-2 py-2 text-center align-middle">
+                    <WorkspaceStatusBadge
+                      label={sourceName ? "mapped" : "unmapped"}
+                      tone={sourceName ? "success" : "warning"}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {!targets.length ? (
+        <WorkspaceTableEmptyState>No target tables available for mapping.</WorkspaceTableEmptyState>
+      ) : null}
+    </WorkspaceTablePanel>
+  );
+}
+
+function _UngroupedSplitTableMapper({
   snapshot,
   disabled,
   onSkip,
@@ -585,53 +703,55 @@ export function DiscoverySnapshotsWorkspace() {
           {discovery.isPending ? "Discovering..." : "Run read-only discovery"}
         </Button>
       </section>
-      <WorkspaceTablePanel>
-        <table className="w-full min-w-[760px] text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              <WorkspaceTableHeaderCell>Reference</WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell>Migration job</WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell>Source tables</WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell>Target tables</WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell>Differences</WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell>Created</WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell className="text-right">Action</WorkspaceTableHeaderCell>
-            </tr>
-          </thead>
-          <tbody>
-            {(snapshots.data ?? []).map((item) => (
-              <tr className="border-b last:border-0" key={item.id}>
-                <td className="px-4 py-2.5">
-                  <button
-                    className="font-medium hover:underline"
-                    onClick={() => setSelected(item.id)}
-                  >
-                    DS-{item.id}
-                  </button>
-                </td>
-                <td className="px-4 py-2.5">{item.jobName}</td>
-                <td className="px-4 py-2.5">{item.sourceTableCount}</td>
-                <td className="px-4 py-2.5">{item.targetTableCount}</td>
-                <td className="px-4 py-2.5">
-                  <WorkspaceStatusBadge
-                    label={String(item.differenceCount)}
-                    tone={item.differenceCount ? "warning" : "success"}
-                  />
-                </td>
-                <td className="px-4 py-2.5">{new Date(item.createdAt).toLocaleString()}</td>
-                <td className="px-4 py-1.5 text-right">
-                  <WorkspaceRowActions
-                    title={`Discovery snapshot #${item.id}`}
-                    onView={() => setSelected(item.id)}
-                    onEdit={() => setSelected(item.id)}
-                    onDelete={() => remove.mutate(item.id)}
-                    deleteLabel="Delete"
-                  />
-                </td>
+      <WorkspaceTablePanel className="min-w-0">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <WorkspaceTableHeaderCell>Reference</WorkspaceTableHeaderCell>
+                <WorkspaceTableHeaderCell>Migration job</WorkspaceTableHeaderCell>
+                <WorkspaceTableHeaderCell>Source tables</WorkspaceTableHeaderCell>
+                <WorkspaceTableHeaderCell>Target tables</WorkspaceTableHeaderCell>
+                <WorkspaceTableHeaderCell>Differences</WorkspaceTableHeaderCell>
+                <WorkspaceTableHeaderCell>Created</WorkspaceTableHeaderCell>
+                <WorkspaceTableHeaderCell className="text-right">Action</WorkspaceTableHeaderCell>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(snapshots.data ?? []).map((item) => (
+                <tr className="border-b last:border-0" key={item.id}>
+                  <td className="px-4 py-2.5">
+                    <button
+                      className="font-medium hover:underline"
+                      onClick={() => setSelected(item.id)}
+                    >
+                      DS-{item.id}
+                    </button>
+                  </td>
+                  <td className="px-4 py-2.5">{item.jobName}</td>
+                  <td className="px-4 py-2.5">{item.sourceTableCount}</td>
+                  <td className="px-4 py-2.5">{item.targetTableCount}</td>
+                  <td className="px-4 py-2.5">
+                    <WorkspaceStatusBadge
+                      label={String(item.differenceCount)}
+                      tone={item.differenceCount ? "warning" : "success"}
+                    />
+                  </td>
+                  <td className="px-4 py-2.5">{new Date(item.createdAt).toLocaleString()}</td>
+                  <td className="px-4 py-1.5 text-right">
+                    <WorkspaceRowActions
+                      title={`Discovery snapshot #${item.id}`}
+                      onView={() => setSelected(item.id)}
+                      onEdit={() => setSelected(item.id)}
+                      onDelete={() => remove.mutate(item.id)}
+                      deleteLabel="Delete"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {!snapshots.data?.length && snapshots.isFetching ? <WorkspaceTableLoadingState /> : null}
         {!snapshots.data?.length && !snapshots.isFetching ? (
           <WorkspaceTableEmptyState>No discovery snapshots yet.</WorkspaceTableEmptyState>
@@ -790,7 +910,7 @@ function SnapshotShow({ snapshot: initial, onBack }: { snapshot: Snapshot; onBac
           />
         </WorkspaceShowCard>
       </div>
-      <UngroupedSplitTableMapper
+      <SingleRowTableMapper
         snapshot={snapshot}
         disabled={omit.isPending || tableMapping.isPending || tableGrouping.isPending}
         onSkip={toggle}

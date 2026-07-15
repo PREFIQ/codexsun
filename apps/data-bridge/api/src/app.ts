@@ -1,9 +1,12 @@
 import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
 import { env } from "./env.js";
-import { registerMigrationManagerRoutes } from "./modules/migration-manager/migration-manager.routes.js";
-import { registerDiscoverySnapshotRoutes } from "./modules/discovery-snapshots/discovery-snapshots.routes.js";
-import { registerMappingsTransformsRoutes } from "./modules/mappings-transforms/mappings-transforms.routes.js";
-import { registerTransformsRoutes } from "./modules/transforms/transforms.routes.js";
+import { registerMigrationManagerModule } from "./modules/migration-manager/index.js";
+import { registerDiscoverySnapshotsModule } from "./modules/discovery-snapshots/index.js";
+import { registerMappingsTransformsModule } from "./modules/mappings-transforms/index.js";
+import { registerTransformsModule } from "./modules/transforms/index.js";
+import { registerReviewApprovalsModule } from "./modules/review-approvals/index.js";
+import { registerExecutionRunsModule } from "./modules/execution-runs/index.js";
+import { registerReconciliationAuditModule } from "./modules/reconciliation-audit/index.js";
 
 export async function createApp() {
   const app = await createApiApp({
@@ -22,9 +25,12 @@ export async function createApp() {
       })
     }
   ]);
-  await registerMigrationManagerRoutes(app);
-  await registerDiscoverySnapshotRoutes(app);
-  await registerMappingsTransformsRoutes(app);
-  await registerTransformsRoutes(app);
+  await registerMigrationManagerModule(app);
+  await registerDiscoverySnapshotsModule(app);
+  await registerMappingsTransformsModule(app);
+  await registerTransformsModule(app);
+  await registerReviewApprovalsModule(app);
+  await registerExecutionRunsModule(app);
+  await registerReconciliationAuditModule(app);
   return app;
 }

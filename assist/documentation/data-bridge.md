@@ -44,9 +44,20 @@ Migration Projects is the orchestration aggregate. Other modules own their recor
 - Every decision must produce an immutable audit entry.
 - A stopped table can resume only after all conflicts have decisions, the query plan remains approved, and its checksum is unchanged.
 
-## Scaffold State
+## Current Data Migration State
 
-The first scaffold supplies a dedicated API and web bundle, workflow contract, Super Admin navigation, and locked UI. Persistence, connection adapters, encrypted secrets, permission policies, schema diff engines, transformation runners, and execution workers intentionally remain disabled until their contracts are reviewed and approved.
+The data-migration track now supplies the complete operator workflow through dedicated module-owned API and web leaves:
+
+- Migration Manager owns tenant-scoped Source and Target connection settings and connection tests.
+- Discovery Snapshots own live database metadata discovery and prepared table-pair evidence.
+- Field Mappings and Transforms own mapped fields plus fixed Source read and Target write plans.
+- Review & Approvals performs a live read-only count check, verifies mapped Target identity fields, locks a SHA-256 plan checksum, and enforces separation of duties.
+- Execution Runs require an approved unchanged checksum, transfer in checkpointed batches, support pause/cancel/resume/retry, and stop a table on every existing Target record until an individual Override or Reject decision is audited.
+- Reconciliation & Audit re-reads migrated Target identities, compares row hashes, records and resolves exceptions, captures client sign-off, and exports checksummed audit evidence.
+
+Operational state remains server-side and JSON-backed under the configured `DATA_BRIDGE_JSON_DIR`. Database passwords are removed from public job responses. Production secret-provider integration and platform permission enforcement remain deployment prerequisites before exposing the separate API outside the trusted Super Admin network.
+
+The schema-migration track remains deferred. Do not use the data-migration executor to apply DDL; schema comparison, DDL dry runs, recovery planning, and schema execution will be implemented as independently owned modules later.
 
 Runtime ports:
 

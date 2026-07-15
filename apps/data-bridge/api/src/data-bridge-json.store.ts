@@ -8,6 +8,9 @@ type Registry = {
   discoverySnapshots: JsonRecord[];
   mappingPlans: JsonRecord[];
   transformPlans: JsonRecord[];
+  reviewApprovals: JsonRecord[];
+  executionRuns: JsonRecord[];
+  reconciliationReports: JsonRecord[];
 };
 
 const repoDir = join(process.cwd(), "apps/data-bridge/api/data-bridge-json");
@@ -18,11 +21,17 @@ const files = {
   migrationJobs: "migration-jobs.json",
   discoverySnapshots: "discovery-snapshots.json",
   mappingPlans: "mapping-plans.json",
-  transformPlans: "transform-plans.json"
+  transformPlans: "transform-plans.json",
+  reviewApprovals: "review-approvals.json",
+  executionRuns: "execution-runs.json",
+  reconciliationReports: "reconciliation-reports.json"
 } as const;
 let writeQueue = Promise.resolve();
 
 export class DataBridgeJsonStore {
+  async initialize(kind: keyof Registry) {
+    await ensureFile(kind);
+  }
   async list<K extends keyof Registry>(kind: K): Promise<Registry[K]> {
     return (await readRegistry(kind)).sort((a, b) => b.id - a.id) as Registry[K];
   }

@@ -3,7 +3,9 @@ import type { DatabaseSettings, MigrationJobInput } from "./migration-manager.ty
 
 type StoredJob = MigrationJobInput & { id: number; createdAt: string; updatedAt: string };
 export class MigrationManagerRepository {
-  async initialize() {}
+  async initialize() {
+    await dataBridgeJsonStore.initialize("migrationJobs");
+  }
   async list() {
     return ((await dataBridgeJsonStore.list("migrationJobs")) as unknown as StoredJob[]).map(
       publicJob

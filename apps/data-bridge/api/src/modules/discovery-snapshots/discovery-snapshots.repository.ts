@@ -9,9 +9,17 @@ type Snapshot = Record<string, unknown> & {
   omittedTables: string[];
   tableMappings: Record<string, string>;
   tableGroups: Record<string, string>;
+  mappingInput: unknown | null;
+  preparedAt: string | null;
+  sourceTableCount: number;
+  targetTableCount: number;
+  differenceCount: number;
+  createdAt: string;
 };
 export class DiscoverySnapshotsRepository {
-  async initialize() {}
+  async initialize() {
+    await dataBridgeJsonStore.initialize("discoverySnapshots");
+  }
   async create(
     jobId: number,
     source: SchemaTable[],

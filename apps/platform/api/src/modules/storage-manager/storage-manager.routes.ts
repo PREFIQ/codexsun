@@ -89,17 +89,15 @@ async function requireTenantUser(request: FastifyRequest, reply: FastifyReply) {
     request.headers["x-tenant-id"] = payload.tenantId;
     return;
   }
-  return reply
-    .code(403)
-    .send(
-      fail(
-        {
-          code: "TENANT_STORAGE_REQUIRED",
-          message: "Tenant storage access requires a tenant session."
-        },
-        { requestId: request.id }
-      )
-    );
+  return reply.code(403).send(
+    fail(
+      {
+        code: "TENANT_STORAGE_REQUIRED",
+        message: "Tenant storage access requires a tenant session."
+      },
+      { requestId: request.id }
+    )
+  );
 }
 
 function authPayload(request: FastifyRequest) {

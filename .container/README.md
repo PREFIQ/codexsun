@@ -6,16 +6,16 @@ The Docker deployment follows the app boundaries in `assist/README.md`. Every se
 
 CODEXSUN application images use the lockstep workspace version `1.0.32`. Upstream images are pinned; this deployment never uses `latest`.
 
-| Runtime | Default image |
-| --- | --- |
-| Platform API/Web | `codexsun/platform-api:1.0.32`, `codexsun/platform-web:1.0.32` |
-| Core API/Web | `codexsun/core-api:1.0.32`, `codexsun/core-web:1.0.32` |
-| Billing API/Web | `codexsun/billing-api:1.0.32`, `codexsun/billing-web:1.0.32` |
+| Runtime               | Default image                                                            |
+| --------------------- | ------------------------------------------------------------------------ |
+| Platform API/Web      | `codexsun/platform-api:1.0.32`, `codexsun/platform-web:1.0.32`           |
+| Core API/Web          | `codexsun/core-api:1.0.32`, `codexsun/core-web:1.0.32`                   |
+| Billing API/Web       | `codexsun/billing-api:1.0.32`, `codexsun/billing-web:1.0.32`             |
 | Kitchen Serve API/Web | `codexsun/kitchen-serve-api:1.0.32`, `codexsun/kitchen-serve-web:1.0.32` |
-| Migration runner | `codexsun/platform-migrations:1.0.32` |
-| MariaDB | `codexsun/mariadb:11.8-codexsun-1.0.32`, based on `mariadb:11.8` |
-| Redis | `codexsun/redis:7.4-codexsun-1.0.32`, based on `redis:7.4-alpine` |
-| Pictures/Files | versioned CODEXSUN images based on `filebrowser/filebrowser:v2.63.5` |
+| Migration runner      | `codexsun/platform-migrations:1.0.32`                                    |
+| MariaDB               | `codexsun/mariadb:11.8-codexsun-1.0.32`, based on `mariadb:11.8`         |
+| Redis                 | `codexsun/redis:7.4-codexsun-1.0.32`, based on `redis:7.4-alpine`        |
+| Pictures/Files        | versioned CODEXSUN images based on `filebrowser/filebrowser:v2.63.5`     |
 
 Override `CODEXSUN_IMAGE_REGISTRY` when images will be pushed to GHCR or another registry. Change image tags only through the deployment environment and keep them immutable after publishing.
 
@@ -112,14 +112,14 @@ bash .container/setup-media.sh --reinstall
 
 ## Ports
 
-| Service | Host port |
-| --- | ---: |
-| Platform API / Web | `7010` / `7020` |
-| Core API / Web | `7030` / `7040` |
-| Billing API / Web | `7050` / `7060` |
-| Files / Pictures | `7090` / `7094` |
+| Service                 |       Host port |
+| ----------------------- | --------------: |
+| Platform API / Web      | `7010` / `7020` |
+| Core API / Web          | `7030` / `7040` |
+| Billing API / Web       | `7050` / `7060` |
+| Files / Pictures        | `7090` / `7094` |
 | Kitchen Serve API / Web | `7110` / `7120` |
-| MariaDB / Redis | `3306` / `6379` |
+| MariaDB / Redis         | `3306` / `6379` |
 
 Keep database, Redis, pictures, and files private. Change `CODEXSUN_BIND_ADDRESS` only for a deliberate trusted-network deployment.
 

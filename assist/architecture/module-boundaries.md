@@ -366,13 +366,13 @@ Key rule: `packages/platform` depends on `packages/framework` **only**. `apps/co
 
 ### App Suite Bundles
 
-| Bundle           | Includes                                                                      | Purpose                                                                                           |
-| ---------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Base SaaS        | shared packages + `framework` + `platform` + `core`                           | Tenant, identity, RBAC, common modules, contacts, products, work orders                           |
-| Billing Software | shared packages + `framework` + `platform` + `core` + `billing`               | Entry billing with industry feature flags and document settings                                  |
-| Ecommerce Suite  | shared packages + `framework` + `platform` + `core` + `billing` + `ecommerce` | Ecommerce app consuming core masters and billing documents                                        |
-| CRM Suite        | shared packages + `framework` + `platform` + `core` + `crm`                   | CRM app with shared identity, tenant, and core customer data foundation                           |
-| Sites Suite      | shared packages + `framework` + `platform` + `sites`                          | Sites app with platform identity, settings, files, and site-specific publishing tools             |
+| Bundle           | Includes                                                                      | Purpose                                                                               |
+| ---------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Base SaaS        | shared packages + `framework` + `platform` + `core`                           | Tenant, identity, RBAC, common modules, contacts, products, work orders               |
+| Billing Software | shared packages + `framework` + `platform` + `core` + `billing`               | Entry billing with industry feature flags and document settings                       |
+| Ecommerce Suite  | shared packages + `framework` + `platform` + `core` + `billing` + `ecommerce` | Ecommerce app consuming core masters and billing documents                            |
+| CRM Suite        | shared packages + `framework` + `platform` + `core` + `crm`                   | CRM app with shared identity, tenant, and core customer data foundation               |
+| Sites Suite      | shared packages + `framework` + `platform` + `sites`                          | Sites app with platform identity, settings, files, and site-specific publishing tools |
 
 Billing industry fields must stay as billing settings/features. Examples: offset billing uses PO/DC, garments uses colour/size, uPVC can add length/width/area later. Shared billing fields remain particulars, quantity, price, GST, subtotal, totals, and document controls.
 

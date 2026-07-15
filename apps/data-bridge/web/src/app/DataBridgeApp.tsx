@@ -4,6 +4,8 @@ import {
   DatabaseZapIcon,
   LayoutDashboardIcon,
   ListChecksIcon,
+  PlayCircleIcon,
+  ScaleIcon,
   ScanSearchIcon,
   ShieldCheckIcon,
   WandSparklesIcon,
@@ -14,10 +16,20 @@ import { MigrationManagerWorkspace } from "../modules/migration-manager";
 import { DiscoverySnapshotsWorkspace } from "../modules/discovery-snapshots";
 import { FieldMappingsWorkspace } from "../modules/mappings-transforms";
 import { TransformsWorkspace } from "../modules/transforms";
+import { ReviewApprovalsWorkspace } from "../modules/review-approvals";
+import { ExecutionRunsWorkspace } from "../modules/execution-runs";
+import { ReconciliationAuditWorkspace } from "../modules/reconciliation-audit";
 
 export function DataBridgeApp() {
   const [page, setPage] = useState<
-    "overview" | "migration-manager" | "discovery-snapshots" | "field-mappings" | "transforms"
+    | "overview"
+    | "migration-manager"
+    | "discovery-snapshots"
+    | "field-mappings"
+    | "transforms"
+    | "review-approvals"
+    | "execution-runs"
+    | "reconciliation-audit"
   >("overview");
   return (
     <AppLayout
@@ -35,7 +47,13 @@ export function DataBridgeApp() {
               ? "Discovery Snapshots"
               : page === "field-mappings"
                 ? "Field Mappings"
-                : "Transforms"
+                : page === "transforms"
+                  ? "Transforms"
+                  : page === "review-approvals"
+                    ? "Review & Approvals"
+                    : page === "execution-runs"
+                      ? "Execution Runs"
+                      : "Reconciliation & Audit"
       }
       homeHref="/data-bridge"
       logoutHref="/sa/login"
@@ -69,6 +87,24 @@ export function DataBridgeApp() {
           isActive: page === "transforms",
           onSelect: () => setPage("transforms"),
           title: "Transforms"
+        },
+        {
+          icon: ListChecksIcon,
+          isActive: page === "review-approvals",
+          onSelect: () => setPage("review-approvals"),
+          title: "Review & Approvals"
+        },
+        {
+          icon: PlayCircleIcon,
+          isActive: page === "execution-runs",
+          onSelect: () => setPage("execution-runs"),
+          title: "Execution Runs"
+        },
+        {
+          icon: ScaleIcon,
+          isActive: page === "reconciliation-audit",
+          onSelect: () => setPage("reconciliation-audit"),
+          title: "Reconciliation & Audit"
         }
       ]}
       subtitle={null}
@@ -99,8 +135,14 @@ export function DataBridgeApp() {
         <DiscoverySnapshotsWorkspace />
       ) : page === "field-mappings" ? (
         <FieldMappingsWorkspace />
-      ) : (
+      ) : page === "transforms" ? (
         <TransformsWorkspace />
+      ) : page === "review-approvals" ? (
+        <ReviewApprovalsWorkspace />
+      ) : page === "execution-runs" ? (
+        <ExecutionRunsWorkspace />
+      ) : (
+        <ReconciliationAuditWorkspace />
       )}
     </AppLayout>
   );

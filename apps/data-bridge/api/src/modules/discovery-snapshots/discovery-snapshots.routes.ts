@@ -1,169 +1,117 @@
 import type { FastifyInstance } from "fastify";
-import { createDatabaseConnector } from "@codexsun/framework/db";
-import { MigrationManagerRepository } from "../migration-manager/migration-manager.repository.js";
-import { DiscoverySnapshotsRepository } from "./discovery-snapshots.repository.js";
-import type { SchemaColumn, SchemaTable, TableDifference } from "./discovery-snapshots.types.js";
-type MetaRow = Record<string, unknown>;
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
+import { registerContractRoute } from "@codexsun/framework/http";
+import { DiscoverySnapshotsService } from "./discovery-snapshots.service.js";
+
+const path = "/data-bridge/discovery-snapshots";
+const idSchema = z.object({ id: z.coerce.number().int().positive() });
+const columnSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  nullable: z.boolean(),
+  defaultValue: z.string().nullable(),
+  key: z.string(),
+  extra: z.string()
+});
+const tableSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  estimatedRows: z.number(),
+  columns: z.array(columnSchema)
+});
+const differenceSchema = z.object({
+  table: z.string(),
+  status: z.enum(["match", "missing-target", "target-only", "different"]),
+  differences: z.array(z.string())
+});
+const summarySchema = z.object({
+  id: z.number(),
+  migrationJobId: z.number(),
+  jobName: z.string(),
+  sourceDatabase: z.string(),
+  targetDatabase: z.string(),
+  sourceTableCount: z.number(),
+  targetTableCount: z.number(),
+  differenceCount: z.number(),
+  preparedAt: z.string().nullable(),
+  createdAt: z.string()
+});
+const recordSchema = summarySchema.extend({
+  source: z.array(tableSchema),
+  target: z.array(tableSchema),
+  comparison: z.array(differenceSchema),
+  omittedTables: z.array(z.string()),
+  tableMappings: z.record(z.string(), z.string()),
+  tableGroups: z.record(z.string(), z.string()),
+  mappingInput: z.unknown().nullable()
+});
+const stringArraySchema = z.object({ tables: z.array(z.string()) });
+const mappingsSchema = z.object({ mappings: z.record(z.string(), z.string()) });
+const groupsSchema = z.object({ groups: z.record(z.string(), z.string()) });
+const createSchema = z.object({ migrationJobId: z.number().int().positive() });
+const deletedSchema = z.object({ deleted: z.literal(true) });
+
 export async function registerDiscoverySnapshotRoutes(app: FastifyInstance) {
-  const snapshots = new DiscoverySnapshotsRepository();
-  const jobs = new MigrationManagerRepository();
-  await snapshots.initialize();
-  app.get("/data-bridge/discovery-snapshots", async () => ({ data: await snapshots.list() }));
-  app.get("/data-bridge/discovery-snapshots/:id", async (request, reply) => {
-    const item = await snapshots.get(Number((request.params as { id: string }).id));
-    return item
-      ? { data: item }
-      : reply.code(404).send({ message: "Discovery snapshot not found." });
+  const service = new DiscoverySnapshotsService();
+  await service.initialize();
+  registerContractRoute(app, {
+    method: "GET",
+    url: path,
+    schemas: { response: z.array(summarySchema) },
+    handler: () => service.list()
   });
-  app.patch("/data-bridge/discovery-snapshots/:id/omitted-tables", async (request, reply) => {
-    const tables = (request.body as { tables?: unknown })?.tables;
-    if (!Array.isArray(tables) || !tables.every((item) => typeof item === "string"))
-      return reply.code(400).send({ message: "Tables must be a string array." });
-    const item = await snapshots.setOmittedTables(
-      Number((request.params as { id: string }).id),
-      tables
-    );
-    return item
-      ? { data: item }
-      : reply.code(404).send({ message: "Discovery snapshot not found." });
+  registerContractRoute(app, {
+    method: "GET",
+    url: `${path}/:id`,
+    schemas: { params: idSchema, response: recordSchema },
+    handler: async ({ params }) => required(await service.get(params.id))
   });
-  app.patch("/data-bridge/discovery-snapshots/:id/table-mappings", async (request, reply) => {
-    const mappings = (request.body as { mappings?: unknown })?.mappings;
-    if (
-      !mappings ||
-      typeof mappings !== "object" ||
-      Array.isArray(mappings) ||
-      !Object.values(mappings).every((value) => typeof value === "string")
-    )
-      return reply
-        .code(400)
-        .send({ message: "Mappings must contain Source and Target table names." });
-    const item = await snapshots.setTableMappings(
-      Number((request.params as { id: string }).id),
-      mappings as Record<string, string>
-    );
-    return item
-      ? { data: item }
-      : reply.code(404).send({ message: "Discovery snapshot not found." });
+  registerContractRoute(app, {
+    method: "PATCH",
+    url: `${path}/:id/omitted-tables`,
+    schemas: { body: stringArraySchema, params: idSchema, response: recordSchema },
+    handler: async ({ body, params }) =>
+      required(await service.setOmittedTables(params.id, body.tables))
   });
-  app.patch("/data-bridge/discovery-snapshots/:id/table-groups", async (request, reply) => {
-    const groups = (request.body as { groups?: unknown })?.groups;
-    if (
-      !groups ||
-      typeof groups !== "object" ||
-      Array.isArray(groups) ||
-      !Object.values(groups).every((value) => typeof value === "string")
-    )
-      return reply
-        .code(400)
-        .send({ message: "Groups must contain Target table and group labels." });
-    const item = await snapshots.setTableGroups(
-      Number((request.params as { id: string }).id),
-      groups as Record<string, string>
-    );
-    return item
-      ? { data: item }
-      : reply.code(404).send({ message: "Discovery snapshot not found." });
+  registerContractRoute(app, {
+    method: "PATCH",
+    url: `${path}/:id/table-mappings`,
+    schemas: { body: mappingsSchema, params: idSchema, response: recordSchema },
+    handler: async ({ body, params }) =>
+      required(await service.setTableMappings(params.id, body.mappings))
   });
-  app.post("/data-bridge/discovery-snapshots/:id/prepare-mappings", async (request, reply) => {
-    const item = await snapshots.prepareMappingInput(Number((request.params as { id: string }).id));
-    return item
-      ? { data: item }
-      : reply.code(404).send({ message: "Discovery snapshot not found." });
+  registerContractRoute(app, {
+    method: "PATCH",
+    url: `${path}/:id/table-groups`,
+    schemas: { body: groupsSchema, params: idSchema, response: recordSchema },
+    handler: async ({ body, params }) =>
+      required(await service.setTableGroups(params.id, body.groups))
   });
-  app.delete("/data-bridge/discovery-snapshots/:id", async (request, reply) => {
-    const deleted = await snapshots.delete(Number((request.params as { id: string }).id));
-    return deleted
-      ? { data: { deleted: true } }
-      : reply.code(404).send({ message: "Discovery snapshot not found." });
+  registerContractRoute(app, {
+    method: "POST",
+    url: `${path}/:id/prepare-mappings`,
+    schemas: { params: idSchema, response: recordSchema },
+    handler: async ({ params }) => required(await service.prepare(params.id))
   });
-  app.post("/data-bridge/discovery-snapshots", async (request, reply) => {
-    const jobId = Number((request.body as { migrationJobId?: number })?.migrationJobId);
-    const job = await jobs.secretSettings(jobId);
-    if (!job) return reply.code(404).send({ message: "Migration job not found." });
-    try {
-      const [source, target] = await Promise.all([discover(job.source), discover(job.target)]);
-      return reply
-        .code(201)
-        .send({ data: await snapshots.create(jobId, source, target, compare(source, target)) });
-    } catch {
-      return reply
-        .code(422)
-        .send({ message: "Discovery failed. Verify both database connections and permissions." });
+  registerContractRoute(app, {
+    method: "DELETE",
+    url: `${path}/:id`,
+    schemas: { params: idSchema, response: deletedSchema },
+    handler: async ({ params }) => {
+      if (!(await service.delete(params.id)))
+        throw AppError.notFound("Discovery snapshot was not found.");
+      return { deleted: true as const };
     }
   });
-}
-async function discover(config: {
-  type: "mariadb" | "mysql2";
-  host: string;
-  port: number;
-  user: string;
-  password: string;
-  database: string;
-}): Promise<SchemaTable[]> {
-  const connection = await createDatabaseConnector(config).connect({ database: config.database });
-  try {
-    const [tableRows] = await connection.execute<MetaRow[]>(
-      `SELECT TABLE_NAME, TABLE_TYPE, COALESCE(TABLE_ROWS,0) TABLE_ROWS FROM information_schema.TABLES WHERE TABLE_SCHEMA=? ORDER BY TABLE_NAME`,
-      [config.database]
-    );
-    const [columnRows] = await connection.execute<MetaRow[]>(
-      `SELECT TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE,COLUMN_DEFAULT,COLUMN_KEY,EXTRA FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? ORDER BY TABLE_NAME,ORDINAL_POSITION`,
-      [config.database]
-    );
-    return tableRows.map((table) => ({
-      name: String(table.TABLE_NAME),
-      type: String(table.TABLE_TYPE),
-      estimatedRows: Number(table.TABLE_ROWS),
-      columns: columnRows
-        .filter((column) => column.TABLE_NAME === table.TABLE_NAME)
-        .map((column): SchemaColumn => ({
-          name: String(column.COLUMN_NAME),
-          type: String(column.COLUMN_TYPE),
-          nullable: column.IS_NULLABLE === "YES",
-          defaultValue: column.COLUMN_DEFAULT === null ? null : String(column.COLUMN_DEFAULT),
-          key: String(column.COLUMN_KEY ?? ""),
-          extra: String(column.EXTRA ?? "")
-        }))
-    }));
-  } finally {
-    await connection.end();
-  }
-}
-function compare(source: SchemaTable[], target: SchemaTable[]): TableDifference[] {
-  const names = new Set([...source.map((x) => x.name), ...target.map((x) => x.name)]);
-  return [...names].sort().map((name) => {
-    const s = source.find((x) => x.name === name),
-      t = target.find((x) => x.name === name);
-    if (!t)
-      return { table: name, status: "missing-target", differences: ["Table is missing in target"] };
-    if (!s)
-      return { table: name, status: "target-only", differences: ["Table exists only in target"] };
-    const differences: string[] = [];
-    const columns = new Set([...s.columns.map((x) => x.name), ...t.columns.map((x) => x.name)]);
-    for (const column of columns) {
-      const a = s.columns.find((x) => x.name === column),
-        b = t.columns.find((x) => x.name === column);
-      if (!b) {
-        differences.push(`Column ${column} is missing in target`);
-        continue;
-      }
-      if (!a) {
-        differences.push(`Column ${column} exists only in target`);
-        continue;
-      }
-      if (a.type !== b.type) differences.push(`${column}: type ${a.type} → ${b.type}`);
-      if (a.nullable !== b.nullable)
-        differences.push(`${column}: nullable ${a.nullable} → ${b.nullable}`);
-      if (a.defaultValue !== b.defaultValue)
-        differences.push(
-          `${column}: default ${a.defaultValue ?? "NULL"} → ${b.defaultValue ?? "NULL"}`
-        );
-      if (a.key !== b.key)
-        differences.push(`${column}: key ${a.key || "none"} → ${b.key || "none"}`);
-      if (a.extra !== b.extra)
-        differences.push(`${column}: extra ${a.extra || "none"} → ${b.extra || "none"}`);
-    }
-    return { table: name, status: differences.length ? "different" : "match", differences };
+  registerContractRoute(app, {
+    method: "POST",
+    url: path,
+    schemas: { body: createSchema, response: recordSchema },
+    handler: async ({ body }) => required(await service.create(body.migrationJobId))
   });
+}
+function required<T>(value: T | null): T {
+  if (!value) throw AppError.notFound("Discovery snapshot was not found.");
+  return value;
 }

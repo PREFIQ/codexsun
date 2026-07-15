@@ -49,7 +49,9 @@ export class CompanyRepository {
     return current;
   }
   async isDefaultCompany(id: string | number) {
-    const rows = await sql<{ count: number | string }>`SELECT COUNT(*) AS count FROM default_company_settings WHERE company_id=${Number(id)}`.execute(
+    const rows = await sql<{
+      count: number | string;
+    }>`SELECT COUNT(*) AS count FROM default_company_settings WHERE company_id=${Number(id)}`.execute(
       getCoreDatabase()
     );
     return Number(rows.rows[0]?.count ?? 0) > 0;
