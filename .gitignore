@@ -75,6 +75,7 @@ web_modules/
 .env
 .env.*
 !.env.example
+.container/deploy.env
 
 # Local SSH private/public keypairs
 .ssh/

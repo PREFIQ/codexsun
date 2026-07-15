@@ -2,7 +2,7 @@ import React from "react";
 import { RouterProvider } from "@tanstack/react-router";
 import { GlobalLoader } from "@codexsun/ui/components/global-loader";
 import { Toaster } from "@codexsun/ui/components/sonner";
-import { AppProviders, GlobalQueryLoader } from "./providers";
+import { AppProviders } from "./providers";
 import { router } from "./router";
 import { applyDesignSystemPreference } from "./design-system";
 import { PageTitle } from "../shared/document/PageTitle";
@@ -15,7 +15,6 @@ export function PlatformWebApp() {
       <AppProviders>
         <React.Suspense fallback={<GlobalLoader />}>
           <PageTitle />
-          <GlobalQueryLoader />
           <RouterProvider router={router} />
           <Toaster />
         </React.Suspense>

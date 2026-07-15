@@ -32,6 +32,14 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 #### App Codebase Changes
 
+- Consolidated production deployment into four independent MariaDB, Redis, Media, and Billing stacks; Billing now packages Framework-backed Platform, Core, and Billing services while excluding Kitchen Serve and Data Bridge runtimes.
+- Live-tested the complete local Docker deployment, including production migration gating, persistent Billing storage ownership, the Platform public-storage compatibility link, authenticated Redis and Media access, and health checks for all six Billing services.
+- Split complete-stack lifecycle into non-destructive `setup.sh` install/reinstall commands and a Billing-only `deploy.sh`; Billing reinstall now replaces only application containers/images, applies forward migrations, reports the migration ledger, and cannot manage infrastructure or remove database volumes.
+- Added repeatable default-tenant deployment inputs, persistent tenant-storage mapping, and setup-time MariaDB grant reconciliation; live install, full reinstall, and Billing-only reinstall preserve the `1:1:19:1` master/tenant migration-and-user signature while all endpoints remain healthy.
+- Finalized the deployment lifecycle commands: `.container/setup.sh` installs the complete stack, `.container/setup.sh --reinstall` rebuilds every stack without deleting named volumes, and `.container/deploy.sh billing --reinstall` replaces only Billing backend/frontend containers and images while leaving MariaDB, Redis, and Media untouched.
+- Added pre-teardown configuration validation, infrastructure health checks, forward-only migration execution, and applied migration-ledger reporting. Database fresh/reset flags remain prohibited and neither reinstall path contains database-drop or volume-removal operations.
+- Added an ignored deployment input workflow that preserves explicit operator values, imports matching secrets from repository `.env`, generates missing random credentials, and synchronizes the Media administrator with the resolved Super Admin password.
+- Replaced per-app duplicate images with one shared Billing API image, one shared Billing web image, and one explicit Platform/Core/Billing migration image, leaving room for Accounts modules to extend the same release boundary.
 - Added concurrent Sales invoice reservation recovery: conflicting create or draft-update requests save with the next configured number and return a user-visible warning, while the persisted next-number setting advances atomically.
 - Added retry-safe document line numbering across Quotation, Sales, Purchase, Export Sales, Payment, and Receipt to prevent simultaneous same-tenant inserts from failing on line-number collisions.
 - Serialized Payment and Receipt allocation validation with row locks and deterministic lock ordering so two users cannot allocate the same outstanding Purchase or Sale balance.

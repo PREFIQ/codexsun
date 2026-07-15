@@ -1,95 +1,55 @@
-# CODEXSUN Production Docker Setup Notes
+# CODEXSUN Billing Deployment Setup
 
-Last reviewed: 2026-07-14.
+Last reviewed: 2026-07-15.
 
-The production source of truth is `.container/`. Deployment is split by bounded runtime instead of reusing one large application image.
+The active `.container/` deployment contains only four independent stacks: MariaDB, Redis, Media, and Billing.
 
-## Deployment model
+Billing owns the current deployable business release boundary:
 
-The current independently deployable stacks are:
-
-- MariaDB
-- Redis
-- Pictures and Files storage
-- Platform API/Web and the migration runner
+- `@codexsun/framework`
+- Platform API/Web
 - Core API/Web
 - Billing API/Web
-- Kitchen Serve API/Web
 
-Each stack owns its Dockerfile(s), Compose file, image tag, health checks, and persistent volume declarations. All stacks join the external `codexsun-network`, allowing a stack to be upgraded without recreating unrelated services.
+Kitchen Serve and Data Bridge have no deployment service or runtime image in this bundle. Platform's current Data Bridge workspace import is satisfied by a disabled build stub, so Data Bridge application source is not copied into the production web image.
 
-Application images use the current workspace version `1.0.32`. MariaDB, Redis, Nginx, and File Browser base images use explicit version tags, never `latest`. The exact image matrix is maintained in `.container/README.md` and `.container/deploy.env.example`.
-
-## Production environment
+## Prepare private input
 
 ```bash
-cp .container/deploy.env.example .container/deploy.env
+bash .container/prepare-env.sh
 ```
 
-Before deployment, review:
+The ignored `.container/deploy.env` is the deployment input file. Existing values win; missing placeholders are imported from repository `.env` where available, then remaining secrets are generated randomly. Media uses the resolved Super Admin password by default.
 
-- database, JWT, Pictures, and Files credentials;
-- public web origins and Vite API URLs;
-- image registry and immutable release tags;
-- `CODEXSUN_BIND_ADDRESS` (keep `127.0.0.1` behind a local reverse proxy);
-- stable volume names;
-- optional Billing GSP credentials.
+If `ENABLE_DEFAULT_TENANT_SEED=1`, setup prepares and validates the complete `DEFAULT_TENANT_*` input before changing containers. It provisions the configured tenant and tenant database repeatably; it does not reset an existing tenant database.
 
-Keep these production reset controls disabled:
+Keep the generated file private and review public URLs before deploy. Production database reset flags must remain disabled. Set `CODEXSUN_VERIFIED_BACKUP_ID` to a verified backup run ID before Billing migrations. A confirmed empty first deployment may use a recorded `initial-empty-database-YYYYMMDD` marker, but that marker must never be reused against an existing database.
 
-```env
-CODEXSUN_DB_FRESH_ON_START=0
-CODEXSUN_ALLOW_PRODUCTION_DB_RESET=0
-```
-
-Vite API URLs are compiled into web images. Changing a `VITE_*` URL requires rebuilding the corresponding web image.
-
-## Complete deployment
+## Install or reinstall the complete stack
 
 ```bash
 bash .container/setup.sh
 ```
 
-Normal upgrades use:
+Clean reinstall, preserving every database and named volume:
 
 ```bash
-bash .container/upgrade-containers.sh
+bash .container/setup.sh --reinstall
 ```
 
-The upgrade validates Compose, builds every versioned image, waits for healthy services, runs the dedicated Platform migration image, restarts APIs, and waits for health again. Set `RUN_PLATFORM_MIGRATIONS=0` only when migrations are intentionally managed in another release step.
+`setup.sh --reinstall` replaces containers and images only. It never deletes volumes or calls database reset/drop operations.
 
-## Individual deployment
+## Deploy or reinstall Billing only
 
 ```bash
-bash .container/stack.sh mariadb up
-bash .container/stack.sh redis up
-bash .container/stack.sh storage up
-bash .container/stack.sh platform up
-bash .container/stack.sh core up
-bash .container/stack.sh billing up
-bash .container/stack.sh kitchen-serve up
+bash .container/deploy.sh billing up
+bash .container/deploy.sh billing --reinstall
 ```
 
-Deploy dependencies in that order for a new host. Existing stacks may be upgraded separately because their stable network and volumes are external to each Compose project lifecycle.
+The Billing command never modifies MariaDB, Redis, or Media lifecycle state. It builds one shared API image, one shared web image, and one migration image; checks and applies forward Platform/Core/Billing migrations; prints the applied migration ledger; then starts the six application containers. Existing databases and storage volumes are preserved.
 
-## Storage and backups
+## Growth rule
 
-MariaDB data and backups, Redis persistence, each application data directory, picture content/metadata, and file content/metadata use separate named volumes. Normal upgrades and reinstalls preserve all volumes.
+Accounts work remains inside Core/Billing and therefore extends the Billing stack without a new deployment project. Create another independent stack only when an app gains a genuinely separate runtime, lifecycle, scaling boundary, and persistent-data owner.
 
-Pictures and Files content volumes are shared with API containers at `/storage/pictures` and `/storage/files`. Their File Browser metadata volumes are isolated from application code.
-
-Run `bash .container/setup-media.sh` to initialize or refresh both File Browser administrators. The helper reads `SUPER_ADMIN_PASSWORD` from the repository `.env` and applies it to both storage admin accounts without logging the credential. `--reinstall` recreates metadata while preserving content; `--wipe-media` is an additional destructive option.
-
-The hard reinstall supports explicit independent wipe flags documented in `.container/README.md`. `WIPE_INTERNAL_DB=1` and `WIPE_STORAGE_DATA=1` are destructive and require a verified backup plus approval.
-
-## Future growth rule
-
-New deployable apps should follow the existing folder pattern:
-
-```text
-.container/<app>/Dockerfile.api
-.container/<app>/Dockerfile.web
-.container/<app>/docker-compose.yml
-```
-
-Give every new image an immutable workspace-version tag, give every state owner a unique named volume, join `codexsun-network`, add health checks, and then include the stack from `.container/docker-compose.yml`.
+Operational commands, image tags, ports, volume names, media reinstall safety, and troubleshooting are documented in `.container/README.md`.

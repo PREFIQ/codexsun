@@ -1,141 +1,140 @@
-# CODEXSUN Independent Docker Stacks
+# CODEXSUN Billing Deployment
 
-The Docker deployment follows the app boundaries in `assist/README.md`. Every server has its own image and Compose file, every data owner has a stable named volume, and all stacks communicate through one external Docker network.
+This bundle deploys exactly four independent stacks on one external Docker network:
 
-## Image policy
+1. MariaDB
+2. Redis
+3. Media
+4. Billing
 
-CODEXSUN application images use the lockstep workspace version `1.0.32`. Upstream images are pinned; this deployment never uses `latest`.
+The Billing stack contains the shared Framework plus Platform, Core, and Billing API/Web applications. Kitchen Serve and Data Bridge are not built or deployed. A tiny compile-time Data Bridge stub only preserves the current Platform workspace import until that optional route is removed from Platform itself.
 
-| Runtime               | Default image                                                            |
-| --------------------- | ------------------------------------------------------------------------ |
-| Platform API/Web      | `codexsun/platform-api:1.0.32`, `codexsun/platform-web:1.0.32`           |
-| Core API/Web          | `codexsun/core-api:1.0.32`, `codexsun/core-web:1.0.32`                   |
-| Billing API/Web       | `codexsun/billing-api:1.0.32`, `codexsun/billing-web:1.0.32`             |
-| Kitchen Serve API/Web | `codexsun/kitchen-serve-api:1.0.32`, `codexsun/kitchen-serve-web:1.0.32` |
-| Migration runner      | `codexsun/platform-migrations:1.0.32`                                    |
-| MariaDB               | `codexsun/mariadb:11.8-codexsun-1.0.32`, based on `mariadb:11.8`         |
-| Redis                 | `codexsun/redis:7.4-codexsun-1.0.32`, based on `redis:7.4-alpine`        |
-| Pictures/Files        | versioned CODEXSUN images based on `filebrowser/filebrowser:v2.63.5`     |
-
-Override `CODEXSUN_IMAGE_REGISTRY` when images will be pushed to GHCR or another registry. Change image tags only through the deployment environment and keep them immutable after publishing.
-
-## Stack layout
+## Layout
 
 ```text
 .container/
-  database/mariadb/       MariaDB Dockerfile, configuration, Compose
-  database/redis/         Redis Dockerfile and Compose
-  storage/                independent Pictures and Files images/volumes
-  platform/               Platform API, web, and migration runner
-  core/                   Core API and web
-  billing/                Billing API and web
-  kitchen-serve/          Kitchen Serve API and web
-  docker-compose.yml      full-stack aggregator
-  deploy.env.example      shared deployment contract
-  stack.sh                individual-stack CLI
+  database/mariadb/   MariaDB image, configuration, grants, Compose
+  database/redis/     Redis image and Compose
+  media/              File Browser image and Compose
+  billing/            shared API/Web images and Billing Compose
+  deploy.env.example  safe template
+  deploy.env          ignored deployment input generated locally/on server
+  prepare-env.sh      imports or generates secrets
+  setup-media.sh      initializes the media administrator
+  setup.sh            installs/reinstalls the complete four-stack deployment
+  deploy.sh           deploys or reinstalls only the Billing application stack
 ```
 
-The external network defaults to `codexsun-network`. The setup scripts create it when missing. Because it is external, stopping one Compose project does not remove connectivity required by another stack.
+Every stack joins `codexsun-network`. Persistent data uses stable named volumes and is preserved by normal `down` and upgrade operations.
 
-## Persistent volumes
+## Deployment input and secrets
 
-MariaDB data/backups, Redis data, each app's operational storage, picture content/database, and file content/database all use separate explicitly named volumes. A normal `down`, upgrade, or reinstall does not remove them.
+Create or refresh the private input file:
 
-The Pictures and Files content volumes are external shared resources: each API mounts them at `/storage/pictures` and `/storage/files`, while the two File Browser images provide private management surfaces. Their metadata databases remain separate and are never mounted into application containers.
+```bash
+bash .container/prepare-env.sh
+```
 
-Important data volumes:
+For each supported credential, preparation uses this priority:
 
-- `codexsun-mariadb-data` and `codexsun-mariadb-backups`
-- `codexsun-redis-data`
-- `codexsun-platform-data`, `codexsun-core-data`, `codexsun-billing-data`, `codexsun-kitchen-serve-data`
-- `codexsun-pictures-data`, `codexsun-pictures-db`
-- `codexsun-files-data`, `codexsun-files-db`
+1. Existing non-placeholder value in `.container/deploy.env`.
+2. Matching value from the repository `.env`.
+3. A random 32-byte hexadecimal secret.
+
+The generated `.container/deploy.env` is ignored by Git and restricted to the current user where the host supports POSIX permissions. Review it before deployment to set public origins, API URLs, registry names, and optional GSP credentials.
+
+Generated values include MariaDB root, Redis, database, JWT, and media credentials. `MEDIA_ADMIN_PASSWORD` is always synchronized with the resolved `SUPER_ADMIN_PASSWORD` when the latter exists. Secret values are never printed.
+
+When `ENABLE_DEFAULT_TENANT_SEED=1`, preparation validates the full `DEFAULT_TENANT_*` configuration before any Billing teardown. Missing identity defaults are prepared for a CODEXSUN tenant, and missing tenant-admin identity values reuse the configured Super Admin. The values are passed only to the Billing API containers. Complete setup also reconciles the MariaDB application grant required to create configured tenant databases on both new and existing database volumes.
+
+Before a production Billing migration, set `CODEXSUN_VERIFIED_BACKUP_ID` to the verified backup run ID. For a confirmed empty first deployment, record that verification explicitly with a value such as `initial-empty-database-YYYYMMDD`; never reuse that marker for an existing database.
+
+## Images
+
+Application images use workspace version `1.0.33` and are refreshed automatically from `package.json` by `prepare-env.sh`:
+
+- `codexsun/billing-stack-api:1.0.33`
+- `codexsun/billing-stack-web:1.0.33`
+- `codexsun/billing-stack-migrations:1.0.33`
+- `codexsun/mariadb:11.8-codexsun-1.0.33`
+- `codexsun/redis:7.4-codexsun-1.0.33`
+- `codexsun/media:1.0.33-filebrowser2.63.5`
+
+The shared API image runs Platform, Core, or Billing according to `CODEXSUN_RUNTIME`. The shared web image contains only the Platform, Core, and Billing production bundles and selects one with `CODEXSUN_WEB_APP`.
 
 ## First deployment
 
+Confirm the database is empty or take and verify a backup, then record its identifier in `.container/deploy.env` as described above.
+
+Install the complete deployment in dependency order:
+
 ```bash
-cp .container/deploy.env.example .container/deploy.env
-nano .container/deploy.env
 bash .container/setup.sh
 ```
 
-Set real public origins/API URLs and review every generated secret before exposing the host. Ports bind to `127.0.0.1` by default for a same-host Nginx/Caddy reverse proxy.
-
-Deploy the complete stack non-interactively:
+Cleanly reinstall every container and image while preserving MariaDB, Redis, Media, and Billing named volumes:
 
 ```bash
-bash .container/upgrade-containers.sh
+bash .container/setup.sh --reinstall
 ```
 
-This builds versioned images, waits for health checks, runs the Platform/Core/Billing tenant migration stack, restarts APIs, and verifies health again.
+`setup.sh --reinstall` never passes `--volumes`, removes a Docker volume, or calls a database reset/drop command.
 
-## Individual stacks
+Billing deployment builds the shared images, runs the explicit Platform -> Core -> Billing forward-migration stack, prints the applied migration ledger, then starts all six app containers and waits for health checks. Future Accounts modules under Core/Billing automatically enter this build and migration boundary.
 
-Each stack can be installed, upgraded, inspected, or stopped independently:
+Cleanly reinstall only Billing backend/frontend containers and images:
 
 ```bash
-bash .container/stack.sh mariadb up
-bash .container/stack.sh redis up
-bash .container/stack.sh storage up
-bash .container/stack.sh platform up
-bash .container/stack.sh core up
-bash .container/stack.sh billing up
-bash .container/stack.sh kitchen-serve up
+bash .container/deploy.sh billing --reinstall
 ```
 
-Supported actions are `up`, `build`, `pull`, `ps`, `logs`, and `down`. Direct Compose usage is also supported:
+This Billing command verifies MariaDB and Redis health but never starts, stops, recreates, or removes MariaDB, Redis, or Media. Existing databases, uploads, and Billing storage remain mounted and unchanged except for required forward migrations.
+
+## Other commands
 
 ```bash
-docker compose --env-file .container/deploy.env \
-  -f .container/billing/docker-compose.yml up -d --build --wait
+bash .container/deploy.sh billing build
+bash .container/deploy.sh billing migrate
+bash .container/deploy.sh billing ps
+bash .container/deploy.sh billing logs
+bash .container/deploy.sh billing down
 ```
 
-Start infrastructure before app stacks when deploying them separately. Core expects Platform on the shared network; Billing expects Core; all APIs expect MariaDB, and Platform queue processing expects Redis.
+Normal `down` never removes volumes.
 
-## Pictures and Files administrator
+## Media administration
 
-Use the media setup helper when installing storage or refreshing its administrator:
+Complete setup calls:
 
 ```bash
 bash .container/setup-media.sh
 ```
 
-It reads `SUPER_ADMIN_PASSWORD` from the repository `.env`, synchronizes the Pictures and Files deployment credentials, initializes both File Browser databases, and updates or creates each `admin` user with full management permissions. The password is never printed.
+The helper updates or creates the File Browser `admin` user from `MEDIA_ADMIN_PASSWORD`. The long-running media container does not contain the password in its command arguments.
 
-Recreate only the File Browser metadata databases while preserving uploaded content:
+Recreate only File Browser metadata while preserving uploads:
 
 ```bash
 bash .container/setup-media.sh --reinstall
 ```
 
-`--reinstall --wipe-media` also removes picture and file content and is intentionally blocked while API containers have those volumes mounted.
-
-## Ports
-
-| Service                 |       Host port |
-| ----------------------- | --------------: |
-| Platform API / Web      | `7010` / `7020` |
-| Core API / Web          | `7030` / `7040` |
-| Billing API / Web       | `7050` / `7060` |
-| Files / Pictures        | `7090` / `7094` |
-| Kitchen Serve API / Web | `7110` / `7120` |
-| MariaDB / Redis         | `3306` / `6379` |
-
-Keep database, Redis, pictures, and files private. Change `CODEXSUN_BIND_ADDRESS` only for a deliberate trusted-network deployment.
-
-## Reinstall and data safety
+Wipe metadata and uploaded media only with both flags:
 
 ```bash
-bash .container/hard-reinstall.sh
+bash .container/setup-media.sh --reinstall --wipe-media
 ```
 
-The command requires typing `REINSTALL`. It recreates containers and images but preserves every volume by default. Destructive flags are independent:
+The wipe refuses to continue while another container mounts the media volume and verifies every requested volume removal.
 
-- `WIPE_APP_DATA=1`
-- `WIPE_STORAGE_DATA=1`
-- `WIPE_REDIS_DATA=1`
-- `WIPE_INTERNAL_DB=1`
+## Default private ports
 
-Never wipe MariaDB or storage volumes without a verified backup and explicit approval.
+| Stack/service | Port |
+| --- | ---: |
+| MariaDB | `3306` |
+| Redis | `6379` |
+| Media | `7090` |
+| Platform API/Web | `7010` / `7020` |
+| Core API/Web | `7030` / `7040` |
+| Billing API/Web | `7050` / `7060` |
 
-If Redis authentication is enabled, set both `REDIS_PASSWORD` and an encoded authenticated `CODEXSUN_REDIS_URL` in `deploy.env`.
+Ports bind to `127.0.0.1` by default. Put Nginx or Caddy on the same host and keep MariaDB, Redis, and Media private.

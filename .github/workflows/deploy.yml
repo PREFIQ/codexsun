@@ -66,4 +66,4 @@ jobs:
               exit 1
             }
             git pull --ff-only origin main
-            bash .container/upgrade-containers.sh
+            bash .container/setup.sh

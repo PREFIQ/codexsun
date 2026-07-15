@@ -185,6 +185,17 @@ export function PaymentForm({
         />
         {errors.ledgerId ? <FieldError>{errors.ledgerId}</FieldError> : null}
       </WorkspaceFormField>
+      <WorkspaceFormField className="md:col-span-2" label="Notes">
+        <Textarea
+          rows={3}
+          value={form.notes}
+          onChange={(event) => patch("notes", event.target.value)}
+        />
+      </WorkspaceFormField>
+    </WorkspaceFormGrid>
+  );
+  const adjustments = (
+    <WorkspaceFormGrid>
       <WorkspaceFormField label="Reference no">
         <Input
           value={form.referenceNo}
@@ -221,13 +232,6 @@ export function PaymentForm({
           type="number"
           value={form.roundOff}
           onChange={(event) => patch("roundOff", Number(event.target.value))}
-        />
-      </WorkspaceFormField>
-      <WorkspaceFormField label="Notes">
-        <Textarea
-          rows={3}
-          value={form.notes}
-          onChange={(event) => patch("notes", event.target.value)}
         />
       </WorkspaceFormField>
     </WorkspaceFormGrid>
@@ -294,6 +298,7 @@ export function PaymentForm({
   );
   const tabs: WorkspaceAnimatedTab[] = [
     { value: "details", label: "Details", content: details },
+    { value: "adjustments", label: "Adjustments", content: adjustments },
     { value: "allocations", label: "Allocations", content: allocations }
   ];
   return (

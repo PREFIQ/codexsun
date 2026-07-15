@@ -839,7 +839,7 @@
   }
 
   .global-loader-fullscreen {
-    animation: global-loader-backdrop-in 240ms linear 120ms both;
+    animation: global-loader-backdrop-in 220ms linear 90ms both;
     backdrop-filter: blur(0);
     background: transparent;
     inset: 0;
@@ -849,7 +849,7 @@
   }
 
   .global-loader-fullscreen .global-loader-mark {
-    animation: global-loader-mark-in 200ms ease-out 150ms both;
+    animation: global-loader-mark-in 160ms ease-out 35ms both;
   }
 
   .global-loader-inline {
