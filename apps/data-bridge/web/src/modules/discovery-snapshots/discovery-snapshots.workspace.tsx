@@ -66,31 +66,16 @@ function SingleRowTableMapper({
   snapshot,
   disabled,
   onSkip,
-  onMap,
-  onGroup
+  onMap
 }: {
   snapshot: Snapshot;
   disabled: boolean;
   onSkip: (table: string, checked: boolean) => void;
   onMap: (target: string, source: string) => void;
-  onGroup: (target: string, group: string) => Promise<void>;
 }) {
   const targets = snapshot.target
     .filter((table) => !snapshot.omittedTables.includes(table.name))
     .sort((a, b) => a.name.localeCompare(b.name));
-  const knownGroups = Array.from(
-    new Set([
-      "Sales",
-      "Purchase",
-      "Accounts",
-      "Inventory",
-      "Contacts",
-      "Products",
-      ...Object.values(snapshot.tableGroups)
-    ])
-  )
-    .filter(Boolean)
-    .map((value) => ({ label: value, value }));
 
   return (
     <WorkspaceTablePanel className="min-w-0">
@@ -98,9 +83,8 @@ function SingleRowTableMapper({
         <table className="w-full min-w-[900px] table-fixed border-collapse text-sm">
           <colgroup>
             <col className="w-[6%]" />
-            <col className="w-[16%]" />
-            <col className="w-[27%]" />
-            <col className="w-[39%]" />
+            <col className="w-[35%]" />
+            <col className="w-[47%]" />
             <col className="w-[12%]" />
           </colgroup>
           <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur">
@@ -108,7 +92,6 @@ function SingleRowTableMapper({
               <WorkspaceTableHeaderCell className="border-r text-center">
                 Skip
               </WorkspaceTableHeaderCell>
-              <WorkspaceTableHeaderCell className="border-r">Group</WorkspaceTableHeaderCell>
               <WorkspaceTableHeaderCell className="border-r">
                 {`Target — ${snapshot.targetDatabase}`}
               </WorkspaceTableHeaderCell>
@@ -121,7 +104,6 @@ function SingleRowTableMapper({
           <tbody>
             {targets.map((target) => {
               const sourceName = sourceForTarget(snapshot.tableMappings, target.name);
-              const group = snapshot.tableGroups[target.name] ?? "";
               return (
                 <tr className="border-b last:border-0" key={target.name}>
                   <td className="border-r px-2 py-2 text-center align-middle">
@@ -130,14 +112,6 @@ function SingleRowTableMapper({
                       checked={false}
                       aria-label={`Skip ${target.name}`}
                       onCheckedChange={(checked) => onSkip(target.name, checked === true)}
-                    />
-                  </td>
-                  <td className="border-r px-2 py-1.5 align-middle">
-                    <TableGroupLookup
-                      disabled={disabled}
-                      options={knownGroups}
-                      value={group}
-                      onSave={(value) => onGroup(target.name, value)}
                     />
                   </td>
                   <td className="border-r px-3 py-2 align-middle font-mono text-xs font-medium">
@@ -776,11 +750,6 @@ function SnapshotShow({ snapshot: initial, onBack }: { snapshot: Snapshot; onBac
     onSuccess: setSnapshot,
     onError: (error) => toast.error("Could not save table mapping", { description: error.message })
   });
-  const tableGrouping = useMutation({
-    mutationFn: (groups: Record<string, string>) => saveTableGroups(snapshot.id, groups),
-    onSuccess: setSnapshot,
-    onError: (error) => toast.error("Could not save table group", { description: error.message })
-  });
   const resetComparison = useMutation({
     mutationFn: async () => {
       await saveOmitted(snapshot.id, []);
@@ -843,19 +812,6 @@ function SnapshotShow({ snapshot: initial, onBack }: { snapshot: Snapshot; onBac
     tableMapping.mutate(mappings);
   }
 
-  async function updateTableGroup(targetTable: string, group: string) {
-    const groups = { ...snapshot.tableGroups };
-    if (group.trim()) groups[targetTable] = group.trim();
-    else delete groups[targetTable];
-    setSnapshot((current) => ({
-      ...current,
-      tableGroups: groups,
-      mappingInput: null,
-      preparedAt: null
-    }));
-    await tableGrouping.mutateAsync(groups);
-  }
-
   const visibleTables = snapshot.target.filter(
     (table) => showSkipped || !snapshot.omittedTables.includes(table.name)
   );
@@ -912,10 +868,9 @@ function SnapshotShow({ snapshot: initial, onBack }: { snapshot: Snapshot; onBac
       </div>
       <SingleRowTableMapper
         snapshot={snapshot}
-        disabled={omit.isPending || tableMapping.isPending || tableGrouping.isPending}
+        disabled={omit.isPending || tableMapping.isPending}
         onSkip={toggle}
         onMap={updateTargetMapping}
-        onGroup={updateTableGroup}
       />
       <div className="hidden">
         <WorkspaceTablePanel>

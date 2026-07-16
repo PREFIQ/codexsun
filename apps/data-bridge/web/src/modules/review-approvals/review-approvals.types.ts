@@ -41,5 +41,35 @@ export type ReviewCandidate = {
   reviewStatus: ReviewStatus | null;
 };
 export type PrepareReviewInput = { transformPlanId: number; preparedBy: string };
-export type ApproveReviewInput = { approver: string; approvalReference: string; reason: string };
-export type ReviewDecisionInput = { actor: string; reason: string };
+export type ReviewRecordPreviewRow = {
+  key: string;
+  identityValues: Record<string, unknown>;
+  sourceValues: Record<string, unknown>;
+  mappedValues: Record<string, unknown>;
+  targetValues: Record<string, unknown> | null;
+  status: "new" | "match" | "different" | "invalid";
+  targetIdentityMode: "preserve" | "generate" | null;
+};
+export type ReviewRecordPreview = {
+  sourceTable: string;
+  targetTable: string;
+  sourceFields: string[];
+  targetFields: string[];
+  rows: ReviewRecordPreviewRow[];
+};
+export type SelectedRecordInput = {
+  targetTable: string;
+  identityValues: Record<string, unknown>;
+  targetIdentityMode: "preserve" | "generate";
+};
+export type SendSelectedRecordsInput = {
+  reviewId: number;
+  requestedBy: string;
+  batchSize: number;
+  selections: SelectedRecordInput[];
+};
+export type SelectedExecutionRun = {
+  id: number;
+  status: string;
+  selectedRecordCount?: number;
+};

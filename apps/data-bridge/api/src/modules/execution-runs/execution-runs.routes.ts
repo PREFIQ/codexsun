@@ -57,6 +57,8 @@ const recordSchema = z.object({
   approvalReference: z.string(),
   requestedBy: z.string(),
   batchSize: z.number().int().positive(),
+  selectionMode: z.enum(["all", "selected"]).optional(),
+  selectedRecordCount: z.number().int().nonnegative().optional(),
   status: statusSchema,
   tables: z.array(tableSchema),
   conflicts: z.array(conflictSchema),
@@ -71,6 +73,18 @@ const createSchema = z.object({
   reviewId: z.number().int().positive(),
   requestedBy: z.string().trim().min(2).max(160),
   batchSize: z.number().int().min(1).max(1000).default(100)
+});
+const selectedCreateSchema = createSchema.extend({
+  selections: z
+    .array(
+      z.object({
+        targetTable: z.string().trim().min(1).max(160),
+        identityValues: z.record(z.string(), z.unknown()),
+        targetIdentityMode: z.enum(["preserve", "generate"])
+      })
+    )
+    .min(1)
+    .max(1000)
 });
 const actorSchema = z.object({ actor: z.string().trim().min(2).max(160) });
 const conflictDecisionSchema = z.object({
@@ -99,6 +113,13 @@ export async function registerExecutionRunsRoutes(app: FastifyInstance) {
     url: path,
     schemas: { body: createSchema, response: recordSchema },
     handler: ({ body }) => service.create(body.reviewId, body.requestedBy, body.batchSize)
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: `${path}/selected`,
+    schemas: { body: selectedCreateSchema, response: recordSchema },
+    handler: ({ body }) =>
+      service.createSelected(body.reviewId, body.requestedBy, body.batchSize, body.selections)
   });
   for (const action of ["pause", "resume", "cancel", "retry"] as const) {
     registerContractRoute(app, {

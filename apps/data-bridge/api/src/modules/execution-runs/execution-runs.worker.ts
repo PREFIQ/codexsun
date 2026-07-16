@@ -2,10 +2,11 @@ import { createHash } from "node:crypto";
 import { createDatabaseConnector, type CompatibleDbConnection } from "@codexsun/framework/db";
 import { AppError } from "@codexsun/framework/errors";
 import { getMigrationJobSecrets } from "../migration-manager/index.js";
-import { verifyApprovedReview } from "../review-approvals/index.js";
+import { verifyApprovedReview, verifyPreparedReview } from "../review-approvals/index.js";
 import { ExecutionRunsRepository } from "./execution-runs.repository.js";
 import type {
   ExecutionLedgerEntry,
+  ExecutionRecordSelection,
   ExecutionTableProgress,
   StoredExecutionConflict,
   StoredExecutionRun
@@ -22,7 +23,10 @@ export async function processExecutionRun(id: number) {
   let target: CompatibleDbConnection | null = null;
   try {
     let run = await requiredRun(id);
-    const { review, transform } = await verifyApprovedReview(run.reviewId);
+    const { review, transform } =
+      run.selectionMode === "selected"
+        ? await verifyPreparedReview(run.reviewId)
+        : await verifyApprovedReview(run.reviewId);
     if (review.checksum !== run.checksum)
       throw AppError.conflict("Execution checksum no longer matches its approved review.");
     const secrets = await getMigrationJobSecrets(run.migrationJobId);
@@ -49,6 +53,21 @@ export async function processExecutionRun(id: number) {
       let progress = run.tables[tableIndex];
       if (!progress) throw AppError.internal("Execution table progress is missing.");
       if (progress.status === "completed") continue;
+      const tableSelections = (run.selectedRecords ?? []).filter(
+        (selection) => selection.targetTable === table.targetTable
+      );
+      const generatedIdentityFields = tableSelections.some(
+        (selection) => selection.targetIdentityMode === "generate"
+      )
+        ? await findGeneratedIdentityFields(target, table.targetTable, evidence.identityFields)
+        : [];
+      if (
+        tableSelections.some((selection) => selection.targetIdentityMode === "generate") &&
+        generatedIdentityFields.length !== evidence.identityFields.length
+      )
+        throw AppError.conflict(
+          `Table ${table.targetTable} cannot assign a new generated identity for this selection.`
+        );
 
       const conflictResult = await applyConflictDecisions(run, progress, table, target);
       run = conflictResult.run;
@@ -72,14 +91,21 @@ export async function processExecutionRun(id: number) {
       while (progress.checkpoint < progress.totalRows) {
         run = await requiredRun(id);
         if (run.status === "paused" || run.status === "cancelled") return;
-        const batch = await readBatch(
-          source,
-          table.sourceQuery,
-          run.batchSize,
-          progress.checkpoint
-        );
+        const batch: SelectedSourceRow[] =
+          run.selectionMode === "selected"
+            ? await readSelectedBatch(
+                source,
+                table,
+                evidence.identityFields,
+                tableSelections,
+                run.batchSize,
+                progress.checkpoint
+              )
+            : (await readBatch(source, table.sourceQuery, run.batchSize, progress.checkpoint)).map(
+                (sourceRow) => ({ sourceRow, selection: null })
+              );
         if (!batch.length) break;
-        for (const sourceRow of batch) {
+        for (const { sourceRow, selection } of batch) {
           run = await requiredRun(id);
           if (run.status === "paused" || run.status === "cancelled") return;
           progress = requiredProgress(run.tables[tableIndex]);
@@ -94,8 +120,51 @@ export async function processExecutionRun(id: number) {
               `Table ${table.targetTable} produced an empty approved identity value at row ${progress.checkpoint + 1}.`
             );
           const sourceRef = recordReference("SRC", table.sourceTable, identityValues);
-          const targetRef = recordReference("TGT", table.targetTable, identityValues);
           const existing = await targetExists(target, table.targetTable, identityValues);
+          if (selection?.targetIdentityMode === "generate") {
+            if (!existing)
+              throw AppError.conflict(
+                `The Target identity collision for ${table.targetTable} no longer exists. Refresh the review and select the record again.`
+              );
+            const insertFields = table.fields.filter(
+              (field) => !generatedIdentityFields.includes(field.targetField)
+            );
+            const [insertResult] = await target.execute<InsertResult>(
+              insertStatement(
+                table.targetTable,
+                insertFields.map((field) => field.targetField)
+              ),
+              insertFields.map((field) => mappedValues[field.targetField])
+            );
+            const insertedIdentityValues = { ...identityValues };
+            const generatedIdentity = await insertedIdentityValue(target, insertResult);
+            insertedIdentityValues[generatedIdentityFields[0]!] = generatedIdentity;
+            const insertedMappedValues = {
+              ...mappedValues,
+              ...insertedIdentityValues
+            };
+            const targetRef = recordReference("TGT", table.targetTable, insertedIdentityValues);
+            const ledgerEntry = ledger(
+              table.sourceTable,
+              table.targetTable,
+              sourceRef,
+              targetRef,
+              "inserted",
+              insertedMappedValues,
+              insertedIdentityValues
+            );
+            progress = {
+              ...progress,
+              checkpoint: progress.checkpoint + 1,
+              insertedRows: progress.insertedRows + 1
+            };
+            run = (await repository.updateStored(id, {
+              tables: replaceTable(run.tables, tableIndex, progress),
+              ledger: [...run.ledger, ledgerEntry]
+            }))!;
+            continue;
+          }
+          const targetRef = recordReference("TGT", table.targetTable, identityValues);
           if (existing) {
             const conflict = createConflict(
               table.targetTable,
@@ -256,6 +325,94 @@ async function readBatch(
     offset
   ]);
   return rows;
+}
+
+async function readSelectedBatch(
+  connection: CompatibleDbConnection,
+  table: {
+    sourceQuery: string;
+    fields: Array<{ sourceField: string; targetField: string }>;
+  },
+  identityFields: string[],
+  selections: ExecutionRecordSelection[],
+  limit: number,
+  offset: number
+) {
+  const sql = table.sourceQuery.trim().replace(/;$/, "");
+  const batch = selections.slice(offset, offset + limit);
+  const rows: SelectedSourceRow[] = [];
+  for (const selection of batch) {
+    const sourceIdentityFields = identityFields.map((targetField) => {
+      const mapping = table.fields.find((field) => field.targetField === targetField);
+      if (!mapping)
+        throw AppError.validation(`Selected identity field ${targetField} is not mapped.`);
+      return mapping.sourceField;
+    });
+    const where = sourceIdentityFields.map((field) => `${identifier(field)}=?`).join(" AND ");
+    const [matches] = await connection.execute<Record<string, unknown>[]>(
+      `${sql} WHERE ${where} LIMIT 1`,
+      identityFields.map((field) => selection.identityValues[field])
+    );
+    const row = matches[0];
+    if (!row) throw AppError.notFound("A selected Source record is no longer available.");
+    rows.push({ sourceRow: row, selection });
+  }
+  return rows;
+}
+
+type SelectedSourceRow = {
+  sourceRow: Record<string, unknown>;
+  selection: ExecutionRecordSelection | null;
+};
+
+type InsertResult = { insertId?: unknown };
+
+async function findGeneratedIdentityFields(
+  connection: CompatibleDbConnection,
+  table: string,
+  identityFields: string[]
+) {
+  const [rows] = await connection.execute<Array<Record<string, unknown>>>(
+    "SELECT COLUMN_NAME AS column_name, EXTRA AS extra FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?",
+    [table]
+  );
+  return identityFields.filter((field) =>
+    rows.some(
+      (row) =>
+        String(row.column_name ?? "") === field &&
+        String(row.extra ?? "")
+          .toLowerCase()
+          .includes("auto_increment")
+    )
+  );
+}
+
+function insertStatement(table: string, fields: string[]) {
+  if (!fields.length) return `INSERT INTO ${identifier(table)} () VALUES ()`;
+  return `INSERT INTO ${identifier(table)} (${fields.map(identifier).join(", ")}) VALUES (${fields.map(() => "?").join(", ")})`;
+}
+
+async function insertedIdentityValue(
+  connection: CompatibleDbConnection,
+  result: InsertResult
+): Promise<string | number> {
+  if (result.insertId !== null && result.insertId !== undefined)
+    return scalarIdentity(result.insertId);
+  const [rows] = await connection.execute<Array<Record<string, unknown>>>(
+    "SELECT LAST_INSERT_ID() AS inserted_id"
+  );
+  const value = rows[0]?.inserted_id;
+  if (value === null || value === undefined)
+    throw AppError.internal("Target database did not return the generated record identity.");
+  return scalarIdentity(value);
+}
+
+function scalarIdentity(value: unknown) {
+  return typeof value === "bigint"
+    ? value.toString()
+    : String(value).match(/^\d+$/)
+      ? Number(value)
+      : String(value);
 }
 
 async function targetExists(

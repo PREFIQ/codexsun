@@ -1,8 +1,12 @@
 import { AppError } from "@codexsun/framework/errors";
-import { verifyApprovedReview } from "../review-approvals/index.js";
+import { verifyApprovedReview, verifyPreparedReview } from "../review-approvals/index.js";
 import { createExecutionRunEvent } from "./execution-runs.events.js";
 import { ExecutionRunsRepository } from "./execution-runs.repository.js";
-import type { ExecutionConflictDecision, StoredExecutionRun } from "./execution-runs.types.js";
+import type {
+  ExecutionConflictDecision,
+  ExecutionRecordSelection,
+  StoredExecutionRun
+} from "./execution-runs.types.js";
 import { queueExecutionRun } from "./execution-runs.worker.js";
 
 export class ExecutionRunsService {
@@ -37,6 +41,9 @@ export class ExecutionRunsService {
       approvalReference: review.approvalReference!,
       requestedBy: requestedBy.trim(),
       batchSize,
+      selectionMode: "all",
+      selectedRecordCount: 0,
+      selectedRecords: [],
       status: "queued",
       tables: review.tables.map((table) => ({
         sourceTable: table.sourceTable,
@@ -53,6 +60,97 @@ export class ExecutionRunsService {
       conflicts: [],
       ledger: [],
       audit: [{ action: "queued", actor: requestedBy.trim(), at: timestamp }],
+      currentTable: null,
+      startedAt: null,
+      finishedAt: null,
+      error: null,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    });
+    createExecutionRunEvent(run, "queued");
+    queueExecutionRun(run.id);
+    return run;
+  }
+
+  async createSelected(
+    reviewId: number,
+    requestedBy: string,
+    batchSize: number,
+    selections: ExecutionRecordSelection[]
+  ) {
+    if (!selections.length) throw AppError.validation("Select at least one Source record.");
+    const { review, transform } = await verifyPreparedReview(reviewId);
+    const normalized = selections.map((selection) => {
+      const evidence = review.tables.find((table) => table.targetTable === selection.targetTable);
+      if (!evidence) throw AppError.validation(`Table ${selection.targetTable} is not reviewed.`);
+      const identityFields = Object.keys(selection.identityValues).sort();
+      const expectedFields = [...evidence.identityFields].sort();
+      if (
+        !expectedFields.length ||
+        identityFields.length !== expectedFields.length ||
+        identityFields.some((field, index) => field !== expectedFields[index])
+      )
+        throw AppError.validation(
+          `Selection for ${selection.targetTable} does not match its reviewed identity fields.`
+        );
+      if (
+        Object.values(selection.identityValues).some(
+          (value) => value === null || value === undefined
+        )
+      )
+        throw AppError.validation(`Selection for ${selection.targetTable} has an empty identity.`);
+      return {
+        targetTable: selection.targetTable,
+        identityValues: Object.fromEntries(
+          expectedFields.map((field) => [field, selection.identityValues[field]])
+        ),
+        targetIdentityMode: selection.targetIdentityMode
+      };
+    });
+    const unique = new Map(
+      normalized.map((selection) => [
+        `${selection.targetTable}:${selection.targetIdentityMode}:${JSON.stringify(selection.identityValues)}`,
+        selection
+      ])
+    );
+    const selectedRecords = [...unique.values()];
+    const timestamp = new Date().toISOString();
+    const run = await this.repository.create({
+      reviewId,
+      transformPlanId: transform.id,
+      migrationJobId: review.migrationJobId,
+      tenant: review.tenant,
+      name: `${review.planName} selected records`,
+      checksum: review.checksum,
+      approvalReference: review.approvalReference ?? `RV-${review.id}-selected`,
+      requestedBy: requestedBy.trim(),
+      batchSize,
+      selectionMode: "selected",
+      selectedRecordCount: selectedRecords.length,
+      selectedRecords,
+      status: "queued",
+      tables: review.tables.map((table) => ({
+        sourceTable: table.sourceTable,
+        targetTable: table.targetTable,
+        status: "pending",
+        totalRows: selectedRecords.filter((item) => item.targetTable === table.targetTable).length,
+        checkpoint: 0,
+        insertedRows: 0,
+        overriddenRows: 0,
+        rejectedRows: 0,
+        conflictCount: 0,
+        error: null
+      })),
+      conflicts: [],
+      ledger: [],
+      audit: [
+        {
+          action: "selected-records-queued",
+          actor: requestedBy.trim(),
+          at: timestamp,
+          details: `${selectedRecords.length} record(s)`
+        }
+      ],
       currentTable: null,
       startedAt: null,
       finishedAt: null,
@@ -85,7 +183,7 @@ export class ExecutionRunsService {
       throw AppError.conflict("Only a paused or blocked execution can be resumed.");
     if (run.conflicts.some((item) => item.status === "pending"))
       throw AppError.conflict("Decide every pending conflict before resuming.");
-    await verifyApprovedReview(run.reviewId);
+    await verifyExecutableReview(run);
     const saved = await this.changeStatus(run, "queued", actor);
     queueExecutionRun(id);
     return saved;
@@ -94,7 +192,7 @@ export class ExecutionRunsService {
   async retry(id: number, actor: string) {
     const run = await required(await this.repository.getStored(id));
     if (run.status !== "failed") throw AppError.conflict("Only a failed execution can be retried.");
-    await verifyApprovedReview(run.reviewId);
+    await verifyExecutableReview(run);
     const saved = await this.changeStatus(run, "queued", actor);
     queueExecutionRun(id);
     return saved;
@@ -153,6 +251,12 @@ export class ExecutionRunsService {
     createExecutionRunEvent(saved, status);
     return saved;
   }
+}
+
+function verifyExecutableReview(run: StoredExecutionRun) {
+  return run.selectionMode === "selected"
+    ? verifyPreparedReview(run.reviewId)
+    : verifyApprovedReview(run.reviewId);
 }
 
 async function required(run: StoredExecutionRun | null) {

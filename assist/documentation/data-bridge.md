@@ -18,7 +18,7 @@ Data transfers follow: profile databases and tables, map columns and relationshi
 | Discovery Snapshots    | Immutable structural, volume, relationship, and sensitivity metadata                 |
 | Schema Comparison      | Compatibility findings, ordered DDL plan, recovery notes, and dry-run evidence       |
 | Mappings & Transforms  | Table/column mappings, defaults, normalization, validation, redaction, and rejects   |
-| Review & Approvals     | Separation of duties, risk decisions, approval reference, and immutable checksum     |
+| Review & Approvals     | Live Source/Target record comparison, explicit row selection, and immutable checksum |
 | Execution Runs         | Idempotent jobs, batches, checkpoints, retries, pause/cancel/resume, and quarantine  |
 | Reconciliation & Audit | Counts, hashes, financial controls, exceptions, client sign-off, and audit export    |
 
@@ -29,7 +29,8 @@ Migration Projects is the orchestration aggregate. Other modules own their recor
 - Every project and job requires explicit tenant context.
 - Database credentials remain server-side and must use an encrypted secret provider.
 - Discovery reads metadata before any business rows are sampled.
-- Schema and data writes require a successful dry run, approval reference, and immutable plan checksum.
+- Schema writes and full-plan data execution require a successful dry run, approval reference, and immutable plan checksum.
+- Selected-record data execution requires a successful dry run, an unchanged plan checksum, and explicit operator selection of each new Source record.
 - Execution workers must be idempotent, checkpointed, resumable, rate-limited, and fully audited.
 - Logs and API responses must redact credentials and configured sensitive columns.
 - Source databases are read-only unless an approved adapter explicitly requires otherwise.
@@ -51,7 +52,7 @@ The data-migration track now supplies the complete operator workflow through ded
 - Migration Manager owns tenant-scoped Source and Target connection settings and connection tests.
 - Discovery Snapshots own live database metadata discovery and prepared table-pair evidence.
 - Field Mappings and Transforms own mapped fields plus fixed Source read and Target write plans.
-- Review & Approvals performs a live read-only count check, verifies mapped Target identity fields, locks a SHA-256 plan checksum, and enforces separation of duties.
+- Review & Approvals performs a live read-only count check, verifies mapped Target identity fields, locks a SHA-256 plan checksum, displays Source and Target records side by side, and queues only explicitly selected new Source records.
 - Execution Runs require an approved unchanged checksum, transfer in checkpointed batches, support pause/cancel/resume/retry, and stop a table on every existing Target record until an individual Override or Reject decision is audited.
 - Reconciliation & Audit re-reads migrated Target identities, compares row hashes, records and resolves exceptions, captures client sign-off, and exports checksummed audit evidence.
 

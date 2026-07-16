@@ -42,6 +42,8 @@ export type ExecutionRun = {
   approvalReference: string;
   requestedBy: string;
   batchSize: number;
+  selectionMode?: "all" | "selected";
+  selectedRecordCount?: number;
   status: ExecutionRunStatus;
   tables: ExecutionTableProgress[];
   conflicts: ExecutionConflict[];
@@ -51,6 +53,12 @@ export type ExecutionRun = {
   error: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ExecutionRecordSelection = {
+  targetTable: string;
+  identityValues: Record<string, unknown>;
+  targetIdentityMode: "preserve" | "generate";
 };
 
 export type ExecutionLedgerEntry = {
@@ -76,4 +84,5 @@ export type StoredExecutionRun = Omit<ExecutionRun, "conflicts"> & {
   conflicts: StoredExecutionConflict[];
   ledger: ExecutionLedgerEntry[];
   audit: Array<{ action: string; actor: string; at: string; details?: string }>;
+  selectedRecords?: ExecutionRecordSelection[];
 };

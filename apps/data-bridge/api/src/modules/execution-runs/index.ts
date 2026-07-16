@@ -15,6 +15,7 @@ export { registerExecutionRunsModule } from "./execution-runs.module.js";
 export type {
   ExecutionConflict,
   ExecutionLedgerEntry,
+  ExecutionRecordSelection,
   ExecutionRun,
   ExecutionRunStatus,
   ExecutionTableProgress

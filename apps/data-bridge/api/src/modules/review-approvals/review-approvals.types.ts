@@ -43,3 +43,21 @@ export type ReviewCandidate = {
   reviewId: number | null;
   reviewStatus: ReviewStatus | null;
 };
+
+export type ReviewRecordPreviewRow = {
+  key: string;
+  identityValues: Record<string, unknown>;
+  sourceValues: Record<string, unknown>;
+  mappedValues: Record<string, unknown>;
+  targetValues: Record<string, unknown> | null;
+  status: "new" | "match" | "different" | "invalid";
+  targetIdentityMode: "preserve" | "generate" | null;
+};
+
+export type ReviewRecordPreview = {
+  sourceTable: string;
+  targetTable: string;
+  sourceFields: string[];
+  targetFields: string[];
+  rows: ReviewRecordPreviewRow[];
+};

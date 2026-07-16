@@ -23,7 +23,7 @@ export function ReviewApprovalsList({
             <WorkspaceTableHeaderCell>Plan</WorkspaceTableHeaderCell>
             <WorkspaceTableHeaderCell>Tenant</WorkspaceTableHeaderCell>
             <WorkspaceTableHeaderCell>Source rows</WorkspaceTableHeaderCell>
-            <WorkspaceTableHeaderCell>Status</WorkspaceTableHeaderCell>
+            <WorkspaceTableHeaderCell>Readiness</WorkspaceTableHeaderCell>
           </tr>
         </thead>
         <tbody>
@@ -39,14 +39,8 @@ export function ReviewApprovalsList({
               <td className="px-4 py-2.5">{record.totalSourceRows}</td>
               <td className="px-4 py-2.5">
                 <WorkspaceStatusBadge
-                  label={record.status}
-                  tone={
-                    record.status === "approved"
-                      ? "success"
-                      : record.status === "pending"
-                        ? "warning"
-                        : "danger"
-                  }
+                  label={record.dryRunSucceeded ? "ready" : "blocked"}
+                  tone={record.dryRunSucceeded ? "success" : "danger"}
                 />
               </td>
             </tr>

@@ -62,6 +62,7 @@ function publicRun(run: StoredExecutionRun): ExecutionRun {
   delete publicFields.ledger;
   delete publicFields.audit;
   delete publicFields.conflicts;
+  delete publicFields.selectedRecords;
   return {
     ...(publicFields as ExecutionRun),
     conflicts: run.conflicts.map(publicConflict)

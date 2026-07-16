@@ -1,9 +1,10 @@
 import type {
-  ApproveReviewInput,
   PrepareReviewInput,
   ReviewApproval,
   ReviewCandidate,
-  ReviewDecisionInput
+  ReviewRecordPreview,
+  SelectedExecutionRun,
+  SendSelectedRecordsInput
 } from "./review-approvals.types";
 const base = import.meta.env.VITE_DATA_BRIDGE_API_URL ?? "http://127.0.0.1:7090";
 async function request<T>(path: string, init?: RequestInit) {
@@ -28,9 +29,14 @@ export const listReviewApprovals = () => request<ReviewApproval[]>(path);
 export const listReviewCandidates = () => request<ReviewCandidate[]>(`${path}/candidates`);
 export const prepareReview = (input: PrepareReviewInput) =>
   request<ReviewApproval>(path, { method: "POST", body: JSON.stringify(input) });
-export const approveReview = (id: number, input: ApproveReviewInput) =>
-  request<ReviewApproval>(`${path}/${id}/approve`, { method: "POST", body: JSON.stringify(input) });
-export const rejectReview = (id: number, input: ReviewDecisionInput) =>
-  request<ReviewApproval>(`${path}/${id}/reject`, { method: "POST", body: JSON.stringify(input) });
-export const revokeReview = (id: number, input: ReviewDecisionInput) =>
-  request<ReviewApproval>(`${path}/${id}/revoke`, { method: "POST", body: JSON.stringify(input) });
+export const refreshReview = (id: number) =>
+  request<ReviewApproval>(`${path}/${id}/refresh`, { method: "POST" });
+export const previewReviewRecords = (id: number, targetTable: string) =>
+  request<ReviewRecordPreview>(
+    `${path}/${id}/records?table=${encodeURIComponent(targetTable)}&limit=50`
+  );
+export const sendSelectedRecords = (input: SendSelectedRecordsInput) =>
+  request<SelectedExecutionRun>("/data-bridge/execution-runs/selected", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });

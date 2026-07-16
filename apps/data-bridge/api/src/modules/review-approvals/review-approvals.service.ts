@@ -6,7 +6,7 @@ import { getTransformPlan, listApprovedTransformPlans } from "../transforms/inde
 import { createReviewApprovalEvent } from "./review-approvals.events.js";
 import { ReviewApprovalsRepository } from "./review-approvals.repository.js";
 import type { ReviewApproval, ReviewCandidate } from "./review-approvals.types.js";
-import { processReviewDryRun } from "./review-approvals.worker.js";
+import { previewReviewRecords, processReviewDryRun } from "./review-approvals.worker.js";
 
 export class ReviewApprovalsService {
   constructor(private readonly repository = new ReviewApprovalsRepository()) {}
@@ -101,6 +101,38 @@ export class ReviewApprovalsService {
     if (transform.status !== "approved" || checksumTransform(transform) !== review.checksum)
       throw AppError.conflict("The approved query plan changed. Prepare and approve a new review.");
     return { review, transform };
+  }
+
+  async verifyPrepared(id: number) {
+    const review = await requiredReview(await this.repository.get(id));
+    if (["rejected", "revoked"].includes(review.status) || !review.dryRunSucceeded)
+      throw AppError.conflict("The data-transfer review is not ready for selected execution.");
+    const transform = await requiredTransform(review.transformPlanId);
+    if (transform.status !== "approved" || checksumTransform(transform) !== review.checksum)
+      throw AppError.conflict("The reviewed query plan changed. Prepare a new review.");
+    return { review, transform };
+  }
+
+  async preview(id: number, targetTable: string, limit: number) {
+    const { review, transform } = await this.verifyPrepared(id);
+    return previewReviewRecords(review, transform, targetTable, limit);
+  }
+
+  async refresh(id: number) {
+    const { review, transform } = await this.verifyPrepared(id);
+    const context = await getMappingPlanContext(review.mappingPlanId);
+    if (!context) throw AppError.notFound("The field mapping context was not found.");
+    const tables = await processReviewDryRun(transform, context);
+    const saved = await this.repository.update(review.id, {
+      dryRunSucceeded: tables.every((table) => table.blockingRisks.length === 0),
+      totalSourceRows: tables.reduce((total, table) => total + table.sourceCount, 0),
+      totalTargetRows: tables.reduce((total, table) => total + table.targetCount, 0),
+      tables,
+      updatedAt: new Date().toISOString()
+    });
+    if (!saved) throw AppError.notFound("Review was not found.");
+    createReviewApprovalEvent("data-bridge.review.prepared", saved);
+    return saved;
   }
 
   private async decide(

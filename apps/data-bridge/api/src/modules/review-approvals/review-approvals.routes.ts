@@ -6,6 +6,28 @@ import { ReviewApprovalsService } from "./review-approvals.service.js";
 
 const path = "/data-bridge/review-approvals";
 const idSchema = z.object({ id: z.coerce.number().int().positive() });
+const previewQuerySchema = z.object({
+  table: z.string().trim().min(1).max(160),
+  limit: z.coerce.number().int().min(1).max(100).default(25)
+});
+const recordValuesSchema = z.record(z.string(), z.unknown());
+const previewSchema = z.object({
+  sourceTable: z.string(),
+  targetTable: z.string(),
+  sourceFields: z.array(z.string()),
+  targetFields: z.array(z.string()),
+  rows: z.array(
+    z.object({
+      key: z.string(),
+      identityValues: recordValuesSchema,
+      sourceValues: recordValuesSchema,
+      mappedValues: recordValuesSchema,
+      targetValues: recordValuesSchema.nullable(),
+      status: z.enum(["new", "match", "different", "invalid"]),
+      targetIdentityMode: z.enum(["preserve", "generate"]).nullable()
+    })
+  )
+});
 const tableSchema = z.object({
   sourceTable: z.string(),
   targetTable: z.string(),
@@ -84,10 +106,22 @@ export async function registerReviewApprovalsRoutes(app: FastifyInstance) {
     handler: async ({ params }) => required(await service.get(params.id))
   });
   registerContractRoute(app, {
+    method: "GET",
+    url: `${path}/:id/records`,
+    schemas: { params: idSchema, querystring: previewQuerySchema, response: previewSchema },
+    handler: ({ params, query }) => service.preview(params.id, query.table, query.limit)
+  });
+  registerContractRoute(app, {
     method: "POST",
     url: path,
     schemas: { body: prepareSchema, response: recordSchema },
     handler: ({ body }) => service.prepare(body.transformPlanId, body.preparedBy)
+  });
+  registerContractRoute(app, {
+    method: "POST",
+    url: `${path}/:id/refresh`,
+    schemas: { params: idSchema, response: recordSchema },
+    handler: ({ params }) => service.refresh(params.id)
   });
   registerContractRoute(app, {
     method: "POST",

@@ -1,19 +1,14 @@
 import { useState } from "react";
+import { Send } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
 import { Input } from "@codexsun/ui/components/input";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceFormBanner } from "@codexsun/ui/workspace/upsert";
-import {
-  approveReviewSchema,
-  prepareReviewSchema,
-  reviewDecisionSchema
-} from "./review-approvals.schema";
+import { prepareReviewSchema, sendSelectedRecordsSchema } from "./review-approvals.schema";
 import type {
-  ApproveReviewInput,
   PrepareReviewInput,
-  ReviewApproval,
   ReviewCandidate,
-  ReviewDecisionInput
+  SendSelectedRecordsInput
 } from "./review-approvals.types";
 
 export function ReviewPrepareForm({
@@ -45,9 +40,9 @@ export function ReviewPrepareForm({
   return (
     <section className="space-y-3 rounded-md border bg-card p-4">
       <div>
-        <h3 className="font-semibold">Prepare live dry run</h3>
+        <h3 className="font-semibold">Prepare live data review</h3>
         <p className="text-sm text-muted-foreground">
-          Counts Source and Target rows and locks the approved query checksum.
+          Reads Source and Target counts and prepares record-level comparison without writing data.
         </p>
       </div>
       {validation || error ? (
@@ -74,87 +69,70 @@ export function ReviewPrepareForm({
         />
       </div>
       <Button disabled={pending} onClick={submit}>
-        {pending ? "Running dry run..." : "Prepare review"}
+        {pending ? "Preparing records..." : "Prepare data review"}
       </Button>
     </section>
   );
 }
 
-export function ReviewDecisionForm({
-  review,
+export function SendSelectedRecordsForm({
+  reviewId,
+  selectionCount,
   pending,
   error,
-  onApprove,
-  onReject,
-  onRevoke
+  onSubmit
 }: {
-  review: ReviewApproval;
+  reviewId: number;
+  selectionCount: number;
   pending: boolean;
   error: string | undefined;
-  onApprove: (input: ApproveReviewInput) => unknown;
-  onReject: (input: ReviewDecisionInput) => unknown;
-  onRevoke: (input: ReviewDecisionInput) => unknown;
+  onSubmit: (input: Omit<SendSelectedRecordsInput, "selections">) => unknown;
 }) {
-  const [actor, setActor] = useState("");
-  const [reference, setReference] = useState("");
-  const [reason, setReason] = useState("");
+  const [requestedBy, setRequestedBy] = useState("");
+  const [batchSize, setBatchSize] = useState(100);
   const [validation, setValidation] = useState("");
-  const decide = (action: "approve" | "reject" | "revoke") => {
-    const result =
-      action === "approve"
-        ? approveReviewSchema.safeParse({ approver: actor, approvalReference: reference, reason })
-        : reviewDecisionSchema.safeParse({ actor, reason });
+  const submit = () => {
+    const result = sendSelectedRecordsSchema.safeParse({
+      requestedBy,
+      batchSize,
+      selectionCount
+    });
     if (!result.success)
-      return setValidation(result.error.issues[0]?.message ?? "Complete the decision form.");
+      return setValidation(result.error.issues[0]?.message ?? "Complete the transfer form.");
     setValidation("");
-    if (action === "approve") onApprove(result.data as ApproveReviewInput);
-    else if (action === "reject") onReject(result.data as ReviewDecisionInput);
-    else onRevoke(result.data as ReviewDecisionInput);
+    onSubmit({ reviewId, requestedBy: result.data.requestedBy, batchSize: result.data.batchSize });
   };
   return (
     <section className="space-y-3 rounded-md border bg-card p-4">
-      <h3 className="font-semibold">Review decision</h3>
+      <div>
+        <h3 className="font-semibold">Send selected records</h3>
+        <p className="text-sm text-muted-foreground">
+          New records keep their mapped identity; different records receive a new Target identity.
+        </p>
+      </div>
       {validation || error ? (
-        <WorkspaceFormBanner title="Unable to record decision">
+        <WorkspaceFormBanner title="Unable to queue selected records">
           {validation || error}
         </WorkspaceFormBanner>
       ) : null}
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-[1fr_9rem_auto]">
         <Input
-          value={actor}
-          onChange={(event) => setActor(event.target.value)}
-          placeholder={
-            review.status === "pending" ? "Approver (must differ from preparer)" : "Decision actor"
-          }
+          value={requestedBy}
+          onChange={(event) => setRequestedBy(event.target.value)}
+          placeholder="Operator name"
         />
         <Input
-          value={reference}
-          onChange={(event) => setReference(event.target.value)}
-          placeholder="Approval reference"
-          disabled={review.status !== "pending"}
+          min={1}
+          max={1000}
+          type="number"
+          value={batchSize}
+          onChange={(event) => setBatchSize(Number(event.target.value))}
+          aria-label="Batch size"
         />
-      </div>
-      <Input
-        value={reason}
-        onChange={(event) => setReason(event.target.value)}
-        placeholder="Decision reason"
-      />
-      <div className="flex flex-wrap gap-2">
-        {review.status === "pending" ? (
-          <>
-            <Button disabled={pending || !review.dryRunSucceeded} onClick={() => decide("approve")}>
-              Approve execution
-            </Button>
-            <Button variant="outline" disabled={pending} onClick={() => decide("reject")}>
-              Reject
-            </Button>
-          </>
-        ) : null}
-        {review.status === "approved" ? (
-          <Button variant="outline" disabled={pending} onClick={() => decide("revoke")}>
-            Revoke approval
-          </Button>
-        ) : null}
+        <Button disabled={pending || selectionCount === 0} onClick={submit}>
+          <Send className="size-4" />
+          {pending ? "Queuing..." : `Send ${selectionCount} selected`}
+        </Button>
       </div>
     </section>
   );
