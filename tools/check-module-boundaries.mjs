@@ -5,6 +5,10 @@ const requestedApp = process.argv[2]?.trim();
 
 const moduleRoots = [
   {
+    app: "mail-api",
+    path: join(process.cwd(), "apps", "mail", "api", "src", "modules")
+  },
+  {
     app: "kitchen-serve-api",
     path: join(process.cwd(), "apps", "kitchen-serve", "api", "src", "modules")
   },
@@ -56,6 +60,10 @@ const reducedBackendRoles = [
 ];
 
 const webModuleRoots = [
+  {
+    app: "mail-web",
+    path: join(process.cwd(), "apps", "mail", "web", "src", "modules")
+  },
   {
     app: "kitchen-serve-web",
     path: join(process.cwd(), "apps", "kitchen-serve", "web", "src", "modules")
@@ -111,6 +119,10 @@ for (const root of moduleRoots) {
   );
   for (const moduleDir of modules) {
     const modulePath = join(root.path, moduleDir.name);
+    if (root.app === "billing-api" && moduleDir.name === "reports") {
+      validateBillingReportBackend(modulePath);
+      continue;
+    }
     const moduleRoles =
       root.app === "platform-api" && reducedPlatformBackendModules.has(moduleDir.name)
         ? reducedBackendRoles
@@ -141,6 +153,10 @@ for (const root of webModuleRoots) {
   );
   for (const moduleDir of modules) {
     const modulePath = join(root.path, moduleDir.name);
+    if (root.app === "billing-web" && moduleDir.name === "reports") {
+      validateBillingReportFrontend(modulePath);
+      continue;
+    }
     if (!existsSync(join(modulePath, `${moduleDir.name}.services.ts`))) continue;
 
     for (const role of requiredFrontendRoles) {
@@ -202,6 +218,45 @@ function validateCoreFrontend(root) {
       else validateRoleFile(filePath, label, role);
     }
     if (!existsSync(join(modulePath, "index.ts"))) missing.push(`${label}: missing index.ts`);
+  }
+}
+
+function validateBillingReportBackend(reportsPath) {
+  const compositionModule = join(reportsPath, "reports.module.ts");
+  if (!existsSync(compositionModule))
+    missing.push("billing-api/reports: missing reports.module.ts");
+  else validateRoleFile(compositionModule, "billing-api/reports", "module");
+  if (!existsSync(join(reportsPath, "index.ts"))) {
+    missing.push("billing-api/reports: missing index.ts");
+  }
+  const reportRoles = ["module", "service", "repository", "routes", "types"];
+  for (const reportPath of leafDirectories(reportsPath)) {
+    const reportName = reportPath.split(/[\\/]/).at(-1);
+    const label = `billing-api/reports/${reportName}`;
+    for (const role of reportRoles) {
+      const filePath = join(reportPath, `${reportName}.${role}.ts`);
+      if (!existsSync(filePath)) missing.push(`${label}: missing ${reportName}.${role}.ts`);
+      else validateRoleFile(filePath, label, role);
+    }
+    if (!existsSync(join(reportPath, "index.ts"))) missing.push(`${label}: missing index.ts`);
+  }
+}
+
+function validateBillingReportFrontend(reportsPath) {
+  if (!existsSync(join(reportsPath, "index.ts"))) {
+    missing.push("billing-web/reports: missing index.ts");
+  }
+  for (const reportPath of leafDirectories(reportsPath)) {
+    const reportName = reportPath.split(/[\\/]/).at(-1);
+    const label = `billing-web/reports/${reportName}`;
+    for (const role of requiredFrontendRoles) {
+      const extension = ["form", "list", "workspace"].includes(role) ? "tsx" : "ts";
+      const filePath = join(reportPath, `${reportName}.${role}.${extension}`);
+      if (!existsSync(filePath))
+        missing.push(`${label}: missing ${reportName}.${role}.${extension}`);
+      else validateRoleFile(filePath, label, role);
+    }
+    if (!existsSync(join(reportPath, "index.ts"))) missing.push(`${label}: missing index.ts`);
   }
 }
 

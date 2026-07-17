@@ -34,6 +34,7 @@ export const listReceiptsPage = (query: {
   );
 };
 export const getReceiptContext = () => billingApiGet<ReceiptContext>("/billing/receipts/context");
+export const getReceipt = (id: string) => billingApiGet<Receipt>(`/billing/receipts/${id}`);
 export const createReceipt = (input: ReceiptSavePayload) =>
   billingApiPost<Receipt>("/billing/receipts", input);
 export const updateReceipt = (id: string, input: ReceiptSavePayload) =>

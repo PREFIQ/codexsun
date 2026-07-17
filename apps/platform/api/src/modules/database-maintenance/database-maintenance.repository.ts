@@ -15,6 +15,7 @@ import type {
   DatabaseTableInfo
 } from "./database-maintenance.types.js";
 import { getPlatformDatabase } from "../../database/platform-database.js";
+import { resolveTenantDatabasePassword } from "../../database/tenant-database.js";
 
 export class DatabaseMaintenanceRepository {
   constructor(private readonly tenants = new TenantRepository()) {}
@@ -52,6 +53,7 @@ export class DatabaseMaintenanceRepository {
     const probe = await this.probeDatabase({
       databaseName: tenant.dbName,
       host: tenant.dbHost || env.DB_HOST,
+      password: resolveTenantDatabasePassword(tenant),
       port: tenant.dbPort || env.DB_PORT,
       user: tenant.dbUser || env.DB_USER
     });
@@ -165,6 +167,7 @@ export class DatabaseMaintenanceRepository {
   private async probeDatabase(input: {
     databaseName: string;
     host: string;
+    password?: string;
     port: number;
     user: string;
   }) {
@@ -172,7 +175,7 @@ export class DatabaseMaintenanceRepository {
       const connection = await createConnection({
         database: input.databaseName,
         host: input.host,
-        password: env.DB_PASSWORD,
+        password: input.password ?? env.DB_PASSWORD,
         port: input.port,
         timezone: "Z",
         user: input.user
@@ -232,7 +235,7 @@ export class DatabaseMaintenanceRepository {
       const connection = await createConnection({
         database: tenant.dbName,
         host: tenant.dbHost || env.DB_HOST,
-        password: env.DB_PASSWORD,
+        password: resolveTenantDatabasePassword(tenant),
         port: tenant.dbPort || env.DB_PORT,
         timezone: "Z",
         user: tenant.dbUser || env.DB_USER
@@ -260,7 +263,7 @@ export class DatabaseMaintenanceRepository {
       const connection = await createConnection({
         database: tenant.dbName,
         host: tenant.dbHost || env.DB_HOST,
-        password: env.DB_PASSWORD,
+        password: resolveTenantDatabasePassword(tenant),
         port: tenant.dbPort || env.DB_PORT,
         timezone: "Z",
         user: tenant.dbUser || env.DB_USER

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { sql, type Kysely, type RawBuilder, type Transaction } from "kysely";
 import { getBillingDatabase } from "../../database/billing-database.js";
+import { currentBillingScope } from "../../auth/billing-scope.js";
 import type {
   ExportSale,
   ExportSaleContext,
@@ -121,12 +122,15 @@ export class ExportSalesRepository {
       search,
       status: options.status
     };
+    const scope = currentBillingScope();
     const result = await selectExportSaleHeaders(undefined, page).execute(database);
     const count = await sql<{
       total: string | number;
     }>`SELECT COUNT(*) AS total FROM billing_export_sales s
       INNER JOIN contacts customer ON customer.id=s.customer_id LEFT JOIN work_orders work_order ON work_order.id=s.work_order_id
-      WHERE s.deleted_at IS NULL AND (${page.status}='all' OR s.status=${page.status})
+      WHERE s.deleted_at IS NULL
+        AND s.company_id=${scope.companyId} AND s.financial_year_id=${scope.financialYearId}
+        AND (${page.status}='all' OR s.status=${page.status})
       AND (${customer}='all' OR LOWER(customer.name)=${customer})
       AND (${search}='%%' OR s.invoice_number LIKE ${search} OR customer.name LIKE ${search}
         OR COALESCE(work_order.code,'') LIKE ${search} OR DATE_FORMAT(s.issued_on,'%Y-%m-%d') LIKE ${search}
@@ -148,6 +152,7 @@ export class ExportSalesRepository {
 
   async context(databaseName: string): Promise<ExportSaleContext | null> {
     const database = await exportSalesDatabase(databaseName);
+    const scope = currentBillingScope();
     const result = await sql<{
       company_id: number;
       company_name: string;
@@ -156,17 +161,17 @@ export class ExportSalesRepository {
       financial_year_id: number;
       financial_year_name: string;
     }>`
-      SELECT d.company_id,
+      SELECT c.id AS company_id,
              c.name AS company_name,
-             d.financial_year_id,
+             f.id AS financial_year_id,
              f.name AS financial_year_name,
              currency.id AS currency_id,
              currency.name AS currency_code
-      FROM default_company_settings d
-      INNER JOIN companies c ON c.id = d.company_id AND c.status = 'active'
-      INNER JOIN financial_years f ON f.id = d.financial_year_id AND f.status = 'active'
+      FROM companies c
+      CROSS JOIN financial_years f
       INNER JOIN currencies currency ON UPPER(currency.name) = 'INR' AND currency.status = 'active'
-      WHERE d.singleton_key = 1 AND d.status = 'active'
+      WHERE c.id=${scope.companyId} AND c.status='active'
+        AND f.id=${scope.financialYearId} AND f.status='active'
       LIMIT 1
     `.execute(database);
     const row = result.rows[0];
@@ -187,10 +192,11 @@ export class ExportSalesRepository {
     input: ExportSaleSavePayload
   ): Promise<ExportSaleReferenceState> {
     const database = await exportSalesDatabase(databaseName);
+    const scope = currentBillingScope();
     const result = await sql<Record<keyof ExportSaleReferenceState, number>>`
       SELECT
-        EXISTS(SELECT 1 FROM companies WHERE id = ${input.companyId} AND status = 'active') AS company,
-        EXISTS(SELECT 1 FROM financial_years WHERE id = ${input.financialYearId} AND status = 'active' AND ${input.issuedOn} BETWEEN start_date AND end_date) AS financialYear,
+        EXISTS(SELECT 1 FROM companies WHERE id = ${input.companyId} AND id=${scope.companyId} AND status = 'active') AS company,
+        EXISTS(SELECT 1 FROM financial_years WHERE id = ${input.financialYearId} AND id=${scope.financialYearId} AND status = 'active' AND ${input.issuedOn} BETWEEN start_date AND end_date) AS financialYear,
         EXISTS(SELECT 1 FROM contacts WHERE id = ${input.customerId} AND status = 'active') AS customer,
         EXISTS(SELECT 1 FROM contacts_addresses WHERE id = ${input.billingAddressId} AND parent_id = ${input.customerId}) AS billingAddress,
         EXISTS(SELECT 1 FROM contacts_addresses WHERE id = ${input.shippingAddressId} AND parent_id = ${input.customerId}) AS shippingAddress,
@@ -630,6 +636,7 @@ function selectExportSaleHeaders(
   uuid?: string,
   page?: { customer: string; limit: number; offset: number; search: string; status: string }
 ) {
+  const scope = currentBillingScope();
   return sql<ExportSaleHeaderRow>`
     SELECT s.id, s.uuid, s.company_id, company.name AS company_name,
            s.financial_year_id, financial_year.name AS financial_year_name,
@@ -658,7 +665,9 @@ function selectExportSaleHeaders(
     INNER JOIN currencies currency ON currency.id = s.currency_id
     LEFT JOIN work_orders work_order ON work_order.id = s.work_order_id
     LEFT JOIN ledgers ledger ON ledger.id = s.ledger_id
-    WHERE s.deleted_at IS NULL ${uuid ? sql`AND s.uuid = ${uuid}` : sql``}
+    WHERE s.deleted_at IS NULL
+      AND s.company_id=${scope.companyId} AND s.financial_year_id=${scope.financialYearId}
+      ${uuid ? sql`AND s.uuid = ${uuid}` : sql``}
       ${
         page
           ? sql`AND (${page.status}='all' OR s.status=${page.status})
@@ -694,8 +703,11 @@ function selectExportSaleItems(exportSaleId: number) {
 }
 
 async function internalExportSale(database: Kysely<ExportSalesDatabase>, uuid: string) {
+  const scope = currentBillingScope();
   const result = await sql<{ id: number; status: ExportSaleStatus }>`
-    SELECT id, status FROM billing_export_sales WHERE uuid = ${uuid} AND deleted_at IS NULL LIMIT 1
+    SELECT id, status FROM billing_export_sales WHERE uuid = ${uuid}
+      AND company_id=${scope.companyId} AND financial_year_id=${scope.financialYearId}
+      AND deleted_at IS NULL LIMIT 1
   `.execute(database);
   return result.rows[0] ?? null;
 }

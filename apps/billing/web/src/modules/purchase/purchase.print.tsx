@@ -1,8 +1,11 @@
+import { useEffect, useRef } from "react";
 import { WorkspacePrintSheet } from "@codexsun/ui/workspace/print";
 import { ArrowLeft, Printer, RefreshCw } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
+import { GlobalLoader } from "@codexsun/ui/components/global-loader";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { PageTitle } from "../../shared/document/PageTitle";
+import { BillingCompanyName, BillingDocumentHeader } from "../settings";
 import { usePurchaseRecord } from "./purchase.hooks";
 import { formatDate, formatMoney } from "./purchase.services";
 import type { Purchase } from "./purchase.types";
@@ -10,8 +13,30 @@ import type { Purchase } from "./purchase.types";
 export type PurchasePrintCopy = "duplicate" | "office-copy" | "original";
 
 export function PurchasePrintRoutePage() {
-  const purchaseId = new URLSearchParams(window.location.search).get("id");
+  const search = new URLSearchParams(window.location.search);
+  const purchaseId = search.get("id");
+  const autoPrint = search.get("autoprint") === "1";
   const purchaseQuery = usePurchaseRecord(purchaseId, true);
+  const autoPrintTriggered = useRef(false);
+
+  useEffect(() => {
+    if (!autoPrint || !purchaseQuery.data || autoPrintTriggered.current) return;
+    const closeAfterPrint = () => window.close();
+    window.addEventListener("afterprint", closeAfterPrint, { once: true });
+    const timeout = window.setTimeout(() => {
+      autoPrintTriggered.current = true;
+      window.print();
+    }, 150);
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener("afterprint", closeAfterPrint);
+    };
+  }, [autoPrint, purchaseQuery.data]);
+
+  if (purchaseQuery.isLoading) {
+    return <GlobalLoader />;
+  }
+
   return (
     <WorkspacePage
       className="billing-document-print-page"
@@ -41,9 +66,7 @@ export function PurchasePrintRoutePage() {
         <PurchasePrintDocument copy="original" purchase={purchaseQuery.data} />
       ) : (
         <div className="px-4 py-8 text-sm text-muted-foreground">
-          {purchaseQuery.isLoading
-            ? "Loading purchase print view..."
-            : "Purchase print record was not found."}
+          Purchase print record was not found.
         </div>
       )}
     </WorkspacePage>
@@ -127,28 +150,7 @@ function PurchasePrintPage({
           </div>
         </header>
 
-        <section className="grid min-h-[11.5rem] grid-cols-[8rem_1fr] border-b border-slate-300">
-          <div className="flex items-center justify-center p-4">
-            <div className="grid size-[5.5rem] place-items-center rounded-[1rem] border-[3px] border-slate-700 text-slate-700">
-              <div className="relative size-[3.6rem]">
-                <span className="absolute left-0 top-1 h-[6px] w-full rounded bg-current" />
-                <span className="absolute left-0 top-1/2 h-[6px] w-full -translate-y-1/2 rounded bg-current" />
-                <span className="absolute left-0 bottom-1 h-[6px] w-full rounded bg-current" />
-                <span className="absolute left-1 top-0 h-full w-[6px] rounded bg-current" />
-                <span className="absolute right-1 top-0 h-full w-[6px] rounded bg-current" />
-              </div>
-            </div>
-          </div>
-          <div className="grid place-items-center px-6 py-5 text-center">
-            <div>
-              <div className="text-[1.95rem] font-semibold tracking-tight">CODEXSUN</div>
-              <div className="mt-2 text-[11px] leading-5">
-                <div>address1, ADDRESS 2</div>
-                <div>Tiruppur, Tiruppur-Dist, Tamil Nadu, India - 641602</div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <BillingDocumentHeader />
 
         <section className="grid border-b border-slate-300 text-[10px] sm:grid-cols-2">
           <div className="px-2 py-2">
@@ -260,7 +262,9 @@ function PurchasePrintPage({
                 <div className="mt-4">Receiver Sign</div>
               </div>
               <div className="grid grid-rows-[1fr_auto] px-2 py-2 text-[9px]">
-                <div className="font-semibold">For CODEXSUN</div>
+                <div className="font-semibold">
+                  For <BillingCompanyName />
+                </div>
                 <div className="font-semibold">Authorised Signatory</div>
               </div>
             </section>

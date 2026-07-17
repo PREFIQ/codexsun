@@ -11,6 +11,7 @@ import {
 import { ArrowUpDown } from "lucide-react";
 import { useRef, useState, type ReactNode, type ThHTMLAttributes } from "react";
 import { cn } from "../lib/utils";
+import { GlobalLoader } from "../components/global-loader";
 
 export const workspaceTablePanelClass =
   "overflow-hidden rounded-md border border-border/70 bg-card/95 shadow-sm";
@@ -148,6 +149,6 @@ export function WorkspaceTableEmptyState({
   );
 }
 
-export function WorkspaceTableLoadingState({ label = "Loading records..." }: { label?: string }) {
-  return <WorkspaceTableEmptyState className="py-10">{label}</WorkspaceTableEmptyState>;
+export function WorkspaceTableLoadingState() {
+  return <GlobalLoader className="min-h-32" fullScreen={false} />;
 }

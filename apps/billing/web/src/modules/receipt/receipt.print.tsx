@@ -1,12 +1,10 @@
+import { BillingDocumentHeader } from "../settings";
 import type { Receipt } from "./receipt.types";
 export function ReceiptPrint({ receipt }: { receipt: Receipt }) {
   return (
-    <div className="receipt-print mx-auto max-w-[800px] border border-slate-300 bg-white p-8 text-slate-900 print:border-0">
-      <div className="border-b border-slate-300 pb-4 text-center">
-        <h1 className="text-2xl font-bold">RECEIPT VOUCHER</h1>
-        <p className="text-sm">{receipt.receiptNumber}</p>
-      </div>
-      <div className="grid grid-cols-2 gap-6 border-b border-slate-300 py-5 text-sm">
+    <div className="receipt-print mx-auto max-w-[800px] border border-slate-300 bg-white text-slate-900 print:border-0">
+      <BillingDocumentHeader documentMeta={receipt.receiptNumber} documentTitle="Receipt Voucher" />
+      <div className="grid grid-cols-2 gap-6 border-b border-slate-300 px-8 py-5 text-sm">
         <p>
           <b>Received from</b>
           <br />
@@ -28,7 +26,7 @@ export function ReceiptPrint({ receipt }: { receipt: Receipt }) {
           {receipt.referenceNo || "-"}
         </p>
       </div>
-      <div className="py-6">
+      <div className="px-8 py-6">
         <div className="flex justify-between border-b border-slate-200 py-2">
           <span>Amount</span>
           <b>{money(receipt.amount)}</b>
@@ -42,7 +40,7 @@ export function ReceiptPrint({ receipt }: { receipt: Receipt }) {
           <b>{money(receipt.totalAmount)}</b>
         </div>
       </div>
-      <div className="mt-20 grid grid-cols-2 gap-8 border-t border-slate-300 pt-3 text-sm">
+      <div className="mx-8 mb-8 mt-20 grid grid-cols-2 gap-8 border-t border-slate-300 pt-3 text-sm">
         <span>Received by</span>
         <span>Authorised signatory</span>
       </div>

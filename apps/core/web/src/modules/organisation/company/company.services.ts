@@ -55,6 +55,7 @@ async function platformRequest<T>(path: string) {
 
 export const listCompanies = (search = "") =>
   request<CompanyRecord[]>(`${companyPath}?search=${encodeURIComponent(search)}`);
+export const getCompany = (id: number) => request<CompanyRecord>(`${companyPath}/${id}`);
 export const createCompany = (payload: CompanySavePayload) =>
   request<CompanyRecord>(companyPath, { body: JSON.stringify(payload), method: "POST" });
 export const updateCompany = (id: number, payload: CompanySavePayload) =>

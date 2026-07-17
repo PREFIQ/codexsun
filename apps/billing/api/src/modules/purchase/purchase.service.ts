@@ -1,4 +1,5 @@
 import { AppError } from "@codexsun/framework/errors";
+import { billingDashboardProjection } from "../dashboard/index.js";
 import { InMemoryEventPublisher, type EventPublisher } from "@codexsun/framework/events";
 import { InMemoryQueueAdapter, type QueueAdapter } from "@codexsun/framework/queue";
 import { SalesService } from "../sales/index.js";
@@ -102,7 +103,20 @@ export class PurchaseService {
       normalized,
       buildPurchaseTotals(normalized)
     );
-    if (purchase) await this.publish("updated", purchase, databaseName);
+    if (purchase) {
+      await this.publish("updated", purchase, databaseName);
+      if (
+        current.companyId !== purchase.companyId ||
+        current.financialYearId !== purchase.financialYearId
+      )
+        await billingDashboardProjection.project(databaseName, {
+          action: "updated",
+          companyId: current.companyId,
+          documentId: current.id,
+          financialYearId: current.financialYearId,
+          source: "purchase"
+        });
+    }
     return purchase;
   }
 
@@ -147,6 +161,13 @@ export class PurchaseService {
     if (current.status !== "draft" || current.generatedSalesInvoiceNo)
       throw AppError.conflict("Only draft purchases without an invoice can be force deleted.");
     await this.repository.softDelete(databaseName, id);
+    await billingDashboardProjection.project(databaseName, {
+      action: "deleted",
+      companyId: current.companyId,
+      documentId: current.id,
+      financialYearId: current.financialYearId,
+      source: "purchase"
+    });
     return current;
   }
 
@@ -260,7 +281,7 @@ export class PurchaseService {
 
   private async publish(
     action: "created" | "updated" | "confirmed" | "cancelled" | "converted",
-    purchase: Pick<Purchase, "id" | "status">,
+    purchase: Pick<Purchase, "companyId" | "financialYearId" | "id" | "status">,
     databaseName: string,
     salesInvoiceNo?: string
   ) {
@@ -279,6 +300,20 @@ export class PurchaseService {
       payload: event.payload,
       sourceModule: "billing.purchase",
       tenantId: databaseName
+    });
+    await billingDashboardProjection.project(databaseName, {
+      action:
+        action === "created"
+          ? "created"
+          : action === "confirmed"
+            ? "confirmed"
+            : action === "cancelled"
+              ? "cancelled"
+              : "updated",
+      companyId: purchase.companyId,
+      documentId: purchase.id,
+      financialYearId: purchase.financialYearId,
+      source: "purchase"
     });
   }
 

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
+import { GlobalLoader } from "@codexsun/ui/components/global-loader";
 import { Input } from "@codexsun/ui/components/input";
 import { WorkspaceDatePicker } from "@codexsun/ui/workspace/date-picker";
 import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
@@ -437,11 +438,8 @@ export function WorkAutomationWorkspace({
               <tbody>
                 {activeQuery.isLoading ? (
                   <tr>
-                    <td
-                      className="px-6 py-10 text-center text-sm text-muted-foreground"
-                      colSpan={usesPriority(kind) ? 8 : 7}
-                    >
-                      Loading records...
+                    <td colSpan={usesPriority(kind) ? 8 : 7}>
+                      <GlobalLoader className="min-h-32" fullScreen={false} />
                     </td>
                   </tr>
                 ) : (

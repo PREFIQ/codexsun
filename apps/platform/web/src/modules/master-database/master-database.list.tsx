@@ -1,15 +1,11 @@
 import { formatDistanceToNow } from "date-fns";
 import { DatabaseIcon, RotateCcwIcon, ServerIcon, ShieldCheckIcon } from "lucide-react";
-import { StatusBadge } from "@codexsun/ui";
+import { GlobalLoader, StatusBadge } from "@codexsun/ui";
 import type { MasterDatabaseStatus } from "./master-database.types";
 
 export function MasterDatabaseList({ record }: { record: MasterDatabaseStatus | undefined }) {
   if (!record) {
-    return (
-      <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground shadow-sm">
-        Loading master database status.
-      </div>
-    );
+    return <GlobalLoader className="min-h-[24rem]" fullScreen={false} />;
   }
   const lastRun = record.runs[0];
   const pendingRuns = record.runs.filter(

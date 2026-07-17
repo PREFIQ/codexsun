@@ -6,8 +6,15 @@ import { PurchasePrintRoutePage } from "../modules/purchase/purchase.print";
 import { PaymentPage } from "../modules/payment";
 import { ReceiptPage } from "../modules/receipt";
 import { QuotationPage } from "../modules/quotation";
+import { QuotationPrintRoutePage } from "../modules/quotation/quotation.print";
 import { SalesPage } from "../modules/sales/sales.page";
 import { SalesPrintRoutePage } from "../modules/sales/sales.print";
+import {
+  CustomerStatementPage,
+  GstStatementPage,
+  StockStatementPage,
+  SupplierStatementPage
+} from "../modules/reports";
 import {
   BillingSettingsWorkspace,
   DocumentSettingsWorkspace,
@@ -38,6 +45,12 @@ const quotationRoute = createRoute({
   component: QuotationPage,
   getParentRoute: () => rootRoute,
   path: "/billing/quotation"
+});
+
+const quotationPrintRoute = createRoute({
+  component: QuotationPrintRoutePage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/quotation/print"
 });
 
 const purchaseRoute = createRoute({
@@ -99,11 +112,36 @@ const documentSettingsRoute = createRoute({
   path: "/billing/settings/documents"
 });
 
+const customerStatementRoute = createRoute({
+  component: CustomerStatementPage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/reports/customer-statement"
+});
+
+const supplierStatementRoute = createRoute({
+  component: SupplierStatementPage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/reports/supplier-statement"
+});
+
+const stockStatementRoute = createRoute({
+  component: StockStatementPage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/reports/stock-statement"
+});
+
+const gstStatementRoute = createRoute({
+  component: GstStatementPage,
+  getParentRoute: () => rootRoute,
+  path: "/billing/reports/gst-statement"
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   billingRoute,
   salesRoute,
   quotationRoute,
+  quotationPrintRoute,
   purchaseRoute,
   purchasePrintRoute,
   paymentRoute,
@@ -113,7 +151,11 @@ const routeTree = rootRoute.addChildren([
   salesPrintRoute,
   salesSettingsRoute,
   billingSettingsRoute,
-  documentSettingsRoute
+  documentSettingsRoute,
+  customerStatementRoute,
+  supplierStatementRoute,
+  stockStatementRoute,
+  gstStatementRoute
 ]);
 
 export const router = createRouter({ routeTree });

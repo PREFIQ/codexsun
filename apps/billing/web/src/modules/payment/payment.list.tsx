@@ -1,7 +1,11 @@
 import { Eye, Pencil, Send, Trash2, XCircle } from "lucide-react";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
-import { WorkspaceTableEmptyState, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
+import {
+  WorkspaceTableEmptyState,
+  WorkspaceTableLoadingState,
+  WorkspaceTablePanel
+} from "@codexsun/ui/workspace/table";
 import { formatPaymentDate, formatPaymentMoney } from "./payment.services";
 import type { Payment } from "./payment.types";
 
@@ -120,9 +124,7 @@ export function PaymentList({
           No payments found. Create the first payment voucher for this tenant.
         </WorkspaceTableEmptyState>
       ) : null}
-      {loading ? (
-        <p className="p-10 text-center text-sm text-muted-foreground">Loading payments...</p>
-      ) : null}
+      {loading ? <WorkspaceTableLoadingState /> : null}
     </WorkspaceTablePanel>
   );
 }

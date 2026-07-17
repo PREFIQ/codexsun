@@ -9,6 +9,7 @@ import {
   closeTenantDatabase
 } from "../../database/tenant-database.js";
 import { migrateTenantRuntimeModule } from "../tenant/tenant.migration.js";
+import { seedTenantRuntimeModule } from "../tenant/tenant.seed.js";
 import { PlatformActivityService } from "../platform-activity/index.js";
 import { QueueManagerService } from "../queue-manager/index.js";
 import { env } from "../../env.js";
@@ -32,6 +33,14 @@ export class DatabaseMaintenanceService {
 
   tenantDetails(tenantId: number) {
     return this.repository.tenantDetails(tenantId);
+  }
+
+  setupTenant(tenantId: number, input: DatabaseActionPayload = {}) {
+    return this.installTenantDatabase(tenantId, "setup", input);
+  }
+
+  reinstallTenant(tenantId: number, input: DatabaseActionPayload = {}) {
+    return this.installTenantDatabase(tenantId, "reinstall", input);
   }
 
   async migrateMaster(input: DatabaseActionPayload = {}) {
@@ -73,7 +82,7 @@ export class DatabaseMaintenanceService {
       status: "running",
       targetKey: String(tenant.id)
     });
-    await createTenantDatabase(tenant.dbName);
+    await createTenantDatabase(tenant);
     const database = getTenantDatabase(tenant);
     try {
       await migrateTenantRuntimeModule(database);
@@ -122,6 +131,69 @@ export class DatabaseMaintenanceService {
       recordLabel: platformDatabaseName()
     });
     return run;
+  }
+
+  private async installTenantDatabase(
+    tenantId: number,
+    operation: "reinstall" | "setup",
+    input: DatabaseActionPayload
+  ) {
+    const tenant = await this.repository.findTenant(tenantId);
+    if (!tenant) return null;
+    const details = {
+      ...input,
+      databaseName: tenant.dbName,
+      host: tenant.dbHost,
+      preservesExistingData: true
+    };
+    await this.repository.recordRun({
+      databaseName: tenant.dbName,
+      details,
+      operation,
+      scope: "tenant",
+      status: "running",
+      targetKey: String(tenant.id)
+    });
+    try {
+      await createTenantDatabase(tenant);
+      const database = getTenantDatabase(tenant);
+      try {
+        await migrateTenantRuntimeModule(database);
+        await seedTenantRuntimeModule(database, tenant);
+      } finally {
+        await closeTenantDatabase(tenant);
+      }
+      const run = await this.repository.recordRun({
+        databaseName: tenant.dbName,
+        details,
+        operation,
+        scope: "tenant",
+        status: "completed",
+        targetKey: String(tenant.id)
+      });
+      await this.activity.recordActivity({
+        action: `database.tenant.${operation}`,
+        details,
+        moduleKey: "platform.database-maintenance",
+        recordId: tenant.id,
+        recordLabel: tenant.tenantCode,
+        recordUuid: tenant.uuid
+      });
+      return run;
+    } catch (error) {
+      await this.repository.recordRun({
+        databaseName: tenant.dbName,
+        details: {
+          ...details,
+          error: error instanceof Error ? error.message : "Tenant database installation failed."
+        },
+        operation,
+        scope: "tenant",
+        status: "failed",
+        targetKey: String(tenant.id)
+      });
+      throw error;
+    }
   }
 
   async requestTenantBackup(tenantId: number, input: DatabaseActionPayload = {}) {

@@ -4,8 +4,10 @@ import {
   getTenantDatabaseDetails,
   listTenantDatabaseStatus,
   migrateTenantDatabase,
+  reinstallTenantDatabase,
   requestTenantDatabaseBackup,
-  requestTenantDatabaseRestore
+  requestTenantDatabaseRestore,
+  setupTenantDatabase
 } from "./tenant-database.services";
 
 export const tenantDatabaseQueryKey = ["admin", "database", "tenants"] as const;
@@ -45,9 +47,22 @@ export function useTenantDatabaseMutations() {
         migrateTenantDatabase(tenantId, tenantMaintenanceNote(tenantId, "Tenant migration")),
       onSuccess: done
     }),
+    reinstall: useMutation({
+      mutationFn: (tenantId: number) =>
+        reinstallTenantDatabase(
+          tenantId,
+          tenantMaintenanceNote(tenantId, "Tenant database re-install")
+        ),
+      onSuccess: done
+    }),
     restore: useMutation({
       mutationFn: (tenantId: number) =>
         requestTenantDatabaseRestore(tenantId, tenantMaintenanceNote(tenantId, "Tenant restore")),
+      onSuccess: done
+    }),
+    setup: useMutation({
+      mutationFn: (tenantId: number) =>
+        setupTenantDatabase(tenantId, tenantMaintenanceNote(tenantId, "Tenant database setup")),
       onSuccess: done
     })
   };

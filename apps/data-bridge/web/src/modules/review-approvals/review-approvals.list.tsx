@@ -2,6 +2,7 @@ import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
 import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
+  WorkspaceTableLoadingState,
   WorkspaceTablePanel
 } from "@codexsun/ui/workspace/table";
 import type { ReviewApproval } from "./review-approvals.types";
@@ -47,10 +48,9 @@ export function ReviewApprovalsList({
           ))}
         </tbody>
       </table>
-      {!records.length ? (
-        <WorkspaceTableEmptyState>
-          {loading ? "Loading reviews..." : "No review packages prepared."}
-        </WorkspaceTableEmptyState>
+      {!records.length && loading ? <WorkspaceTableLoadingState /> : null}
+      {!records.length && !loading ? (
+        <WorkspaceTableEmptyState>No review packages prepared.</WorkspaceTableEmptyState>
       ) : null}
     </WorkspaceTablePanel>
   );

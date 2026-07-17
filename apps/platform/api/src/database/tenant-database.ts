@@ -8,14 +8,21 @@ import type { TenantDatabase } from "./schema.js";
 
 const tenantConnections = new Map<string, Kysely<TenantDatabase>>();
 
-export async function createTenantDatabase(databaseName: string) {
-  const name = assertDatabaseName(databaseName, "tenant database name");
-  console.info(`[database] ensuring tenant database "${name}" on ${env.DB_HOST}:${env.DB_PORT}`);
+export async function createTenantDatabase(target: string | Tenant) {
+  const tenant = typeof target === "string" ? null : target;
+  const name = assertDatabaseName(
+    typeof target === "string" ? target : target.dbName,
+    "tenant database name"
+  );
+  const host = tenant?.dbHost || env.DB_HOST;
+  const port = tenant?.dbPort || env.DB_PORT;
+  const user = tenant?.dbUser || env.DB_USER;
+  console.info(`[database] ensuring tenant database "${name}" on ${host}:${port}`);
   const connection = await createConnection({
-    host: env.DB_HOST,
-    password: env.DB_PASSWORD,
-    port: env.DB_PORT,
-    user: env.DB_USER,
+    host,
+    password: tenant ? resolveTenantDatabasePassword(tenant) : env.DB_PASSWORD,
+    port,
+    user,
     timezone: "Z"
   });
   try {
@@ -41,7 +48,7 @@ export function getTenantDatabase(tenant: Tenant) {
         database: assertDatabaseName(tenant.dbName, "tenant database name"),
         connectionLimit: 10,
         host: tenant.dbHost || env.DB_HOST,
-        password: env.DB_PASSWORD,
+        password: resolveTenantDatabasePassword(tenant),
         port: tenant.dbPort || env.DB_PORT,
         timezone: "Z",
         user: tenant.dbUser || env.DB_USER
@@ -51,6 +58,10 @@ export function getTenantDatabase(tenant: Tenant) {
 
   tenantConnections.set(key, database);
   return database;
+}
+
+export function resolveTenantDatabasePassword(tenant: Tenant) {
+  return process.env[tenant.dbSecretRef] || env.DB_PASSWORD;
 }
 
 export function getTenantDatabaseByName(databaseName: string) {

@@ -11,13 +11,13 @@ const AppDesk = lazy(() =>
   import("../desks/tenant/AppDesk").then((module) => ({ default: module.AppDesk }))
 );
 const HealthPage = lazy(() =>
-  import("../routes/public/HealthPage").then((module) => ({ default: module.HealthPage }))
+  import("../public/health/HealthPage").then((module) => ({ default: module.HealthPage }))
 );
 const HomePage = lazy(() =>
-  import("../routes/public/HomePage").then((module) => ({ default: module.HomePage }))
+  import("../public/HomePage").then((module) => ({ default: module.HomePage }))
 );
 const LoginPage = lazy(() =>
-  import("../routes/public/LoginPage").then((module) => ({ default: module.LoginPage }))
+  import("../public/login/LoginPage").then((module) => ({ default: module.LoginPage }))
 );
 const DataBridgeDesk = lazy(() =>
   import("../desks/data-bridge/DataBridgeDesk").then((module) => ({

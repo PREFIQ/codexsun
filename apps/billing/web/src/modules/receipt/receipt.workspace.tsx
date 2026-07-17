@@ -16,6 +16,7 @@ import {
   createReceipt,
   deleteReceipt,
   formatReceiptMoney,
+  getReceipt,
   postReceipt,
   updateReceipt
 } from "./receipt.services";
@@ -28,7 +29,7 @@ const statusFilters = [
   { id: "cancelled", label: "Cancelled" }
 ];
 
-export function ReceiptWorkspace() {
+export function ReceiptWorkspace({ initialRecordId }: { initialRecordId?: string | undefined }) {
   const queryClient = useQueryClient();
   const contextQuery = useReceiptContext();
   const [view, setView] = useState<ReceiptView>({ mode: "list" });
@@ -42,6 +43,20 @@ export function ReceiptWorkspace() {
     search,
     status: statusFilter
   });
+  useEffect(() => {
+    if (!initialRecordId) return;
+    let active = true;
+    void getReceipt(initialRecordId)
+      .then((receipt) => {
+        if (active) setView({ mode: "show", receipt });
+      })
+      .catch((error) => {
+        if (active) toast.error("Receipt could not be opened", { description: message(error) });
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialRecordId]);
   const save = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: ReceiptSavePayload }) =>
       id ? updateReceipt(id, payload) : createReceipt(payload),

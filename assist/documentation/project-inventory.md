@@ -90,6 +90,15 @@ Current Billing module:
 
 - `sales`
 
+### Mail
+
+Mail owns tenant-scoped outbound delivery, inbound synchronization, message history, attachments, and provider configuration.
+
+- `apps/mail/api`: Fastify module package with tenant migrations, encrypted settings, SMTP delivery, IMAP/POP3 synchronization, queue workers, retries, events, and public contracts.
+- `apps/mail/web`: React workspace for Inbox, Outbox, Drafts, Scheduled, Sent, Failed, Trash, rich compose, attachments, and tenant settings.
+
+Billing document screens consume Mail only through its public web contract to capture the visible invoice or quotation as a PDF and enqueue a branded customer email.
+
 ## Shared Packages
 
 ### `@codexsun/framework`

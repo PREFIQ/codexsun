@@ -3,6 +3,7 @@ import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
+  WorkspaceTableLoadingState,
   WorkspaceTablePanel
 } from "@codexsun/ui/workspace/table";
 import type { MigrationJob } from "./migration-manager.types";
@@ -66,10 +67,9 @@ export function MigrationManagerList({
           ))}
         </tbody>
       </table>
-      {!jobs.length ? (
-        <WorkspaceTableEmptyState>
-          {loading ? "Loading migration jobs..." : "No migration jobs found."}
-        </WorkspaceTableEmptyState>
+      {!jobs.length && loading ? <WorkspaceTableLoadingState /> : null}
+      {!jobs.length && !loading ? (
+        <WorkspaceTableEmptyState>No migration jobs found.</WorkspaceTableEmptyState>
       ) : null}
     </WorkspaceTablePanel>
   );

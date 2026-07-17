@@ -6,11 +6,12 @@ import {
   closeAllBillingDatabases
 } from "../../database/billing-database.js";
 import { env } from "../../env.js";
+import { withBillingScope } from "../../auth/billing-scope.js";
 import { QuotationService } from "./quotation.service.js";
 
 export async function runQuotationE2e() {
   const databaseName = `codexsun_quotation_e2e_${Date.now()}`;
-  const admin = await createConnection({
+  let admin = await createConnection({
     host: env.DB_HOST,
     password: env.DB_PASSWORD,
     port: env.DB_PORT,
@@ -20,12 +21,24 @@ export async function runQuotationE2e() {
     await admin.query(
       `CREATE DATABASE \`${databaseName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
     );
-    await admin.changeUser({ database: databaseName });
+    await admin.end();
+    admin = await createConnection({
+      database: databaseName,
+      host: env.DB_HOST,
+      password: env.DB_PASSWORD,
+      port: env.DB_PORT,
+      user: env.DB_USER
+    });
     for (const statement of parentSchema) await admin.query(statement);
     for (const statement of parentRecords) await admin.query(statement);
+    const [parentTableRows] = await admin.query<Array<RowDataPacket & { count: number }>>(
+      "SELECT COUNT(*) AS count FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE()"
+    );
+    assert.ok(Number(parentTableRows[0]?.count ?? 0) >= parentSchema.length);
 
     await bootstrapBillingDatabase(databaseName);
     const service = new QuotationService();
+    return withBillingScope({ companyId: 1, financialYearId: 1 }, async () => {
     const context = await service.getContext(databaseName);
     assert.equal(context.companyId, 1);
     assert.equal(context.currencyCode, "INR");
@@ -126,12 +139,49 @@ export async function runQuotationE2e() {
       "SELECT COUNT(*) AS count FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('billing_quotation_eway_bills', 'billing_quotation_einvoices')"
     );
     assert.equal(Number(complianceTables[0]?.count ?? 0), 0);
+
+    await assert.rejects(
+      service.create(databaseName, {
+        ...payload,
+        date: "2027-04-01",
+        quotationNumber: "QT-OUTSIDE-YEAR"
+      }),
+      /outside the selected active Financial Year/
+    );
+    await admin.query("INSERT INTO companies VALUES (2, 'Other Company', 'active')");
+    await admin.query(
+      "INSERT INTO financial_years VALUES (2, '2027-28', '2027-04-01', '2028-03-31', 'active')"
+    );
+    const otherScopeQuotation = await withBillingScope(
+      { companyId: 2, financialYearId: 2 },
+      () =>
+        service.create(databaseName, {
+          ...payload,
+          companyId: 2,
+          date: "2027-04-01",
+          financialYearId: 2,
+          quotationNumber: "QT-OTHER-SCOPE"
+        })
+    );
+    assert.equal(await service.get(databaseName, otherScopeQuotation.id), null);
+    assert.equal((await service.list(databaseName)).some((item) => item.id === otherScopeQuotation.id), false);
     return { databaseName, quotationId: convertible.id, saleId: conversion.sale.id };
+    });
   } finally {
-    await closeAllBillingDatabases();
-    await admin.changeUser({ database: env.DB_MASTER_NAME });
-    await admin.query(`DROP DATABASE IF EXISTS \`${databaseName}\``);
-    await admin.end();
+    try {
+      await closeAllBillingDatabases();
+    } finally {
+      await admin.end();
+      const cleanup = await createConnection({
+        database: env.DB_MASTER_NAME,
+        host: env.DB_HOST,
+        password: env.DB_PASSWORD,
+        port: env.DB_PORT,
+        user: env.DB_USER
+      });
+      await cleanup.query(`DROP DATABASE IF EXISTS \`${databaseName}\``);
+      await cleanup.end();
+    }
   }
 }
 
@@ -139,7 +189,7 @@ const parentSchema = [
   "CREATE TABLE schema_migrations (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(160) NOT NULL UNIQUE, applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
   "CREATE TABLE companies (id INT PRIMARY KEY, name VARCHAR(180) NOT NULL, status VARCHAR(24) NOT NULL)",
   "CREATE TABLE financial_years (id INT PRIMARY KEY, name VARCHAR(180) NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, status VARCHAR(24) NOT NULL)",
-  "CREATE TABLE contacts (id INT PRIMARY KEY, name VARCHAR(180) NOT NULL, legal_name VARCHAR(180) NULL, primary_email VARCHAR(180) NULL, primary_phone VARCHAR(40) NULL, gstin VARCHAR(40) NULL, status VARCHAR(24) NOT NULL)",
+  "CREATE TABLE contacts (id INT PRIMARY KEY, name VARCHAR(180) NOT NULL, legal_name VARCHAR(180) NULL, primary_email VARCHAR(180) NULL, primary_phone VARCHAR(40) NULL, gstin VARCHAR(40) NULL, credit_limit DECIMAL(14,2) NOT NULL DEFAULT 0, status VARCHAR(24) NOT NULL)",
   "CREATE TABLE states (id INT PRIMARY KEY, code VARCHAR(80) NOT NULL, name VARCHAR(180) NOT NULL)",
   "CREATE TABLE contacts_addresses (id INT PRIMARY KEY, parent_id INT NOT NULL, address_line1 VARCHAR(255) NOT NULL, address_line2 VARCHAR(255) NULL, city_name VARCHAR(120) NULL, district_name VARCHAR(120) NULL, state_id INT NULL, state_name VARCHAR(120) NULL, pincode_name VARCHAR(24) NULL, country_name VARCHAR(120) NULL)",
   "CREATE TABLE work_orders (id INT PRIMARY KEY, code VARCHAR(120) NOT NULL, name VARCHAR(180) NULL, status VARCHAR(24) NOT NULL)",
@@ -159,7 +209,7 @@ const parentSchema = [
 const parentRecords = [
   "INSERT INTO companies VALUES (1, 'E2E Company', 'active')",
   "INSERT INTO financial_years VALUES (1, '2026-27', '2026-04-01', '2027-03-31', 'active')",
-  "INSERT INTO contacts VALUES (1, 'E2E Customer', 'E2E Customer', 'customer@example.test', '9000000000', '33ABCDE1234F1Z5', 'active')",
+  "INSERT INTO contacts VALUES (1, 'E2E Customer', 'E2E Customer', 'customer@example.test', '9000000000', '33ABCDE1234F1Z5', 0, 'active')",
   "INSERT INTO states VALUES (1, '33', 'Tamil Nadu'), (2, '29', 'Karnataka')",
   "INSERT INTO contacts_addresses VALUES (1, 1, '1 Test Street', NULL, 'Chennai', 'Chennai', 1, 'Tamil Nadu', '600001', 'India')",
   "INSERT INTO work_orders VALUES (1, 'WO-1', 'E2E Work Order', 'active')",

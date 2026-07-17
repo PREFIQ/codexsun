@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Printer, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
+import { GlobalLoader } from "@codexsun/ui/components/global-loader";
 import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
@@ -22,6 +23,7 @@ import {
   createPayment,
   deletePayment,
   formatPaymentMoney,
+  getPayment,
   postPayment,
   updatePayment
 } from "./payment.services";
@@ -34,7 +36,7 @@ const statusFilters = [
   { id: "cancelled", label: "Cancelled" }
 ];
 
-export function PaymentWorkspace() {
+export function PaymentWorkspace({ initialRecordId }: { initialRecordId?: string | undefined }) {
   const queryClient = useQueryClient();
   const contextQuery = usePaymentContext();
   const [view, setView] = useState<PaymentView>({ mode: "list" });
@@ -48,6 +50,20 @@ export function PaymentWorkspace() {
     search,
     status: statusFilter
   });
+  useEffect(() => {
+    if (!initialRecordId) return;
+    let active = true;
+    void getPayment(initialRecordId)
+      .then((payment) => {
+        if (active) setView({ mode: "show", payment });
+      })
+      .catch((error) => {
+        if (active) toast.error("Payment could not be opened", { description: message(error) });
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialRecordId]);
   const save = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: PaymentSavePayload }) =>
       id ? updatePayment(id, payload) : createPayment(payload),
@@ -257,7 +273,7 @@ function PaymentShow({
       <WorkspaceShowCard title="Activity">
         <div className="divide-y divide-border/60">
           {activityQuery.isLoading ? (
-            <p className="px-4 py-3 text-sm text-muted-foreground">Loading activity...</p>
+            <GlobalLoader className="min-h-28" fullScreen={false} />
           ) : null}
           {activityQuery.isError ? (
             <p className="px-4 py-3 text-sm text-destructive">{message(activityQuery.error)}</p>

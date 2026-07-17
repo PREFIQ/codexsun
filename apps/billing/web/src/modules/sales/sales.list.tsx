@@ -1,7 +1,12 @@
-import { Eye, RotateCcw, Trash2 } from "lucide-react";
+import { Eye, Printer, RotateCcw, Trash2 } from "lucide-react";
+import { Button } from "@codexsun/ui/components/button";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
-import { WorkspaceTableEmptyState, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
+import {
+  WorkspaceTableEmptyState,
+  WorkspaceTableLoadingState,
+  WorkspaceTablePanel
+} from "@codexsun/ui/workspace/table";
 import { cn } from "@codexsun/ui/lib/utils";
 import { formatDate, formatMoney, totalSaleQuantity } from "./sales.services";
 import type { Sale } from "./sales.types";
@@ -12,6 +17,7 @@ export function SalesList({
   loading,
   onEdit,
   onForceDelete,
+  onPrint,
   onRevoke,
   onSetStatus,
   onView,
@@ -29,6 +35,7 @@ export function SalesList({
   loading: boolean;
   onEdit: (sale: Sale) => void;
   onForceDelete: (sale: Sale) => void;
+  onPrint: (sale: Sale) => void;
   onRevoke: (sale: Sale) => void;
   onSetStatus: (sale: Sale, status: "cancelled" | "confirmed") => void;
   onView: (sale: Sale) => void;
@@ -59,19 +66,27 @@ export function SalesList({
               </th>
               {[
                 "Sale",
+                ...(visibleColumns.date ? ["Date"] : []),
                 ...(visibleColumns.customer ? ["Customer"] : []),
-                ...(visibleColumns.issuedOn ? ["Date"] : []),
-                ...(visibleColumns.items ? ["Items"] : []),
+                ...(visibleColumns.items ? ["QTY"] : []),
                 ...(visibleColumns.taxable ? ["Taxable"] : []),
                 ...(visibleColumns.gst ? ["GST"] : []),
                 ...(visibleColumns.total ? ["Total"] : []),
                 ...(visibleColumns.status ? ["Status"] : []),
                 ...(visibleColumns.invoice ? ["Invoice"] : []),
+                "Print",
                 ...(visibleColumns.action ? ["Action"] : [])
               ].map((heading) => (
                 <th
                   key={heading}
-                  className="border-b border-border/70 px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  className={cn(
+                    "border-b border-border/70 px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+                    ["QTY", "Taxable", "GST", "Total"].includes(heading)
+                      ? "text-right"
+                      : heading === "Print"
+                        ? "text-center"
+                        : "text-left"
+                  )}
                 >
                   {heading}
                 </th>
@@ -109,6 +124,9 @@ export function SalesList({
                     {sale.saleNumber}
                   </button>
                 </td>
+                {visibleColumns.date ? (
+                  <td className="whitespace-nowrap px-4 py-2.5">{formatDate(sale.issuedOn)}</td>
+                ) : null}
                 {visibleColumns.customer ? (
                   <td className="px-4 py-2.5">
                     <button
@@ -129,20 +147,19 @@ export function SalesList({
                     </button>
                   </td>
                 ) : null}
-                {visibleColumns.issuedOn ? (
-                  <td className="px-4 py-2.5">{formatDate(sale.issuedOn)}</td>
-                ) : null}
                 {visibleColumns.items ? (
-                  <td className="px-4 py-2.5">{totalSaleQuantity(sale)}</td>
+                  <td className="px-4 py-2.5 text-right">{totalSaleQuantity(sale)}</td>
                 ) : null}
                 {visibleColumns.taxable ? (
-                  <td className="px-4 py-2.5">{formatMoney(sale.subtotal)}</td>
+                  <td className="px-4 py-2.5 text-right">{formatMoney(sale.subtotal)}</td>
                 ) : null}
                 {visibleColumns.gst ? (
-                  <td className="px-4 py-2.5">{formatMoney(sale.taxAmount)}</td>
+                  <td className="px-4 py-2.5 text-right">{formatMoney(sale.taxAmount)}</td>
                 ) : null}
                 {visibleColumns.total ? (
-                  <td className="px-4 py-2.5 font-semibold">{formatMoney(sale.amount)}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold">
+                    {formatMoney(sale.amount)}
+                  </td>
                 ) : null}
                 {visibleColumns.status ? (
                   <td className="px-4 py-2.5">
@@ -154,6 +171,19 @@ export function SalesList({
                     {sale.generatedSalesInvoiceNo || "-"}
                   </td>
                 ) : null}
+                <td className="px-4 py-2.5 text-center">
+                  <Button
+                    aria-label={`Print ${sale.saleNumber}`}
+                    className="size-8"
+                    onClick={() => onPrint(sale)}
+                    size="icon"
+                    title={`Print ${sale.saleNumber}`}
+                    type="button"
+                    variant="outline"
+                  >
+                    <Printer className="size-4" />
+                  </Button>
+                </td>
                 {visibleColumns.action ? (
                   <td className="px-4 py-2.5">
                     <WorkspaceRowActions
@@ -214,10 +244,9 @@ export function SalesList({
           </tbody>
         </table>
       </div>
-      {entries.length === 0 ? (
-        <WorkspaceTableEmptyState>
-          {loading ? "Loading sales..." : "No sales found."}
-        </WorkspaceTableEmptyState>
+      {entries.length === 0 && loading ? <WorkspaceTableLoadingState /> : null}
+      {entries.length === 0 && !loading ? (
+        <WorkspaceTableEmptyState>No sales found.</WorkspaceTableEmptyState>
       ) : null}
     </WorkspaceTablePanel>
   );

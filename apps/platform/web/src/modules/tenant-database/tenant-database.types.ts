@@ -1,4 +1,5 @@
-export type DatabaseOperation = "backup" | "migrate" | "refresh" | "restore" | "status";
+export type DatabaseOperation =
+  "backup" | "migrate" | "refresh" | "reinstall" | "restore" | "setup" | "status";
 export type DatabaseRunStatus = "completed" | "failed" | "requested" | "running";
 
 export type DatabaseMigrationRow = {

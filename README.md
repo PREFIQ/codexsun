@@ -5,7 +5,8 @@ Software makes simple.
 CODEXSUN is a monorepo foundation for a multi-tenant business application
 platform. The current workspace includes the Platform API, Platform web shell,
 shared Framework, Platform, and UI packages, Core business modules, Billing
-entry modules, master database bootstrap, and version/changelog tooling.
+entry modules, a tenant-owned Mail service and workspace, master database
+bootstrap, and version/changelog tooling.
 
 ## Start
 

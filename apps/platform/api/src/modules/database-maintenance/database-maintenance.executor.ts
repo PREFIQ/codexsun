@@ -9,6 +9,7 @@ import { databaseBackupPath } from "../storage-manager/storage-manager.paths.js"
 export type DatabaseExecutionTarget = {
   databaseName: string;
   host: string;
+  password: string;
   port: number;
   tenantKey?: string;
   user: string;
@@ -60,7 +61,7 @@ export async function executeDatabaseRestore(input: {
   const dump = await readFile(resolve(input.backupPath), "utf8");
   const connection = await createConnection({
     host: input.target.host,
-    password: env.DB_PASSWORD,
+    password: input.target.password,
     port: input.target.port,
     timezone: "Z",
     user: input.target.user
@@ -128,7 +129,7 @@ async function createSqlDump(target: DatabaseExecutionTarget) {
   const connection = await createConnection({
     database: databaseName,
     host: target.host,
-    password: env.DB_PASSWORD,
+    password: target.password,
     port: target.port,
     timezone: "Z",
     user: target.user

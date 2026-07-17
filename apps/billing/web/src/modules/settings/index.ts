@@ -1,6 +1,7 @@
 export * from "./settings.form";
 export { BillingSettingsWorkspace } from "./settings.billing-workspace";
 export { DocumentSettingsWorkspace } from "./settings.document-workspace";
+export { BillingCompanyName, BillingDocumentHeader } from "./settings.document-header";
 export * from "./settings.list";
 export * from "./settings.schema";
 export { SalesSettingsPage } from "./settings.workspace";

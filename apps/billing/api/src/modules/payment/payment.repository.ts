@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { sql, type Kysely, type Transaction } from "kysely";
 import { AppError } from "@codexsun/framework/errors";
 import { getBillingDatabase } from "../../database/billing-database.js";
+import { currentBillingScope } from "../../auth/billing-scope.js";
 import type {
   Payment,
   PaymentActivity,
@@ -71,12 +72,15 @@ export class PaymentRepository {
       search,
       status: options.status
     };
+    const scope = currentBillingScope();
     const result = await selectHeaders(undefined, false, page).execute(database);
     const count = await sql<{
       total: string | number;
     }>`SELECT COUNT(*) AS total FROM billing_payments r
       INNER JOIN contacts supplier ON supplier.id=r.supplier_id INNER JOIN ledgers ledger ON ledger.id=r.ledger_id
-      WHERE r.deleted_at IS NULL AND (${page.status}='all' OR r.status=${page.status})
+      WHERE r.deleted_at IS NULL
+      AND r.company_id=${scope.companyId} AND r.financial_year_id=${scope.financialYearId}
+      AND (${page.status}='all' OR r.status=${page.status})
       AND (${search}='%%' OR r.payment_number LIKE ${search} OR supplier.name LIKE ${search}
         OR ledger.name LIKE ${search} OR r.payment_mode LIKE ${search} OR r.status LIKE ${search}
         OR COALESCE(r.reference_no,'') LIKE ${search})`.execute(database);
@@ -126,6 +130,7 @@ export class PaymentRepository {
     databaseName: string
   ): Promise<Omit<PaymentContext, "suggestedPaymentNumber"> | null> {
     const database = await paymentDatabase(databaseName);
+    const scope = currentBillingScope();
     const result = await sql<{
       company_id: number;
       company_name: string;
@@ -134,14 +139,14 @@ export class PaymentRepository {
       financial_year_id: number;
       financial_year_name: string;
     }>`
-      SELECT d.company_id, c.name AS company_name, d.financial_year_id,
+      SELECT c.id AS company_id, c.name AS company_name, f.id AS financial_year_id,
              f.name AS financial_year_name, currency.id AS currency_id,
              currency.name AS currency_code
-      FROM default_company_settings d
-      INNER JOIN companies c ON c.id = d.company_id AND c.status = 'active'
-      INNER JOIN financial_years f ON f.id = d.financial_year_id AND f.status = 'active'
+      FROM companies c
+      CROSS JOIN financial_years f
       INNER JOIN currencies currency ON UPPER(currency.name) = 'INR' AND currency.status = 'active'
-      WHERE d.singleton_key = 1 AND d.status = 'active' LIMIT 1
+      WHERE c.id=${scope.companyId} AND c.status='active'
+        AND f.id=${scope.financialYearId} AND f.status='active' LIMIT 1
     `.execute(database);
     const row = result.rows[0];
     return row
@@ -176,6 +181,7 @@ export class PaymentRepository {
 
   async validateReferences(databaseName: string, input: PaymentSavePayload, excludeUuid?: string) {
     const database = await paymentDatabase(databaseName);
+    const scope = currentBillingScope();
     const base = await sql<{
       company: number;
       currency: number;
@@ -184,8 +190,8 @@ export class PaymentRepository {
       ledger: number;
     }>`
       SELECT
-        EXISTS(SELECT 1 FROM companies WHERE id = ${input.companyId} AND status = 'active') AS company,
-        EXISTS(SELECT 1 FROM financial_years WHERE id = ${input.financialYearId} AND status = 'active' AND ${input.paymentDate} BETWEEN start_date AND end_date) AS financialYear,
+        EXISTS(SELECT 1 FROM companies WHERE id = ${input.companyId} AND id=${scope.companyId} AND status = 'active') AS company,
+        EXISTS(SELECT 1 FROM financial_years WHERE id = ${input.financialYearId} AND id=${scope.financialYearId} AND status = 'active' AND ${input.paymentDate} BETWEEN start_date AND end_date) AS financialYear,
         EXISTS(SELECT 1 FROM currencies WHERE id = ${input.currencyId} AND status = 'active') AS currency,
         EXISTS(SELECT 1 FROM contacts WHERE id = ${input.supplierId} AND status = 'active') AS supplier,
         EXISTS(SELECT 1 FROM ledgers WHERE id = ${input.ledgerId} AND status = 'active') AS ledger
@@ -197,8 +203,12 @@ export class PaymentRepository {
           GREATEST(s.amount - COALESCE(SUM(CASE WHEN r.status <> 'cancelled' ${excludeUuid ? sql`AND r.uuid <> ${excludeUuid}` : sql``} THEN a.allocated_amount ELSE 0 END), 0), 0) AS outstanding_amount
         FROM billing_purchases s
         LEFT JOIN billing_payment_allocations a ON a.purchase_id = s.id
-        LEFT JOIN billing_payments r ON r.id = a.payment_id AND r.deleted_at IS NULL
-        WHERE s.uuid = ${allocation.purchaseId} AND s.status = 'confirmed' AND s.deleted_at IS NULL
+        LEFT JOIN billing_payments r ON r.id = a.payment_id
+          AND r.company_id=${scope.companyId} AND r.financial_year_id=${scope.financialYearId}
+          AND r.deleted_at IS NULL
+        WHERE s.uuid = ${allocation.purchaseId}
+          AND s.company_id=${scope.companyId} AND s.financial_year_id=${scope.financialYearId}
+          AND s.status = 'confirmed' AND s.deleted_at IS NULL
         GROUP BY s.id, s.supplier_id, s.amount
       `.execute(database);
         const row = result.rows[0];
@@ -225,6 +235,7 @@ export class PaymentRepository {
     supplierId: number
   ): Promise<PaymentAllocationCandidate[]> {
     const database = await paymentDatabase(databaseName);
+    const scope = currentBillingScope();
     const result = await sql<{
       supplier_id: number;
       document_date: string;
@@ -238,8 +249,12 @@ export class PaymentRepository {
              GREATEST(s.amount - COALESCE(SUM(CASE WHEN r.status <> 'cancelled' THEN a.allocated_amount ELSE 0 END), 0), 0) AS outstanding_amount
       FROM billing_purchases s
       LEFT JOIN billing_payment_allocations a ON a.purchase_id = s.id
-      LEFT JOIN billing_payments r ON r.id = a.payment_id AND r.deleted_at IS NULL
-      WHERE s.supplier_id = ${supplierId} AND s.status = 'confirmed' AND s.deleted_at IS NULL
+      LEFT JOIN billing_payments r ON r.id = a.payment_id
+        AND r.company_id=${scope.companyId} AND r.financial_year_id=${scope.financialYearId}
+        AND r.deleted_at IS NULL
+      WHERE s.supplier_id = ${supplierId}
+        AND s.company_id=${scope.companyId} AND s.financial_year_id=${scope.financialYearId}
+        AND s.status = 'confirmed' AND s.deleted_at IS NULL
       GROUP BY s.id, s.uuid, s.supplier_id, s.purchase_number, s.purchase_date, s.amount
       HAVING outstanding_amount > 0
       ORDER BY s.purchase_date, s.line_number
@@ -429,6 +444,7 @@ function selectHeaders(
   includeDeleted = false,
   page?: { limit: number; offset: number; search: string; status: string }
 ) {
+  const scope = currentBillingScope();
   return sql<HeaderRow>`
     SELECT r.*, c.name AS company_name, f.name AS financial_year_name, currency.name AS currency_code,
            supplier.name AS supplier_name, ledger.name AS ledger_name
@@ -438,7 +454,9 @@ function selectHeaders(
     INNER JOIN currencies currency ON currency.id=r.currency_id
     INNER JOIN contacts supplier ON supplier.id=r.supplier_id
     INNER JOIN ledgers ledger ON ledger.id=r.ledger_id
-    WHERE ${uuid ? sql`r.uuid=${uuid}` : sql`1=1`} ${includeDeleted ? sql`` : sql`AND r.deleted_at IS NULL`}
+    WHERE ${uuid ? sql`r.uuid=${uuid}` : sql`1=1`}
+      AND r.company_id=${scope.companyId} AND r.financial_year_id=${scope.financialYearId}
+      ${includeDeleted ? sql`` : sql`AND r.deleted_at IS NULL`}
       ${
         page
           ? sql`AND (${page.status}='all' OR r.status=${page.status})
@@ -463,7 +481,9 @@ async function assertPaymentAllocationsAvailable(
   for (const allocation of allocations) {
     const purchaseResult = await sql<{ amount: string | number; id: number; supplier_id: number }>`
       SELECT id, supplier_id, amount FROM billing_purchases
-      WHERE uuid=${allocation.purchaseId} AND status='confirmed' AND deleted_at IS NULL
+      WHERE uuid=${allocation.purchaseId}
+        AND company_id=${input.companyId} AND financial_year_id=${input.financialYearId}
+        AND status='confirmed' AND deleted_at IS NULL
       FOR UPDATE
     `.execute(transaction);
     const purchase = purchaseResult.rows[0];
@@ -497,6 +517,8 @@ async function replaceAllocations(
       INSERT INTO billing_payment_allocations (uuid, payment_id, purchase_id, line_number, allocated_amount)
       SELECT ${publicId()}, ${paymentId}, id, ${index + 1}, ${allocation.allocatedAmount}
       FROM billing_purchases WHERE uuid=${allocation.purchaseId}
+        AND company_id=(SELECT company_id FROM billing_payments WHERE id=${paymentId})
+        AND financial_year_id=(SELECT financial_year_id FROM billing_payments WHERE id=${paymentId})
     `.execute(transaction);
   }
 }
@@ -516,10 +538,13 @@ async function addActivity(
 }
 
 async function internalPayment(database: Kysely<PaymentDatabase>, uuid: string) {
+  const scope = currentBillingScope();
   const result = await sql<{
     id: number;
     status: PaymentStatus;
-  }>`SELECT id, status FROM billing_payments WHERE uuid=${uuid} AND deleted_at IS NULL LIMIT 1`.execute(
+  }>`SELECT id, status FROM billing_payments WHERE uuid=${uuid}
+    AND company_id=${scope.companyId} AND financial_year_id=${scope.financialYearId}
+    AND deleted_at IS NULL LIMIT 1`.execute(
     database
   );
   return result.rows[0] ?? null;

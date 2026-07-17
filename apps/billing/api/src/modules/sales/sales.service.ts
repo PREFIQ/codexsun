@@ -1,4 +1,5 @@
 import { AppError } from "@codexsun/framework/errors";
+import { billingDashboardProjection } from "../dashboard/index.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
 import {
   formatBillingDocumentNumber,
@@ -90,7 +91,9 @@ export class SalesService {
         numbered.nextNumber
       );
     }
-    return withNumberingWarning(sale, requestedNumber, numbered.input.invoiceNumber);
+    const saved = withNumberingWarning(sale, requestedNumber, numbered.input.invoiceNumber);
+    await this.project(databaseName, "created", saved);
+    return saved;
   }
 
   async updateSale(databaseName: string, id: string, input: SaleSavePayload) {
@@ -128,7 +131,14 @@ export class SalesService {
             numbered.nextNumber
           );
         }
-        return withNumberingWarning(updated, requestedNumber, numbered.input.invoiceNumber);
+        const saved = withNumberingWarning(updated, requestedNumber, numbered.input.invoiceNumber);
+        await this.project(databaseName, "updated", saved);
+        if (
+          current.companyId !== saved.companyId ||
+          current.financialYearId !== saved.financialYearId
+        )
+          await this.project(databaseName, "updated", current);
+        return saved;
       } catch (error) {
         if (!(error instanceof SalesInvoiceReservationConflict)) throw error;
         numbered = await resolveNextSaleNumber(
@@ -153,14 +163,18 @@ export class SalesService {
     if (current.status !== "draft") throw AppError.conflict("Only draft sales can be confirmed.");
     if (!current.items.length)
       throw AppError.conflict("Add at least one sale item before confirming.");
-    return this.repository.setStatus(databaseName, id, "confirmed");
+    const sale = await this.repository.setStatus(databaseName, id, "confirmed");
+    if (sale) await this.project(databaseName, "confirmed", sale);
+    return sale;
   }
 
   async cancelSale(databaseName: string, id: string) {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
     if (current.status === "cancelled") throw AppError.conflict("Sale is already cancelled.");
-    return this.repository.setStatus(databaseName, id, "cancelled");
+    const sale = await this.repository.setStatus(databaseName, id, "cancelled");
+    if (sale) await this.project(databaseName, "cancelled", sale);
+    return sale;
   }
 
   async revokeSale(databaseName: string, id: string) {
@@ -170,7 +184,9 @@ export class SalesService {
       throw AppError.conflict("Cancel the generated E-invoice before revoking this sale.");
     if (current.status === "draft")
       throw AppError.conflict("A draft sale does not need to be revoked.");
-    return this.repository.setStatus(databaseName, id, "draft");
+    const sale = await this.repository.setStatus(databaseName, id, "draft");
+    if (sale) await this.project(databaseName, "updated", sale);
+    return sale;
   }
 
   async deleteSale(databaseName: string, id: string) {
@@ -179,6 +195,7 @@ export class SalesService {
     if (current.status !== "draft" || current.einvoice.status === "generated")
       throw AppError.conflict("Only draft sales without generated compliance can be deleted.");
     await this.repository.softDelete(databaseName, id);
+    await this.project(databaseName, "deleted", current);
     return current;
   }
 
@@ -239,6 +256,20 @@ export class SalesService {
       invalid(itemReferences.requested.units, itemReferences.units, "Unit") ??
       invalid(itemReferences.requested.taxes, itemReferences.taxes, "Tax");
     if (itemFailure) throw AppError.validation(itemFailure);
+  }
+
+  private project(
+    databaseName: string,
+    action: "cancelled" | "confirmed" | "created" | "deleted" | "updated",
+    sale: Pick<Sale, "companyId" | "financialYearId" | "id">
+  ) {
+    return billingDashboardProjection.project(databaseName, {
+      action,
+      companyId: sale.companyId,
+      documentId: sale.id,
+      financialYearId: sale.financialYearId,
+      source: "sales"
+    });
   }
 }
 

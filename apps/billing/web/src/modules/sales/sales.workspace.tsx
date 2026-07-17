@@ -18,6 +18,7 @@ import {
   createSale,
   deleteSale,
   formatMoney,
+  getSale,
   setSaleStatus,
   revokeSale,
   totalSaleQuantity,
@@ -38,7 +39,7 @@ const statusFilters = [
 const saleColumnCatalog = [
   { id: "date", label: "Date" },
   { id: "customer", label: "Customer" },
-  { id: "items", label: "Items" },
+  { id: "items", label: "QTY" },
   { id: "taxable", label: "Taxable" },
   { id: "gst", label: "GST" },
   { id: "total", label: "Total" },
@@ -58,7 +59,7 @@ function isAdminSession() {
   }
 }
 
-export function SalesWorkspace() {
+export function SalesWorkspace({ initialRecordId }: { initialRecordId?: string | undefined }) {
   const queryClient = useQueryClient();
   const settingsQuery = useSalesSettings();
   const settings = settingsQuery.data ?? defaultBillingSettings;
@@ -80,6 +81,24 @@ export function SalesWorkspace() {
     search: searchValue,
     status: statusFilter
   });
+
+  useEffect(() => {
+    if (!initialRecordId) return;
+    let active = true;
+    void getSale(initialRecordId)
+      .then((sale) => {
+        if (active) setView({ mode: "show", sale });
+      })
+      .catch((error) => {
+        if (active)
+          toast.error("Sale could not be opened", {
+            description: error instanceof Error ? error.message : "Please try again."
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialRecordId]);
 
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: SaleSavePayload }) =>
@@ -374,6 +393,13 @@ export function SalesWorkspace() {
             deleteMutation.mutate(sale.id);
         }}
         onRevoke={(sale) => revokeMutation.mutate(sale.id)}
+        onPrint={(sale) =>
+          window.open(
+            `${window.location.origin}/billing/sales/print?id=${encodeURIComponent(sale.id)}&autoprint=1`,
+            "_blank",
+            "noopener,noreferrer"
+          )
+        }
         canAdminRevoke={canAdminRevoke}
         onView={(sale) => setView({ mode: "show", sale })}
         page={currentPage}

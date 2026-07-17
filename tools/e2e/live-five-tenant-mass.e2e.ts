@@ -80,7 +80,7 @@ try {
   let tenantSchema: SchemaColumn[] | null = null;
   for (const tenant of tenants) {
     const audit = await auditDatabase(admin, tenant.dbName);
-    assert.equal(audit.migrationCount, 19, `${tenant.tenantCode} migration ledger is incomplete.`);
+    assert.equal(audit.migrationCount, 20, `${tenant.tenantCode} migration ledger is incomplete.`);
     tenantSchema ??= audit.schema;
     assert.deepEqual(audit.schema, tenantSchema, `${tenant.tenantCode} schema drift was detected.`);
     databaseAudits.push(audit);

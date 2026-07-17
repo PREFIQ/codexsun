@@ -21,6 +21,7 @@ import {
   createExportSale,
   deleteExportSale,
   formatMoney,
+  getExportSale,
   setExportSaleStatus,
   revokeExportSale,
   totalExportSaleQuantity,
@@ -41,7 +42,7 @@ const statusFilters = [
 const exportSaleColumnCatalog = [
   { id: "date", label: "Date" },
   { id: "customer", label: "Customer" },
-  { id: "items", label: "Items" },
+  { id: "items", label: "QTY" },
   { id: "taxable", label: "Taxable" },
   { id: "gst", label: "GST" },
   { id: "total", label: "Total" },
@@ -61,7 +62,11 @@ function isAdminSession() {
   }
 }
 
-export function ExportSalesWorkspace() {
+export function ExportSalesWorkspace({
+  initialRecordId
+}: {
+  initialRecordId?: string | undefined;
+}) {
   const queryClient = useQueryClient();
   const settingsQuery = useBillingSettings();
   const settings = settingsQuery.data ?? defaultBillingSettings;
@@ -84,6 +89,24 @@ export function ExportSalesWorkspace() {
     search: searchValue,
     status: statusFilter
   });
+
+  useEffect(() => {
+    if (!initialRecordId) return;
+    let active = true;
+    void getExportSale(initialRecordId)
+      .then((exportSale) => {
+        if (active) setView({ mode: "show", exportSale });
+      })
+      .catch((error) => {
+        if (active)
+          toast.error("Export sale could not be opened", {
+            description: error instanceof Error ? error.message : "Please try again."
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialRecordId]);
 
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: ExportSaleSavePayload }) =>
@@ -378,6 +401,13 @@ export function ExportSalesWorkspace() {
             deleteMutation.mutate(exportSale.id);
         }}
         onRevoke={(exportSale) => revokeMutation.mutate(exportSale.id)}
+        onPrint={(exportSale) =>
+          window.open(
+            `${window.location.origin}/billing/export-sales/print?id=${encodeURIComponent(exportSale.id)}&autoprint=1`,
+            "_blank",
+            "noopener,noreferrer"
+          )
+        }
         canAdminRevoke={canAdminRevoke}
         onView={(exportSale) => setView({ mode: "show", exportSale })}
         page={currentPage}

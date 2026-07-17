@@ -1,12 +1,34 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { AppError } from "@codexsun/framework/errors";
 import { ok } from "@codexsun/framework/http";
+import { registerContractRoute } from "@codexsun/framework/http";
 import { requireSuperAdmin } from "../../auth/super-admin.guard.js";
 import { DatabaseMaintenanceService } from "./database-maintenance.service.js";
 import type { DatabaseActionPayload } from "./database-maintenance.types.js";
 
 const service = new DatabaseMaintenanceService();
+const tenantIdParamsSchema = z.object({ id: z.coerce.number().int().positive() });
+const databaseActionSchema = z.object({
+  note: z.string().trim().max(240).optional(),
+  tenantId: z.number().int().positive().optional()
+});
+const databaseRunSchema = z.object({
+  completedAt: z.string().nullable(),
+  createdAt: z.string(),
+  databaseName: z.string(),
+  details: z.record(z.string(), z.unknown()),
+  id: z.number(),
+  operation: z.enum(["backup", "migrate", "refresh", "reinstall", "restore", "setup", "status"]),
+  scope: z.enum(["master", "tenant"]),
+  status: z.enum(["completed", "failed", "requested", "running"]),
+  targetKey: z.string(),
+  uuid: z.string()
+});
 
 export async function registerDatabaseMaintenanceRoutes(app: FastifyInstance) {
+  registerTenantInstallRoute(app, "setup");
+  registerTenantInstallRoute(app, "reinstall");
   app.get("/admin/database/master", { preHandler: requireSuperAdmin }, async (request) =>
     ok(await service.masterStatus(), { requestId: request.id })
   );
@@ -85,6 +107,27 @@ export async function registerDatabaseMaintenanceRoutes(app: FastifyInstance) {
       return ok(run, { requestId: request.id });
     }
   );
+}
+
+function registerTenantInstallRoute(app: FastifyInstance, operation: "reinstall" | "setup") {
+  registerContractRoute(app, {
+    method: "POST",
+    url: `/admin/database/tenants/:id/${operation}`,
+    preHandler: requireSuperAdmin,
+    schemas: {
+      body: databaseActionSchema,
+      params: tenantIdParamsSchema,
+      response: databaseRunSchema
+    },
+    handler: async ({ body, params }) => {
+      const run =
+        operation === "setup"
+          ? await service.setupTenant(params.id, body)
+          : await service.reinstallTenant(params.id, body);
+      if (!run) throw AppError.notFound("Tenant was not found.");
+      return run;
+    }
+  });
 }
 
 function notFound(code: string, message: string, requestId: string) {

@@ -1,4 +1,5 @@
 import { AppError } from "@codexsun/framework/errors";
+import { billingDashboardProjection } from "../dashboard/index.js";
 import {
   BillingSettingsRepository,
   formatBillingDocumentNumber,
@@ -76,6 +77,7 @@ export class ExportSalesService {
         }
       });
     }
+    await this.project(databaseName, "created", exportSale);
     return exportSale;
   }
 
@@ -96,7 +98,21 @@ export class ExportSalesService {
       throw AppError.conflict(
         "Export sales invoice number already exists for this company and year."
       );
-    return this.repository.update(databaseName, id, normalized, buildExportSaleTotals(normalized));
+    const updated = await this.repository.update(
+      databaseName,
+      id,
+      normalized,
+      buildExportSaleTotals(normalized)
+    );
+    if (updated) {
+      await this.project(databaseName, "updated", updated);
+      if (
+        current.companyId !== updated.companyId ||
+        current.financialYearId !== updated.financialYearId
+      )
+        await this.project(databaseName, "updated", current);
+    }
+    return updated;
   }
 
   async confirmExportSale(databaseName: string, id: string) {
@@ -106,7 +122,9 @@ export class ExportSalesService {
       throw AppError.conflict("Only draft export sales can be confirmed.");
     if (!current.items.length)
       throw AppError.conflict("Add at least one export sale item before confirming.");
-    return this.repository.setStatus(databaseName, id, "confirmed");
+    const exportSale = await this.repository.setStatus(databaseName, id, "confirmed");
+    if (exportSale) await this.project(databaseName, "confirmed", exportSale);
+    return exportSale;
   }
 
   async cancelExportSale(databaseName: string, id: string) {
@@ -114,7 +132,9 @@ export class ExportSalesService {
     if (!current) return null;
     if (current.status === "cancelled")
       throw AppError.conflict("Export sale is already cancelled.");
-    return this.repository.setStatus(databaseName, id, "cancelled");
+    const exportSale = await this.repository.setStatus(databaseName, id, "cancelled");
+    if (exportSale) await this.project(databaseName, "cancelled", exportSale);
+    return exportSale;
   }
 
   async revokeExportSale(databaseName: string, id: string) {
@@ -124,7 +144,9 @@ export class ExportSalesService {
       throw AppError.conflict("A draft export sale does not need to be revoked.");
     if (current.einvoice.status === "generated")
       throw AppError.conflict("Cancel the generated E-invoice before revoking this export sale.");
-    return this.repository.setStatus(databaseName, id, "draft");
+    const exportSale = await this.repository.setStatus(databaseName, id, "draft");
+    if (exportSale) await this.project(databaseName, "updated", exportSale);
+    return exportSale;
   }
 
   async deleteExportSale(databaseName: string, id: string) {
@@ -135,6 +157,7 @@ export class ExportSalesService {
         "Only draft export sales without generated compliance can be deleted."
       );
     await this.repository.softDelete(databaseName, id);
+    await this.project(databaseName, "deleted", current);
     return current;
   }
 
@@ -197,6 +220,20 @@ export class ExportSalesService {
       invalid(itemReferences.requested.units, itemReferences.units, "Unit") ??
       invalid(itemReferences.requested.taxes, itemReferences.taxes, "Tax");
     if (itemFailure) throw AppError.validation(itemFailure);
+  }
+
+  private project(
+    databaseName: string,
+    action: "cancelled" | "confirmed" | "created" | "deleted" | "updated",
+    exportSale: Pick<ExportSale, "companyId" | "financialYearId" | "id">
+  ) {
+    return billingDashboardProjection.project(databaseName, {
+      action,
+      companyId: exportSale.companyId,
+      documentId: exportSale.id,
+      financialYearId: exportSale.financialYearId,
+      source: "export-sales"
+    });
   }
 }
 

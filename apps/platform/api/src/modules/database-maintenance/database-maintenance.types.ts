@@ -1,5 +1,6 @@
 export type DatabaseScope = "master" | "tenant";
-export type DatabaseOperation = "backup" | "migrate" | "refresh" | "restore" | "status";
+export type DatabaseOperation =
+  "backup" | "migrate" | "refresh" | "reinstall" | "restore" | "setup" | "status";
 export type DatabaseRunStatus = "completed" | "failed" | "requested" | "running";
 
 export type DatabaseMigrationRow = {
@@ -75,10 +76,10 @@ export type TenantDatabaseDetails = TenantDatabaseStatus & {
 };
 
 export type DatabaseActionPayload = {
-  backupId?: string;
-  backupPath?: string;
-  liveRestoreConfirm?: string;
-  note?: string;
-  restoreMode?: "live" | "sandbox";
-  tenantId?: number;
+  backupId?: string | undefined;
+  backupPath?: string | undefined;
+  liveRestoreConfirm?: string | undefined;
+  note?: string | undefined;
+  restoreMode?: "live" | "sandbox" | undefined;
+  tenantId?: number | undefined;
 };

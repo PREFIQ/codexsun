@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Building2Icon, ClipboardCheckIcon, LifeBuoyIcon, PanelsTopLeftIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { AdminLayout, Button, Card, StatusBadge } from "@codexsun/ui";
+import { AdminLayout, Button, Card, GlobalLoader, StatusBadge } from "@codexsun/ui";
 import { AuthGate } from "../../shared/auth/AuthGate";
 import { apiGet, logout } from "../../shared/api/platform-api";
 import type { PlatformAppDefinition } from "../../app/app-registry";
@@ -104,6 +104,10 @@ function AppRegistryPanel() {
     queryKey: ["admin", "apps"]
   });
 
+  if (appsQuery.isLoading) {
+    return <GlobalLoader className="min-h-[24rem]" fullScreen={false} />;
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {(appsQuery.data ?? []).map((app) => (
@@ -117,11 +121,6 @@ function AppRegistryPanel() {
           </div>
         </Card>
       ))}
-      {appsQuery.isLoading ? (
-        <Card title="App Registry" description="Loading registered apps.">
-          <StatusBadge tone="amber">Loading</StatusBadge>
-        </Card>
-      ) : null}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, GripVertical, Plus, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
+import { GlobalLoader } from "@codexsun/ui/components/global-loader";
 import { Input } from "@codexsun/ui/components/input";
 import { Checkbox } from "@codexsun/ui/components/checkbox";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
@@ -203,11 +204,15 @@ function MappingEditor({ id, onBack }: { id: number; onBack: () => void }) {
     onSuccess: () => toast.success("Mapping plan saved"),
     onError: (error) => toast.error("Could not save mapping plan", { description: error.message })
   });
+  if (query.isLoading) {
+    return <GlobalLoader className="min-h-[24rem]" fullScreen={false} />;
+  }
+
   if (!query.data)
     return (
-      <WorkspacePage title="Field Mappings" description="Loading mapping plan...">
+      <WorkspacePage title="Field Mappings" description="Mapping plan unavailable.">
         <div className="text-sm text-muted-foreground">
-          Loading prepared Source and Target schemas...
+          The selected mapping plan was not found.
         </div>
       </WorkspacePage>
     );

@@ -5,6 +5,7 @@ import { migrateTenantRolePermissionModule } from "../tenant-role-permission/ind
 import { migrateTenantRoleModule } from "../tenant-role/index.js";
 import { migrateTenantUserRoleModule } from "../tenant-user-role/index.js";
 import { migrateTenantUserModule } from "../tenant-user/index.js";
+import { migrateMailModule, seedMailModule } from "@codexsun/mail-api";
 
 export const tenantMigration = {
   key: "platform.tenant.foundation",
@@ -99,6 +100,8 @@ export async function migrateTenantRuntimeModule(database: Kysely<TenantDatabase
   await migrateTenantPermissionModule(database);
   await migrateTenantUserRoleModule(database);
   await migrateTenantRolePermissionModule(database);
+  await migrateMailModule(database as never);
+  await seedMailModule(database as never);
 
   await database
     .insertInto("schema_migrations")

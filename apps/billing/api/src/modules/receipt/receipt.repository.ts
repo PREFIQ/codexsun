@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { sql, type Kysely, type Transaction } from "kysely";
 import { AppError } from "@codexsun/framework/errors";
 import { getBillingDatabase } from "../../database/billing-database.js";
+import { currentBillingScope } from "../../auth/billing-scope.js";
 import type {
   Receipt,
   ReceiptAllocation,
@@ -70,12 +71,15 @@ export class ReceiptRepository {
       search,
       status: options.status
     };
+    const scope = currentBillingScope();
     const result = await selectHeaders(undefined, false, page).execute(database);
     const count = await sql<{
       total: string | number;
     }>`SELECT COUNT(*) AS total FROM billing_receipts r
       INNER JOIN contacts customer ON customer.id=r.customer_id INNER JOIN ledgers ledger ON ledger.id=r.ledger_id
-      WHERE r.deleted_at IS NULL AND (${page.status}='all' OR r.status=${page.status})
+      WHERE r.deleted_at IS NULL
+      AND r.company_id=${scope.companyId} AND r.financial_year_id=${scope.financialYearId}
+      AND (${page.status}='all' OR r.status=${page.status})
       AND (${search}='%%' OR r.receipt_number LIKE ${search} OR customer.name LIKE ${search}
         OR ledger.name LIKE ${search} OR r.receipt_mode LIKE ${search} OR r.status LIKE ${search}
         OR COALESCE(r.reference_no,'') LIKE ${search})`.execute(database);
@@ -98,6 +102,7 @@ export class ReceiptRepository {
     databaseName: string
   ): Promise<Omit<ReceiptContext, "suggestedReceiptNumber"> | null> {
     const database = await receiptDatabase(databaseName);
+    const scope = currentBillingScope();
     const result = await sql<{
       company_id: number;
       company_name: string;
@@ -106,14 +111,14 @@ export class ReceiptRepository {
       financial_year_id: number;
       financial_year_name: string;
     }>`
-      SELECT d.company_id, c.name AS company_name, d.financial_year_id,
+      SELECT c.id AS company_id, c.name AS company_name, f.id AS financial_year_id,
              f.name AS financial_year_name, currency.id AS currency_id,
              currency.name AS currency_code
-      FROM default_company_settings d
-      INNER JOIN companies c ON c.id = d.company_id AND c.status = 'active'
-      INNER JOIN financial_years f ON f.id = d.financial_year_id AND f.status = 'active'
+      FROM companies c
+      CROSS JOIN financial_years f
       INNER JOIN currencies currency ON UPPER(currency.name) = 'INR' AND currency.status = 'active'
-      WHERE d.singleton_key = 1 AND d.status = 'active' LIMIT 1
+      WHERE c.id=${scope.companyId} AND c.status='active'
+        AND f.id=${scope.financialYearId} AND f.status='active' LIMIT 1
     `.execute(database);
     const row = result.rows[0];
     return row
@@ -148,6 +153,7 @@ export class ReceiptRepository {
 
   async validateReferences(databaseName: string, input: ReceiptSavePayload, excludeUuid?: string) {
     const database = await receiptDatabase(databaseName);
+    const scope = currentBillingScope();
     const base = await sql<{
       company: number;
       currency: number;
@@ -156,8 +162,8 @@ export class ReceiptRepository {
       ledger: number;
     }>`
       SELECT
-        EXISTS(SELECT 1 FROM companies WHERE id = ${input.companyId} AND status = 'active') AS company,
-        EXISTS(SELECT 1 FROM financial_years WHERE id = ${input.financialYearId} AND status = 'active' AND ${input.receiptDate} BETWEEN start_date AND end_date) AS financialYear,
+        EXISTS(SELECT 1 FROM companies WHERE id = ${input.companyId} AND id=${scope.companyId} AND status = 'active') AS company,
+        EXISTS(SELECT 1 FROM financial_years WHERE id = ${input.financialYearId} AND id=${scope.financialYearId} AND status = 'active' AND ${input.receiptDate} BETWEEN start_date AND end_date) AS financialYear,
         EXISTS(SELECT 1 FROM currencies WHERE id = ${input.currencyId} AND status = 'active') AS currency,
         EXISTS(SELECT 1 FROM contacts WHERE id = ${input.customerId} AND status = 'active') AS customer,
         EXISTS(SELECT 1 FROM ledgers WHERE id = ${input.ledgerId} AND status = 'active') AS ledger
@@ -169,8 +175,12 @@ export class ReceiptRepository {
           GREATEST(s.amount - COALESCE(SUM(CASE WHEN r.status <> 'cancelled' ${excludeUuid ? sql`AND r.uuid <> ${excludeUuid}` : sql``} THEN a.allocated_amount ELSE 0 END), 0), 0) AS outstanding_amount
         FROM billing_sales s
         LEFT JOIN billing_receipt_allocations a ON a.sales_id = s.id
-        LEFT JOIN billing_receipts r ON r.id = a.receipt_id AND r.deleted_at IS NULL
-        WHERE s.uuid = ${allocation.saleId} AND s.status = 'confirmed' AND s.deleted_at IS NULL
+        LEFT JOIN billing_receipts r ON r.id = a.receipt_id
+          AND r.company_id=${scope.companyId} AND r.financial_year_id=${scope.financialYearId}
+          AND r.deleted_at IS NULL
+        WHERE s.uuid = ${allocation.saleId}
+          AND s.company_id=${scope.companyId} AND s.financial_year_id=${scope.financialYearId}
+          AND s.status = 'confirmed' AND s.deleted_at IS NULL
         GROUP BY s.id, s.customer_id, s.amount
       `.execute(database);
         const row = result.rows[0];
@@ -197,6 +207,7 @@ export class ReceiptRepository {
     customerId: number
   ): Promise<ReceiptAllocationCandidate[]> {
     const database = await receiptDatabase(databaseName);
+    const scope = currentBillingScope();
     const result = await sql<{
       customer_id: number;
       document_date: string;
@@ -210,8 +221,12 @@ export class ReceiptRepository {
              GREATEST(s.amount - COALESCE(SUM(CASE WHEN r.status <> 'cancelled' THEN a.allocated_amount ELSE 0 END), 0), 0) AS outstanding_amount
       FROM billing_sales s
       LEFT JOIN billing_receipt_allocations a ON a.sales_id = s.id
-      LEFT JOIN billing_receipts r ON r.id = a.receipt_id AND r.deleted_at IS NULL
-      WHERE s.customer_id = ${customerId} AND s.status = 'confirmed' AND s.deleted_at IS NULL
+      LEFT JOIN billing_receipts r ON r.id = a.receipt_id
+        AND r.company_id=${scope.companyId} AND r.financial_year_id=${scope.financialYearId}
+        AND r.deleted_at IS NULL
+      WHERE s.customer_id = ${customerId}
+        AND s.company_id=${scope.companyId} AND s.financial_year_id=${scope.financialYearId}
+        AND s.status = 'confirmed' AND s.deleted_at IS NULL
       GROUP BY s.id, s.uuid, s.customer_id, s.invoice_number, s.issued_on, s.amount
       HAVING outstanding_amount > 0
       ORDER BY s.issued_on, s.line_number
@@ -401,6 +416,7 @@ function selectHeaders(
   includeDeleted = false,
   page?: { limit: number; offset: number; search: string; status: string }
 ) {
+  const scope = currentBillingScope();
   return sql<HeaderRow>`
     SELECT r.*, c.name AS company_name, f.name AS financial_year_name, currency.name AS currency_code,
            customer.name AS customer_name, ledger.name AS ledger_name
@@ -410,7 +426,9 @@ function selectHeaders(
     INNER JOIN currencies currency ON currency.id=r.currency_id
     INNER JOIN contacts customer ON customer.id=r.customer_id
     INNER JOIN ledgers ledger ON ledger.id=r.ledger_id
-    WHERE ${uuid ? sql`r.uuid=${uuid}` : sql`1=1`} ${includeDeleted ? sql`` : sql`AND r.deleted_at IS NULL`}
+    WHERE ${uuid ? sql`r.uuid=${uuid}` : sql`1=1`}
+      AND r.company_id=${scope.companyId} AND r.financial_year_id=${scope.financialYearId}
+      ${includeDeleted ? sql`` : sql`AND r.deleted_at IS NULL`}
       ${
         page
           ? sql`AND (${page.status}='all' OR r.status=${page.status})
@@ -435,7 +453,9 @@ async function assertReceiptAllocationsAvailable(
   for (const allocation of allocations) {
     const saleResult = await sql<{ amount: string | number; customer_id: number; id: number }>`
       SELECT id, customer_id, amount FROM billing_sales
-      WHERE uuid=${allocation.saleId} AND status='confirmed' AND deleted_at IS NULL
+      WHERE uuid=${allocation.saleId}
+        AND company_id=${input.companyId} AND financial_year_id=${input.financialYearId}
+        AND status='confirmed' AND deleted_at IS NULL
       FOR UPDATE
     `.execute(transaction);
     const sale = saleResult.rows[0];
@@ -469,6 +489,8 @@ async function replaceAllocations(
       INSERT INTO billing_receipt_allocations (uuid, receipt_id, sales_id, line_number, allocated_amount)
       SELECT ${publicId()}, ${receiptId}, id, ${index + 1}, ${allocation.allocatedAmount}
       FROM billing_sales WHERE uuid=${allocation.saleId}
+        AND company_id=(SELECT company_id FROM billing_receipts WHERE id=${receiptId})
+        AND financial_year_id=(SELECT financial_year_id FROM billing_receipts WHERE id=${receiptId})
     `.execute(transaction);
   }
 }
@@ -488,10 +510,13 @@ async function addActivity(
 }
 
 async function internalReceipt(database: Kysely<ReceiptDatabase>, uuid: string) {
+  const scope = currentBillingScope();
   const result = await sql<{
     id: number;
     status: ReceiptStatus;
-  }>`SELECT id, status FROM billing_receipts WHERE uuid=${uuid} AND deleted_at IS NULL LIMIT 1`.execute(
+  }>`SELECT id, status FROM billing_receipts WHERE uuid=${uuid}
+    AND company_id=${scope.companyId} AND financial_year_id=${scope.financialYearId}
+    AND deleted_at IS NULL LIMIT 1`.execute(
     database
   );
   return result.rows[0] ?? null;

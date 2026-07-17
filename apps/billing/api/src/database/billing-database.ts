@@ -28,6 +28,11 @@ import {
   migrateBillingSettingsModule
 } from "../modules/settings/settings.migration.js";
 import { BillingSettingsRepository } from "../modules/settings/settings.repository.js";
+import {
+  dashboardMigration,
+  migrateDashboardModule
+} from "../modules/dashboard/dashboard.migration.js";
+import { seedDashboardModule } from "../modules/dashboard/dashboard.seed.js";
 
 export type BillingDatabase = {
   billing_quotations: BillingQuotationTable;
@@ -143,6 +148,8 @@ async function bootstrapBillingDatabaseOnce(name: string) {
   await recordBillingMigration(db, receiptMigration.key);
   await migrateBillingSettingsModule(db);
   await recordBillingMigration(db, billingSettingsMigration.key);
+  await migrateDashboardModule(db);
+  await recordBillingMigration(db, dashboardMigration.key);
   await seedBillingTenantPermissions(db as unknown as Kysely<unknown>);
   migrated.add(name);
   try {
@@ -150,6 +157,7 @@ async function bootstrapBillingDatabaseOnce(name: string) {
     await seedExportSalesModule(db);
     await seedPaymentModule(db);
     await seedReceiptModule(db);
+    await seedDashboardModule(name);
     const settingsRepository = new BillingSettingsRepository();
     const companyId = await settingsRepository.defaultCompanyId(name);
     await settingsRepository.getBillingSettings(name, companyId);

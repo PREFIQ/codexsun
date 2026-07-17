@@ -6,3 +6,10 @@ export { QuotationWorkspace } from "./modules/quotation";
 export { SalesWorkspace } from "./modules/sales";
 export { PaymentWorkspace } from "./modules/payment";
 export { ReceiptWorkspace } from "./modules/receipt";
+export { BillingDashboardWorkspace } from "./modules/dashboard";
+export {
+  CustomerStatementWorkspace,
+  GstStatementWorkspace,
+  StockStatementWorkspace,
+  SupplierStatementWorkspace
+} from "./modules/reports";

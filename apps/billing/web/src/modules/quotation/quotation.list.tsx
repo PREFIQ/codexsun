@@ -1,7 +1,12 @@
-import { Eye, RotateCcw, Trash2 } from "lucide-react";
+import { Eye, Printer, RotateCcw, Trash2 } from "lucide-react";
+import { Button } from "@codexsun/ui/components/button";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
-import { WorkspaceTableEmptyState, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
+import {
+  WorkspaceTableEmptyState,
+  WorkspaceTableLoadingState,
+  WorkspaceTablePanel
+} from "@codexsun/ui/workspace/table";
 import { cn } from "@codexsun/ui/lib/utils";
 import { formatDate, formatMoney, totalQuotationQuantity } from "./quotation.services";
 import type { Quotation } from "./quotation.types";
@@ -12,6 +17,7 @@ export function QuotationList({
   loading,
   onEdit,
   onForceDelete,
+  onPrint,
   onRevoke,
   onSetStatus,
   onView,
@@ -29,6 +35,7 @@ export function QuotationList({
   loading: boolean;
   onEdit: (quotation: Quotation) => void;
   onForceDelete: (quotation: Quotation) => void;
+  onPrint: (quotation: Quotation) => void;
   onRevoke: (quotation: Quotation) => void;
   onSetStatus: (quotation: Quotation, status: "cancelled" | "confirmed") => void;
   onView: (quotation: Quotation) => void;
@@ -61,17 +68,25 @@ export function QuotationList({
                 "Quotation",
                 "Date",
                 ...(visibleColumns.customer ? ["Customer"] : []),
-                ...(visibleColumns.items ? ["Items"] : []),
+                ...(visibleColumns.items ? ["QTY"] : []),
                 ...(visibleColumns.taxable ? ["Taxable"] : []),
                 ...(visibleColumns.gst ? ["GST"] : []),
                 ...(visibleColumns.total ? ["Total"] : []),
                 ...(visibleColumns.status ? ["Status"] : []),
                 ...(visibleColumns.invoice ? ["Invoice"] : []),
+                "Print",
                 ...(visibleColumns.action ? ["Action"] : [])
               ].map((heading) => (
                 <th
                   key={heading}
-                  className="border-b border-border/70 px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  className={cn(
+                    "border-b border-border/70 px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+                    ["QTY", "Taxable", "GST", "Total"].includes(heading)
+                      ? "text-right"
+                      : heading === "Print"
+                        ? "text-center"
+                        : "text-left"
+                  )}
                 >
                   {heading}
                 </th>
@@ -133,16 +148,18 @@ export function QuotationList({
                   </td>
                 ) : null}
                 {visibleColumns.items ? (
-                  <td className="px-4 py-2.5">{totalQuotationQuantity(quotation)}</td>
+                  <td className="px-4 py-2.5 text-right">{totalQuotationQuantity(quotation)}</td>
                 ) : null}
                 {visibleColumns.taxable ? (
-                  <td className="px-4 py-2.5">{formatMoney(quotation.subtotal)}</td>
+                  <td className="px-4 py-2.5 text-right">{formatMoney(quotation.subtotal)}</td>
                 ) : null}
                 {visibleColumns.gst ? (
-                  <td className="px-4 py-2.5">{formatMoney(quotation.taxAmount)}</td>
+                  <td className="px-4 py-2.5 text-right">{formatMoney(quotation.taxAmount)}</td>
                 ) : null}
                 {visibleColumns.total ? (
-                  <td className="px-4 py-2.5 font-semibold">{formatMoney(quotation.amount)}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold">
+                    {formatMoney(quotation.amount)}
+                  </td>
                 ) : null}
                 {visibleColumns.status ? (
                   <td className="px-4 py-2.5">
@@ -154,6 +171,19 @@ export function QuotationList({
                     {quotation.generatedSalesInvoiceNo || "-"}
                   </td>
                 ) : null}
+                <td className="px-4 py-2.5 text-center">
+                  <Button
+                    aria-label={`Print ${quotation.quotationNumber}`}
+                    className="size-8"
+                    onClick={() => onPrint(quotation)}
+                    size="icon"
+                    title={`Print ${quotation.quotationNumber}`}
+                    type="button"
+                    variant="outline"
+                  >
+                    <Printer className="size-4" />
+                  </Button>
+                </td>
                 {visibleColumns.action ? (
                   <td className="px-4 py-2.5">
                     <WorkspaceRowActions
@@ -214,10 +244,9 @@ export function QuotationList({
           </tbody>
         </table>
       </div>
-      {entries.length === 0 ? (
-        <WorkspaceTableEmptyState>
-          {loading ? "Loading quotations..." : "No quotations found."}
-        </WorkspaceTableEmptyState>
+      {entries.length === 0 && loading ? <WorkspaceTableLoadingState /> : null}
+      {entries.length === 0 && !loading ? (
+        <WorkspaceTableEmptyState>No quotations found.</WorkspaceTableEmptyState>
       ) : null}
     </WorkspaceTablePanel>
   );

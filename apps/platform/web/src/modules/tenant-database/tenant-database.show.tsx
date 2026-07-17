@@ -7,7 +7,7 @@ import {
   RotateCcwIcon,
   UploadIcon
 } from "lucide-react";
-import { StatusBadge } from "@codexsun/ui";
+import { GlobalLoader, StatusBadge } from "@codexsun/ui";
 import { Button } from "@codexsun/ui/components/button";
 import {
   WorkspaceAnimatedTabs,
@@ -236,9 +236,7 @@ function TablesCard({ loading, tables }: { loading: boolean; tables: DatabaseTab
             ))}
           </tbody>
         </table>
-        {loading ? (
-          <div className="px-4 py-6 text-sm text-muted-foreground">Loading table details...</div>
-        ) : null}
+        {loading ? <GlobalLoader className="min-h-28" fullScreen={false} /> : null}
         {!loading && tables.length === 0 ? (
           <div className="px-4 py-6 text-sm text-muted-foreground">No table details found.</div>
         ) : null}

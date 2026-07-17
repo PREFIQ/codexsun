@@ -59,7 +59,7 @@ try {
   assert.equal(initial.tenant.defaultCompanies, 1);
   assert.equal(initial.tenant.demoSuppliers, 1);
   assert.equal(initial.tenant.billingSettings, 1);
-  assert.equal(initial.tenant.billingTables, 7);
+  assert.equal(initial.tenant.billingTables, 8);
 
   await closeAllBillingDatabases();
   await closeCoreDatabase();
@@ -139,7 +139,7 @@ async function countWhere(tableName: string, predicate: string) {
 
 async function countBillingRootTables() {
   const [rows] = await admin.query<Array<RowDataPacket & { row_count: number | string }>>(
-    "SELECT COUNT(*) AS row_count FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('billing_sales','billing_purchases','billing_export_sales','billing_quotations','billing_payments','billing_receipts','billing_settings')"
+    "SELECT COUNT(*) AS row_count FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('billing_sales','billing_purchases','billing_export_sales','billing_quotations','billing_payments','billing_receipts','billing_settings','billing_dashboard_snapshots')"
   );
   return Number(rows[0]?.row_count ?? 0);
 }

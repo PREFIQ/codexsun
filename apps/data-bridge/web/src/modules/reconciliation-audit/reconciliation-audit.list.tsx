@@ -2,6 +2,7 @@ import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
 import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
+  WorkspaceTableLoadingState,
   WorkspaceTablePanel
 } from "@codexsun/ui/workspace/table";
 import type { ReconciliationReport } from "./reconciliation-audit.types";
@@ -55,10 +56,9 @@ export function ReconciliationAuditList({
           ))}
         </tbody>
       </table>
-      {!records.length ? (
-        <WorkspaceTableEmptyState>
-          {loading ? "Loading reports..." : "No reconciliation reports generated."}
-        </WorkspaceTableEmptyState>
+      {!records.length && loading ? <WorkspaceTableLoadingState /> : null}
+      {!records.length && !loading ? (
+        <WorkspaceTableEmptyState>No reconciliation reports generated.</WorkspaceTableEmptyState>
       ) : null}
     </WorkspaceTablePanel>
   );

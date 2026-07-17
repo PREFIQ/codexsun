@@ -1,4 +1,7 @@
 export * from "./tenant.form";
+export * from "./tenant.apps";
+export * from "./tenant.activity";
+export * from "./tenant.identity";
 export * from "./tenant.hooks";
 export * from "./tenant.list";
 export * from "./tenant.schema";

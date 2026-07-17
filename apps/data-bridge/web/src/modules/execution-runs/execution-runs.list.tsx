@@ -2,6 +2,7 @@ import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
 import {
   WorkspaceTableEmptyState,
   WorkspaceTableHeaderCell,
+  WorkspaceTableLoadingState,
   WorkspaceTablePanel
 } from "@codexsun/ui/workspace/table";
 import type { ExecutionRun } from "./execution-runs.types";
@@ -61,10 +62,9 @@ export function ExecutionRunsList({
           })}
         </tbody>
       </table>
-      {!records.length ? (
-        <WorkspaceTableEmptyState>
-          {loading ? "Loading execution runs..." : "No execution runs queued."}
-        </WorkspaceTableEmptyState>
+      {!records.length && loading ? <WorkspaceTableLoadingState /> : null}
+      {!records.length && !loading ? (
+        <WorkspaceTableEmptyState>No execution runs queued.</WorkspaceTableEmptyState>
       ) : null}
     </WorkspaceTablePanel>
   );

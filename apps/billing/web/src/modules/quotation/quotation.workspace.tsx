@@ -39,7 +39,7 @@ const statusFilters = [
 
 const quotationColumnCatalog = [
   { id: "customer", label: "Customer" },
-  { id: "items", label: "Items" },
+  { id: "items", label: "QTY" },
   { id: "taxable", label: "Taxable" },
   { id: "gst", label: "GST" },
   { id: "total", label: "Total" },
@@ -430,6 +430,13 @@ export function QuotationWorkspace() {
             deleteMutation.mutate(quotation.id);
         }}
         onRevoke={(quotation) => revokeMutation.mutate(quotation.id)}
+        onPrint={(quotation) =>
+          window.open(
+            `${window.location.origin}/billing/quotation/print?id=${encodeURIComponent(quotation.id)}&autoprint=1`,
+            "_blank",
+            "noopener,noreferrer"
+          )
+        }
         canAdminRevoke={canAdminRevoke}
         onView={(quotation) => setView({ mode: "show", quotation })}
         page={currentPage}

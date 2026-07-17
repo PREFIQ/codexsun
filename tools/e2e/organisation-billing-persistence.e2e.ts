@@ -16,6 +16,7 @@ import { registerPurchaseRoutes } from "../../apps/billing/api/src/modules/purch
 import { PurchaseService } from "../../apps/billing/api/src/modules/purchase/purchase.service.js";
 import { SalesService } from "../../apps/billing/api/src/modules/sales/sales.service.js";
 import { registerSalesRoutes } from "../../apps/billing/api/src/modules/sales/sales.routes.js";
+import { registerDashboardRoutes } from "../../apps/billing/api/src/modules/dashboard/dashboard.routes.js";
 import { registerProductRoutes } from "../../apps/core/api/src/modules/master/product/product.routes.js";
 import { registerContactRoutes } from "../../apps/core/api/src/modules/master/contact/contact.routes.js";
 import { seedContactModule } from "../../apps/core/api/src/modules/master/contact/contact.seed.js";
@@ -62,6 +63,7 @@ try {
   await registerReceiptRoutes(api);
   await registerExportSalesRoutes(api);
   await registerSalesRoutes(api);
+  await registerDashboardRoutes(api);
   await registerProductRoutes(api);
   await registerContactRoutes(api);
   await api.ready();
@@ -806,6 +808,35 @@ try {
   assert.equal(Number(counts[0]?.payments), 1);
   assert.equal(Number(counts[0]?.payment_activities), 4);
   assert.equal(Number(counts[0]?.payment_allocations), 1);
+
+  const confirmedDashboardSale = await requestData(
+    api,
+    "POST",
+    `/billing/sales/${sale12.id}/confirm`,
+    databaseName,
+    undefined,
+    timings
+  );
+  assert.equal(confirmedDashboardSale.status, "confirmed");
+
+  const dashboard = await requestData(
+    api,
+    "GET",
+    "/billing/dashboard",
+    databaseName,
+    undefined,
+    timings
+  );
+  const dashboardMetrics = dashboard.metrics as ApiRecord;
+  const dashboardSales = dashboardMetrics.sales as ApiRecord;
+  assert.ok(Number(dashboardSales.financialYear) > 0, "Dashboard sales projection is empty.");
+  assert.ok(Array.isArray(dashboard.monthly) && dashboard.monthly.length > 0);
+  assert.ok(Array.isArray(dashboard.recent) && dashboard.recent.length > 0);
+  assert.ok(Array.isArray(dashboard.outstanding));
+  const [dashboardRows] = await admin.query<Array<RowDataPacket & { row_count: number | string }>>(
+    "SELECT COUNT(*) AS row_count FROM billing_dashboard_snapshots"
+  );
+  assert.equal(Number(dashboardRows[0]?.row_count), 1);
 
   console.log("Organisation/Billing persistence E2E passed", {
     convertedSaleId: conversion.sale.id,

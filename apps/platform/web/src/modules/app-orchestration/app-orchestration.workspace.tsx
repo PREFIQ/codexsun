@@ -1,4 +1,4 @@
-import { StatusBadge } from "@codexsun/ui";
+import { GlobalLoader, StatusBadge } from "@codexsun/ui";
 import { AppOrchestrationForm } from "./app-orchestration.form";
 import { useAppOperationActions, useAppOperationsQuery } from "./app-orchestration.hooks";
 import { appOperationTones, AppServiceList } from "./app-orchestration.list";
@@ -20,11 +20,15 @@ export function AppOrchestrationWorkspace({
     actions.startService.isPending ||
     actions.stopService.isPending ||
     actions.restartService.isPending;
+  if (query.isLoading) {
+    return <GlobalLoader className="min-h-[24rem]" fullScreen={false} />;
+  }
+
   if (!app)
     return (
       <main className="mx-auto w-[calc(100%-2rem)] max-w-[92rem] py-5">
         <div className="rounded-md border bg-card p-6 text-sm text-muted-foreground">
-          Loading app operations…
+          App operations could not be found.
         </div>
       </main>
     );

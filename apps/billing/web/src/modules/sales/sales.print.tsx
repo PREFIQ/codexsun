@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { WorkspacePrintSheet } from "@codexsun/ui/workspace/print";
 import { ArrowLeft, Printer, RefreshCw } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
+import { GlobalLoader } from "@codexsun/ui/components/global-loader";
 import { Card, CardContent, CardHeader, CardTitle } from "@codexsun/ui/components/card";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { PageTitle } from "../../shared/document/PageTitle";
-import { useBillingSettings } from "../settings";
+import { BillingCompanyName, BillingDocumentHeader, useBillingSettings } from "../settings";
 import { useSaleRecord } from "./sales.hooks";
 import {
   formatDate,
@@ -19,10 +20,29 @@ import type { Sale } from "./sales.types";
 export type SalePrintCopy = "duplicate" | "office-copy" | "original";
 
 export function SalesPrintRoutePage() {
-  const saleId = new URLSearchParams(window.location.search).get("id");
+  const search = new URLSearchParams(window.location.search);
+  const saleId = search.get("id");
+  const autoPrint = search.get("autoprint") === "1";
   const saleQuery = useSaleRecord(saleId, true);
+  const settingsQuery = useBillingSettings();
+  const autoPrintTriggered = useRef(false);
   const [printCopies, setPrintCopies] = useState<readonly SalePrintCopy[]>(["original"]);
   const sale = saleQuery.data;
+
+  useEffect(() => {
+    if (!autoPrint || !sale || settingsQuery.isLoading || autoPrintTriggered.current) return;
+    const closeAfterPrint = () => window.close();
+    window.addEventListener("afterprint", closeAfterPrint, { once: true });
+    const timeout = window.setTimeout(() => {
+      autoPrintTriggered.current = true;
+      window.print();
+    }, 150);
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener("afterprint", closeAfterPrint);
+    };
+  }, [autoPrint, sale, settingsQuery.isLoading]);
+
   function togglePrintCopy(copy: SalePrintCopy) {
     setPrintCopies((current) =>
       !current.includes(copy)
@@ -32,6 +52,11 @@ export function SalesPrintRoutePage() {
           : current.filter((value) => value !== copy)
     );
   }
+
+  if (saleQuery.isLoading) {
+    return <GlobalLoader />;
+  }
+
   return (
     <WorkspacePage
       className="billing-document-print-page"
@@ -92,7 +117,7 @@ export function SalesPrintRoutePage() {
         </section>
       ) : (
         <div className="px-4 py-8 text-sm text-muted-foreground">
-          {saleQuery.isLoading ? "Loading sale print view..." : "Sale print record was not found."}
+          Sale print record was not found.
         </div>
       )}
     </WorkspacePage>
@@ -203,29 +228,7 @@ function SalePrintPage({
           </div>
         </header>
 
-        <section className="grid min-h-[8.75rem] grid-cols-[8rem_1fr] border-b border-slate-300">
-          <div className="flex items-center justify-center p-4">
-            <div className="grid size-[5.5rem] place-items-center rounded-[1rem] border-[3px] border-slate-700 text-slate-700">
-              <div className="relative size-[3.6rem]">
-                <span className="absolute left-0 top-1 h-[6px] w-full rounded bg-current" />
-                <span className="absolute left-0 top-1/2 h-[6px] w-full -translate-y-1/2 rounded bg-current" />
-                <span className="absolute left-0 bottom-1 h-[6px] w-full rounded bg-current" />
-                <span className="absolute left-1 top-0 h-full w-[6px] rounded bg-current" />
-                <span className="absolute right-1 top-0 h-full w-[6px] rounded bg-current" />
-              </div>
-            </div>
-          </div>
-          <div className="grid place-items-center px-6 py-5 text-center">
-            <div>
-              <div className="font-serif text-[1.95rem] font-bold tracking-tight">CODEXSUN</div>
-              <div className="mt-1 text-[10px] leading-4">
-                <div>address1, ADDRESS 2</div>
-                <div>Tiruppur, Tiruppur-Dist, Tamil Nadu, India - 641602</div>
-                <div className="font-semibold">GSTIN/UIN: -</div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <BillingDocumentHeader />
 
         {addressMode === "billing_and_shipping" ? (
           <section className="space-y-1 border-b border-slate-300 px-2 py-2 text-[10px]">
@@ -383,7 +386,9 @@ function SalePrintPage({
                 <div className="mt-4">Receiver Sign</div>
               </div>
               <div className="grid grid-rows-[1fr_auto] px-2 py-2 text-[9px]">
-                <div className="font-semibold">For CODEXSUN</div>
+                <div className="font-semibold">
+                  For <BillingCompanyName />
+                </div>
                 <div className="font-semibold">Authorised Signatory</div>
               </div>
             </section>

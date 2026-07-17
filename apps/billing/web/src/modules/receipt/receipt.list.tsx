@@ -1,7 +1,11 @@
 import { Eye, Pencil, Send, Trash2, XCircle } from "lucide-react";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
-import { WorkspaceTableEmptyState, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
+import {
+  WorkspaceTableEmptyState,
+  WorkspaceTableLoadingState,
+  WorkspaceTablePanel
+} from "@codexsun/ui/workspace/table";
 import { formatReceiptDate, formatReceiptMoney } from "./receipt.services";
 import type { Receipt } from "./receipt.types";
 
@@ -120,9 +124,7 @@ export function ReceiptList({
           No receipts found. Create the first receipt voucher for this tenant.
         </WorkspaceTableEmptyState>
       ) : null}
-      {loading ? (
-        <p className="p-10 text-center text-sm text-muted-foreground">Loading receipts...</p>
-      ) : null}
+      {loading ? <WorkspaceTableLoadingState /> : null}
     </WorkspaceTablePanel>
   );
 }

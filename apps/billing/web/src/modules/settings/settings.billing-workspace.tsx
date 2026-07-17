@@ -13,6 +13,7 @@ import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import { saveBillingSettings } from "./settings.services";
 import { billingSettingsQueryKey, useBillingSettings } from "./settings.hooks";
+import { BillingDocumentHeader } from "./settings.document-header";
 import {
   defaultBillingSettings,
   type BillingDocumentKind,
@@ -242,11 +243,7 @@ export function BillingSettingsWorkspace() {
                 onChange={(event) => patchPrinting({ customTerms: event.target.value })}
               />
             </label>
-            <LetterheadDesigner
-              settings={form.printing.letterhead}
-              showLogo={form.printing.printWithLogo}
-              onChange={patchLetterhead}
-            />
+            <LetterheadDesigner billingSettings={form} onChange={patchLetterhead} />
           </SettingsPanel>
         )
       },
@@ -424,14 +421,13 @@ function SettingsField({ children, label }: { children: React.ReactNode; label: 
 }
 
 function LetterheadDesigner({
-  onChange,
-  settings,
-  showLogo
+  billingSettings,
+  onChange
 }: {
+  billingSettings: BillingSettings;
   onChange: (next: Partial<BillingSettings["printing"]["letterhead"]>) => void;
-  settings: BillingSettings["printing"]["letterhead"];
-  showLogo: boolean;
 }) {
+  const settings = billingSettings.printing.letterhead;
   const fields: Array<{ key: keyof typeof settings; label: string; type?: "color" | "number" }> = [
     { key: "companyFont", label: "Company font" },
     { key: "addressFont", label: "Address font" },
@@ -451,55 +447,13 @@ function LetterheadDesigner({
 
   return (
     <div className="rounded-md border border-border/70 bg-background p-4">
-      <div
-        className="relative overflow-hidden rounded-md border bg-white"
-        style={{
-          borderColor: settings.borderColor,
-          height: `${Math.max(settings.headerHeightMm * 3.6, 140)}px`
-        }}
-      >
-        {showLogo ? (
-          <div
-            className="absolute flex items-center justify-center rounded-md border-2 border-neutral-700 text-lg font-bold text-neutral-700"
-            style={{
-              height: `${settings.logoHeightMm * 3}px`,
-              left: `${settings.logoLeftMm * 3}px`,
-              top: `${settings.logoTopMm * 3}px`,
-              width: `${settings.logoWidthMm * 3}px`
-            }}
-          >
-            CS
-          </div>
-        ) : null}
-        <div className="absolute inset-x-32 top-1/2 -translate-y-1/2 text-center">
-          <div
-            style={{
-              color: settings.companyColor,
-              fontFamily: settings.companyFont,
-              fontSize: `${settings.companySize}px`,
-              fontWeight: 700
-            }}
-          >
-            CODEXSUN
-          </div>
-          <div
-            style={{
-              color: settings.addressColor,
-              fontFamily: settings.addressFont,
-              fontSize: `${settings.addressSize}px`
-            }}
-          >
-            address1, ADDRESS 2
-          </div>
-          <div
-            style={{
-              color: settings.addressColor,
-              fontFamily: settings.addressFont,
-              fontSize: `${settings.contactSize}px`
-            }}
-          >
-            Tiruppur, Tamil Nadu, India - 641602
-          </div>
+      <div className="overflow-x-auto rounded-md border bg-white p-3">
+        <div className="mx-auto min-w-[720px] overflow-hidden border border-slate-300">
+          <BillingDocumentHeader
+            documentMeta="Live preview"
+            documentTitle="Billing document"
+            settings={billingSettings}
+          />
         </div>
       </div>
       <div className="mt-4">

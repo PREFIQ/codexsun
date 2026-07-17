@@ -1,7 +1,12 @@
-import { Eye, RotateCcw, Trash2 } from "lucide-react";
+import { Eye, Printer, RotateCcw, Trash2 } from "lucide-react";
+import { Button } from "@codexsun/ui/components/button";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
 import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
-import { WorkspaceTableEmptyState, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
+import {
+  WorkspaceTableEmptyState,
+  WorkspaceTableLoadingState,
+  WorkspaceTablePanel
+} from "@codexsun/ui/workspace/table";
 import { cn } from "@codexsun/ui/lib/utils";
 import { formatDate, formatMoney, totalPurchaseQuantity } from "./purchase.services";
 import type { Purchase } from "./purchase.types";
@@ -12,6 +17,7 @@ export function PurchaseList({
   loading,
   onEdit,
   onForceDelete,
+  onPrint,
   onRevoke,
   onSetStatus,
   onView,
@@ -29,6 +35,7 @@ export function PurchaseList({
   loading: boolean;
   onEdit: (purchase: Purchase) => void;
   onForceDelete: (purchase: Purchase) => void;
+  onPrint: (purchase: Purchase) => void;
   onRevoke: (purchase: Purchase) => void;
   onSetStatus: (purchase: Purchase, status: "cancelled" | "confirmed") => void;
   onView: (purchase: Purchase) => void;
@@ -59,19 +66,27 @@ export function PurchaseList({
               </th>
               {[
                 "Purchase",
-                ...(visibleColumns.supplier ? ["Supplier"] : []),
                 ...(visibleColumns.issuedOn ? ["Date"] : []),
-                ...(visibleColumns.items ? ["Items"] : []),
+                ...(visibleColumns.supplier ? ["Supplier"] : []),
+                ...(visibleColumns.items ? ["QTY"] : []),
                 ...(visibleColumns.taxable ? ["Taxable"] : []),
                 ...(visibleColumns.gst ? ["GST"] : []),
                 ...(visibleColumns.total ? ["Total"] : []),
                 ...(visibleColumns.status ? ["Status"] : []),
                 ...(visibleColumns.invoice ? ["Invoice"] : []),
+                "Print",
                 ...(visibleColumns.action ? ["Action"] : [])
               ].map((heading) => (
                 <th
                   key={heading}
-                  className="border-b border-border/70 px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  className={cn(
+                    "border-b border-border/70 px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+                    ["QTY", "Taxable", "GST", "Total"].includes(heading)
+                      ? "text-right"
+                      : heading === "Print"
+                        ? "text-center"
+                        : "text-left"
+                  )}
                 >
                   {heading}
                 </th>
@@ -109,6 +124,9 @@ export function PurchaseList({
                     {purchase.invoiceNumber}
                   </button>
                 </td>
+                {visibleColumns.issuedOn ? (
+                  <td className="whitespace-nowrap px-4 py-2.5">{formatDate(purchase.issuedOn)}</td>
+                ) : null}
                 {visibleColumns.supplier ? (
                   <td className="px-4 py-2.5">
                     <button
@@ -131,20 +149,19 @@ export function PurchaseList({
                     </button>
                   </td>
                 ) : null}
-                {visibleColumns.issuedOn ? (
-                  <td className="px-4 py-2.5">{formatDate(purchase.issuedOn)}</td>
-                ) : null}
                 {visibleColumns.items ? (
-                  <td className="px-4 py-2.5">{totalPurchaseQuantity(purchase)}</td>
+                  <td className="px-4 py-2.5 text-right">{totalPurchaseQuantity(purchase)}</td>
                 ) : null}
                 {visibleColumns.taxable ? (
-                  <td className="px-4 py-2.5">{formatMoney(purchase.subtotal)}</td>
+                  <td className="px-4 py-2.5 text-right">{formatMoney(purchase.subtotal)}</td>
                 ) : null}
                 {visibleColumns.gst ? (
-                  <td className="px-4 py-2.5">{formatMoney(purchase.taxAmount)}</td>
+                  <td className="px-4 py-2.5 text-right">{formatMoney(purchase.taxAmount)}</td>
                 ) : null}
                 {visibleColumns.total ? (
-                  <td className="px-4 py-2.5 font-semibold">{formatMoney(purchase.amount)}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold">
+                    {formatMoney(purchase.amount)}
+                  </td>
                 ) : null}
                 {visibleColumns.status ? (
                   <td className="px-4 py-2.5">
@@ -156,6 +173,19 @@ export function PurchaseList({
                     {purchase.generatedSalesInvoiceNo || "-"}
                   </td>
                 ) : null}
+                <td className="px-4 py-2.5 text-center">
+                  <Button
+                    aria-label={`Print ${purchase.invoiceNumber}`}
+                    className="size-8"
+                    onClick={() => onPrint(purchase)}
+                    size="icon"
+                    title={`Print ${purchase.invoiceNumber}`}
+                    type="button"
+                    variant="outline"
+                  >
+                    <Printer className="size-4" />
+                  </Button>
+                </td>
                 {visibleColumns.action ? (
                   <td className="px-4 py-2.5">
                     <WorkspaceRowActions
@@ -216,10 +246,9 @@ export function PurchaseList({
           </tbody>
         </table>
       </div>
-      {entries.length === 0 ? (
-        <WorkspaceTableEmptyState>
-          {loading ? "Loading purchases..." : "No purchases found."}
-        </WorkspaceTableEmptyState>
+      {entries.length === 0 && loading ? <WorkspaceTableLoadingState /> : null}
+      {entries.length === 0 && !loading ? (
+        <WorkspaceTableEmptyState>No purchases found.</WorkspaceTableEmptyState>
       ) : null}
     </WorkspaceTablePanel>
   );

@@ -1,5 +1,8 @@
 import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
 import { registerModules } from "@codexsun/framework/modules";
+import { createMailModule } from "@codexsun/mail-api";
+import { AppError } from "@codexsun/framework/errors";
+import type { FastifyRequest } from "fastify";
 import type { HealthCheck } from "@codexsun/framework/health";
 import { registerAuthRoutes } from "./auth/auth.routes.js";
 import { appRegistryModule } from "./modules/app-registry/index.js";
@@ -23,6 +26,8 @@ import { projectManagerModule } from "./modules/project-manager/index.js";
 import { taskManagerModule } from "./modules/task-manager/index.js";
 import { appOrchestrationModule } from "./modules/app-orchestration/index.js";
 import { startQueueManagerWorker } from "./modules/queue-manager/queue-manager.runtime.js";
+import { QueueManagerService } from "./modules/queue-manager/queue-manager.service.js";
+import { tenantAccessContext } from "./auth/tenant-access-context.js";
 import { seedDefaultTenant } from "./modules/tenant/tenant.seed.js";
 import { env } from "./env.js";
 import { bootstrapPlatformDatabase, closePlatformDatabase } from "./database/platform-database.js";
@@ -48,6 +53,12 @@ export async function createApp() {
         await closePlatformDatabase();
       }
     ]
+  });
+  const queueService = new QueueManagerService();
+  const mailModule = createMailModule({
+    enqueue: (payload) => queueService.enqueue(payload),
+    resolveContext: mailContext,
+    secretKey: env.JWT_SECRET
   });
 
   const healthChecks: HealthCheck[] = [
@@ -75,7 +86,8 @@ export async function createApp() {
             storageManagerModule.key,
             projectManagerModule.key,
             taskManagerModule.key,
-            appOrchestrationModule.key
+            appOrchestrationModule.key,
+            mailModule.key
           ],
           runtime: "platform-foundation"
         },
@@ -110,7 +122,8 @@ export async function createApp() {
       storageManagerModule,
       projectManagerModule,
       taskManagerModule,
-      appOrchestrationModule
+      appOrchestrationModule,
+      mailModule
     ],
     { app },
     {
@@ -118,9 +131,19 @@ export async function createApp() {
       onReady: (module) => console.info(`[module.ready] ${module.key}`)
     }
   );
-  startQueueManagerWorker(app);
+  startQueueManagerWorker(app, queueService);
   console.info("[platform.worker] queue manager ready");
   console.info("[platform.boot] bootstrap completed");
 
   return app;
+}
+
+async function mailContext(request: FastifyRequest) {
+  const context = tenantAccessContext(request);
+  const header = request.headers["x-company-id"];
+  const companyId = Number(Array.isArray(header) ? header[0] : header);
+  if (!Number.isInteger(companyId) || companyId <= 0) {
+    throw AppError.validation("x-company-id is required for Mail access.");
+  }
+  return { ...context, companyId, database: context.database as never };
 }

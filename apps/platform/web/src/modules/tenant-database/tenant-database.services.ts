@@ -22,6 +22,22 @@ export function migrateTenantDatabase(tenantId: number, payload: TenantDatabaseA
   );
 }
 
+export function setupTenantDatabase(tenantId: number, payload: TenantDatabaseActionPayload) {
+  return apiPost<DatabaseMaintenanceRun>(
+    `/admin/database/tenants/${tenantId}/setup`,
+    payload,
+    "sa"
+  );
+}
+
+export function reinstallTenantDatabase(tenantId: number, payload: TenantDatabaseActionPayload) {
+  return apiPost<DatabaseMaintenanceRun>(
+    `/admin/database/tenants/${tenantId}/reinstall`,
+    payload,
+    "sa"
+  );
+}
+
 export function requestTenantDatabaseBackup(
   tenantId: number,
   payload: TenantDatabaseActionPayload

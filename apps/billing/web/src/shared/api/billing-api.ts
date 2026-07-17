@@ -1,5 +1,11 @@
 import { requiredClientEnv } from "../env/client-env";
-import { getCompanyId, getTenantDbName, getTenantId, getToken } from "./tenant-context";
+import {
+  getCompanyId,
+  getFinancialYearId,
+  getTenantDbName,
+  getTenantId,
+  getToken
+} from "./tenant-context";
 
 const API_BASE_URL = requiredClientEnv("VITE_BILLING_API_URL");
 
@@ -38,6 +44,7 @@ async function billingApiRequest<T>(path: string, init?: RequestInit) {
   const tenantId = getTenantId();
   const tenantDbName = getTenantDbName();
   const companyId = getCompanyId();
+  const financialYearId = getFinancialYearId();
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       Accept: "application/json",
@@ -46,6 +53,7 @@ async function billingApiRequest<T>(path: string, init?: RequestInit) {
       ...(tenantId ? { "x-tenant-id": tenantId } : {}),
       ...(tenantDbName ? { "x-tenant-db": tenantDbName } : {}),
       ...(companyId ? { "x-company-id": String(companyId) } : {}),
+      ...(financialYearId ? { "x-financial-year-id": String(financialYearId) } : {}),
       ...(init?.headers ?? {})
     },
     ...init

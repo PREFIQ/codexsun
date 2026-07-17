@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.34
+Current version: 1.0.35
 
-Release tag: v-1.0.34
+Release tag: v-1.0.35
 
-Changelog label: v 1.0.34
+Changelog label: v 1.0.35
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -20,16 +20,37 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
 
+## v-1.0.35
+
+### [v 1.0.35] 2026-07-17 8:54 am - Billing and Business Services Planning
+
+#### Database Changes
+
+- Database update: No. This release changes product planning, release history, and lockstep package versions only; tenant and Platform schemas remain unchanged.
+
+#### App Codebase Changes
+
+- Added the dated Billing, Accounting, Compliance, and Business Services plan under `assist/execution/planning.md`, excluding Data Bridge and Kitchen Serve from the product scope.
+- Recorded the live Billing and Core capability inventory, current readiness limitations, and the prioritized GST, bookkeeping, audit, receivable/payable, purchase-automation, and commercial-document roadmap.
+- Defined module ownership boundaries for Billing documents, Accounting books, Compliance workflows, reporting read models, and asynchronous integrations so future work does not become a centralized business engine.
+- Added adjacent client-service plans for collections, virtual CFO, loan readiness, payroll, TDS, inventory control, CRM, industry packs, digital commerce, document automation, migration, and managed back-office operations.
+- Added commercial packages, launch sequencing, client-acquisition offers, positioning messages, compliance wording, delivery gates, and measurable success criteria.
+- Bumped workspace version to 1.0.35.
+
 ## v-1.0.34
 
 ### [v 1.0.34] 2026-07-15 11:13 pm - Billing Address and Date Picker Reliability
 
 #### Database Changes
 
-- Database update: No. Existing tenant schemas and seed data remain compatible; the release adds API and UI behavior only.
+- Database update: Yes. Added tenant-owned `mail_settings`, `mail_messages`, `mail_attachments`, and `mail_events` tables with repeatable migrations and permission seeding.
+- Mail credentials are encrypted before tenant persistence; message, attachment, provider, and delivery state remain inside each tenant database.
 
 #### App Codebase Changes
 
+- Added the standalone Mail API/web workspaces with Inbox, Outbox, Drafts, Scheduled, Sent, Failed, Trash, rich compose, attachments, tenant SMTP plus IMAP/POP3 settings, environment fallback, and responsive three-column navigation.
+- Added tenant-aware queue processing for SMTP delivery and inbound synchronization with idempotency, retry/backoff, delivery events, failed-message visibility, and environment credential fallback.
+- Wired Sales, Quotation, Purchase, and Export Sales email tools to capture their rendered document as a PDF, prepare a branded rich message, and enqueue delivery through Mail's public contract.
 - Corrected Quotation address and compliance presentation by exposing the document date in the list and resolving customer GSTIN plus Billing/Shipping State names and codes for show and print output.
 - Added a narrow Core Contact-address create/update contract that preserves sibling addresses and validates the persisted Country, State, District, City, Pincode, and Address Type hierarchy.
 - Wired Quotation, Sales, Purchase, and Export Sales address editors through their module-owned Billing lookup routes so an address popup can append a missing address or update the selected address without replacing the Contact or collapsing formatted location lines into Address line 2.

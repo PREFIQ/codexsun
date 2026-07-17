@@ -1,8 +1,9 @@
 import { AppError } from "@codexsun/framework/errors";
+import { billingDashboardProjection } from "../dashboard/index.js";
 import { formatBillingDocumentNumber, nextBillingDocumentNumber } from "../settings/index.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
 import { ReceiptRepository } from "./receipt.repository.js";
-import type { ReceiptSavePayload } from "./receipt.types.js";
+import type { Receipt, ReceiptSavePayload } from "./receipt.types.js";
 
 export class ReceiptService {
   constructor(
@@ -56,7 +57,9 @@ export class ReceiptService {
         numbering: { ...settings.numbering, receipt: { ...sequence, nextNumber } }
       });
     }
-    return record!;
+    if (!record) throw AppError.notFound("Created receipt could not be reloaded.");
+    await this.project(databaseName, "created", record);
+    return record;
   }
   async update(databaseName: string, id: string, payload: ReceiptSavePayload) {
     const current = await this.repository.get(databaseName, id);
@@ -73,7 +76,16 @@ export class ReceiptService {
       )
     )
       throw AppError.conflict("Receipt number already exists for this company and financial year.");
-    return this.repository.update(databaseName, id, input);
+    const updated = await this.repository.update(databaseName, id, input);
+    if (updated) {
+      await this.project(databaseName, "updated", updated);
+      if (
+        current.companyId !== updated.companyId ||
+        current.financialYearId !== updated.financialYearId
+      )
+        await this.project(databaseName, "updated", current);
+    }
+    return updated;
   }
   async post(databaseName: string, id: string) {
     const current = await this.repository.get(databaseName, id);
@@ -83,20 +95,26 @@ export class ReceiptService {
       throw AppError.conflict("Enter a positive receipt total before posting.");
     if (current.unallocatedAmount < 0)
       throw AppError.conflict("Receipt allocations exceed the receipt total.");
-    return this.repository.setStatus(databaseName, id, "posted");
+    const receipt = await this.repository.setStatus(databaseName, id, "posted");
+    if (receipt) await this.project(databaseName, "posted", receipt);
+    return receipt;
   }
   async cancel(databaseName: string, id: string) {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
     if (current.status !== "posted")
       throw AppError.conflict("Only posted receipts can be cancelled.");
-    return this.repository.setStatus(databaseName, id, "cancelled");
+    const receipt = await this.repository.setStatus(databaseName, id, "cancelled");
+    if (receipt) await this.project(databaseName, "cancelled", receipt);
+    return receipt;
   }
   async deleteDraft(databaseName: string, id: string) {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
     this.assertDraft(current.status);
-    return this.repository.deleteDraft(databaseName, id);
+    const deleted = await this.repository.deleteDraft(databaseName, id);
+    if (deleted) await this.project(databaseName, "deleted", current);
+    return deleted;
   }
   private async prepare(databaseName: string, payload: ReceiptSavePayload, excludeId?: string) {
     const settings = await this.settings.getBillingSettings(databaseName, payload.companyId);
@@ -147,6 +165,20 @@ export class ReceiptService {
   private assertDraft(status: string) {
     if (status !== "draft")
       throw AppError.conflict("Only draft receipts can be edited or deleted.");
+  }
+
+  private project(
+    databaseName: string,
+    action: "cancelled" | "created" | "deleted" | "posted" | "updated",
+    receipt: Pick<Receipt, "companyId" | "financialYearId" | "id">
+  ) {
+    return billingDashboardProjection.project(databaseName, {
+      action,
+      companyId: receipt.companyId,
+      documentId: receipt.id,
+      financialYearId: receipt.financialYearId,
+      source: "receipt"
+    });
   }
 }
 function money(value: number) {

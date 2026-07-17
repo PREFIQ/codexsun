@@ -23,6 +23,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@codexsun/ui/component
 import { Input } from "@codexsun/ui/components/input";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { cn } from "@codexsun/ui/lib/utils";
+import { queueBillingDocumentEmail } from "@codexsun/mail-web/modules/mail";
+import { getTenantUserLabel } from "../../shared/api/tenant-context";
 import { formatDate } from "./quotation.services";
 import { QuotationPrintDocument, type QuotationPrintCopy } from "./quotation.print";
 import type { Quotation } from "./quotation.types";
@@ -61,6 +63,7 @@ export function QuotationShowPage({
   onSuspend: () => void;
   quotation: Quotation;
 }) {
+  const activityUser = getTenantUserLabel();
   const [comment, setComment] = useState("");
   const [comments, setComments] = useState<Array<{ body: string; createdAt: string; id: string }>>(
     []
@@ -220,7 +223,7 @@ export function QuotationShowPage({
         </div>
 
         <section className="billing-print-area grid items-start gap-4 py-2 print:block print:py-0 xl:grid-cols-[minmax(0,1fr)_15rem]">
-          <div className="min-w-0 overflow-x-auto">
+          <div className="billing-mail-document min-w-0 overflow-x-auto">
             <div className="grid min-w-fit justify-center gap-6">
               {printCopies.map((copy) => (
                 <div key={copy}>
@@ -301,6 +304,7 @@ export function QuotationShowPage({
                       body={item.body}
                       meta={formatDateTime(item.createdAt)}
                       title="Admin"
+                      titleOnRight
                     />
                   ))}
                 </div>
@@ -314,7 +318,9 @@ export function QuotationShowPage({
                         <span className="size-1.5 rounded-full bg-muted-foreground" />
                       </span>
                       <span>{item.message}</span>
-                      <span className="text-muted-foreground"> · {formatDate(item.createdAt)}</span>
+                      <span className="text-muted-foreground">
+                        {` · ${formatDate(item.createdAt)} - by ${activityUser}`}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -384,11 +390,29 @@ export function QuotationShowPage({
                           value={emailAddress}
                           placeholder="Email address"
                           onChange={setEmailAddress}
-                          onSend={() => {
+                          onSend={async () => {
                             const value = emailAddress.trim();
                             if (!value) return;
-                            recordActivity(`Queued quotation email to ${value}`);
-                            setEmailAddress("");
+                            const documentElement =
+                              document.querySelector<HTMLElement>(".billing-mail-document");
+                            if (!documentElement)
+                              return toast.error("Quotation preview is not ready.");
+                            try {
+                              await queueBillingDocumentEmail({
+                                documentElement,
+                                documentNumber: quotation.quotationNumber,
+                                documentTitle: "Quotation",
+                                partyName: quotation.customerName,
+                                recipient: value
+                              });
+                              recordActivity(`Queued quotation email to ${value}`);
+                              toast.success("Quotation email queued");
+                              setEmailAddress("");
+                            } catch (error) {
+                              toast.error(
+                                error instanceof Error ? error.message : "Quotation email failed."
+                              );
+                            }
                           }}
                         />
                       ) : null}
@@ -506,12 +530,31 @@ function InlineSend({
   );
 }
 
-function SideNote({ body, meta, title }: { body: string; meta: string; title: string }) {
+function SideNote({
+  body,
+  meta,
+  title,
+  titleOnRight = false
+}: {
+  body: string;
+  meta: string;
+  title: string;
+  titleOnRight?: boolean;
+}) {
   return (
     <div className="rounded-md border border-border/70 bg-muted/10 px-4 py-3">
       <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="font-medium">{title}</span>
-        <span className="text-xs text-muted-foreground">{meta}</span>
+        {titleOnRight ? (
+          <>
+            <span className="text-xs text-muted-foreground">{meta}</span>
+            <span className="font-medium">{title}</span>
+          </>
+        ) : (
+          <>
+            <span className="font-medium">{title}</span>
+            <span className="text-xs text-muted-foreground">{meta}</span>
+          </>
+        )}
       </div>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{body}</p>
     </div>

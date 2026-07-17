@@ -1,6 +1,7 @@
 import { AppError } from "@codexsun/framework/errors";
 import { InMemoryEventPublisher, type EventPublisher } from "@codexsun/framework/events";
 import { InMemoryQueueAdapter, type QueueAdapter } from "@codexsun/framework/queue";
+import { billingDashboardProjection } from "../dashboard/index.js";
 import { formatBillingDocumentNumber, nextBillingDocumentNumber } from "../settings/index.js";
 import { BillingSettingsRepository } from "../settings/settings.repository.js";
 import { createPaymentEvent } from "./payment.events.js";
@@ -84,7 +85,14 @@ export class PaymentService {
     )
       throw AppError.conflict("Payment number already exists for this company and financial year.");
     const updated = await this.repository.update(databaseName, id, input);
-    if (updated) await this.publish("updated", updated, databaseName);
+    if (updated) {
+      await this.publish("updated", updated, databaseName);
+      if (
+        current.companyId !== updated.companyId ||
+        current.financialYearId !== updated.financialYearId
+      )
+        await this.project(databaseName, "updated", current);
+    }
     return updated;
   }
   async post(databaseName: string, id: string) {
@@ -112,7 +120,9 @@ export class PaymentService {
     const current = await this.repository.get(databaseName, id);
     if (!current) return null;
     this.assertDraft(current.status);
-    return this.repository.deleteDraft(databaseName, id);
+    const deleted = await this.repository.deleteDraft(databaseName, id);
+    if (deleted) await this.project(databaseName, "deleted", current);
+    return deleted;
   }
   private async prepare(databaseName: string, payload: PaymentSavePayload, excludeId?: string) {
     const settings = await this.settings.getBillingSettings(databaseName, payload.companyId);
@@ -167,7 +177,7 @@ export class PaymentService {
 
   private async publish(
     action: "created" | "updated" | "posted" | "cancelled",
-    payment: Pick<Payment, "id" | "status">,
+    payment: Pick<Payment, "companyId" | "financialYearId" | "id" | "status">,
     databaseName: string
   ) {
     const event = createPaymentEvent(action, payment, databaseName);
@@ -184,6 +194,31 @@ export class PaymentService {
       payload: job,
       sourceModule: "billing.payment",
       tenantId: databaseName
+    });
+    await this.project(
+      databaseName,
+      action === "posted"
+        ? "posted"
+        : action === "cancelled"
+          ? "cancelled"
+          : action === "created"
+            ? "created"
+            : "updated",
+      payment
+    );
+  }
+
+  private project(
+    databaseName: string,
+    action: "cancelled" | "created" | "deleted" | "posted" | "updated",
+    payment: Pick<Payment, "companyId" | "financialYearId" | "id">
+  ) {
+    return billingDashboardProjection.project(databaseName, {
+      action,
+      companyId: payment.companyId,
+      documentId: payment.id,
+      financialYearId: payment.financialYearId,
+      source: "payment"
     });
   }
 }

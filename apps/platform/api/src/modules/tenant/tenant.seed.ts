@@ -33,7 +33,7 @@ export async function provisionTenantDatabase(tenant: Tenant) {
   console.info(
     `[database] provisioning tenant database "${tenant.dbName}" for tenant "${tenant.tenantCode}"`
   );
-  await createTenantDatabase(tenant.dbName);
+  await createTenantDatabase(tenant);
   const database = getTenantDatabase(tenant);
   try {
     await migrateTenantRuntimeModule(database);

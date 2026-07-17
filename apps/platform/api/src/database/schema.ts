@@ -46,7 +46,7 @@ export type PlatformAppsTable = {
   id: Generated<number>;
   label: string;
   module_key: string;
-  stack: "platform" | "billing" | "platform-task-manager";
+  stack: "platform" | "billing" | "mail" | "platform-task-manager";
   updated_at: TimestampColumn;
   uuid: string;
 };
@@ -105,7 +105,7 @@ export type DatabaseMaintenanceRunsTable = {
   database_scope: "master" | "tenant";
   details_json: string;
   id: Generated<number>;
-  operation: "backup" | "migrate" | "refresh" | "restore" | "status";
+  operation: "backup" | "migrate" | "refresh" | "reinstall" | "restore" | "setup" | "status";
   status: "completed" | "failed" | "requested" | "running";
   target_key: string;
   uuid: string;

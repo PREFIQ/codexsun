@@ -1,5 +1,6 @@
 import { Button } from "@codexsun/ui/components/button";
 import { Card } from "@codexsun/ui/components/card";
+import { GlobalLoader } from "@codexsun/ui/components/global-loader";
 import { StatusBadge } from "@codexsun/ui/components/StatusBadge";
 import type { ReactElement } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -99,20 +100,20 @@ export function AuthGate({ children, desk }: { children: ReactElement; desk: Des
     return children;
   }
 
+  if (serverValid === null) {
+    return <GlobalLoader />;
+  }
+
   return (
     <main className="simple-page">
       <Card title="Login required">
         <StatusBadge tone="red">Blocked</StatusBadge>
         <p style={{ marginTop: "1rem", marginBottom: "1.5rem" }}>
-          {serverValid === null
-            ? "Checking session..."
-            : `You need an active ${deskLabels[desk]} session to view this page.`}
+          You need an active {deskLabels[desk]} session to view this page.
         </p>
-        {serverValid === false ? (
-          <Button style={{ width: "100%" }} onClick={() => navigate({ to: loginPaths[desk] })}>
-            Go to Login
-          </Button>
-        ) : null}
+        <Button style={{ width: "100%" }} onClick={() => navigate({ to: loginPaths[desk] })}>
+          Go to Login
+        </Button>
       </Card>
     </main>
   );

@@ -6,6 +6,7 @@ import {
 } from "@codexsun/framework/api";
 import type { HealthCheck } from "@codexsun/framework/health";
 import { authorizeBillingRequest } from "./auth/tenant-permission.js";
+import { runWithBillingScope } from "./auth/billing-scope.js";
 import {
   closeAllBillingDatabases,
   resolveBillingDatabaseName
@@ -18,6 +19,8 @@ import { quotationModule } from "./modules/quotation/index.js";
 import { salesModule } from "./modules/sales/index.js";
 import { receiptModule } from "./modules/receipt/index.js";
 import { billingSettingsModule } from "./modules/settings/index.js";
+import { dashboardModule } from "./modules/dashboard/index.js";
+import { billingReportsModule } from "./modules/reports/index.js";
 
 export async function createApp() {
   const app = await createApiApp({
@@ -45,7 +48,9 @@ export async function createApp() {
             quotationModule.key,
             paymentModule.key,
             receiptModule.key,
-            billingSettingsModule.key
+            billingSettingsModule.key,
+            dashboardModule.key,
+            billingReportsModule.key
           ],
           runtime: "billing-foundation"
         },
@@ -56,6 +61,10 @@ export async function createApp() {
 
   registerRequestLogging(app);
   registerHealthRoute(app, healthChecks);
+  app.addHook("onRequest", (request, _reply, done) => {
+    if (!request.url.startsWith("/billing/")) return done();
+    runWithBillingScope(request, done);
+  });
   app.addHook("preHandler", async (request) => {
     if (!request.url.startsWith("/billing/")) return;
     const requestedDatabase = request.headers["x-tenant-db"];
@@ -77,5 +86,7 @@ export async function createApp() {
   await paymentModule.register(app);
   await receiptModule.register(app);
   await billingSettingsModule.register(app);
+  await dashboardModule.register(app);
+  await billingReportsModule.register(app);
   return app;
 }

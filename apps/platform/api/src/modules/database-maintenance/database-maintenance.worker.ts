@@ -1,6 +1,7 @@
 import { DatabaseMaintenanceRepository } from "./database-maintenance.repository.js";
 import { env } from "../../env.js";
 import { executeDatabaseBackup, executeDatabaseRestore } from "./database-maintenance.executor.js";
+import { resolveTenantDatabasePassword } from "../../database/tenant-database.js";
 
 export async function processDatabaseMaintenanceJob(payload: Record<string, unknown>) {
   const runId = Number(payload.runId);
@@ -15,9 +16,11 @@ export async function processDatabaseMaintenanceJob(payload: Record<string, unkn
   }
 
   const executedAt = new Date().toISOString();
+  const tenant = run.scope === "tenant" ? await repository.findTenant(Number(run.targetKey)) : null;
   const target = {
     databaseName: run.databaseName,
     host: stringDetail(run.details.host) || env.DB_HOST,
+    password: tenant ? resolveTenantDatabasePassword(tenant) : env.DB_PASSWORD,
     port: numberDetail(run.details.port) || env.DB_PORT,
     tenantKey: stringDetail(run.details.tenantKey) || stringDetail(run.details.tenantCode),
     user: stringDetail(run.details.user) || env.DB_USER

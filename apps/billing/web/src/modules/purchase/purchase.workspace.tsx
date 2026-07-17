@@ -20,6 +20,7 @@ import {
   convertPurchasesToSale,
   deletePurchase,
   formatMoney,
+  getPurchase,
   setPurchaseStatus,
   revokePurchase,
   totalPurchaseQuantity,
@@ -40,7 +41,7 @@ const statusFilters = [
 const purchaseColumnCatalog = [
   { id: "issuedOn", label: "Date" },
   { id: "supplier", label: "Supplier" },
-  { id: "items", label: "Items" },
+  { id: "items", label: "QTY" },
   { id: "taxable", label: "Taxable" },
   { id: "gst", label: "GST" },
   { id: "total", label: "Total" },
@@ -60,7 +61,7 @@ function isAdminSession() {
   }
 }
 
-export function PurchaseWorkspace() {
+export function PurchaseWorkspace({ initialRecordId }: { initialRecordId?: string | undefined }) {
   const queryClient = useQueryClient();
   const settingsQuery = useBillingSettings();
   const settings = settingsQuery.data ?? defaultBillingSettings;
@@ -83,6 +84,24 @@ export function PurchaseWorkspace() {
     search: searchValue,
     status: statusFilter
   });
+
+  useEffect(() => {
+    if (!initialRecordId) return;
+    let active = true;
+    void getPurchase(initialRecordId)
+      .then((purchase) => {
+        if (active) setView({ mode: "show", purchase });
+      })
+      .catch((error) => {
+        if (active)
+          toast.error("Purchase could not be opened", {
+            description: error instanceof Error ? error.message : "Please try again."
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [initialRecordId]);
 
   const saveMutation = useMutation({
     mutationFn: ({ id, payload }: { id?: string; payload: PurchaseSavePayload }) =>
@@ -432,6 +451,13 @@ export function PurchaseWorkspace() {
             deleteMutation.mutate(purchase.id);
         }}
         onRevoke={(purchase) => revokeMutation.mutate(purchase.id)}
+        onPrint={(purchase) =>
+          window.open(
+            `${window.location.origin}/billing/purchase/print?id=${encodeURIComponent(purchase.id)}&autoprint=1`,
+            "_blank",
+            "noopener,noreferrer"
+          )
+        }
         canAdminRevoke={canAdminRevoke}
         onView={(purchase) => setView({ mode: "show", purchase })}
         page={currentPage}

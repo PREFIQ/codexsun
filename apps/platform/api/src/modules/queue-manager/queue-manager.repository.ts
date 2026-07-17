@@ -158,6 +158,22 @@ export class QueueManagerRepository {
     return this.find(id);
   }
 
+  async retryAfter(id: number, delayMs: number) {
+    await getPlatformDatabase()
+      .updateTable("queue_jobs")
+      .set({
+        available_at: new Date(Date.now() + Math.max(1000, delayMs)),
+        completed_at: null,
+        started_at: null,
+        status: "pending",
+        updated_at: new Date()
+      })
+      .where("id", "=", id)
+      .where("status", "=", "failed")
+      .execute();
+    return this.find(id);
+  }
+
   async cancel(id: number) {
     await getPlatformDatabase()
       .updateTable("queue_jobs")

@@ -35,6 +35,7 @@ export const listPaymentsPage = (query: {
   );
 };
 export const getPaymentContext = () => billingApiGet<PaymentContext>("/billing/payments/context");
+export const getPayment = (id: string) => billingApiGet<Payment>(`/billing/payments/${id}`);
 export const listPaymentActivity = (id: string) =>
   billingApiGet<PaymentActivity[]>(`/billing/payments/${id}/activity`);
 export const createPayment = (input: PaymentSavePayload) =>

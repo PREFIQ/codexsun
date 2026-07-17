@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { sql, type Kysely, type RawBuilder, type Transaction } from "kysely";
 import { getBillingDatabase } from "../../database/billing-database.js";
+import { currentBillingScope } from "../../auth/billing-scope.js";
 import type {
   Sale,
   SaleContext,
@@ -122,6 +123,7 @@ export class SalesRepository {
     const search = `%${options.search.trim()}%`;
     const status = options.status;
     const offset = (options.page - 1) * options.pageSize;
+    const scope = currentBillingScope();
     const [result, countResult] = await Promise.all([
       selectSalePageHeaders(search, status, options.pageSize, offset).execute(database),
       sql<{ total: string | number }>`
@@ -130,6 +132,7 @@ export class SalesRepository {
         INNER JOIN contacts customer ON customer.id = s.customer_id
         LEFT JOIN work_orders work_order ON work_order.id = s.work_order_id
         WHERE s.deleted_at IS NULL
+          AND s.company_id=${scope.companyId} AND s.financial_year_id=${scope.financialYearId}
           AND (${status} = 'all' OR s.status = ${status})
           AND (
             ${search} = '%%' OR s.invoice_number LIKE ${search} OR customer.name LIKE ${search}
@@ -156,6 +159,7 @@ export class SalesRepository {
 
   async context(databaseName: string): Promise<SaleContext | null> {
     const database = await salesDatabase(databaseName);
+    const scope = currentBillingScope();
     const result = await sql<{
       company_id: number;
       company_name: string;
@@ -164,17 +168,17 @@ export class SalesRepository {
       financial_year_id: number;
       financial_year_name: string;
     }>`
-      SELECT d.company_id,
+      SELECT c.id AS company_id,
              c.name AS company_name,
-             d.financial_year_id,
+             f.id AS financial_year_id,
              f.name AS financial_year_name,
              currency.id AS currency_id,
              currency.name AS currency_code
-      FROM default_company_settings d
-      INNER JOIN companies c ON c.id = d.company_id AND c.status = 'active'
-      INNER JOIN financial_years f ON f.id = d.financial_year_id AND f.status = 'active'
+      FROM companies c
+      CROSS JOIN financial_years f
       INNER JOIN currencies currency ON UPPER(currency.name) = 'INR' AND currency.status = 'active'
-      WHERE d.singleton_key = 1 AND d.status = 'active'
+      WHERE c.id=${scope.companyId} AND c.status='active'
+        AND f.id=${scope.financialYearId} AND f.status='active'
       LIMIT 1
     `.execute(database);
     const row = result.rows[0];
@@ -192,10 +196,11 @@ export class SalesRepository {
 
   async referenceState(databaseName: string, input: SaleSavePayload): Promise<SaleReferenceState> {
     const database = await salesDatabase(databaseName);
+    const scope = currentBillingScope();
     const result = await sql<Record<keyof SaleReferenceState, number>>`
       SELECT
-        EXISTS(SELECT 1 FROM companies WHERE id = ${input.companyId} AND status = 'active') AS company,
-        EXISTS(SELECT 1 FROM financial_years WHERE id = ${input.financialYearId} AND status = 'active' AND ${input.issuedOn} BETWEEN start_date AND end_date) AS financialYear,
+        EXISTS(SELECT 1 FROM companies WHERE id = ${input.companyId} AND id=${scope.companyId} AND status = 'active') AS company,
+        EXISTS(SELECT 1 FROM financial_years WHERE id = ${input.financialYearId} AND id=${scope.financialYearId} AND status = 'active' AND ${input.issuedOn} BETWEEN start_date AND end_date) AS financialYear,
         EXISTS(SELECT 1 FROM contacts WHERE id = ${input.customerId} AND status = 'active') AS customer,
         EXISTS(SELECT 1 FROM contacts_addresses WHERE id = ${input.billingAddressId} AND parent_id = ${input.customerId}) AS billingAddress,
         EXISTS(SELECT 1 FROM contacts_addresses WHERE id = ${input.shippingAddressId} AND parent_id = ${input.customerId}) AS shippingAddress,
@@ -636,40 +641,7 @@ function salesDatabase(databaseName: string) {
 }
 
 function selectSaleHeaders(uuid?: string) {
-  return sql<SaleHeaderRow>`
-    SELECT s.id, s.uuid, s.company_id, company.name AS company_name,
-           s.financial_year_id, financial_year.name AS financial_year_name,
-           s.line_number, s.invoice_number, s.customer_id, customer.name AS customer_name,
-           customer.primary_email AS customer_email, customer.primary_phone AS customer_phone,
-           s.billing_address_id, billing.address_line1 AS billing_address_line1,
-           billing.address_line2 AS billing_address_line2, billing.city_name AS billing_city,
-           billing.district_name AS billing_district, billing.state_name AS billing_state,
-           billing.pincode_name AS billing_pincode, billing.country_name AS billing_country,
-           s.shipping_address_id, shipping.address_line1 AS shipping_address_line1,
-           shipping.address_line2 AS shipping_address_line2, shipping.city_name AS shipping_city,
-           shipping.district_name AS shipping_district, shipping.state_name AS shipping_state,
-           shipping.pincode_name AS shipping_pincode, shipping.country_name AS shipping_country,
-           s.work_order_id, work_order.code AS work_order_no, s.ledger_id,
-           ledger.name AS ledger_name, s.tax_type, s.currency_id, currency.name AS currency_code,
-           DATE_FORMAT(s.issued_on, '%Y-%m-%d') AS issued_on,
-           s.subtotal, s.tax_amount, s.round_off, s.amount, s.terms, s.notes, s.status,
-           DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%s') AS created_at,
-           DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%s') AS updated_at
-    FROM billing_sales s
-    INNER JOIN companies company ON company.id = s.company_id
-    INNER JOIN financial_years financial_year ON financial_year.id = s.financial_year_id
-    INNER JOIN contacts customer ON customer.id = s.customer_id
-    INNER JOIN contacts_addresses billing ON billing.id = s.billing_address_id
-    INNER JOIN contacts_addresses shipping ON shipping.id = s.shipping_address_id
-    INNER JOIN currencies currency ON currency.id = s.currency_id
-    LEFT JOIN work_orders work_order ON work_order.id = s.work_order_id
-    LEFT JOIN ledgers ledger ON ledger.id = s.ledger_id
-    WHERE s.deleted_at IS NULL ${uuid ? sql`AND s.uuid = ${uuid}` : sql``}
-    ORDER BY s.issued_on DESC, s.line_number DESC
-  `;
-}
-
-function selectSalePageHeaders(search: string, status: string, limit: number, offset: number) {
+  const scope = currentBillingScope();
   return sql<SaleHeaderRow>`
     SELECT s.id, s.uuid, s.company_id, company.name AS company_name,
            s.financial_year_id, financial_year.name AS financial_year_name,
@@ -699,6 +671,44 @@ function selectSalePageHeaders(search: string, status: string, limit: number, of
     LEFT JOIN work_orders work_order ON work_order.id = s.work_order_id
     LEFT JOIN ledgers ledger ON ledger.id = s.ledger_id
     WHERE s.deleted_at IS NULL
+      AND s.company_id=${scope.companyId} AND s.financial_year_id=${scope.financialYearId}
+      ${uuid ? sql`AND s.uuid = ${uuid}` : sql``}
+    ORDER BY s.issued_on DESC, s.line_number DESC
+  `;
+}
+
+function selectSalePageHeaders(search: string, status: string, limit: number, offset: number) {
+  const scope = currentBillingScope();
+  return sql<SaleHeaderRow>`
+    SELECT s.id, s.uuid, s.company_id, company.name AS company_name,
+           s.financial_year_id, financial_year.name AS financial_year_name,
+           s.line_number, s.invoice_number, s.customer_id, customer.name AS customer_name,
+           customer.primary_email AS customer_email, customer.primary_phone AS customer_phone,
+           s.billing_address_id, billing.address_line1 AS billing_address_line1,
+           billing.address_line2 AS billing_address_line2, billing.city_name AS billing_city,
+           billing.district_name AS billing_district, billing.state_name AS billing_state,
+           billing.pincode_name AS billing_pincode, billing.country_name AS billing_country,
+           s.shipping_address_id, shipping.address_line1 AS shipping_address_line1,
+           shipping.address_line2 AS shipping_address_line2, shipping.city_name AS shipping_city,
+           shipping.district_name AS shipping_district, shipping.state_name AS shipping_state,
+           shipping.pincode_name AS shipping_pincode, shipping.country_name AS shipping_country,
+           s.work_order_id, work_order.code AS work_order_no, s.ledger_id,
+           ledger.name AS ledger_name, s.tax_type, s.currency_id, currency.name AS currency_code,
+           DATE_FORMAT(s.issued_on, '%Y-%m-%d') AS issued_on,
+           s.subtotal, s.tax_amount, s.round_off, s.amount, s.terms, s.notes, s.status,
+           DATE_FORMAT(s.created_at, '%Y-%m-%dT%H:%i:%s') AS created_at,
+           DATE_FORMAT(s.updated_at, '%Y-%m-%dT%H:%i:%s') AS updated_at
+    FROM billing_sales s
+    INNER JOIN companies company ON company.id = s.company_id
+    INNER JOIN financial_years financial_year ON financial_year.id = s.financial_year_id
+    INNER JOIN contacts customer ON customer.id = s.customer_id
+    INNER JOIN contacts_addresses billing ON billing.id = s.billing_address_id
+    INNER JOIN contacts_addresses shipping ON shipping.id = s.shipping_address_id
+    INNER JOIN currencies currency ON currency.id = s.currency_id
+    LEFT JOIN work_orders work_order ON work_order.id = s.work_order_id
+    LEFT JOIN ledgers ledger ON ledger.id = s.ledger_id
+    WHERE s.deleted_at IS NULL
+      AND s.company_id=${scope.companyId} AND s.financial_year_id=${scope.financialYearId}
       AND (${status} = 'all' OR s.status = ${status})
       AND (
         ${search} = '%%' OR s.invoice_number LIKE ${search} OR customer.name LIKE ${search}
@@ -732,8 +742,11 @@ function selectSaleItems(saleId: number) {
 }
 
 async function internalSale(database: Kysely<SalesDatabase>, uuid: string) {
+  const scope = currentBillingScope();
   const result = await sql<{ id: number; status: SaleStatus }>`
-    SELECT id, status FROM billing_sales WHERE uuid = ${uuid} AND deleted_at IS NULL LIMIT 1
+    SELECT id, status FROM billing_sales WHERE uuid = ${uuid}
+      AND company_id=${scope.companyId} AND financial_year_id=${scope.financialYearId}
+      AND deleted_at IS NULL LIMIT 1
   `.execute(database);
   return result.rows[0] ?? null;
 }

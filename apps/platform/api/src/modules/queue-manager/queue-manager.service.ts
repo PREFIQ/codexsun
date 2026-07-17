@@ -4,6 +4,8 @@ import { QueueManagerRepository } from "./queue-manager.repository.js";
 import { env } from "../../env.js";
 import { publishBullMqJob } from "./queue-manager.bullmq.js";
 import type { QueueJobFilters, QueueJobPayload } from "./queue-manager.types.js";
+import { processMailJob } from "@codexsun/mail-api";
+import { getTenantDatabaseByName } from "../../database/tenant-database.js";
 
 export class QueueManagerService {
   constructor(
@@ -68,6 +70,10 @@ export class QueueManagerService {
         recordLabel: job.jobName,
         recordUuid: job.uuid
       });
+      if (options.fromWorker) throw error;
+      if (job.attempts + 1 < job.maxAttempts) {
+        return this.repository.retryAfter(id, 5000 * 2 ** job.attempts);
+      }
       return failed;
     }
   }
@@ -117,6 +123,25 @@ export class QueueManagerService {
   private dispatch(jobName: string, payload: Record<string, unknown>) {
     if (jobName === "database-maintenance.run") {
       return processDatabaseMaintenanceJob(payload);
+    }
+    if (jobName === "mail.send" || jobName === "mail.sync") {
+      const tenantDatabase = String(payload.tenantDatabase ?? "").trim();
+      if (!tenantDatabase) throw new Error("Mail job is missing tenantDatabase.");
+      return processMailJob(jobName, payload, {
+        database: getTenantDatabaseByName(tenantDatabase) as never,
+        fallback: {
+          enabled: env.MAIL_ENABLED === "1",
+          fromEmail: env.MAIL_FROM_EMAIL || env.MAIL_USERNAME,
+          fromName: env.MAIL_FROM_NAME,
+          host: env.MAIL_SMTP_HOST,
+          password: env.MAIL_PASSWORD,
+          port: env.MAIL_SMTP_PORT,
+          replyTo: env.MAIL_REPLY_TO,
+          secure: env.MAIL_SMTP_SECURE === "1",
+          username: env.MAIL_USERNAME
+        },
+        secretKey: env.JWT_SECRET
+      });
     }
     throw new Error(`No queue worker registered for ${jobName}.`);
   }

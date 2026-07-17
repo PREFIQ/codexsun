@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { Building2Icon, CheckCircle2Icon, Clock3Icon, DatabaseIcon } from "lucide-react";
-import { StatusBadge } from "@codexsun/ui";
+import { GlobalLoader, StatusBadge } from "@codexsun/ui";
 import type { TenantDatabaseStatus } from "./tenant-database.types";
 
 export function TenantDatabaseList({
@@ -115,9 +115,7 @@ export function TenantDatabaseList({
           </tbody>
         </table>
         {records.length === 0 && loading ? (
-          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-            Loading tenant databases...
-          </div>
+          <GlobalLoader className="min-h-32" fullScreen={false} />
         ) : null}
         {records.length === 0 && !loading ? (
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">

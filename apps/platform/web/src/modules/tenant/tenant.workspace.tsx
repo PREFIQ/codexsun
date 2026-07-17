@@ -12,11 +12,7 @@ import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
 import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
-import {
-  WorkspaceShowCard,
-  WorkspaceShowLayout,
-  WorkspaceDetailTable
-} from "@codexsun/ui/workspace/show";
+import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceStatusBadge, WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import {
   WorkspaceTableEmptyState,
@@ -39,6 +35,11 @@ import {
   normalizeTenantDomain
 } from "../tenant-domain/tenant-domain.services";
 import { usePlatformAppsQuery, type PlatformApp } from "../app-registry";
+import { TenantDatabaseControl } from "../tenant-database";
+import { TenantDomainControl } from "../tenant-domain";
+import { TenantActivityControl } from "./tenant.activity";
+import { TenantAppConnections } from "./tenant.apps";
+import { TenantIdentityControl } from "./tenant.identity";
 import {
   createTenant,
   listTenantActivity,
@@ -47,6 +48,7 @@ import {
   suspendTenant as suspendTenantRecord,
   updateTenant
 } from "./tenant.services";
+import type { AuditEventDTO, Tenant, TenantSavePayload } from "./tenant.types";
 import {
   defaultLandingApp,
   normalizeModuleKeys,
@@ -54,57 +56,10 @@ import {
   type PlatformAppId
 } from "../../app/app-registry";
 
-type Tenant = {
-  corporateId: string | null;
-  dbHost: string;
-  dbName: string;
-  dbPort: number;
-  dbSecretRef: string;
-  dbType: string;
-  dbUser: string;
-  enabledModuleKeys: string[];
-  defaultLandingApp: PlatformAppId;
-  id: number;
-  mobile: string | null;
-  payloadSettings: Record<string, unknown>;
-  primaryDomain: string;
-  slug: string;
-  tenantCode: string;
-  tenantName: string;
-  uuid: string;
-  status: "active" | "inactive" | "provisioning" | "suspended" | string;
-};
-
 type TenantView =
   | { mode: "list" }
   | { mode: "show"; tenant: Tenant }
   | { mode: "upsert"; tenant: Tenant | null; returnTo: "list" | "show" };
-
-type TenantSavePayload = {
-  corporateId: string | null;
-  dbHost: string;
-  dbName: string;
-  dbPort: number;
-  dbSecretRef: string;
-  dbType: string;
-  dbUser: string;
-  enabledModuleKeys: string[];
-  defaultLandingApp: PlatformAppId;
-  mobile: string | null;
-  payloadSettings: Record<string, unknown>;
-  primaryDomain: string;
-  slug: string;
-  status: string;
-  tenantCode: string;
-  tenantName: string;
-};
-
-type AuditEventDTO = {
-  actor_email?: string | null;
-  created_at?: string;
-  event_name: string;
-  id: number | string;
-};
 
 const filterOptions = [
   { id: "all", label: "All tenants" },
@@ -264,6 +219,7 @@ export function TenantList({ onBack: _onBack }: { onBack: () => void }) {
         onEdit={() => setView({ mode: "upsert", tenant: view.tenant, returnTo: "show" })}
         onRestore={() => restoreTenant(view.tenant)}
         onSuspend={() => suspendTenant(view.tenant)}
+        onUpdated={(tenant) => setView({ mode: "show", tenant })}
         activity={tenantActivityQuery.data ?? []}
         activityLoading={tenantActivityQuery.isFetching}
       />
@@ -511,7 +467,8 @@ function TenantShowPage({
   onBack,
   onEdit,
   onRestore,
-  onSuspend
+  onSuspend,
+  onUpdated
 }: {
   activity: AuditEventDTO[];
   activityLoading: boolean;
@@ -520,14 +477,42 @@ function TenantShowPage({
   onEdit: () => void;
   onRestore: () => void;
   onSuspend: () => void;
+  onUpdated: (tenant: Tenant) => void;
 }) {
-  const summary = toTenantSummary(tenant);
   const suspended = tenant.status === "suspended" || tenant.status === "inactive";
+  const [activeTab, setActiveTab] = useState("overview");
+  const tabs: WorkspaceAnimatedTab[] = [
+    {
+      label: "Overview",
+      value: "overview",
+      content: (
+        <div className="space-y-4">
+          <TenantIdentityControl tenant={tenant} />
+          <TenantActivityControl events={activity} loading={activityLoading} />
+        </div>
+      )
+    },
+    {
+      label: "Database",
+      value: "database",
+      content: <TenantDatabaseControl tenantId={tenant.id} />
+    },
+    {
+      label: "Domains",
+      value: "domains",
+      content: <TenantDomainControl tenantId={tenant.id} />
+    },
+    {
+      label: "App connections",
+      value: "apps",
+      content: <TenantAppConnections tenant={tenant} onUpdated={onUpdated} />
+    }
+  ];
 
   return (
     <WorkspacePage
       title={tenant.tenantName}
-      description="Review tenant identity, database, and lifecycle details."
+      description="Control tenant identity, live database setup, domains, and connected applications."
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" className="h-9 rounded-md" onClick={onBack}>
@@ -549,115 +534,8 @@ function TenantShowPage({
         </div>
       }
     >
-      <WorkspaceShowLayout>
-        <div className="space-y-4">
-          <WorkspaceShowCard title="Tenant profile">
-            <WorkspaceDetailTable
-              rows={[
-                ["Tenant", tenant.tenantName],
-                [
-                  "UUID",
-                  <span key="uuid" className="font-mono text-xs">
-                    {tenant.uuid}
-                  </span>
-                ],
-                [
-                  "Code",
-                  <span key="code" className="font-mono text-xs">
-                    {tenant.tenantCode}
-                  </span>
-                ],
-                [
-                  "Corporate ID",
-                  <span key="corp" className="font-mono text-xs">
-                    {tenant.corporateId ?? "-"}
-                  </span>
-                ],
-                [
-                  "Mobile",
-                  <span key="mobile" className="font-mono text-xs">
-                    {tenant.mobile ?? "-"}
-                  </span>
-                ],
-                [
-                  "Primary domain",
-                  <span key="domain" className="font-mono text-xs">
-                    {tenant.primaryDomain || "-"}
-                  </span>
-                ],
-                [
-                  "Slug",
-                  <span key="slug" className="font-mono text-xs">
-                    {tenant.slug}
-                  </span>
-                ],
-                [
-                  "Status",
-                  <WorkspaceStatusBadge
-                    key="status"
-                    label={tenant.status}
-                    tone={statusTone(tenant.status)}
-                  />
-                ]
-              ]}
-            />
-          </WorkspaceShowCard>
-        </div>
-        <div className="space-y-4">
-          <WorkspaceShowCard title="Database context">
-            <WorkspaceDetailTable
-              rows={[
-                ["Type", tenant.dbType],
-                ["Host", tenant.dbHost],
-                ["Port", tenant.dbPort],
-                [
-                  "Database",
-                  <span key="db" className="font-mono text-xs">
-                    {tenant.dbName}
-                  </span>
-                ],
-                ["User", tenant.dbUser],
-                [
-                  "Secret",
-                  <span key="secret" className="font-mono text-xs">
-                    {tenant.dbSecretRef}
-                  </span>
-                ],
-                ["Companies", summary.companyCount],
-                ["Active", summary.activeCompanyCount]
-              ]}
-            />
-          </WorkspaceShowCard>
-          <TenantActivityCard events={activity} loading={activityLoading} />
-        </div>
-      </WorkspaceShowLayout>
+      <WorkspaceAnimatedTabs tabs={tabs} value={activeTab} onValueChange={setActiveTab} />
     </WorkspacePage>
-  );
-}
-
-function TenantActivityCard({ events, loading }: { events: AuditEventDTO[]; loading: boolean }) {
-  return (
-    <WorkspaceShowCard title="Activity">
-      <div className="divide-y divide-border/60">
-        {loading ? (
-          <p className="px-4 py-3 text-sm text-muted-foreground">Loading activity...</p>
-        ) : null}
-        {!loading && events.length === 0 ? (
-          <p className="px-4 py-3 text-sm text-muted-foreground">No activity yet.</p>
-        ) : null}
-        {events.slice(0, 6).map((event) => (
-          <div key={String(event.id)} className="px-4 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-foreground">
-                {event.event_name.replace(/[._-]+/g, " ")}
-              </p>
-              <span className="text-xs text-muted-foreground">{formatDate(event.created_at)}</span>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">{event.actor_email || "system"}</p>
-          </div>
-        ))}
-      </div>
-    </WorkspaceShowCard>
   );
 }
 
@@ -1009,29 +887,23 @@ function TenantUpsertPage({
           </div>
           <div className="mt-4 rounded-md border border-border/70 p-4">
             <WorkspaceFormField label="Landing app">
-              <select
-                className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+              <WorkspaceSelect
                 value={form.defaultLandingApp}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    defaultLandingApp: event.target.value as PlatformAppId
-                  }))
-                }
-              >
-                {appAccess
+                options={appAccess
                   .filter((app) => app.enabled)
                   .map((app) => {
                     const registry = platformAppRegistry.find(
                       (item) => item.moduleKey === app.moduleKey
                     );
-                    return (
-                      <option key={app.moduleKey} value={registry?.id ?? "application"}>
-                        {app.name}
-                      </option>
-                    );
+                    return { label: app.name, value: registry?.id ?? "application" };
                   })}
-              </select>
+                onValueChange={(value) =>
+                  setForm((current) => ({
+                    ...current,
+                    defaultLandingApp: value as PlatformAppId
+                  }))
+                }
+              />
             </WorkspaceFormField>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -1289,7 +1161,10 @@ function tenantAppAccessFromRegistry(apps: PlatformApp[] | undefined): TenantApp
   return source
     .filter(
       (app) =>
-        app.appId === "application" || app.appId === "billing" || app.appId === "task-manager"
+        app.appId === "application" ||
+        app.appId === "billing" ||
+        app.appId === "mail" ||
+        app.appId === "task-manager"
     )
     .map((app) => {
       const local =
@@ -1335,12 +1210,6 @@ function statusTone(status: string) {
   if (status === "provisioning") return "info";
   if (status === "suspended" || status === "inactive") return "danger";
   return "neutral";
-}
-
-function formatDate(value: string | undefined) {
-  if (!value) return "Today";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Today" : date.toLocaleDateString();
 }
 
 function showTenantError(title: string, error: unknown) {

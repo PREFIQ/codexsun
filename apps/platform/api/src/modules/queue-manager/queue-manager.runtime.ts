@@ -10,10 +10,13 @@ export function startQueueManagerWorker(app: FastifyInstance, service = new Queu
     return;
   }
   if (env.CODEXSUN_QUEUE_BACKEND === "bullmq-redis") {
-    const worker = startBullMqWorker("maintenance", (queueJobId) =>
+    const maintenanceWorker = startBullMqWorker("maintenance", (queueJobId) =>
       service.runJob(queueJobId, { fromWorker: true })
     );
-    if (worker) {
+    const mailWorker = startBullMqWorker("mail", (queueJobId) =>
+      service.runJob(queueJobId, { fromWorker: true })
+    );
+    if (maintenanceWorker || mailWorker) {
       app.addHook("onClose", async () => {
         await closeBullMq();
       });

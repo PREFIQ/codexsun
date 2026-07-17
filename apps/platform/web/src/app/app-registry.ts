@@ -1,9 +1,16 @@
 import {
+  AlertTriangleIcon,
+  ArchiveIcon,
+  BarChart3Icon,
   Building2Icon,
   CircleGaugeIcon,
+  Clock3Icon,
   CreditCardIcon,
+  FileTextIcon,
   Globe2Icon,
+  InboxIcon,
   LandmarkIcon,
+  MailIcon,
   MapPinnedIcon,
   PackageIcon,
   Settings2Icon,
@@ -11,12 +18,14 @@ import {
   ClipboardListIcon,
   LayoutDashboardIcon,
   ReceiptTextIcon,
+  SendIcon,
   ShieldCheckIcon,
+  Trash2Icon,
   type LucideIcon
 } from "lucide-react";
 import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemenu-section";
 
-export type PlatformAppId = "application" | "billing" | "task-manager";
+export type PlatformAppId = "application" | "billing" | "mail" | "task-manager";
 
 export type PlatformAppDefinition = {
   accentClass: string;
@@ -27,7 +36,7 @@ export type PlatformAppDefinition = {
   icon: LucideIcon;
   label: string;
   moduleKey: string;
-  stack: "platform" | "billing";
+  stack: "platform" | "billing" | "mail";
 };
 
 export const platformAppRegistry: PlatformAppDefinition[] = [
@@ -52,6 +61,18 @@ export const platformAppRegistry: PlatformAppDefinition[] = [
     label: "Billing",
     moduleKey: "billing.sales",
     stack: "billing"
+  },
+  {
+    accentClass: "bg-sky-600",
+    alwaysEnabled: false,
+    defaultLanding: false,
+    description:
+      "Tenant inbox, rich compose, SMTP delivery, drafts, sent history, failures, and provider settings.",
+    icon: MailIcon,
+    id: "mail",
+    label: "Mail",
+    moduleKey: "mail",
+    stack: "mail"
   }
 ];
 
@@ -84,6 +105,14 @@ export function appMenuFor(
   activePage: string,
   onSelect: (page: string) => void
 ): SidemenuItem {
+  if (appId === "mail") {
+    return {
+      icon: MailIcon,
+      isActive: activePage.startsWith("mail"),
+      onSelect: () => onSelect("mail.inbox"),
+      title: "Mail"
+    };
+  }
   if (appId === "billing") {
     return {
       icon: ReceiptTextIcon,
@@ -300,6 +329,52 @@ export function appMenuItemsFor(
   activePage: string,
   onSelect: (page: string) => void
 ): SidemenuItem[] {
+  if (appId === "mail") {
+    return [
+      {
+        icon: InboxIcon,
+        isActive: activePage === "mail.inbox" || activePage === "mail.overview",
+        onSelect: () => onSelect("mail.inbox"),
+        title: "Inbox"
+      },
+      {
+        icon: SendIcon,
+        isActive: activePage === "mail.outbox",
+        onSelect: () => onSelect("mail.outbox"),
+        title: "Outbox"
+      },
+      {
+        icon: FileTextIcon,
+        isActive: activePage === "mail.drafts",
+        onSelect: () => onSelect("mail.drafts"),
+        title: "Drafts"
+      },
+      {
+        icon: Clock3Icon,
+        isActive: activePage === "mail.scheduled",
+        onSelect: () => onSelect("mail.scheduled"),
+        title: "Scheduled"
+      },
+      {
+        icon: ArchiveIcon,
+        isActive: activePage === "mail.sent",
+        onSelect: () => onSelect("mail.sent"),
+        title: "Sent"
+      },
+      {
+        icon: AlertTriangleIcon,
+        isActive: activePage === "mail.failed",
+        onSelect: () => onSelect("mail.failed"),
+        title: "Failed"
+      },
+      {
+        icon: Trash2Icon,
+        isActive: activePage === "mail.trash",
+        onSelect: () => onSelect("mail.trash"),
+        title: "Trash"
+      }
+    ];
+  }
   if (appId === "billing") {
     return [
       {
@@ -348,6 +423,33 @@ export function appMenuItemsFor(
             title: "Receipt",
             isActive: activePage === "billing.receipt",
             onSelect: () => onSelect("billing.receipt")
+          }
+        ]
+      },
+      {
+        icon: BarChart3Icon,
+        isActive: activePage.startsWith("billing.reports."),
+        title: "Report",
+        items: [
+          {
+            title: "Customer Statement",
+            isActive: activePage === "billing.reports.customer-statement",
+            onSelect: () => onSelect("billing.reports.customer-statement")
+          },
+          {
+            title: "Supplier Statement",
+            isActive: activePage === "billing.reports.supplier-statement",
+            onSelect: () => onSelect("billing.reports.supplier-statement")
+          },
+          {
+            title: "Stock Statement",
+            isActive: activePage === "billing.reports.stock-statement",
+            onSelect: () => onSelect("billing.reports.stock-statement")
+          },
+          {
+            title: "GST Statement",
+            isActive: activePage === "billing.reports.gst-statement",
+            onSelect: () => onSelect("billing.reports.gst-statement")
           }
         ]
       },
@@ -539,7 +641,8 @@ export function appWorkspaceItems(enabledApps: PlatformAppId[], activeApp: Platf
 
 export const applicationPageIcons = {
   application: Building2Icon,
-  billing: CreditCardIcon
+  billing: CreditCardIcon,
+  mail: MailIcon
 };
 
 function commonMasterMenuGroups(

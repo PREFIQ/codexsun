@@ -31,6 +31,18 @@ export const platformAppRegistry: PlatformAppDefinition[] = [
   {
     alwaysEnabled: false,
     defaultLanding: false,
+    description:
+      "Tenant inbox, compose, queued SMTP delivery, sent history, failures, and settings.",
+    appId: "mail",
+    id: 0,
+    label: "Mail",
+    moduleKey: "mail",
+    stack: "mail",
+    uuid: ""
+  },
+  {
+    alwaysEnabled: false,
+    defaultLanding: false,
     description: "Tenant-owned Todo planning with a lightweight JSON workspace.",
     appId: "task-manager",
     id: 0,

@@ -232,6 +232,8 @@ Frontend role behavior is strict:
 
 All full CRUD modules must have the same required file level on backend and frontend. Gallery, shell-only, or composition-only modules may be smaller only when their exemption is explicit and they do not pretend to be full CRUD modules.
 
+Read-only Billing report leaves under `apps/billing/api/src/modules/reports/{report}/` own `module`, `repository`, `service`, `routes`, and `types` roles plus `index.ts`; they do not create fake migrations, seeds, events, workers, or sync roles. Their frontend leaves under `apps/billing/web/src/modules/reports/{report}/` own report-specific filters in the form/schema roles together with services, hooks, list, workspace, types, page, and public exports.
+
 ## Module Contract
 
 Every module should have an explicit contract.
@@ -299,6 +301,8 @@ Do not put unstable business rules in the shared kernel.
 | `apps/core/web`      | Core frontend modules             | Common/master tenant screens, lookup controls, and reusable tenant record workspace UI                                                                     |
 | `apps/billing/src`   | Billing backend modules           | Quotation, sales, export sales, purchase, receipt, payment contracts, routes, migrations, workers, seeders, and sync rules under module folders            |
 | `apps/billing/web`   | Billing frontend modules          | Billing entry workspaces, billing settings, billing forms, and billing reports                                                                             |
+| `apps/mail/api`      | Mail backend module               | Tenant mail settings, encrypted credentials, messages, attachments, delivery/sync events, SMTP/IMAP workers, and queue contracts                           |
+| `apps/mail/web`      | Mail frontend module              | Mailboxes, rich compose, provider settings, message reader, and public Billing document-mail integration                                                   |
 | `apps/platform/api`  | API gateway + platform routes     | Route registration, guard functions (session, tenant, feature, permission), migration runner, DB bootstrap                                                 |
 | `apps/platform/web`  | Platform shell and React composer | Login, SA desk, Admin desk, Tenant desk shell, design system pages, route/menu composition, API client integration                                         |
 
@@ -327,10 +331,14 @@ Do not put unstable business rules in the shared kernel.
 
 **Tenant Databases — owned by tenant apps (future):**
 
-| Table                 | Owner                       | Purpose             |
-| --------------------- | --------------------------- | ------------------- |
-| `users`               | Platform (tenant bootstrap) | Tenant user auth    |
-| `tenant_audit_events` | Platform (bootstrap)        | Tenant-scoped audit |
+| Table                 | Owner                       | Purpose                                                         |
+| --------------------- | --------------------------- | --------------------------------------------------------------- |
+| `users`               | Platform (tenant bootstrap) | Tenant user auth                                                |
+| `tenant_audit_events` | Platform (bootstrap)        | Tenant-scoped audit                                             |
+| `mail_settings`       | Mail                        | Company-scoped provider configuration and encrypted credentials |
+| `mail_messages`       | Mail                        | Inbox, draft, queue, sent, failed, and trash message state      |
+| `mail_attachments`    | Mail                        | Tenant mail attachment payloads and metadata                    |
+| `mail_events`         | Mail                        | Delivery, failure, sync, and lifecycle history                  |
 
 ### Package Dependency Direction
 
