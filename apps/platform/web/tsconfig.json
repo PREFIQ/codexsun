@@ -4,6 +4,7 @@
     "baseUrl": ".",
     "paths": {
       "@codexsun/data-bridge-web": ["../../data-bridge/web/src/index.ts"],
+      "@codexsun/sites-web/codexsun": ["../../sites/web/clients/codexsun/index.ts"],
       "@codexsun/ui": ["../../../packages/ui/src/index.ts"],
       "@codexsun/ui/styles.css": ["../../../packages/ui/src/styles.css"],
       "@codexsun/ui/components/*": ["../../../packages/ui/src/components/*"],

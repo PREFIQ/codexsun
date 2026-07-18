@@ -124,6 +124,16 @@ The non-container hosted baseline serves `dist/apps/platform/web` as static file
 `dist/apps/platform/api/server.js` under systemd. Production nginx must not proxy the web root to Vite, and hosted
 services must not depend on `npm run dev` remaining attached to a shell.
 
+Public client sites are separate Sites artifacts. Each supported client build is emitted beneath
+`dist/apps/sites/web/{client}` and should be mapped to its own hostname by the static host or edge layer. The initial
+clients are `codexsun`, `logicx`, and `techmedia`. A client build must not infer tenant workspace identity or reuse the
+Platform tenant-domain table; public-site publishing and tenant workspace access remain separate concerns.
+
+Local Windows development mirrors that ownership with a host gateway on `127.0.0.1:80`: `codexsun.test`,
+`logicx.test`, and `techmedia.test` route to their independent Sites dev servers, while `aaran.test` routes to Platform.
+Platform API traffic stays on `/api/platform`, preserves the original host, and is resolved through the tenant-domain
+module. The root `npm run dev:domains` command starts the APIs, Platform web, all three Sites clients, and this gateway.
+
 The maintained baseline configuration and installation commands live under `deploy/hosted/`. The Platform API binds
 to loopback behind nginx, restarts automatically after failures, and exposes its existing health endpoint through
 `/api/platform/health`. The Platform web build reads client variables from the root `.env`; its dev-server port is not

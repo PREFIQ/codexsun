@@ -8,6 +8,8 @@ import { createServer } from "node:net";
 
 const root = resolve(import.meta.dirname, "..");
 const app = process.argv[2];
+const requestedMode = process.argv[3]?.trim();
+const requestedPort = process.argv[4]?.trim();
 
 const apps = {
   "billing-api": {
@@ -99,6 +101,15 @@ const apps = {
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
+  },
+  "sites-web": {
+    displayName: "sites-web",
+    cwd: "apps/sites/web",
+    envKey: "SITES_WEB_PORT",
+    hostKey: "SITES_WEB_HOST",
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
   }
 };
 
@@ -108,8 +119,16 @@ if (!app || !apps[app]) {
 }
 
 const config = apps[app];
+const sitesMode = app === "sites-web" ? requestedMode || "codexsun" : undefined;
+if (sitesMode && !new Set(["codexsun", "logicx", "techmedia"]).has(sitesMode)) {
+  console.error(`Unknown Sites client "${sitesMode}". Use codexsun, logicx, or techmedia.`);
+  process.exit(1);
+}
 const env = loadDotEnv();
-const port = parseRequiredPort(process.env[config.envKey] || env[config.envKey], config.envKey);
+const port = parseRequiredPort(
+  requestedPort || process.env[config.envKey] || env[config.envKey],
+  requestedPort ? `${config.envKey} command override` : config.envKey
+);
 const host = process.env[config.hostKey] || env[config.hostKey] || config.fallbackHost;
 await freePort(port, host);
 
@@ -125,7 +144,11 @@ if (
 
 const child = spawn(
   config.command,
-  [...config.args, ...(app.endsWith("-web") ? ["--port", String(port)] : [])],
+  [
+    ...config.args,
+    ...(sitesMode ? ["--mode", sitesMode] : []),
+    ...(app.endsWith("-web") ? ["--port", String(port)] : [])
+  ],
   {
     cwd: resolve(root, config.cwd),
     env: {

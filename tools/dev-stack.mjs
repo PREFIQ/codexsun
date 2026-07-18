@@ -48,7 +48,13 @@ const services = {
     logLabel: "kitchen-serve-web"
   },
   "platform-api": { color: "\x1b[36m", command: ["platform-api"], label: "api", logLabel: "api" },
-  "platform-web": { color: "\x1b[32m", command: ["platform-web"], label: "web", logLabel: "web" }
+  "platform-web": { color: "\x1b[32m", command: ["platform-web"], label: "web", logLabel: "web" },
+  "sites-web": {
+    color: "\x1b[94m",
+    command: ["sites-web", "codexsun"],
+    label: "Sites web",
+    logLabel: "sites-web"
+  }
 };
 
 const stacks = {
@@ -59,6 +65,7 @@ const stacks = {
   "data-bridge": ["data-bridge-api", "data-bridge-web"],
   "kitchen-serve": ["platform-api", "core-api", "kitchen-serve-api", "kitchen-serve-web"],
   platform: ["platform-api", "core-api", "billing-api", "platform-web"],
+  sites: ["sites-web"],
   web: ["platform-web"]
 };
 

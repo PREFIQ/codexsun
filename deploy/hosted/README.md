@@ -8,7 +8,14 @@ These checked-in files target the current host layout:
 - Repository: `/home/sundar/codexsun`
 - Runtime user: `sundar`
 - Platform API: `127.0.0.1:7010`
-- Published web root: `/var/www/codexsun`
+- Platform web root: `/var/www/codexsun-platform`
+- CODEXSUN site root: `/var/www/sites/codexsun`
+- LogicX site root: `/var/www/sites/logicx`
+- Tech Media site root: `/var/www/sites/techmedia`
+
+The maintained nginx configuration maps `codexsun.com`, `logicx.in`, and `techmedia.in` to their independent Sites
+artifacts. `app.codexsun.com` and unmatched tenant domains serve Platform; Platform then resolves the request hostname
+through its tenant-domain module.
 
 ## Generate the server GitHub key
 
@@ -55,14 +62,23 @@ npm ci
 npm run build -w @codexsun/framework
 npm run build -w @codexsun/platform-api
 npm run build -w @codexsun/platform-web
+npm run build -w @codexsun/sites-web
 
-sudo install -d -o www-data -g www-data /var/www/codexsun
-sudo rsync -a --delete dist/apps/platform/web/ /var/www/codexsun/
+sudo install -d -o www-data -g www-data \
+  /var/www/codexsun-platform \
+  /var/www/sites/codexsun \
+  /var/www/sites/logicx \
+  /var/www/sites/techmedia
+sudo rsync -a --delete dist/apps/platform/web/ /var/www/codexsun-platform/
+sudo rsync -a --delete dist/apps/sites/web/codexsun/ /var/www/sites/codexsun/
+sudo rsync -a --delete dist/apps/sites/web/logicx/ /var/www/sites/logicx/
+sudo rsync -a --delete dist/apps/sites/web/techmedia/ /var/www/sites/techmedia/
 ```
 
 Platform Vite reads client variables from the root `.env`. Production should set `VITE_PLATFORM_API_URL` to
-`/api/platform` so browser requests stay on the hosted origin. `PLATFORM_WEB_PORT` is dev-only and is not required by
-the production build.
+`/api/platform` so browser requests stay on the hosted origin. Set
+`VITE_PLATFORM_WEB_ORIGIN=https://app.codexsun.com` before building Sites so public-site login and application links
+leave the marketing domains for Platform. `PLATFORM_WEB_PORT` is dev-only and is not required by the production build.
 
 ## Install process supervision and nginx
 
@@ -101,3 +117,29 @@ journalctl -u codexsun-platform-api -n 100 --no-pager
 ```
 
 Expected unauthenticated status: health `200`, session `401`, and web root `200`.
+
+Verify each HTTP hostname before enabling TLS:
+
+```sh
+curl --resolve codexsun.com:80:127.0.0.1 --fail http://codexsun.com/ >/dev/null
+curl --resolve logicx.in:80:127.0.0.1 --fail http://logicx.in/ >/dev/null
+curl --resolve techmedia.in:80:127.0.0.1 --fail http://techmedia.in/ >/dev/null
+curl --resolve app.codexsun.com:80:127.0.0.1 --fail \
+  http://app.codexsun.com/api/platform/health
+```
+
+## Connect live domains
+
+Point the public DNS `A` records for `codexsun.com`, `logicx.in`, `techmedia.in`, and `app.codexsun.com` to the
+server. Add matching `www` CNAME records where required. After DNS resolves, install certificates:
+
+```sh
+sudo certbot --nginx -d codexsun.com -d www.codexsun.com
+sudo certbot --nginx -d logicx.in -d www.logicx.in
+sudo certbot --nginx -d techmedia.in -d www.techmedia.in
+sudo certbot --nginx -d app.codexsun.com
+```
+
+For a live tenant hostname, point its DNS to the same server, add the exact hostname to Platform Tenant Domains, and
+issue a certificate for it. The default nginx Platform server can serve the tenant workspace without creating a new
+frontend build; tenant selection remains database-backed and fails closed when the hostname is not registered.

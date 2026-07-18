@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.35
+Current version: 1.0.36
 
-Release tag: v-1.0.35
+Release tag: v-1.0.36
 
-Changelog label: v 1.0.35
+Changelog label: v 1.0.36
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,29 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.36
+
+### [v 1.0.36] 2026-07-18 10:23 am - Client Sites and Domain Routing
+
+#### Database Changes
+
+- Database update: No (manual). No tenant, tenant-domain, migration, seed, or tenant-database record was created or changed in this release.
+
+#### App Codebase Changes
+
+- Added the dedicated `apps/sites/web` workspace with independently owned CODEXSUN, LogicX, and Tech Media public-site clients and separate production artifacts under `dist/apps/sites/web/{client}`.
+- Moved the CODEXSUN creator site out of Platform public source while retaining temporary Platform composition through the Sites public export for local root-route compatibility.
+- Adapted the Interfrozt frontend into the CODEXSUN identity without redesigning its visual foundation, including refined navigation, animated hero messaging, product sections, enterprise presentation, outcome content, compact page rails, and responsive public layouts.
+- Reworked Selected Work into a compact project grid with independently presented CODEXSUN Platform, Billing Suite, and Zero case material, while removing the obsolete Project Overview presentation.
+- Added independently branded LogicX and Tech Media sites that reuse only visual infrastructure and retain concrete client-owned content, routes, metadata, and themes.
+- Added temporary root development commands for CODEXSUN, LogicX, and Tech Media on ports `7130`, `7131`, and `7132`, plus a combined `npm run dev:sites:all` launcher.
+- Added the local port-80 development domain gateway for `codexsun.test`, `logicx.test`, `techmedia.test`, and the `aaran.test` Platform tenant workspace, including Vite WebSocket forwarding and preserved tenant host headers.
+- Changed Platform development API access to the same-origin `/api/platform` path so tenant-domain resolution receives the browser hostname instead of the loopback API hostname.
+- Expanded the hosted nginx baseline to publish `codexsun.com`, `logicx.in`, and `techmedia.in` from independent Sites artifacts while serving `app.codexsun.com` and registered tenant domains from Platform.
+- Updated deployment, project inventory, environment, build, DNS, certificate, and hosted publishing documentation for the new Sites and domain topology.
+- Verified formatting, Platform and Sites lint and TypeScript, module boundaries, dependency layout, local hostname routing, same-origin Platform API health, and Platform plus all three Sites production builds.
+- Bumped workspace version to 1.0.36.
 
 ## v-1.0.35
 

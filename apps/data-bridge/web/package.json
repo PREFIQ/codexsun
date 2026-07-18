@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/data-bridge-web",
-  "version": "1.0.35",
+  "version": "1.0.36",
   "private": true,
   "type": "module",
   "exports": {
@@ -13,8 +13,8 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@codexsun/framework": "^1.0.35",
-    "@codexsun/ui": "^1.0.35",
+    "@codexsun/framework": "^1.0.36",
+    "@codexsun/ui": "^1.0.36",
     "@tanstack/react-query": "^5.100.10",
     "@vitejs/plugin-react": "^6.0.3",
     "lucide-react": "^1.22.0",

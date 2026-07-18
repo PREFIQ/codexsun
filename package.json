@@ -1,6 +1,6 @@
 {
   "name": "codexsun",
-  "version": "1.0.35",
+  "version": "1.0.36",
   "private": true,
   "packageManager": "npm@11.17.0",
   "description": "CODEXSUN",
@@ -13,6 +13,13 @@
   "scripts": {
     "dev:api": "node tools/dev-stack.mjs api",
     "dev:web": "node tools/dev-stack.mjs web",
+    "dev:sites": "node tools/dev-stack.mjs sites",
+    "dev:sites:all": "concurrently -n codexsun,logicx,techmedia -c blue,green,magenta \"npm run dev:codexsun\" \"npm run dev:logicx\" \"npm run dev:techmedia\"",
+    "dev:domain-gateway": "node tools/dev-domain-gateway.mjs",
+    "dev:domains": "concurrently -k -n api,platform,sites,gateway -c cyan,green,magenta,yellow \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:sites:all\" \"npm run dev:domain-gateway\"",
+    "dev:codexsun": "npm run dev:codexsun -w @codexsun/sites-web",
+    "dev:logicx": "npm run dev:logicx -w @codexsun/sites-web",
+    "dev:techmedia": "npm run dev:techmedia -w @codexsun/sites-web",
     "dev:data-bridge": "node tools/dev-stack.mjs data-bridge",
     "preinstall": "node tools/enforce-root-install.mjs",
     "postinstall": "node tools/check-root-node-modules.mjs",
@@ -28,6 +35,7 @@
     "verify:core": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "verify:data-bridge": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "verify:kitchen-serve": "npm run check:module-boundaries && npm run typecheck && npm run build",
+    "verify:sites": "node tools/check-module-boundaries.mjs sites && npm run typecheck -w @codexsun/sites-web && npm run lint -w @codexsun/sites-web && npm run build -w @codexsun/sites-web && npm run dependencies:check",
     "check": "npm run check:module-boundaries && npm run typecheck && npm run lint",
     "check:module-boundaries": "node tools/check-module-boundaries.mjs",
     "check:core-boundaries": "node tools/check-module-boundaries.mjs core",
@@ -80,6 +88,7 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
-    "@fontsource-variable/geist-mono": "^5.2.8"
+    "@fontsource-variable/geist-mono": "^5.2.8",
+    "vite": "^8.1.5"
   }
 }

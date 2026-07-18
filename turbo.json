@@ -3,6 +3,8 @@
   "globalEnv": [
     "PLATFORM_API_PORT",
     "PLATFORM_WEB_PORT",
+    "VITE_PLATFORM_WEB_ORIGIN",
+    "SITES_WEB_PORT",
     "CORE_API_PORT",
     "CORE_WEB_PORT",
     "BILLING_API_PORT",

@@ -16,6 +16,8 @@ apps/
   platform/
     api/
     web/
+  sites/
+    web/
   core/
     api/
     web/
@@ -55,8 +57,9 @@ Platform owns the SaaS foundation.
 
 - `apps/platform/api`: Fastify API for tenant identity, auth, app registry, database setup, tenant provisioning, and
   platform operations.
-- `apps/platform/web`: React/Vite shell for public routes, login, super-admin desk, admin desk, tenant desk, tenant UI,
-  and design-system gallery.
+- `apps/platform/web`: React/Vite shell for login, super-admin desk, admin desk, tenant desk, tenant UI, and
+  design-system gallery. It temporarily composes the CODEXSUN creator-site routes from Sites so the existing local
+  root URL remains compatible.
 
 Current Platform API modules:
 
@@ -67,6 +70,23 @@ Current Platform Web modules:
 
 - `design-system`
 - `tenant`
+
+### Sites
+
+Sites owns public marketing websites and their client-specific builds.
+
+- `apps/sites/web/clients/codexsun`: CODEXSUN creator site for marketing the software platform and development work.
+- `apps/sites/web/clients/logicx`: Logicx Info Tech public site for custom software, ERPNext, Tally integration,
+  websites, automation, and hosting services.
+- `apps/sites/web/clients/techmedia`: Tech Media public site for computers, gaming gear, accessories, setup, repairs,
+  and custom builds.
+- `apps/sites/web/shared`: visual-only client-site canvas and document metadata helpers; client content, routes, and
+  business identity remain inside each client owner.
+- `apps/sites/web/runtime`: the standalone Vite entry that binds exactly one concrete client at build time.
+
+The Sites build emits independent artifacts under `dist/apps/sites/web/{client}`. CODEXSUN marketing routes are
+exported through `@codexsun/sites-web/codexsun` for temporary Platform composition; Logicx and Tech Media do not import
+or depend on CODEXSUN marketing implementation.
 
 ### Core
 
@@ -119,6 +139,8 @@ Important root commands:
 ```text
 npm run dev:api
 npm run dev:web
+npm run dev:sites
+npm run dev:domains
 npm run build
 npm run typecheck
 npm run lint
@@ -126,6 +148,7 @@ npm run check
 npm run verify:platform
 npm run verify:billing
 npm run verify:core
+npm run verify:sites
 npm run check:module-boundaries
 npm run db:migrate
 npm run db:seed

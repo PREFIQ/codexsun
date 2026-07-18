@@ -14,7 +14,16 @@ const HealthPage = lazy(() =>
   import("../public/health/HealthPage").then((module) => ({ default: module.HealthPage }))
 );
 const HomePage = lazy(() =>
-  import("../public/HomePage").then((module) => ({ default: module.HomePage }))
+  import("@codexsun/sites-web/codexsun").then((module) => ({ default: module.HomePage }))
+);
+const ArticlesPage = lazy(() =>
+  import("@codexsun/sites-web/codexsun").then((module) => ({ default: module.ArticlesPage }))
+);
+const ArticlePage = lazy(() =>
+  import("@codexsun/sites-web/codexsun").then((module) => ({ default: module.ArticlePage }))
+);
+const WorkPage = lazy(() =>
+  import("@codexsun/sites-web/codexsun").then((module) => ({ default: module.WorkPage }))
 );
 const LoginPage = lazy(() =>
   import("../public/login/LoginPage").then((module) => ({ default: module.LoginPage }))
@@ -38,6 +47,34 @@ const healthRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/status"
 });
+
+const articlesRoute = createRoute({
+  component: ArticlesPage,
+  getParentRoute: () => rootRoute,
+  path: "/articles"
+});
+
+const articleRoute = createRoute({
+  component: ArticleRouteComponent,
+  getParentRoute: () => rootRoute,
+  path: "/articles/$slug"
+});
+
+function ArticleRouteComponent() {
+  const { slug } = articleRoute.useParams();
+  return <ArticlePage slug={slug} />;
+}
+
+const workRoute = createRoute({
+  component: WorkRouteComponent,
+  getParentRoute: () => rootRoute,
+  path: "/work/$id"
+});
+
+function WorkRouteComponent() {
+  const { id } = workRoute.useParams();
+  return <WorkPage id={id} />;
+}
 
 const tenantLoginRoute = createRoute({
   component: () => <LoginPage desk="tenant" title="App Login" />,
@@ -84,6 +121,9 @@ const dataBridgeRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   homeRoute,
   healthRoute,
+  articlesRoute,
+  articleRoute,
+  workRoute,
   tenantLoginRoute,
   saLoginRoute,
   adminLoginRoute,

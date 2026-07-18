@@ -4,6 +4,7 @@ const tenantDisplayName = import.meta.env.VITE_TENANT_NAME ?? "Codexsun";
 
 const pageTitles: Record<string, string> = {
   "/": "Home",
+  "/articles": "Insights",
   "/admin": "Admin Desk",
   "/admin/login": "Staff Admin Login",
   "/app": "Application Desk",
@@ -20,6 +21,12 @@ function resolvePageTitle(pathname: string) {
   }
   if (pathname.startsWith("/app/")) {
     return "Application Desk";
+  }
+  if (pathname.startsWith("/articles/")) {
+    return "Insight";
+  }
+  if (pathname.startsWith("/work/")) {
+    return "Project";
   }
 
   return pageTitles[pathname] ?? "Dashboard";

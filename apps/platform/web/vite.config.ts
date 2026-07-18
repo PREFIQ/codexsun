@@ -27,7 +27,17 @@ export default defineConfig(({ command }) => ({
     ? {
         server: {
           host: "127.0.0.1",
-          port: requireEnvNumber(process.env.PLATFORM_WEB_PORT, "PLATFORM_WEB_PORT")
+          port: requireEnvNumber(process.env.PLATFORM_WEB_PORT, "PLATFORM_WEB_PORT"),
+          proxy: {
+            "/api/platform": {
+              changeOrigin: false,
+              rewrite: (path) => path.replace(/^\/api\/platform/u, "") || "/",
+              target: `http://127.0.0.1:${requireEnvNumber(
+                process.env.PLATFORM_API_PORT,
+                "PLATFORM_API_PORT"
+              )}`
+            }
+          }
         }
       }
     : {})
