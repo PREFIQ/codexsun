@@ -7,7 +7,7 @@ import deepListeningImage from "./assets/uploads/insights/deep-listening.png";
 
 const PLATFORM_WEB_ORIGIN = (import.meta.env.VITE_PLATFORM_WEB_ORIGIN ?? "").replace(/\/$/, "");
 
-function platformUrl(path: string) {
+export function platformUrl(path: string) {
   return `${PLATFORM_WEB_ORIGIN}${path}`;
 }
 

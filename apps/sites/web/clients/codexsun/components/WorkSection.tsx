@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { platformUrl } from "../public.constants";
 
 type SelectedWorkPreviewKind =
   | "platform"
@@ -88,7 +89,7 @@ const SELECTED_WORK_CARDS: readonly SelectedWorkCard[] = [
     category: "Tasks & Operations",
     description:
       "Tasks, work orders, priorities, ownership, and deadlines made visible across teams and companies.",
-    href: "/login",
+    href: platformUrl("/login"),
     preview: "tasks",
     previewLabel: "Today's work",
     previewStatus: "6 active",
@@ -100,7 +101,7 @@ const SELECTED_WORK_CARDS: readonly SelectedWorkCard[] = [
     category: "Business Communication",
     description:
       "A tenant-aware communication desk that keeps messages, records, attachments, and follow-ups together.",
-    href: "/login",
+    href: platformUrl("/login"),
     preview: "mail",
     previewLabel: "Shared inbox",
     previewStatus: "Synced",
@@ -112,7 +113,7 @@ const SELECTED_WORK_CARDS: readonly SelectedWorkCard[] = [
     category: "Files & Records",
     description:
       "Structured business storage with ownership, context, controlled access, and a clear record trail.",
-    href: "/login",
+    href: platformUrl("/login"),
     preview: "storage",
     previewLabel: "Storage index",
     previewStatus: "Secure",
@@ -124,7 +125,7 @@ const SELECTED_WORK_CARDS: readonly SelectedWorkCard[] = [
     category: "Import, Export & Movement",
     description:
       "Reliable data movement with mapping, validation, queue-backed processing, and readable outcomes.",
-    href: "/login",
+    href: platformUrl("/login"),
     preview: "data",
     previewLabel: "Bridge run",
     previewStatus: "Connected",
@@ -136,7 +137,7 @@ const SELECTED_WORK_CARDS: readonly SelectedWorkCard[] = [
     category: "Rules & Repetitive Work",
     description:
       "Trigger repeatable actions from business events while keeping retries, ownership, and audit visible.",
-    href: "/login",
+    href: platformUrl("/login"),
     preview: "automation",
     previewLabel: "Active rule",
     previewStatus: "Running",
@@ -148,7 +149,7 @@ const SELECTED_WORK_CARDS: readonly SelectedWorkCard[] = [
     category: "Operational Intelligence",
     description:
       "Focused dashboards and reports that turn billing, collections, work, and activity into decisions.",
-    href: "/login",
+    href: platformUrl("/login"),
     preview: "reports",
     previewLabel: "Live signals",
     previewStatus: "Current",

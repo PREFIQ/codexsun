@@ -2,9 +2,12 @@ import { useEffect } from "react";
 
 const tenantDisplayName = import.meta.env.VITE_TENANT_NAME ?? "Codexsun";
 
+export function setPlatformDocumentTitle(pageTitle: string) {
+  document.title = `${tenantDisplayName} | ${pageTitle}`;
+}
+
 const pageTitles: Record<string, string> = {
-  "/": "Home",
-  "/articles": "Insights",
+  "/": "App Portal",
   "/admin": "Admin Desk",
   "/admin/login": "Staff Admin Login",
   "/app": "Application Desk",
@@ -22,20 +25,14 @@ function resolvePageTitle(pathname: string) {
   if (pathname.startsWith("/app/")) {
     return "Application Desk";
   }
-  if (pathname.startsWith("/articles/")) {
-    return "Insight";
-  }
-  if (pathname.startsWith("/work/")) {
-    return "Project";
-  }
-
   return pageTitles[pathname] ?? "Dashboard";
 }
 
 export function PageTitle() {
   useEffect(() => {
     const updateTitle = () => {
-      document.title = `${tenantDisplayName} | ${resolvePageTitle(window.location.pathname)}`;
+      if (window.location.pathname.startsWith("/app/")) return;
+      setPlatformDocumentTitle(resolvePageTitle(window.location.pathname));
     };
 
     const originalPushState = window.history.pushState;

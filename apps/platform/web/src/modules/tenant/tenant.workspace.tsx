@@ -552,6 +552,17 @@ type TenantFormState = {
   enabledModuleKeys: string[];
   id?: number;
   mobile: string;
+  payloadSettings: Record<string, unknown>;
+  portalBrandName: string;
+  portalEyebrow: string;
+  portalFeatures: string;
+  portalFooterText: string;
+  portalHeadline: string;
+  portalPosts: string;
+  portalPublicSiteUrl: string;
+  portalSlides: string;
+  portalSummary: string;
+  portalTheme: "blue" | "emerald" | "slate" | "violet";
   primaryDomain: string;
   slug: string;
   tenantCode: string;
@@ -598,6 +609,7 @@ function TenantUpsertPage({
     availableApps,
     initialEnabledKeys
   );
+  const initialPortal = portalSettingsFromPayload(tenant?.payloadSettings);
   const [form, setForm] = useState<TenantFormState>({
     corporateId: tenant?.corporateId ?? toCorporateId(tenant?.tenantCode ?? ""),
     dbHost: tenant?.dbHost ?? "localhost",
@@ -614,6 +626,17 @@ function TenantUpsertPage({
     enabledModuleKeys: initialEnabledKeys,
     ...(tenant ? { id: tenant.id } : {}),
     mobile: tenant?.mobile ?? "",
+    payloadSettings: tenant?.payloadSettings ?? {},
+    portalBrandName: settingText(initialPortal.brandName),
+    portalEyebrow: settingText(initialPortal.eyebrow),
+    portalFeatures: serializePortalContent(initialPortal.features),
+    portalFooterText: settingText(initialPortal.footerText),
+    portalHeadline: settingText(initialPortal.headline),
+    portalPosts: serializePortalContent(initialPortal.posts, true),
+    portalPublicSiteUrl: settingText(initialPortal.publicSiteUrl),
+    portalSlides: serializePortalContent(initialPortal.slides),
+    portalSummary: settingText(initialPortal.summary),
+    portalTheme: portalTheme(initialPortal.theme),
     primaryDomain:
       tenant?.primaryDomain ?? defaultTenantDomain(tenant?.slug ?? tenant?.tenantCode ?? ""),
     slug: tenant?.slug ?? toSlug(tenant?.tenantCode ?? ""),
@@ -858,12 +881,11 @@ function TenantUpsertPage({
           footer={
             <>
               <Button
-                type="submit"
-                disabled={loading}
+                type="button"
                 className="rounded-md bg-foreground text-background hover:bg-foreground/90"
+                onClick={() => setActiveTab("app-portal")}
               >
-                <Save className="size-4" />
-                {loading ? "Saving..." : isEdit ? "Update tenant" : "Save"}
+                Next
               </Button>
               <Button type="button" variant="outline" className="rounded-md" onClick={onBack}>
                 <X className="size-4" />
@@ -942,6 +964,137 @@ function TenantUpsertPage({
           </div>
         </WorkspaceFormPanel>
       )
+    },
+    {
+      label: "App portal",
+      value: "app-portal",
+      content: (
+        <WorkspaceFormPanel
+          footer={
+            <>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="rounded-md bg-foreground text-background hover:bg-foreground/90"
+              >
+                <Save className="size-4" />
+                {loading ? "Saving..." : isEdit ? "Update tenant" : "Save"}
+              </Button>
+              <Button type="button" variant="outline" className="rounded-md" onClick={onBack}>
+                <X className="size-4" />
+                Cancel
+              </Button>
+            </>
+          }
+        >
+          <div className="rounded-md border border-border/70 p-4">
+            <h2 className="text-base font-semibold text-foreground">Public app workspace</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              This content appears only on the tenant app domain. The separate marketing site is not
+              changed.
+            </p>
+          </div>
+          <WorkspaceFormGrid columns={2}>
+            <WorkspaceFormField label="Portal brand">
+              <Input
+                className="h-11 rounded-md"
+                value={form.portalBrandName}
+                placeholder={form.tenantName || "Tenant name"}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, portalBrandName: event.target.value }))
+                }
+              />
+            </WorkspaceFormField>
+            <WorkspaceFormField label="Theme">
+              <WorkspaceSelect
+                value={form.portalTheme}
+                options={[
+                  { label: "Blue", value: "blue" },
+                  { label: "Emerald", value: "emerald" },
+                  { label: "Slate", value: "slate" },
+                  { label: "Violet", value: "violet" }
+                ]}
+                onValueChange={(value) =>
+                  setForm((current) => ({
+                    ...current,
+                    portalTheme: value as TenantFormState["portalTheme"]
+                  }))
+                }
+              />
+            </WorkspaceFormField>
+            <WorkspaceFormField label="Eyebrow">
+              <Input
+                className="h-11 rounded-md"
+                value={form.portalEyebrow}
+                placeholder="Business workspace"
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, portalEyebrow: event.target.value }))
+                }
+              />
+            </WorkspaceFormField>
+            <WorkspaceFormField label="Public marketing site URL">
+              <Input
+                className="h-11 rounded-md"
+                type="url"
+                value={form.portalPublicSiteUrl}
+                placeholder="https://tenant.com"
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, portalPublicSiteUrl: event.target.value }))
+                }
+              />
+            </WorkspaceFormField>
+            <WorkspaceFormField label="Headline">
+              <Input
+                className="h-11 rounded-md"
+                value={form.portalHeadline}
+                placeholder="One workspace. Clear work. Every day."
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, portalHeadline: event.target.value }))
+                }
+              />
+            </WorkspaceFormField>
+            <WorkspaceFormField label="Footer note">
+              <Input
+                className="h-11 rounded-md"
+                value={form.portalFooterText}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, portalFooterText: event.target.value }))
+                }
+              />
+            </WorkspaceFormField>
+          </WorkspaceFormGrid>
+          <WorkspaceFormField label="Hero summary">
+            <textarea
+              className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              value={form.portalSummary}
+              placeholder="Describe what this tenant workspace brings together."
+              onChange={(event) =>
+                setForm((current) => ({ ...current, portalSummary: event.target.value }))
+              }
+            />
+          </WorkspaceFormField>
+          <div className="mt-4 grid gap-4 xl:grid-cols-3">
+            <PortalLinesField
+              label="Slider"
+              hint="Label | Title | Description"
+              value={form.portalSlides}
+              onChange={(portalSlides) => setForm((current) => ({ ...current, portalSlides }))}
+            />
+            <PortalLinesField
+              label="Features"
+              hint="Label | Title | Description"
+              value={form.portalFeatures}
+              onChange={(portalFeatures) => setForm((current) => ({ ...current, portalFeatures }))}
+            />
+            <PortalLinesField
+              label="Updates / blog"
+              hint="Label | Title | Description | URL"
+              value={form.portalPosts}
+              onChange={(portalPosts) => setForm((current) => ({ ...current, portalPosts }))}
+            />
+          </div>
+        </WorkspaceFormPanel>
+      )
     }
   ];
 
@@ -979,6 +1132,10 @@ function TenantUpsertPage({
           }
           if (activeTab === "database") {
             setActiveTab("settings");
+            return;
+          }
+          if (activeTab === "settings") {
+            setActiveTab("app-portal");
             return;
           }
           if (!form.tenantName.trim()) {
@@ -1063,6 +1220,29 @@ function TenantAppCard({
   );
 }
 
+function PortalLinesField({
+  hint,
+  label,
+  onChange,
+  value
+}: {
+  hint: string;
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
+  return (
+    <WorkspaceFormField label={`${label} — ${hint}`}>
+      <textarea
+        className="min-h-40 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs leading-6 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        value={value}
+        placeholder={hint}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </WorkspaceFormField>
+  );
+}
+
 function TenantHeader({ children, className }: { children: ReactNode; className?: string }) {
   const label = Array.isArray(children) ? children[0] : children;
 
@@ -1088,6 +1268,20 @@ function toTenantSavePayload(form: TenantFormState): TenantSavePayload {
     enabledModuleKeys,
     mobile: form.mobile.replace(/\D/g, "") || null,
     payloadSettings: {
+      ...form.payloadSettings,
+      appPortal: {
+        ...(isRecord(form.payloadSettings.appPortal) ? form.payloadSettings.appPortal : {}),
+        brandName: form.portalBrandName.trim(),
+        eyebrow: form.portalEyebrow.trim(),
+        features: parsePortalContent(form.portalFeatures),
+        footerText: form.portalFooterText.trim(),
+        headline: form.portalHeadline.trim(),
+        posts: parsePortalContent(form.portalPosts, true),
+        publicSiteUrl: form.portalPublicSiteUrl.trim(),
+        slides: parsePortalContent(form.portalSlides),
+        summary: form.portalSummary.trim(),
+        theme: form.portalTheme
+      },
       apps: { disabled: disabledModuleKeys, enabled: enabledModuleKeys },
       landing: { app: landingApp, mode: "tenant" }
     },
@@ -1099,6 +1293,52 @@ function toTenantSavePayload(form: TenantFormState): TenantSavePayload {
     tenantCode: form.tenantCode.trim(),
     tenantName: form.tenantName.trim()
   };
+}
+
+function portalSettingsFromPayload(payloadSettings: Record<string, unknown> | undefined) {
+  return isRecord(payloadSettings?.appPortal) ? payloadSettings.appPortal : {};
+}
+
+function portalTheme(value: unknown): TenantFormState["portalTheme"] {
+  return value === "emerald" || value === "slate" || value === "violet" ? value : "blue";
+}
+
+function settingText(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function serializePortalContent(value: unknown, includeHref = false) {
+  if (!Array.isArray(value)) return "";
+  return value
+    .flatMap((entry) => {
+      if (!isRecord(entry)) return [];
+      const fields = [entry.label, entry.title, entry.description].map(settingText);
+      if (includeHref) fields.push(settingText(entry.href));
+      return fields[1] && fields[2] ? [fields.join(" | ")] : [];
+    })
+    .join("\n");
+}
+
+function parsePortalContent(value: string, includeHref = false) {
+  return value
+    .split(/\r?\n/u)
+    .map((line) => line.split("|").map((part) => part.trim()))
+    .flatMap(([label, title, description, href]) => {
+      if (!title || !description) return [];
+      return [
+        {
+          description,
+          ...(includeHref ? { href: href || "/login" } : {}),
+          label: label || (includeHref ? "Update" : "Workspace"),
+          title
+        }
+      ];
+    })
+    .slice(0, 6);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function toTenantApiPayload(tenant: TenantSavePayload) {

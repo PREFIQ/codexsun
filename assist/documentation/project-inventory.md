@@ -57,9 +57,8 @@ Platform owns the SaaS foundation.
 
 - `apps/platform/api`: Fastify API for tenant identity, auth, app registry, database setup, tenant provisioning, and
   platform operations.
-- `apps/platform/web`: React/Vite shell for login, super-admin desk, admin desk, tenant desk, tenant UI, and
-  design-system gallery. It temporarily composes the CODEXSUN creator-site routes from Sites so the existing local
-  root URL remains compatible.
+- `apps/platform/web`: React/Vite shell for the domain-resolved tenant app portal, login, super-admin desk, admin
+  desk, tenant desk, tenant UI, and design-system gallery. Platform does not import or compose Sites pages.
 
 Current Platform API modules:
 
@@ -70,6 +69,7 @@ Current Platform Web modules:
 
 - `design-system`
 - `tenant`
+- `tenant-portal` (read-only public projection owned by `platform.tenant`)
 
 ### Sites
 
@@ -84,9 +84,9 @@ Sites owns public marketing websites and their client-specific builds.
   business identity remain inside each client owner.
 - `apps/sites/web/runtime`: the standalone Vite entry that binds exactly one concrete client at build time.
 
-The Sites build emits independent artifacts under `dist/apps/sites/web/{client}`. CODEXSUN marketing routes are
-exported through `@codexsun/sites-web/codexsun` for temporary Platform composition; Logicx and Tech Media do not import
-or depend on CODEXSUN marketing implementation.
+The Sites build emits independent artifacts under `dist/apps/sites/web/{client}`. CODEXSUN, Logicx, and Tech Media
+remain independently hosted marketing clients. Sites can link to Platform through configured origins, but Platform
+does not import any Sites package or marketing route.
 
 ### Core
 

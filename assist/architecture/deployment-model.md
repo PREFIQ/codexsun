@@ -130,9 +130,16 @@ clients are `codexsun`, `logicx`, and `techmedia`. A client build must not infer
 Platform tenant-domain table; public-site publishing and tenant workspace access remain separate concerns.
 
 Local Windows development mirrors that ownership with a host gateway on `127.0.0.1:80`: `codexsun.test`,
-`logicx.test`, and `techmedia.test` route to their independent Sites dev servers, while `aaran.test` routes to Platform.
+`logicx.test`, and `techmedia.test` route to their independent Sites dev servers, while `app.codexsun.test` and tenant
+app hosts such as `aaran.test` route to Platform. Platform `/` is an app-workspace portal, not a marketing site.
 Platform API traffic stays on `/api/platform`, preserves the original host, and is resolved through the tenant-domain
 module. The root `npm run dev:domains` command starts the APIs, Platform web, all three Sites clients, and this gateway.
+
+The public app portal is a safe tenant projection. Shared navigation, slider, features, updates, and footer components
+are rendered by Platform, while tenant-specific content is stored under `tenants.payload_settings.appPortal`. The
+exact app hostname must be registered through Tenant Domains; the canonical Platform hostname may resolve the
+configured default tenant. A tenant's optional public marketing URL is content only and does not create a Sites
+runtime dependency.
 
 The maintained baseline configuration and installation commands live under `deploy/hosted/`. The Platform API binds
 to loopback behind nginx, restarts automatically after failures, and exposes its existing health endpoint through

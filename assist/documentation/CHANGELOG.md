@@ -22,6 +22,32 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 ## v-1.0.36
 
+### [v 1.0.36] 2026-07-18 2:40 pm - Marketing and Tenant App Portal Separation
+
+#### Database Changes
+
+- Database update: No schema or seed migration. Tenant-specific portal content uses the existing tenant-owned
+  `payload_settings` JSON column under the validated `appPortal` key.
+
+#### App Codebase Changes
+
+- Removed the Platform web dependency, TypeScript alias, lazy imports, and root marketing routes for
+  `@codexsun/sites-web`; Platform and Sites now build and run without importing each other.
+- Kept the existing CODEXSUN marketing site under Sites and routed its application, status, and login links through
+  `VITE_PLATFORM_WEB_ORIGIN`, targeting `app.codexsun.com` in production.
+- Added a responsive Platform app portal at `/` with shared tenant-aware navigation, animated slider, feature cards,
+  update/blog cards, public-site return link, workspace login actions, and footer.
+- Added the validated public `/public/app-portal` API projection with domain resolution, canonical default-tenant
+  fallback, safe URL handling, bounded content, and no exposure of raw tenant settings or database credentials.
+- Added an App portal tab to tenant upsert for per-tenant brand, theme, hero, slider, features, updates, footer, and
+  optional marketing-site content while preserving unrelated tenant payload settings.
+- Added `app.codexsun.test` to the local domain gateway, removed the old `aaran.test` root-to-login redirect, and
+  documented the local-to-live domain mapping for `app.codexsun.com` and `app.tenant.com`.
+- Updated hosted environment and architecture guidance with `PLATFORM_PUBLIC_SITE_ORIGIN`, strict Sites/Platform
+  ownership, tenant-domain registration, and production publishing behavior.
+- Verified Platform API/web and Sites lint, TypeScript, module boundaries, all production builds, desktop/mobile app
+  portal rendering, tenant-safe API fallback, and preservation of the CODEXSUN marketing homepage.
+
 ### [v 1.0.36] 2026-07-18 10:23 am - Client Sites and Domain Routing
 
 #### Database Changes

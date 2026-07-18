@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { developmentTenantLogin, type Desk, login } from "../../shared/api/platform-api";
+import { getTenantPublicPortal } from "../../modules/tenant-portal";
 import "./login.css";
 
 type LoginPageProps = {
@@ -24,12 +25,28 @@ export function LoginPage({ desk, title }: LoginPageProps) {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [portalBrand, setPortalBrand] = useState("CODEXSUN");
   const autoLoginStarted = useRef(false);
 
   const targetPath = useMemo(() => {
     if (desk === "sa") return "/sa/$";
     if (desk === "admin") return "/admin";
     return "/app/$";
+  }, [desk]);
+
+  useEffect(() => {
+    if (desk !== "tenant") return;
+    let active = true;
+    void getTenantPublicPortal()
+      .then((portal) => {
+        if (!active) return;
+        setPortalBrand(portal.brandName);
+        document.title = `${portal.brandName} | App Login`;
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
   }, [desk]);
 
   useEffect(() => {
@@ -85,13 +102,13 @@ export function LoginPage({ desk, title }: LoginPageProps) {
 
   return (
     <main className="codexsun-public-site public-login-page">
-      <a href="/" className="public-login-home" aria-label="Back to CODEXSUN home">
+      <a href="/" className="public-login-home" aria-label={`Back to ${portalBrand} app portal`}>
         <CodexsunMark />
       </a>
       <section className="public-login-panel">
         <div className="public-login-heading">
           <span>CODEXSUN / Secure access</span>
-          <h1 className="font-display">CODEXSUN</h1>
+          <h1 className="font-display">{desk === "tenant" ? portalBrand : "CODEXSUN"}</h1>
           <p>{title}</p>
         </div>
 
@@ -147,7 +164,9 @@ export function LoginPage({ desk, title }: LoginPageProps) {
           <a href="/admin/login">Admin</a>
           <a href="/sa/login">Super Admin</a>
         </div>
-        <p className="public-login-note">Authorized CODEXSUN personnel and tenant users only.</p>
+        <p className="public-login-note">
+          Authorized {desk === "tenant" ? portalBrand : "CODEXSUN"} users only.
+        </p>
       </section>
     </main>
   );

@@ -17,6 +17,10 @@ The maintained nginx configuration maps `codexsun.com`, `logicx.in`, and `techme
 artifacts. `app.codexsun.com` and unmatched tenant domains serve Platform; Platform then resolves the request hostname
 through its tenant-domain module.
 
+Platform `/` renders the tenant app portal only. Its shared top menu, slider, features, updates, and footer receive a
+safe tenant-specific projection from `payloadSettings.appPortal`. The separate Sites artifacts never run inside the
+Platform bundle. A configured portal can link back to its marketing site without importing that site.
+
 ## Generate the server GitHub key
 
 Generate a temporary ED25519 keypair under the server repository's ignored `.temp` directory:
@@ -78,7 +82,9 @@ sudo rsync -a --delete dist/apps/sites/web/techmedia/ /var/www/sites/techmedia/
 Platform Vite reads client variables from the root `.env`. Production should set `VITE_PLATFORM_API_URL` to
 `/api/platform` so browser requests stay on the hosted origin. Set
 `VITE_PLATFORM_WEB_ORIGIN=https://app.codexsun.com` before building Sites so public-site login and application links
-leave the marketing domains for Platform. `PLATFORM_WEB_PORT` is dev-only and is not required by the production build.
+leave the marketing domains for Platform. Set `PLATFORM_WEB_ORIGIN=https://app.codexsun.com` for API origin policy and
+`PLATFORM_PUBLIC_SITE_ORIGIN=https://codexsun.com` for the canonical app portal's return link. `PLATFORM_WEB_PORT` is
+dev-only and is not required by the production build.
 
 ## Install process supervision and nginx
 
@@ -143,3 +149,17 @@ sudo certbot --nginx -d app.codexsun.com
 For a live tenant hostname, point its DNS to the same server, add the exact hostname to Platform Tenant Domains, and
 issue a certificate for it. The default nginx Platform server can serve the tenant workspace without creating a new
 frontend build; tenant selection remains database-backed and fails closed when the hostname is not registered.
+
+For local Windows domain testing, add these entries to the administrator-managed hosts file and restart
+`npm run dev:domains` after environment changes:
+
+```text
+127.0.0.1 codexsun.test
+127.0.0.1 app.codexsun.test
+127.0.0.1 aaran.test
+127.0.0.1 logicx.test
+127.0.0.1 techmedia.test
+```
+
+Register `aaran.test` or another tenant app host through Tenant Domains before expecting tenant-specific portal data.
+The same registration pattern applies to `app.tenant.com` in production.

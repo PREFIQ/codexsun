@@ -15,7 +15,6 @@
     "@codexsun/core-web": "^1.0.36",
     "@codexsun/data-bridge-web": "^1.0.36",
     "@codexsun/mail-web": "^1.0.36",
-    "@codexsun/sites-web": "^1.0.36",
     "@codexsun/ui": "^1.0.36",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^9.0.0",

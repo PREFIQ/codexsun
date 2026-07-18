@@ -1,9 +1,15 @@
 import type { FastifyInstance } from "fastify";
-import { ok } from "@codexsun/framework/http";
+import { z } from "zod";
+import { ok, registerContractRoute } from "@codexsun/framework/http";
 import { TenantService } from "./tenant.service.js";
 import type { TenantSavePayload } from "./tenant.types.js";
 
 const tenantService = new TenantService();
+const portalContentSchema = z.object({
+  description: z.string(),
+  label: z.string(),
+  title: z.string()
+});
 
 function notFound(requestId: string) {
   return {
@@ -20,6 +26,33 @@ function notFound(requestId: string) {
 }
 
 export async function registerTenantRoutes(app: FastifyInstance) {
+  registerContractRoute(app, {
+    method: "GET",
+    url: "/public/app-portal",
+    schemas: {
+      response: z.object({
+        brandName: z.string(),
+        configured: z.boolean(),
+        domain: z.string(),
+        eyebrow: z.string(),
+        features: z.array(portalContentSchema),
+        footerText: z.string(),
+        headline: z.string(),
+        loginPath: z.literal("/login"),
+        posts: z.array(portalContentSchema.extend({ href: z.string() })),
+        publicSiteUrl: z.string().nullable(),
+        slides: z.array(portalContentSchema),
+        summary: z.string(),
+        tenantCode: z.string().nullable(),
+        theme: z.enum(["blue", "emerald", "slate", "violet"])
+      })
+    },
+    handler: ({ request }) =>
+      tenantService.getPublicPortal(
+        String(request.headers["x-forwarded-host"] ?? request.headers.host ?? "")
+      )
+  });
+
   app.get("/admin/tenants", async (request) =>
     ok(await tenantService.listTenants(), { requestId: request.id })
   );

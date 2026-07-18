@@ -39,6 +39,7 @@ import {
 } from "@codexsun/core-web/modules/organisation/default-company";
 import { listFinancialYears } from "@codexsun/core-web/modules/organisation/financial-year";
 import { getToken, setTenantDbName, setTenantId } from "../../shared/api/platform-api";
+import { setPlatformDocumentTitle } from "../../shared/document/PageTitle";
 
 function lazyWorkspace<Props>(loader: () => Promise<ComponentType<Props>>) {
   return lazy(async () => ({ default: await loader() }));
@@ -382,6 +383,7 @@ export function AppDesk() {
     !switchableApps.includes("billing")
       ? pageForApp(landingApp)
       : page;
+  const activePageTitle = titleForPage(safePage);
   const activeCompanies = useMemo(
     () => (companiesQuery.data ?? []).filter((company) => company.isActive),
     [companiesQuery.data]
@@ -417,6 +419,10 @@ export function AppDesk() {
       await queryClient.invalidateQueries({ queryKey: defaultCompanyQueryKey });
     }
   });
+
+  useEffect(() => {
+    setPlatformDocumentTitle(activePageTitle);
+  }, [activePageTitle]);
 
   useEffect(() => {
     if (publishedLandingApp && !enabledApps.includes(publishedLandingApp)) {
@@ -458,11 +464,13 @@ export function AppDesk() {
     setPage(landingPage);
     setShouldResolveLandingPath(false);
     window.history.replaceState({ page: landingPage }, "", `/app/${landingPage.replace(".", "/")}`);
+    setPlatformDocumentTitle(titleForPage(landingPage));
   }, [landingApp, publishedLandingApp, runtimeQuery.isLoading, shouldResolveLandingPath]);
 
   function selectPage(nextPage: AppPage) {
     setPage(nextPage);
     window.history.pushState({ page: nextPage }, "", `/app/${nextPage.replaceAll(".", "/")}`);
+    setPlatformDocumentTitle(titleForPage(nextPage));
   }
 
   function selectBillingRecord(nextPage: AppPage, recordId: string) {
@@ -472,6 +480,7 @@ export function AppDesk() {
       "",
       `/app/${nextPage.replaceAll(".", "/")}?record=${encodeURIComponent(recordId)}`
     );
+    setPlatformDocumentTitle(titleForPage(nextPage));
   }
 
   function publishLandingApp(nextLandingApp: PlatformAppId) {
@@ -603,7 +612,7 @@ export function AppDesk() {
             : `${activeWorkspaceTitle.toLowerCase()} workspace`,
           title: selectedCompany?.name ?? activeWorkspaceTitle
         }}
-        headerTitle={titleForPage(safePage)}
+        headerTitle={activePageTitle}
         menuItems={menuItems}
         subtitle={null}
         title={null}
