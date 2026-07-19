@@ -63,7 +63,7 @@ export class TenantUserService {
         `User cannot be force deleted because ${count} role assignments reference it.`,
         { count }
       );
-    const record = (await this.repository.forceDelete(current.id))!;
+    const record = await this.delete(current.id);
     await this.audit("force-deleted", record);
     return record;
   }
@@ -92,6 +92,18 @@ export class TenantUserService {
       throw error;
     }
   }
+  private async delete(id: number) {
+    try {
+      return (await this.repository.forceDelete(id))!;
+    } catch (error) {
+      if (isReferenced(error)) {
+        throw AppError.conflict(
+          "User cannot be force deleted because business or audit records reference it."
+        );
+      }
+      throw error;
+    }
+  }
 }
 function normalize(input: TenantUserSavePayload, creating: boolean): TenantUserSavePayload {
   const password = input.password?.trim();
@@ -110,5 +122,14 @@ function isDuplicate(error: unknown): error is { code: string } {
     error !== null &&
     "code" in error &&
     (error as { code?: unknown }).code === "ER_DUP_ENTRY"
+  );
+}
+
+function isReferenced(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (("code" in error && (error as { code?: unknown }).code === "ER_ROW_IS_REFERENCED_2") ||
+      ("errno" in error && (error as { errno?: unknown }).errno === 1451))
   );
 }

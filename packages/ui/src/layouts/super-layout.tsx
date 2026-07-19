@@ -14,7 +14,9 @@ import type { SidemenuItem } from "../blocks/menu/sidemenu/sub/sidemenu-section"
 type SuperLayoutProps = {
   actions?: ReactNode;
   children: ReactNode;
+  homeHref?: string;
   menuItems?: SidemenuItem[];
+  onLogout?: () => void | Promise<void>;
   subtitle?: ReactNode;
   title?: ReactNode;
   versionLabel?: string;
@@ -92,7 +94,9 @@ function superWorkspaceItems(activeWorkspace: "platform" | "task-manager") {
 export function SuperLayout({
   actions,
   children,
+  homeHref = "/",
   menuItems = superMenuItems,
+  onLogout,
   subtitle,
   title,
   versionLabel,
@@ -107,9 +111,10 @@ export function SuperLayout({
       }}
       headerTitle="Super Admin Desk"
       showPageTitle={false}
-      homeHref="/sa"
+      homeHref={homeHref}
       logoutHref="/sa/login"
       menuItems={menuItems}
+      {...(onLogout ? { onLogout } : {})}
       subtitle={subtitle}
       title={title}
       user={{

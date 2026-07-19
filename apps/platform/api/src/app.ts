@@ -1,6 +1,8 @@
 import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
 import { registerModules } from "@codexsun/framework/modules";
 import { createMailModule } from "@codexsun/mail-api";
+import { closeAllBillingDatabases } from "@codexsun/billing-api";
+import { closeCoreDatabase } from "@codexsun/core-api";
 import { AppError } from "@codexsun/framework/errors";
 import type { FastifyRequest } from "fastify";
 import type { HealthCheck } from "@codexsun/framework/health";
@@ -44,6 +46,14 @@ export async function createApp() {
     corsOrigins: [env.PLATFORM_WEB_ORIGIN],
     environment: env.NODE_ENV,
     shutdownHooks: [
+      async () => {
+        console.info("[shutdown] closing Billing tenant MariaDB pools");
+        await closeAllBillingDatabases();
+      },
+      async () => {
+        console.info("[shutdown] closing Core tenant MariaDB pools");
+        await closeCoreDatabase();
+      },
       async () => {
         console.info("[shutdown] closing tenant MariaDB pools");
         await closeAllTenantDatabases();

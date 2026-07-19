@@ -3,13 +3,7 @@ import {
   migratePlatformDatabase,
   platformDatabaseName
 } from "../../database/platform-database.js";
-import {
-  createTenantDatabase,
-  getTenantDatabase,
-  closeTenantDatabase
-} from "../../database/tenant-database.js";
-import { migrateTenantRuntimeModule } from "../tenant/tenant.migration.js";
-import { seedTenantRuntimeModule } from "../tenant/tenant.seed.js";
+import { provisionTenantDatabase } from "../tenant/index.js";
 import { PlatformActivityService } from "../platform-activity/index.js";
 import { QueueManagerService } from "../queue-manager/index.js";
 import { env } from "../../env.js";
@@ -44,7 +38,7 @@ export class DatabaseMaintenanceService {
   }
 
   async migrateMaster(input: DatabaseActionPayload = {}) {
-    await this.repository.recordRun({
+    const started = await this.repository.recordRun({
       databaseName: platformDatabaseName(),
       details: input,
       operation: "migrate",
@@ -52,60 +46,30 @@ export class DatabaseMaintenanceService {
       status: "running",
       targetKey: "master"
     });
-    await createMasterDatabase();
-    await migratePlatformDatabase();
-    const run = await this.repository.recordRun({
-      databaseName: platformDatabaseName(),
-      details: input,
-      operation: "migrate",
-      scope: "master",
-      status: "completed",
-      targetKey: "master"
-    });
-    await this.activity.recordActivity({
-      action: "database.master.migrated",
-      details: input,
-      moduleKey: "platform.database-maintenance",
-      recordLabel: platformDatabaseName()
-    });
-    return run;
+    try {
+      await createMasterDatabase();
+      await migratePlatformDatabase();
+      const run = await this.repository.updateRunStatus(started.id, "completed", input);
+      await this.activity.recordActivity({
+        action: "database.master.migrated",
+        details: input,
+        moduleKey: "platform.database-maintenance",
+        recordLabel: platformDatabaseName()
+      });
+      return run;
+    } catch (error) {
+      await this.repository.updateRunStatus(started.id, "failed", {
+        ...input,
+        error: errorMessage(error, "Master database migration failed.")
+      });
+      throw error;
+    }
   }
 
   async migrateTenant(tenantId: number, input: DatabaseActionPayload = {}) {
     const tenant = await this.repository.findTenant(tenantId);
     if (!tenant) return null;
-    await this.repository.recordRun({
-      databaseName: tenant.dbName,
-      details: input,
-      operation: "migrate",
-      scope: "tenant",
-      status: "running",
-      targetKey: String(tenant.id)
-    });
-    await createTenantDatabase(tenant);
-    const database = getTenantDatabase(tenant);
-    try {
-      await migrateTenantRuntimeModule(database);
-    } finally {
-      await closeTenantDatabase(tenant);
-    }
-    const run = await this.repository.recordRun({
-      databaseName: tenant.dbName,
-      details: input,
-      operation: "migrate",
-      scope: "tenant",
-      status: "completed",
-      targetKey: String(tenant.id)
-    });
-    await this.activity.recordActivity({
-      action: "database.tenant.migrated",
-      details: input,
-      moduleKey: "platform.database-maintenance",
-      recordId: tenant.id,
-      recordLabel: tenant.tenantCode,
-      recordUuid: tenant.uuid
-    });
-    return run;
+    return this.runTenantProvisioning(tenant, "migrate", input);
   }
 
   async requestMasterBackup(input: DatabaseActionPayload = {}) {
@@ -146,7 +110,15 @@ export class DatabaseMaintenanceService {
       host: tenant.dbHost,
       preservesExistingData: true
     };
-    await this.repository.recordRun({
+    return this.runTenantProvisioning(tenant, operation, details);
+  }
+
+  private async runTenantProvisioning(
+    tenant: NonNullable<Awaited<ReturnType<DatabaseMaintenanceRepository["findTenant"]>>>,
+    operation: "migrate" | "reinstall" | "setup",
+    details: DatabaseActionPayload & Record<string, unknown>
+  ) {
+    const started = await this.repository.recordRun({
       databaseName: tenant.dbName,
       details,
       operation,
@@ -155,25 +127,12 @@ export class DatabaseMaintenanceService {
       targetKey: String(tenant.id)
     });
     try {
-      await createTenantDatabase(tenant);
-      const database = getTenantDatabase(tenant);
-      try {
-        await migrateTenantRuntimeModule(database);
-        await seedTenantRuntimeModule(database, tenant);
-      } finally {
-        await closeTenantDatabase(tenant);
-      }
-      const run = await this.repository.recordRun({
-        databaseName: tenant.dbName,
-        details,
-        operation,
-        scope: "tenant",
-        status: "completed",
-        targetKey: String(tenant.id)
-      });
+      const result = await provisionTenantDatabase(tenant);
+      const completedDetails = { ...details, ...result };
+      const run = await this.repository.updateRunStatus(started.id, "completed", completedDetails);
       await this.activity.recordActivity({
-        action: `database.tenant.${operation}`,
-        details,
+        action: `database.tenant.${operation === "migrate" ? "migrated" : operation}`,
+        details: completedDetails,
         moduleKey: "platform.database-maintenance",
         recordId: tenant.id,
         recordLabel: tenant.tenantCode,
@@ -181,16 +140,9 @@ export class DatabaseMaintenanceService {
       });
       return run;
     } catch (error) {
-      await this.repository.recordRun({
-        databaseName: tenant.dbName,
-        details: {
-          ...details,
-          error: error instanceof Error ? error.message : "Tenant database installation failed."
-        },
-        operation,
-        scope: "tenant",
-        status: "failed",
-        targetKey: String(tenant.id)
+      await this.repository.updateRunStatus(started.id, "failed", {
+        ...details,
+        error: errorMessage(error, "Tenant database installation failed.")
       });
       throw error;
     }
@@ -301,4 +253,8 @@ export class DatabaseMaintenanceService {
       tenantId: tenantId ? String(tenantId) : null
     });
   }
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
 }

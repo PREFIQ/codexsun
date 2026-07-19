@@ -38,7 +38,7 @@ import { usePlatformAppsQuery, type PlatformApp } from "../app-registry";
 import { TenantDatabaseControl } from "../tenant-database";
 import { TenantDomainControl } from "../tenant-domain";
 import { TenantActivityControl } from "./tenant.activity";
-import { TenantAppConnections } from "./tenant.apps";
+import { TenantAppConnections, TenantAppSelectionCard } from "./tenant.apps";
 import { TenantIdentityControl } from "./tenant.identity";
 import {
   createTenant,
@@ -573,10 +573,8 @@ type TenantFormState = {
 type TenantAppAccess = {
   appId: PlatformAppId;
   alwaysEnabled: boolean;
-  color: string;
   description: string;
   enabled: boolean;
-  icon: ReactNode;
   moduleKey: string;
   name: string;
 };
@@ -930,10 +928,15 @@ function TenantUpsertPage({
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {appAccess.map((app, index) => (
-              <TenantAppCard
+              <TenantAppSelectionCard
                 key={app.name}
-                app={app}
-                onToggle={(enabled) =>
+                alwaysEnabled={app.alwaysEnabled}
+                appId={app.appId}
+                checked={app.enabled}
+                description={app.description}
+                label={app.name}
+                moduleKey={app.moduleKey}
+                onCheckedChange={(enabled) =>
                   setAppAccess((current) => {
                     const next = current.map((item, itemIndex) =>
                       itemIndex === index ? { ...item, enabled } : item
@@ -1178,48 +1181,6 @@ function TenantUpsertPage({
   );
 }
 
-function TenantAppCard({
-  app,
-  onToggle
-}: {
-  app: TenantAppAccess;
-  onToggle: (enabled: boolean) => void;
-}) {
-  const locked = app.alwaysEnabled || app.moduleKey === "platform.application";
-  return (
-    <WorkspaceSwitchCard
-      checked={app.enabled}
-      className="min-h-32 p-4"
-      disabled={locked}
-      label={
-        <span className="flex items-center gap-3">
-          <span
-            className={cn(
-              "flex size-10 shrink-0 items-center justify-center rounded-md text-white",
-              app.color
-            )}
-          >
-            {app.icon}
-          </span>
-          <span className="flex flex-wrap items-center gap-2">
-            <span>{app.name}</span>
-            <span
-              className={cn(
-                "rounded-md px-2 py-0.5 text-[11px]",
-                app.enabled ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
-              )}
-            >
-              {app.enabled ? "Enabled" : "Disabled"}
-            </span>
-          </span>
-        </span>
-      }
-      description={app.description}
-      onCheckedChange={onToggle}
-    />
-  );
-}
-
 function PortalLinesField({
   hint,
   label,
@@ -1411,14 +1372,11 @@ function tenantAppAccessFromRegistry(apps: PlatformApp[] | undefined): TenantApp
         platformAppRegistry.find(
           (item) => item.id === app.appId || item.moduleKey === app.moduleKey
         ) ?? platformAppRegistry[0]!;
-      const Icon = local.icon;
       return {
         alwaysEnabled: app.alwaysEnabled || app.moduleKey === "platform.application",
         appId: app.appId as PlatformAppId,
-        color: local.accentClass,
         description: app.description || local.description,
         enabled: app.alwaysEnabled || app.moduleKey === "platform.application",
-        icon: <Icon className="size-5" />,
         moduleKey: app.moduleKey,
         name: app.label || local.label
       };

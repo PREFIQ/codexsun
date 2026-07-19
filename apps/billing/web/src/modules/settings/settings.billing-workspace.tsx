@@ -51,7 +51,7 @@ const switches: Array<{ key: keyof BillingDocumentLayoutSettings; label: string 
 function switchNote(key: keyof BillingDocumentLayoutSettings, label: string) {
   return key === "useEinvoice" || key === "useEway"
     ? `Show ${label} tabs in sales, purchase, and export sales.`
-    : `Show ${label} controls in quotation, sales, and purchase.`;
+    : `Show ${label} controls in quotation, sales, purchase, and export sales.`;
 }
 
 export function BillingSettingsWorkspace() {
@@ -70,7 +70,8 @@ export function BillingSettingsWorkspace() {
       setForm(settings);
       await queryClient.invalidateQueries({ queryKey: billingSettingsQueryKey() });
       toast.success("Billing settings published", {
-        description: "Quotation, sales, and purchase screens will use the updated controls."
+        description:
+          "Quotation, sales, purchase, and export sales screens will use the updated controls."
       });
     },
     onError: (error) => {

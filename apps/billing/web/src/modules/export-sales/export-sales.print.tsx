@@ -53,7 +53,7 @@ export function ExportSalesPrintRoutePage() {
     );
   }
 
-  if (exportSaleQuery.isLoading) {
+  if (exportSaleQuery.isLoading || settingsQuery.isLoading) {
     return <GlobalLoader />;
   }
 
@@ -137,7 +137,12 @@ export function ExportSalePrintDocument({
   copy: ExportSalePrintCopy;
   exportSale: ExportSale;
 }) {
-  const addressMode = useBillingSettings().data?.printing.addressMode ?? "billing_and_shipping";
+  const billingSettings = useBillingSettings().data;
+  const addressMode = billingSettings?.printing.addressMode ?? "billing_and_shipping";
+  const showPo = billingSettings?.layout.usePo ?? false;
+  const showDc = billingSettings?.layout.useDc ?? false;
+  const showColour = billingSettings?.layout.useColour ?? false;
+  const showSize = billingSettings?.layout.useSize ?? false;
   const statesQuery = useQuery({
     queryFn: () => listExportSaleLocations("states"),
     queryKey: ["billing", "exportSale", "print", "states"]
@@ -163,25 +168,16 @@ export function ExportSalePrintDocument({
           addressMode={addressMode}
           billingAddress={billingAddress}
           shippingAddress={shippingAddress}
+          showColour={showColour}
+          showDc={showDc}
+          showPo={showPo}
+          showSize={showSize}
           exportSale={exportSale}
         />
       ))}
     </WorkspacePrintSheet>
   );
 }
-
-const exportSalePrintHeadings = [
-  "S.no",
-  "Particulars",
-  "HSN",
-  "Qty",
-  "Rate",
-  "Taxable",
-  "GST %",
-  "CGST",
-  "SGST",
-  "Total"
-];
 
 function ExportSalePrintPage({
   copy,
@@ -193,6 +189,10 @@ function ExportSalePrintPage({
   addressMode,
   billingAddress,
   shippingAddress,
+  showColour,
+  showDc,
+  showPo,
+  showSize,
   exportSale
 }: {
   copy: ExportSalePrintCopy;
@@ -204,10 +204,29 @@ function ExportSalePrintPage({
   addressMode: "billing_only" | "billing_and_shipping";
   billingAddress: { address: string; state: string };
   shippingAddress: { address: string; state: string };
+  showColour: boolean;
+  showDc: boolean;
+  showPo: boolean;
+  showSize: boolean;
   exportSale: ExportSale;
 }) {
   const splitTax = exportSale.taxType === "cgst-sgst";
   const blankRows = isLastPage ? Math.max(0, 12 - items.length) : 0;
+  const headings = [
+    "S.no",
+    ...(showPo ? ["PO"] : []),
+    ...(showDc ? ["DC"] : []),
+    "Particulars",
+    "HSN Code",
+    ...(showColour ? ["Colour"] : []),
+    ...(showSize ? ["Size"] : []),
+    "Qty",
+    "Rate",
+    "Taxable",
+    "GST %",
+    "GST TAX",
+    "Total"
+  ];
 
   return (
     <article
@@ -280,7 +299,7 @@ function ExportSalePrintPage({
           <table className="w-full border-collapse text-[10px]">
             <thead>
               <tr className="border-b border-slate-300">
-                {exportSalePrintHeadings.map((heading) => (
+                {headings.map((heading) => (
                   <th
                     key={heading}
                     className="border-r border-slate-300 px-2 py-2 text-center font-semibold last:border-r-0"
@@ -295,25 +314,41 @@ function ExportSalePrintPage({
                 <tr>
                   <td
                     className="border-b border-slate-300 px-2 py-1 text-left font-semibold"
-                    colSpan={exportSalePrintHeadings.length}
+                    colSpan={headings.length}
                   >
                     Carry forward from previous page
                   </td>
                 </tr>
               ) : null}
               {items.map(({ item, index }) => (
-                <ExportSalePrintItemRow key={item.id} item={item} index={index} />
+                <ExportSalePrintItemRow
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  showColour={showColour}
+                  showDc={showDc}
+                  showPo={showPo}
+                  showSize={showSize}
+                />
               ))}
               {Array.from({ length: blankRows }).map((_, index) => (
-                <ExportSalePrintBlankRow key={`blank-${pageIndex}-${index}`} />
+                <ExportSalePrintBlankRow
+                  key={`blank-${pageIndex}-${index}`}
+                  columnCount={headings.length}
+                />
               ))}
               {isLastPage ? (
-                <ExportSalePrintTotalRow exportSale={exportSale} />
+                <ExportSalePrintTotalRow
+                  exportSale={exportSale}
+                  leadingColumnCount={
+                    3 + Number(showPo) + Number(showDc) + Number(showColour) + Number(showSize)
+                  }
+                />
               ) : (
                 <tr>
                   <td
                     className="border-t border-slate-300 px-2 py-2 text-right font-semibold"
-                    colSpan={exportSalePrintHeadings.length}
+                    colSpan={headings.length}
                   >
                     To be continued...
                   </td>
@@ -379,57 +414,72 @@ function ExportSalePrintPage({
 
 function ExportSalePrintItemRow({
   item,
-  index
+  index,
+  showColour,
+  showDc,
+  showPo,
+  showSize
 }: {
   item: ExportSale["items"][number];
   index: number;
+  showColour: boolean;
+  showDc: boolean;
+  showPo: boolean;
+  showSize: boolean;
 }) {
   return (
     <tr className="align-top">
       <td className="border-r border-slate-200 px-2 py-2 text-center">{index + 1}</td>
+      {showPo ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.poNo || "-"}</td>
+      ) : null}
+      {showDc ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.dcNo || "-"}</td>
+      ) : null}
       <td className="border-r border-slate-200 px-2 py-2">
         <div className="font-medium">
           {[item.productName, item.description].filter(Boolean).join(" - ")}
         </div>
-        <div>
-          {[item.colour ? `Colour : ${item.colour}` : "", item.size ? `Size : ${item.size}` : ""]
-            .filter(Boolean)
-            .join(" - ")}
-        </div>
       </td>
       <td className="border-r border-slate-200 px-2 py-2 text-center">{item.hsnCode || "-"}</td>
+      {showColour ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.colour || "-"}</td>
+      ) : null}
+      {showSize ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.size || "-"}</td>
+      ) : null}
       <td className="border-r border-slate-200 px-2 py-2 text-center">{item.quantity}</td>
       <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.rate)}</td>
       <td className="border-r border-slate-200 px-2 py-2 text-right">
         {money(item.taxableAmount)}
       </td>
       <td className="border-r border-slate-200 px-2 py-2 text-center">{item.taxRate}%</td>
-      <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.cgstAmount)}</td>
-      <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.sgstAmount)}</td>
+      <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.taxAmount)}</td>
       <td className="px-2 py-2 text-right">{money(item.lineTotal)}</td>
     </tr>
   );
 }
 
-function ExportSalePrintBlankRow() {
+function ExportSalePrintBlankRow({ columnCount }: { columnCount: number }) {
   return (
     <tr className="h-6">
-      {exportSalePrintHeadings.map((heading, index) => (
-        <td
-          key={heading}
-          className={
-            index === exportSalePrintHeadings.length - 1 ? "" : "border-r border-slate-200"
-          }
-        />
+      {Array.from({ length: columnCount }).map((_, index) => (
+        <td key={index} className={index === columnCount - 1 ? "" : "border-r border-slate-200"} />
       ))}
     </tr>
   );
 }
 
-function ExportSalePrintTotalRow({ exportSale }: { exportSale: ExportSale }) {
+function ExportSalePrintTotalRow({
+  exportSale,
+  leadingColumnCount
+}: {
+  exportSale: ExportSale;
+  leadingColumnCount: number;
+}) {
   return (
     <tr className="border-t border-slate-300 font-semibold">
-      <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={3}>
+      <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={leadingColumnCount}>
         Total
       </td>
       <td className="border-r border-slate-200 px-2 py-2 text-center">
@@ -441,10 +491,7 @@ function ExportSalePrintTotalRow({ exportSale }: { exportSale: ExportSale }) {
       </td>
       <td className="border-r border-slate-200 px-2 py-2" />
       <td className="border-r border-slate-200 px-2 py-2 text-right">
-        {money(exportSale.taxAmount / 2)}
-      </td>
-      <td className="border-r border-slate-200 px-2 py-2 text-right">
-        {money(exportSale.taxAmount / 2)}
+        {money(exportSale.taxAmount)}
       </td>
       <td className="px-2 py-2 text-right">{money(exportSale.amount)}</td>
     </tr>

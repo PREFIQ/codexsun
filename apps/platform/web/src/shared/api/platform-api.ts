@@ -12,8 +12,33 @@ const TOKEN_KEYS: Record<Desk, string> = {
 
 const TENANT_ID_KEY = "codexsun_tenant_id";
 const TENANT_DB_NAME_KEY = "codexsun_tenant_db_name";
+const TENANT_RUNTIME_KEYS = [
+  "codexsun.tenant.landing-app.live",
+  "codexsun.tenant.company-id",
+  "codexsun.tenant.financial-year-id"
+] as const;
 
 type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
+
+type TenantTokenClaims = {
+  tenantDbName?: string;
+  tenantId?: string;
+  userType?: string;
+};
+
+function tenantClaims(token: string | null): TenantTokenClaims | null {
+  if (!token) return null;
+  try {
+    const encoded = token.split(".")[1];
+    if (!encoded) return null;
+    const normalized = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const claims = JSON.parse(atob(padded)) as TenantTokenClaims;
+    return claims.userType === "tenant" ? claims : null;
+  } catch {
+    return null;
+  }
+}
 
 export function getToken(desk: Desk): string | null {
   try {
@@ -65,13 +90,35 @@ export function setTenantDbName(dbName: string | undefined): void {
   } catch {}
 }
 
+function clearTenantSession(): void {
+  try {
+    localStorage.removeItem(TOKEN_KEYS.tenant);
+    localStorage.removeItem(TENANT_ID_KEY);
+    localStorage.removeItem(TENANT_DB_NAME_KEY);
+    for (const key of TENANT_RUNTIME_KEYS) localStorage.removeItem(key);
+  } catch {}
+}
+
+function writeTenantSession(input: {
+  accessToken: string;
+  tenantDbName: string;
+  tenantId: string;
+}): void {
+  setTenantId(input.tenantId);
+  setTenantDbName(input.tenantDbName);
+  setToken("tenant", input.accessToken);
+}
+
 function authHeaders(desk?: Desk): Record<string, string> {
   const headers: Record<string, string> = {};
   const token = desk ? getToken(desk) : null;
   if (token) headers.Authorization = `Bearer ${token}`;
   if (desk === "tenant") {
-    const tenantId = getTenantId();
-    const tenantDbName = getTenantDbName();
+    // The signed token is the authority for request routing. Local storage is only
+    // a compatibility mirror for the independently bundled Core and Billing apps.
+    const claims = tenantClaims(token);
+    const tenantId = claims?.tenantId ?? getTenantId();
+    const tenantDbName = claims?.tenantDbName ?? getTenantDbName();
     if (tenantId) headers["x-tenant-id"] = tenantId;
     if (tenantDbName) headers["x-tenant-db"] = tenantDbName;
   }
@@ -82,7 +129,7 @@ async function request<T>(path: string, options: RequestInit = {}, desk?: Desk):
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
       ...authHeaders(desk),
       ...options.headers
     }
@@ -121,11 +168,15 @@ export async function login(input: {
   password: string;
   tenantCode?: string;
 }) {
+  if (input.desk === "tenant") clearTenantSession();
+  else clearToken(input.desk);
+
   try {
     const data = await apiPost<{
       accessToken?: string;
       corporateId?: string;
       email: string;
+      name?: string;
       tenantId?: string;
       tenantDbName?: string;
       tenantCode?: string;
@@ -133,9 +184,18 @@ export async function login(input: {
       userType: string;
     }>("/auth/login", input);
 
-    if (data.accessToken) setToken(input.desk, data.accessToken);
-    if (input.desk === "tenant" && data.tenantId) setTenantId(data.tenantId);
-    if (input.desk === "tenant" && data.tenantDbName) setTenantDbName(data.tenantDbName);
+    if (input.desk === "tenant") {
+      if (!data.accessToken || !data.tenantId || !data.tenantDbName) {
+        throw new Error("Tenant login response is incomplete.");
+      }
+      writeTenantSession({
+        accessToken: data.accessToken,
+        tenantDbName: data.tenantDbName,
+        tenantId: data.tenantId
+      });
+    } else if (data.accessToken) {
+      setToken(input.desk, data.accessToken);
+    }
 
     return { data, success: true };
   } catch (error: unknown) {
@@ -144,10 +204,13 @@ export async function login(input: {
 }
 
 export async function developmentTenantLogin() {
+  clearTenantSession();
+
   try {
     const data = await apiPost<{
       accessToken: string;
       email: string;
+      name?: string;
       tenantCode: string;
       tenantDbName: string;
       tenantId: string;
@@ -155,9 +218,7 @@ export async function developmentTenantLogin() {
       userType: "tenant";
     }>("/auth/development/tenant-login");
 
-    setToken("tenant", data.accessToken);
-    setTenantId(data.tenantId);
-    setTenantDbName(data.tenantDbName);
+    writeTenantSession(data);
     return { data, success: true } as const;
   } catch (error: unknown) {
     return { error: { message: errorMessage(error) }, success: false } as const;
@@ -170,7 +231,6 @@ export async function logout(desk: Desk): Promise<void> {
   } catch {}
   clearToken(desk);
   if (desk === "tenant") {
-    setTenantId(undefined);
-    setTenantDbName(undefined);
+    clearTenantSession();
   }
 }

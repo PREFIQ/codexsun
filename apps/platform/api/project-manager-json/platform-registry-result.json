@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-12T03:56:00.819Z",
+  "generatedAt": "2026-07-18T16:43:31.586Z",
   "platforms": [
     {
       "active": true,
@@ -20645,9 +20645,9 @@
   ],
   "summary": {
     "activeGroups": 9,
-    "activeModules": 21,
+    "activeModules": 76,
     "platforms": 3,
     "totalGroups": 9,
-    "totalModules": 21
+    "totalModules": 76
   }
 }

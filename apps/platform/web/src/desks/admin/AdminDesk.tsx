@@ -13,12 +13,14 @@ export function AdminDesk() {
 
   async function handleLogout() {
     await logout("admin");
-    window.location.href = "/admin/login";
+    window.location.assign("/admin/login");
   }
 
   return (
     <AuthGate desk="admin">
       <AdminLayout
+        homeHref="/"
+        onLogout={handleLogout}
         versionLabel={`v ${__APP_VERSION__}`}
         actions={
           <div className="flex flex-wrap justify-end gap-2">

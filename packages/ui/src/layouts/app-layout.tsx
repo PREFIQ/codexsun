@@ -32,6 +32,7 @@ type AppLayoutProps = {
   homeHref?: string;
   logoutHref?: string;
   menuItems?: SidemenuItem[];
+  onLogout?: () => void | Promise<void>;
   subtitle?: ReactNode;
   title?: ReactNode;
   user?: SidebarUser;
@@ -171,6 +172,7 @@ export function AppLayout({
   homeHref = "/workspace",
   logoutHref = "/login",
   menuItems = defaultAppMenuItems,
+  onLogout,
   subtitle,
   title,
   user = defaultSidebarUser,
@@ -199,6 +201,7 @@ export function AppLayout({
         <TopMenu
           homeHref={homeHref}
           logoutHref={logoutHref}
+          {...(onLogout ? { onLogout } : {})}
           pageTitle={String(headerTitle)}
           showPageTitle={showPageTitle}
           workspaceItems={workspaceItems}

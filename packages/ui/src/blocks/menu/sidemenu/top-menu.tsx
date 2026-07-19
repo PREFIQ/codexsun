@@ -48,6 +48,7 @@ export type TopMenuWorkspaceItem = {
 export type TopMenuProps = {
   homeHref?: string;
   logoutHref?: string;
+  onLogout?: () => void | Promise<void>;
   pageTitle?: string;
   workspaceItems?: TopMenuWorkspaceItem[];
   showPageTitle?: boolean;
@@ -85,6 +86,7 @@ const defaultWorkspaceItems: TopMenuWorkspaceItem[] = [
 export function TopMenu({
   homeHref = "/workspace",
   logoutHref = "/login",
+  onLogout,
   pageTitle = "Workspace",
   workspaceItems = defaultWorkspaceItems,
   showPageTitle = true
@@ -173,19 +175,8 @@ export function TopMenu({
         </div>
       </div>
       <div className="flex items-center gap-2 px-3">
-        <Button aria-label="Desk tools" size="icon" variant="outline" className="size-8">
-          <BriefcaseBusinessIcon />
-        </Button>
-        <Button
-          aria-label="Notifications"
-          size="icon"
-          variant="outline"
-          className="relative size-8"
-        >
+        <Button aria-label="Notifications" size="icon" variant="outline" className="size-8">
           <BellIcon />
-          <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-            3
-          </span>
         </Button>
         <Button asChild size="sm" variant="outline" className="hidden h-8 px-3 sm:inline-flex">
           <a href={homeHref}>
@@ -193,12 +184,24 @@ export function TopMenu({
             Home
           </a>
         </Button>
-        <Button asChild size="sm" variant="outline" className="hidden h-8 px-3 sm:inline-flex">
-          <a href={logoutHref}>
+        {onLogout ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="hidden h-8 px-3 sm:inline-flex"
+            onClick={() => void onLogout()}
+          >
             <LogOutIcon />
             Logout
-          </a>
-        </Button>
+          </Button>
+        ) : (
+          <Button asChild size="sm" variant="outline" className="hidden h-8 px-3 sm:inline-flex">
+            <a href={logoutHref}>
+              <LogOutIcon />
+              Logout
+            </a>
+          </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button aria-label="Theme" size="icon" variant="outline" className="size-8">

@@ -2,7 +2,8 @@ import { apiDelete, apiGet, apiPost, apiPut } from "../../shared/api/platform-ap
 import type {
   TenantRolePermission,
   TenantRolePermissionListFilters,
-  TenantRolePermissionLookup,
+  TenantRolePermissionPermissionLookup,
+  TenantRolePermissionRoleLookup,
   TenantRolePermissionSavePayload
 } from "./tenant-role-permission.types";
 const path = "/tenant/access/role-permissions";
@@ -12,10 +13,10 @@ export function listTenantRolePermissions(filters: TenantRolePermissionListFilte
   return apiGet<TenantRolePermission[]>(`${path}${q.size ? `?${q}` : ""}`, "tenant");
 }
 export function listRoleOptions() {
-  return apiGet<TenantRolePermissionLookup[]>("/tenant/access/roles", "tenant");
+  return apiGet<TenantRolePermissionRoleLookup[]>("/tenant/access/roles", "tenant");
 }
 export function listPermissionOptions() {
-  return apiGet<TenantRolePermissionLookup[]>("/tenant/access/permissions", "tenant");
+  return apiGet<TenantRolePermissionPermissionLookup[]>("/tenant/access/permissions", "tenant");
 }
 export function createTenantRolePermission(payload: TenantRolePermissionSavePayload) {
   return apiPost<TenantRolePermission>(path, toApi(payload), "tenant");
@@ -33,5 +34,5 @@ export function forceDeleteTenantRolePermission(id: number) {
   return apiDelete<TenantRolePermission>(`${path}/${id}/force`, "tenant");
 }
 function toApi(payload: TenantRolePermissionSavePayload) {
-  return { roleId: payload.roleId, permissionId: payload.permissionId, status: payload.status };
+  return payload;
 }

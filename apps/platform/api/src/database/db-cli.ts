@@ -1,4 +1,6 @@
 import { createConnection } from "mysql2/promise";
+import { closeAllBillingDatabases } from "@codexsun/billing-api";
+import { closeCoreDatabase } from "@codexsun/core-api";
 import {
   closePlatformDatabase,
   createMasterDatabase,
@@ -8,10 +10,8 @@ import {
   resetPlatformDatabases,
   seedPlatformDatabase
 } from "./platform-database.js";
-import { closeTenantDatabase, createTenantDatabase, getTenantDatabase } from "./tenant-database.js";
-import { migrateTenantRuntimeModule } from "../modules/tenant/tenant.migration.js";
 import { TenantRepository } from "../modules/tenant/tenant.repository.js";
-import { seedDefaultTenant, seedTenantRuntimeModule } from "../modules/tenant/tenant.seed.js";
+import { provisionTenantDatabase, seedDefaultTenant } from "../modules/tenant/tenant.seed.js";
 import { env } from "../env.js";
 import { assertDatabaseName, quoteIdentifier } from "./database-utils.js";
 
@@ -105,7 +105,7 @@ async function main() {
 
     console.log(`ok db:${command} completed`);
   } finally {
-    await closePlatformDatabase();
+    await Promise.all([closeAllBillingDatabases(), closeCoreDatabase(), closePlatformDatabase()]);
   }
 }
 
@@ -132,13 +132,7 @@ async function migrateTenantAppDatabases() {
     console.info(
       `[database] migrating tenant app modules for "${tenant.tenantCode}" (${tenant.dbName})`
     );
-    await createTenantDatabase(tenant.dbName);
-    const database = getTenantDatabase(tenant);
-    try {
-      await migrateTenantRuntimeModule(database);
-    } finally {
-      await closeTenantDatabase(tenant);
-    }
+    await provisionTenantDatabase(tenant);
   }
 }
 
@@ -149,14 +143,7 @@ async function seedTenantAppDatabases() {
     console.info(
       `[seeder] seeding tenant app modules for "${tenant.tenantCode}" (${tenant.dbName})`
     );
-    await createTenantDatabase(tenant.dbName);
-    const database = getTenantDatabase(tenant);
-    try {
-      await migrateTenantRuntimeModule(database);
-      await seedTenantRuntimeModule(database, tenant);
-    } finally {
-      await closeTenantDatabase(tenant);
-    }
+    await provisionTenantDatabase(tenant);
   }
 }
 

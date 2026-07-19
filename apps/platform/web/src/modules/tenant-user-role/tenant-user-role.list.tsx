@@ -1,42 +1,126 @@
-import { RegistryList, type RegistryField } from "../../shared/platform-registry-workspace";
+import { Trash2 } from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { WorkspaceProtectedIndicator } from "@codexsun/ui/workspace/protected-indicator";
+import { WorkspaceRowActions } from "@codexsun/ui/workspace/row-actions";
+import { WorkspaceStatusBadge } from "@codexsun/ui/workspace/status";
+import { WorkspaceTable } from "@codexsun/ui/workspace/table";
 import type { TenantUserRole } from "./tenant-user-role.types";
-export function tenantUserRoleFields(
-  first: Array<{ label: string; value: string }>,
-  second: Array<{ label: string; value: string }>
-): RegistryField<TenantUserRole>[] {
-  return [
+export function TenantUserRoleList({
+  loading,
+  onEdit,
+  onForceDelete,
+  onRestore,
+  onSuspend,
+  records
+}: {
+  loading: boolean;
+  onEdit: (record: TenantUserRole) => void;
+  onForceDelete: (record: TenantUserRole) => void;
+  onRestore: (record: TenantUserRole) => void;
+  onSuspend: (record: TenantUserRole) => void;
+  records: TenantUserRole[];
+}) {
+  const columns: ColumnDef<TenantUserRole>[] = [
     {
-      key: "userId",
-      label: "User",
-      type: "reference",
-      options: first,
-      format: (_value, record) => record.userName
+      cell: ({ row }) => <div className="text-center tabular-nums">{row.index + 1}</div>,
+      header: () => <div className="text-center">#</div>,
+      id: "number",
+      size: 64
     },
     {
-      key: "roleId",
-      label: "Role",
-      type: "reference",
-      options: second,
-      format: (_value, record) => record.roleLabel
+      accessorKey: "userName",
+      cell: ({ row }) =>
+        row.original.isProtected ? (
+          <span className="font-medium">{row.original.userName}</span>
+        ) : (
+          <button
+            className="cursor-pointer font-medium text-foreground hover:underline"
+            onClick={() => onEdit(row.original)}
+            type="button"
+          >
+            {row.original.userName}
+          </button>
+        ),
+      header: "User"
+    },
+    { accessorKey: "userEmail", header: "Email" },
+    { accessorKey: "roleLabel", header: "Role" },
+    {
+      accessorKey: "status",
+      cell: ({ row }) => (
+        <WorkspaceStatusBadge
+          label={row.original.status === "active" ? "Active" : "Inactive"}
+          tone={row.original.status === "active" ? "success" : "neutral"}
+        />
+      ),
+      header: "Status"
     },
     {
-      key: "status",
-      label: "Status",
-      type: "select",
-      options: [
-        { label: "Active", value: "active" },
-        { label: "Inactive", value: "inactive" }
-      ]
+      cell: ({ row }) => (
+        <Actions
+          record={row.original}
+          onEdit={onEdit}
+          onForceDelete={onForceDelete}
+          onRestore={onRestore}
+          onSuspend={onSuspend}
+        />
+      ),
+      enableSorting: false,
+      header: () => <div className="text-center">Actions</div>,
+      id: "actions",
+      size: 96
     }
   ];
+  return (
+    <WorkspaceTable
+      columns={columns}
+      data={records}
+      emptyState="No user roles found."
+      isLoading={loading}
+      minWidth="860px"
+    />
+  );
 }
-export function TenantUserRoleList(props: {
-  fields: RegistryField<TenantUserRole>[];
-  loading: boolean;
-  records: TenantUserRole[];
+function Actions({
+  onEdit,
+  onForceDelete,
+  onRestore,
+  onSuspend,
+  record
+}: {
   onEdit: (record: TenantUserRole) => void;
-  onView: (record: TenantUserRole) => void;
+  onForceDelete: (record: TenantUserRole) => void;
+  onRestore: (record: TenantUserRole) => void;
+  onSuspend: (record: TenantUserRole) => void;
+  record: TenantUserRole;
 }) {
-  const { fields, ...rest } = props;
-  return <RegistryList fields={fields} {...rest} />;
+  return (
+    <div
+      className="flex w-full justify-center"
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      {record.isProtected ? (
+        <WorkspaceProtectedIndicator label="Protected user role" />
+      ) : (
+        <WorkspaceRowActions
+          actions={[
+            {
+              id: "force-delete",
+              icon: <Trash2 className="size-4" />,
+              label: "Force delete",
+              onSelect: () => onForceDelete(record),
+              tone: "destructive"
+            }
+          ]}
+          deleteLabel="Suspend"
+          isSuspended={record.status === "inactive"}
+          onDelete={() => onSuspend(record)}
+          onEdit={() => onEdit(record)}
+          onRestore={() => onRestore(record)}
+          title={`${record.userName} · ${record.roleLabel}`}
+        />
+      )}
+    </div>
+  );
 }

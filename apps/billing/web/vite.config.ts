@@ -11,7 +11,7 @@ const rootPackage = JSON.parse(
   readFileSync(resolve(configDir, "../../../package.json"), "utf8")
 ) as { version: string };
 
-export default defineConfig(() => ({
+export default defineConfig(({ command }) => ({
   build: {
     chunkSizeWarningLimit: 900,
     emptyOutDir: true,
@@ -85,8 +85,22 @@ export default defineConfig(() => ({
     __APP_VERSION__: JSON.stringify(rootPackage.version)
   },
   plugins: [tailwindcss(), react()],
-  server: {
-    host: "127.0.0.1",
-    port: requireEnvNumber(process.env.BILLING_WEB_PORT, "BILLING_WEB_PORT")
-  }
+  ...(command === "serve"
+    ? {
+        server: {
+          host: "127.0.0.1",
+          port: requireEnvNumber(process.env.BILLING_WEB_PORT, "BILLING_WEB_PORT"),
+          proxy: {
+            "/api/billing": {
+              changeOrigin: false,
+              rewrite: (path) => path.replace(/^\/api\/billing/u, "") || "/",
+              target: `http://127.0.0.1:${requireEnvNumber(
+                process.env.BILLING_API_PORT,
+                "BILLING_API_PORT"
+              )}`
+            }
+          }
+        }
+      }
+    : {})
 }));

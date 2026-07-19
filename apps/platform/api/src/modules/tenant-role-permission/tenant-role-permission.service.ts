@@ -47,7 +47,7 @@ export class TenantRolePermissionService {
   async forceDelete(id: string) {
     await this.context.authorize("platform.application.role-permission.remove");
     const c = await this.mutable(id),
-      r = (await this.repository.forceDelete(c.id))!;
+      r = await this.delete(c.id);
     await this.audit("removed", r);
     return r;
   }
@@ -88,4 +88,24 @@ export class TenantRolePermissionService {
       throw e;
     }
   }
+  private async delete(id: number) {
+    try {
+      return (await this.repository.forceDelete(id))!;
+    } catch (e) {
+      if (isReferenced(e))
+        throw AppError.conflict(
+          "Role-permission assignment cannot be removed because related records reference it."
+        );
+      throw e;
+    }
+  }
+}
+
+function isReferenced(e: unknown) {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    (("code" in e && (e as { code?: unknown }).code === "ER_ROW_IS_REFERENCED_2") ||
+      ("errno" in e && (e as { errno?: unknown }).errno === 1451))
+  );
 }

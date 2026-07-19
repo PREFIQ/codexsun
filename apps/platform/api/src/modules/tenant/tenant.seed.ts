@@ -8,6 +8,7 @@ import {
 } from "../../database/tenant-database.js";
 import type { TenantDatabase } from "../../database/schema.js";
 import { env } from "../../env.js";
+import { provisionSelectedTenantApps } from "../../database/tenant-app-database.js";
 import { migrateTenantRuntimeModule } from "./tenant.migration.js";
 import { TenantRepository } from "./tenant.repository.js";
 import { normalizeTenantDomain } from "../tenant-domain/tenant-domain.repository.js";
@@ -38,7 +39,9 @@ export async function provisionTenantDatabase(tenant: Tenant) {
   try {
     await migrateTenantRuntimeModule(database);
     await seedTenantRuntimeModule(database, tenant);
+    const result = await provisionSelectedTenantApps(database, tenant);
     console.info(`[database] tenant database provisioned: "${tenant.dbName}"`);
+    return result;
   } finally {
     await closeTenantDatabase(tenant);
   }

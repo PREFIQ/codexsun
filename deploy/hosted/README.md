@@ -1,13 +1,16 @@
 # CODEXSUN Hosted Runtime
 
-The hosted Platform web application is a static production build served by nginx. The compiled Platform API is the
-only supervised Node.js process. Do not proxy production traffic to Vite or run `npm run dev` as a hosted service.
+The hosted Platform web application is a static production build served by nginx. The compiled Platform, Core, and
+Billing APIs are supervised Node.js processes. Do not proxy production traffic to Vite or run `npm run dev` as a
+hosted service.
 
 These checked-in files target the current host layout:
 
 - Repository: `/home/sundar/codexsun`
 - Runtime user: `sundar`
 - Platform API: `127.0.0.1:7010`
+- Core API: `127.0.0.1:7030`
+- Billing API: `127.0.0.1:7050`
 - Platform web root: `/var/www/codexsun-platform`
 - CODEXSUN site root: `/var/www/sites/codexsun`
 - LogicX site root: `/var/www/sites/logicx`
@@ -65,6 +68,8 @@ Run from the repository root after pulling a verified release:
 npm ci
 npm run build -w @codexsun/framework
 npm run build -w @codexsun/platform-api
+npm run build -w @codexsun/core-api
+npm run build -w @codexsun/billing-api
 npm run build -w @codexsun/platform-web
 npm run build -w @codexsun/sites-web
 
@@ -80,23 +85,29 @@ sudo rsync -a --delete dist/apps/sites/web/techmedia/ /var/www/sites/techmedia/
 ```
 
 Platform Vite reads client variables from the root `.env`. Production should set `VITE_PLATFORM_API_URL` to
-`/api/platform` so browser requests stay on the hosted origin. Set
+`/api/platform`, `VITE_CORE_API_URL` to `/api/core`, and `VITE_BILLING_API_URL` to `/api/billing` so browser requests
+stay on the hosted origin. Set
 `VITE_PLATFORM_WEB_ORIGIN=https://app.codexsun.com` before building Sites so public-site login and application links
 leave the marketing domains for Platform. Set `PLATFORM_WEB_ORIGIN=https://app.codexsun.com` for API origin policy and
-`PLATFORM_PUBLIC_SITE_ORIGIN=https://codexsun.com` for the canonical app portal's return link. `PLATFORM_WEB_PORT` is
-dev-only and is not required by the production build.
+`PLATFORM_PUBLIC_SITE_ORIGIN=https://codexsun.com` for the canonical app portal's return link. Dashboard Home buttons
+return to the Platform root on the current app origin. `PLATFORM_WEB_PORT` is dev-only and is not required by the
+production build.
 
 ## Install process supervision and nginx
 
 ```sh
 sudo install -m 0644 deploy/hosted/systemd/codexsun-platform-api.service \
   /etc/systemd/system/codexsun-platform-api.service
+sudo install -m 0644 deploy/hosted/systemd/codexsun-core-api.service \
+  /etc/systemd/system/codexsun-core-api.service
+sudo install -m 0644 deploy/hosted/systemd/codexsun-billing-api.service \
+  /etc/systemd/system/codexsun-billing-api.service
 sudo install -m 0644 deploy/hosted/nginx/codexsun.conf /etc/nginx/sites-available/codexsun
 sudo ln -sfn /etc/nginx/sites-available/codexsun /etc/nginx/sites-enabled/codexsun
 sudo rm -f /etc/nginx/sites-enabled/default
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now codexsun-platform-api
+sudo systemctl enable --now codexsun-platform-api codexsun-core-api codexsun-billing-api
 sudo nginx -t
 sudo systemctl reload nginx
 ```
@@ -107,6 +118,8 @@ After rebuilding and publishing the static files:
 
 ```sh
 sudo systemctl restart codexsun-platform-api
+sudo systemctl restart codexsun-core-api
+sudo systemctl restart codexsun-billing-api
 sudo nginx -t
 sudo systemctl reload nginx
 ```
@@ -114,12 +127,16 @@ sudo systemctl reload nginx
 ## Verify
 
 ```sh
-systemctl is-active codexsun-platform-api nginx
+systemctl is-active codexsun-platform-api codexsun-core-api codexsun-billing-api nginx
 curl --fail --silent --show-error http://127.0.0.1/api/platform/health
+curl --fail --silent --show-error http://127.0.0.1/api/core/health
+curl --fail --silent --show-error http://127.0.0.1/api/billing/health
 curl --silent --output /dev/null --write-out '%{http_code}\n' \
   http://127.0.0.1/api/platform/auth/session
 curl --fail --silent --show-error http://127.0.0.1/ >/dev/null
 journalctl -u codexsun-platform-api -n 100 --no-pager
+journalctl -u codexsun-core-api -n 100 --no-pager
+journalctl -u codexsun-billing-api -n 100 --no-pager
 ```
 
 Expected unauthenticated status: health `200`, session `401`, and web root `200`.
@@ -132,6 +149,10 @@ curl --resolve logicx.in:80:127.0.0.1 --fail http://logicx.in/ >/dev/null
 curl --resolve techmedia.in:80:127.0.0.1 --fail http://techmedia.in/ >/dev/null
 curl --resolve app.codexsun.com:80:127.0.0.1 --fail \
   http://app.codexsun.com/api/platform/health
+curl --resolve app.codexsun.com:80:127.0.0.1 --fail \
+  http://app.codexsun.com/api/core/health
+curl --resolve app.codexsun.com:80:127.0.0.1 --fail \
+  http://app.codexsun.com/api/billing/health
 ```
 
 ## Connect live domains

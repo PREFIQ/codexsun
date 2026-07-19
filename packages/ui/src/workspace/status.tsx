@@ -26,11 +26,13 @@ const toneIcons: Record<WorkspaceStatusTone, ReactNode> = {
 export function WorkspaceStatusBadge({
   className,
   label,
+  showIcon = true,
   status,
   tone = "neutral"
 }: {
   className?: string;
   label?: string;
+  showIcon?: boolean;
   status?: string;
   tone?: WorkspaceStatusTone;
 }) {
@@ -49,7 +51,7 @@ export function WorkspaceStatusBadge({
         className
       )}
     >
-      {toneIcons[resolvedTone]}
+      {showIcon ? toneIcons[resolvedTone] : null}
       {label ?? status ?? "Unknown"}
     </span>
   );

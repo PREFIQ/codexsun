@@ -120,9 +120,9 @@ Root build/dev workflows should clean app-local `.turbo` folders under `apps/` s
 
 ## Hosted Platform Runtime
 
-The non-container hosted baseline serves `dist/apps/platform/web` as static files through nginx and runs
-`dist/apps/platform/api/server.js` under systemd. Production nginx must not proxy the web root to Vite, and hosted
-services must not depend on `npm run dev` remaining attached to a shell.
+The non-container hosted baseline serves `dist/apps/platform/web` as static files through nginx and runs the compiled
+Platform, Core, and Billing API servers under systemd. Production nginx must not proxy the web root to Vite, and
+hosted services must not depend on `npm run dev` remaining attached to a shell.
 
 Public client sites are separate Sites artifacts. Each supported client build is emitted beneath
 `dist/apps/sites/web/{client}` and should be mapped to its own hostname by the static host or edge layer. The initial
@@ -132,14 +132,16 @@ Platform tenant-domain table; public-site publishing and tenant workspace access
 Local Windows development mirrors that ownership with a host gateway on `127.0.0.1:80`: `codexsun.test`,
 `logicx.test`, and `techmedia.test` route to their independent Sites dev servers, while `app.codexsun.test` and tenant
 app hosts such as `aaran.test` route to Platform. Platform `/` is an app-workspace portal, not a marketing site.
-Platform API traffic stays on `/api/platform`, preserves the original host, and is resolved through the tenant-domain
-module. The root `npm run dev:domains` command starts the APIs, Platform web, all three Sites clients, and this gateway.
+Browser API traffic stays on same-origin gateway paths: `/api/platform` reaches Platform, `/api/core` reaches Core,
+and `/api/billing` reaches Billing. The Platform path preserves the original host for tenant-domain resolution, while
+all paths retain tenant access headers. The root `npm run dev:domains` command starts the APIs, Platform web, all three
+Sites clients, and this gateway.
 
 The public app portal is a safe tenant projection. Shared navigation, slider, features, updates, and footer components
 are rendered by Platform, while tenant-specific content is stored under `tenants.payload_settings.appPortal`. The
 exact app hostname must be registered through Tenant Domains; the canonical Platform hostname may resolve the
 configured default tenant. A tenant's optional public marketing URL is content only and does not create a Sites
-runtime dependency.
+runtime dependency. Authenticated dashboard Home actions return to the Platform root on the current app origin.
 
 The maintained baseline configuration and installation commands live under `deploy/hosted/`. The Platform API binds
 to loopback behind nginx, restarts automatically after failures, and exposes its existing health endpoint through

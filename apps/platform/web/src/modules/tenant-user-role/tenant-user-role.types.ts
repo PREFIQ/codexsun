@@ -11,13 +11,21 @@ export type TenantUserRole = {
   status: TenantUserRoleStatus;
   uuid: string;
 };
-export type TenantUserRoleSavePayload = Omit<TenantUserRole, "id" | "uuid">;
+export type TenantUserRoleSavePayload = {
+  roleId: number;
+  status: TenantUserRoleStatus;
+  userId: number;
+};
 export type TenantUserRoleListFilters = { search?: string };
-export type TenantUserRoleLookup = {
+export type TenantUserRoleUserLookup = {
   id: number;
-  key?: string;
-  label?: string;
-  name?: string;
-  email?: string;
+  email: string;
+  name: string;
+  status: string;
+};
+export type TenantUserRoleRoleLookup = {
+  id: number;
+  key: string;
+  label: string;
   status: string;
 };

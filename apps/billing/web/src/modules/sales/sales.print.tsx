@@ -53,7 +53,7 @@ export function SalesPrintRoutePage() {
     );
   }
 
-  if (saleQuery.isLoading) {
+  if (saleQuery.isLoading || settingsQuery.isLoading) {
     return <GlobalLoader />;
   }
 
@@ -135,6 +135,8 @@ export function SalePrintDocument({ copy, sale }: { copy: SalePrintCopy; sale: S
   const addressMode = billingSettings?.printing.addressMode ?? "billing_and_shipping";
   const showPo = billingSettings?.layout.usePo ?? false;
   const showDc = billingSettings?.layout.useDc ?? false;
+  const showColour = billingSettings?.layout.useColour ?? false;
+  const showSize = billingSettings?.layout.useSize ?? false;
   const statesQuery = useQuery({
     queryFn: () => listSaleLocations("states"),
     queryKey: ["billing", "sale", "print", "states"]
@@ -160,8 +162,10 @@ export function SalePrintDocument({ copy, sale }: { copy: SalePrintCopy; sale: S
           addressMode={addressMode}
           billingAddress={billingAddress}
           shippingAddress={shippingAddress}
+          showColour={showColour}
           showDc={showDc}
           showPo={showPo}
+          showSize={showSize}
           sale={sale}
         />
       ))}
@@ -179,8 +183,10 @@ function SalePrintPage({
   addressMode,
   billingAddress,
   shippingAddress,
+  showColour,
   showDc,
   showPo,
+  showSize,
   sale
 }: {
   copy: SalePrintCopy;
@@ -192,8 +198,10 @@ function SalePrintPage({
   addressMode: "billing_only" | "billing_and_shipping";
   billingAddress: { address: string; state: string };
   shippingAddress: { address: string; state: string };
+  showColour: boolean;
   showDc: boolean;
   showPo: boolean;
+  showSize: boolean;
   sale: Sale;
 }) {
   const splitTax = sale.taxType === "cgst-sgst";
@@ -203,12 +211,14 @@ function SalePrintPage({
     ...(showPo ? ["PO"] : []),
     ...(showDc ? ["DC"] : []),
     "Particulars",
-    "HSN",
+    "HSN Code",
+    ...(showColour ? ["Colour"] : []),
+    ...(showSize ? ["Size"] : []),
     "Qty",
     "Rate",
     "Taxable",
     "GST %",
-    "GST Amount",
+    "GST TAX",
     "Total"
   ];
 
@@ -322,8 +332,10 @@ function SalePrintPage({
                   key={item.id}
                   item={item}
                   index={index}
+                  showColour={showColour}
                   showDc={showDc}
                   showPo={showPo}
+                  showSize={showSize}
                 />
               ))}
               {Array.from({ length: blankRows }).map((_, index) => (
@@ -333,7 +345,12 @@ function SalePrintPage({
                 />
               ))}
               {isLastPage ? (
-                <SalePrintTotalRow sale={sale} showDc={showDc} showPo={showPo} />
+                <SalePrintTotalRow
+                  sale={sale}
+                  leadingColumnCount={
+                    3 + Number(showPo) + Number(showDc) + Number(showColour) + Number(showSize)
+                  }
+                />
               ) : (
                 <tr>
                   <td
@@ -405,19 +422,19 @@ function SalePrintPage({
 function SalePrintItemRow({
   item,
   index,
+  showColour,
   showDc,
-  showPo
+  showPo,
+  showSize
 }: {
   item: Sale["items"][number];
   index: number;
+  showColour: boolean;
   showDc: boolean;
   showPo: boolean;
+  showSize: boolean;
 }) {
   const particulars = [item.productName, item.description].filter(hasDisplayValue).join(" - ");
-  const variants = [
-    hasDisplayValue(item.colour) ? `Colour: ${item.colour.trim()}` : "",
-    hasDisplayValue(item.size) ? `Size: ${item.size.trim()}` : ""
-  ].filter(Boolean);
 
   return (
     <tr className="align-top">
@@ -434,11 +451,20 @@ function SalePrintItemRow({
       ) : null}
       <td className="break-words border-r border-slate-200 px-1.5 py-2 leading-4">
         <div className="font-medium">{particulars}</div>
-        {variants.length ? <div>{variants.join(" - ")}</div> : null}
       </td>
       <td className="whitespace-nowrap border-r border-slate-200 px-1 py-2 text-center">
         {hasDisplayValue(item.hsnCode) ? item.hsnCode : ""}
       </td>
+      {showColour ? (
+        <td className="break-words border-r border-slate-200 px-1 py-2 text-center">
+          {hasDisplayValue(item.colour) ? item.colour : ""}
+        </td>
+      ) : null}
+      {showSize ? (
+        <td className="break-words border-r border-slate-200 px-1 py-2 text-center">
+          {hasDisplayValue(item.size) ? item.size : ""}
+        </td>
+      ) : null}
       <td className="border-r border-slate-200 px-1 py-2 text-center">{item.quantity}</td>
       <td className="border-r border-slate-200 px-1 py-2 text-right">{money(item.rate)}</td>
       <td className="border-r border-slate-200 px-1 py-2 text-right">
@@ -462,20 +488,15 @@ function SalePrintBlankRow({ columnCount }: { columnCount: number }) {
 }
 
 function SalePrintTotalRow({
-  sale,
-  showDc,
-  showPo
+  leadingColumnCount,
+  sale
 }: {
+  leadingColumnCount: number;
   sale: Sale;
-  showDc: boolean;
-  showPo: boolean;
 }) {
   return (
     <tr className="border-t border-slate-300 font-semibold">
-      <td
-        className="border-r border-slate-200 px-1 py-2 text-right"
-        colSpan={3 + Number(showPo) + Number(showDc)}
-      >
+      <td className="border-r border-slate-200 px-1 py-2 text-right" colSpan={leadingColumnCount}>
         Total
       </td>
       <td className="border-r border-slate-200 px-1 py-2 text-center">

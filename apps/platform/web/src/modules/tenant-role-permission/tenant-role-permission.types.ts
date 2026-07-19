@@ -11,13 +11,21 @@ export type TenantRolePermission = {
   status: TenantRolePermissionStatus;
   uuid: string;
 };
-export type TenantRolePermissionSavePayload = Omit<TenantRolePermission, "id" | "uuid">;
+export type TenantRolePermissionSavePayload = {
+  permissionId: number;
+  roleId: number;
+  status: TenantRolePermissionStatus;
+};
 export type TenantRolePermissionListFilters = { search?: string };
-export type TenantRolePermissionLookup = {
+export type TenantRolePermissionRoleLookup = {
   id: number;
-  key?: string;
-  label?: string;
-  name?: string;
-  email?: string;
+  key: string;
+  label: string;
+  status: string;
+};
+export type TenantRolePermissionPermissionLookup = {
+  id: number;
+  key: string;
+  label: string;
   status: string;
 };

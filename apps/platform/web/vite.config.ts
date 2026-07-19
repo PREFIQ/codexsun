@@ -29,6 +29,22 @@ export default defineConfig(({ command }) => ({
           host: "127.0.0.1",
           port: requireEnvNumber(process.env.PLATFORM_WEB_PORT, "PLATFORM_WEB_PORT"),
           proxy: {
+            "/api/billing": {
+              changeOrigin: false,
+              rewrite: (path) => path.replace(/^\/api\/billing/u, "") || "/",
+              target: `http://127.0.0.1:${requireEnvNumber(
+                process.env.BILLING_API_PORT,
+                "BILLING_API_PORT"
+              )}`
+            },
+            "/api/core": {
+              changeOrigin: false,
+              rewrite: (path) => path.replace(/^\/api\/core/u, "") || "/",
+              target: `http://127.0.0.1:${requireEnvNumber(
+                process.env.CORE_API_PORT,
+                "CORE_API_PORT"
+              )}`
+            },
             "/api/platform": {
               changeOrigin: false,
               rewrite: (path) => path.replace(/^\/api\/platform/u, "") || "/",

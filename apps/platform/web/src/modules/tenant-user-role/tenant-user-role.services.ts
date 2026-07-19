@@ -2,8 +2,9 @@ import { apiDelete, apiGet, apiPost, apiPut } from "../../shared/api/platform-ap
 import type {
   TenantUserRole,
   TenantUserRoleListFilters,
-  TenantUserRoleLookup,
-  TenantUserRoleSavePayload
+  TenantUserRoleRoleLookup,
+  TenantUserRoleSavePayload,
+  TenantUserRoleUserLookup
 } from "./tenant-user-role.types";
 const path = "/tenant/access/user-roles";
 export function listTenantUserRoles(filters: TenantUserRoleListFilters = {}) {
@@ -12,10 +13,10 @@ export function listTenantUserRoles(filters: TenantUserRoleListFilters = {}) {
   return apiGet<TenantUserRole[]>(`${path}${q.size ? `?${q}` : ""}`, "tenant");
 }
 export function listUserOptions() {
-  return apiGet<TenantUserRoleLookup[]>("/tenant/access/users", "tenant");
+  return apiGet<TenantUserRoleUserLookup[]>("/tenant/access/users", "tenant");
 }
 export function listRoleOptions() {
-  return apiGet<TenantUserRoleLookup[]>("/tenant/access/roles", "tenant");
+  return apiGet<TenantUserRoleRoleLookup[]>("/tenant/access/roles", "tenant");
 }
 export function createTenantUserRole(payload: TenantUserRoleSavePayload) {
   return apiPost<TenantUserRole>(path, toApi(payload), "tenant");
@@ -33,5 +34,5 @@ export function forceDeleteTenantUserRole(id: number) {
   return apiDelete<TenantUserRole>(`${path}/${id}/force`, "tenant");
 }
 function toApi(payload: TenantUserRoleSavePayload) {
-  return { userId: payload.userId, roleId: payload.roleId, status: payload.status };
+  return payload;
 }

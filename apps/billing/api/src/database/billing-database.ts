@@ -81,6 +81,26 @@ const connectionIdleMs = 10 * 60 * 1000;
 const evictionTimer = setInterval(() => void evictIdleBillingDatabases(), 60_000);
 evictionTimer.unref();
 
+export const billingTenantMigrations = [
+  { description: "Billing sales documents and relational line items.", name: salesMigration.key },
+  {
+    description: "Billing purchase documents and relational line items.",
+    name: purchaseMigration.key
+  },
+  {
+    description: "Billing export-sales documents and relational line items.",
+    name: exportSalesMigration.key
+  },
+  {
+    description: "Billing quotations and relational line items.",
+    name: quotationMigration.key
+  },
+  { description: "Billing payment documents.", name: paymentMigration.key },
+  { description: "Billing receipt documents.", name: receiptMigration.key },
+  { description: "Company-owned Billing settings.", name: billingSettingsMigration.key },
+  { description: "Billing dashboard snapshots.", name: dashboardMigration.key }
+] as const;
+
 export function resolveBillingDatabaseName(value: unknown) {
   const requested = typeof value === "string" ? value.trim() : "";
   if (!requested) throw AppError.validation("x-tenant-db is required for Billing database access.");
@@ -129,6 +149,15 @@ export async function bootstrapBillingDatabase(databaseName: string) {
     bootstrapTimeoutMs,
     `Billing database bootstrap timed out after ${bootstrapTimeoutMs}ms for ${name}`
   );
+}
+
+export async function migrateBillingTenantDatabase(databaseName: string) {
+  const name = assertDatabaseName(databaseName);
+  const active = bootstrapping.get(name);
+  if (active) await active.catch(() => undefined);
+  await closeBillingDatabaseConnection(name);
+  migrated.delete(name);
+  await bootstrapBillingDatabase(name);
 }
 
 async function bootstrapBillingDatabaseOnce(name: string) {
@@ -251,6 +280,13 @@ export async function closeAllBillingDatabases() {
   connections.clear();
   migrated.clear();
   await Promise.all(openConnections.map(async (database) => database.destroy()));
+}
+
+async function closeBillingDatabaseConnection(name: string) {
+  const entry = connections.get(name);
+  if (!entry) return;
+  connections.delete(name);
+  await entry.database.destroy();
 }
 
 export async function evictIdleBillingDatabases(now = Date.now()) {

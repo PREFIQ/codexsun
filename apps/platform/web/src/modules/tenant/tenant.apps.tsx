@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { SaveIcon } from "lucide-react";
+import { BlocksIcon, ListChecksIcon, SaveIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@codexsun/ui/components/button";
+import { cn } from "@codexsun/ui/lib/utils";
 import { WorkspaceSelect } from "@codexsun/ui/workspace/select";
 import { WorkspaceShowCard } from "@codexsun/ui/workspace/show";
-import { WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
+import { WorkspaceStatusBadge, WorkspaceSwitchCard } from "@codexsun/ui/workspace/status";
 import { WorkspaceFormField } from "@codexsun/ui/workspace/upsert";
-import { usePlatformAppsQuery } from "../app-registry";
+import { platformAppRegistry } from "../../app/app-registry";
+import { usePlatformAppsQuery, type PlatformApp } from "../app-registry";
 import { updateTenantAppConnections } from "./tenant.services";
 import type { Tenant } from "./tenant.types";
 
@@ -95,13 +97,14 @@ export function TenantAppConnections({
           const locked = app.alwaysEnabled || app.moduleKey === "platform.application";
           const enabled = locked || enabledKeys.includes(app.moduleKey);
           return (
-            <WorkspaceSwitchCard
+            <TenantAppSelectionCard
               key={app.id}
-              ariaLabel={`${app.label} tenant connection`}
+              alwaysEnabled={locked}
+              appId={app.appId}
               checked={enabled}
               description={app.description}
-              disabled={locked}
-              fieldLabel={app.label}
+              label={app.label}
+              moduleKey={app.moduleKey}
               onCheckedChange={(checked) =>
                 setEnabledKeys((current) =>
                   checked
@@ -114,5 +117,68 @@ export function TenantAppConnections({
         })}
       </div>
     </div>
+  );
+}
+
+export function TenantAppSelectionCard({
+  alwaysEnabled,
+  appId,
+  checked,
+  description,
+  label,
+  moduleKey,
+  onCheckedChange
+}: {
+  alwaysEnabled: boolean;
+  appId: PlatformApp["appId"];
+  checked: boolean;
+  description: string;
+  label: string;
+  moduleKey: string;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  const locked = alwaysEnabled || moduleKey === "platform.application";
+  const registry = platformAppRegistry.find(
+    (app) => app.id === appId || app.moduleKey === moduleKey
+  );
+  const Icon = registry?.icon ?? (appId === "task-manager" ? ListChecksIcon : BlocksIcon);
+  const accentClass =
+    registry?.accentClass ?? (appId === "task-manager" ? "bg-violet-600" : "bg-slate-600");
+
+  return (
+    <WorkspaceSwitchCard
+      ariaLabel={`${label} tenant connection`}
+      checked={checked}
+      className={cn(
+        "min-h-40 items-start p-4 opacity-100",
+        checked
+          ? "border-border bg-muted/45 dark:border-border dark:bg-muted/20"
+          : "border-border bg-card"
+      )}
+      disabled={locked}
+      label={
+        <span className="block">
+          <span
+            className={cn(
+              "flex size-10 items-center justify-center rounded-md text-white",
+              accentClass
+            )}
+          >
+            <Icon className="size-5" />
+          </span>
+          <span className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="text-base font-semibold text-foreground">{label}</span>
+            <WorkspaceStatusBadge
+              className="h-5 rounded-full border-0 px-2 text-[11px]"
+              label={checked ? "Enabled" : "Disabled"}
+              showIcon={false}
+              tone={checked ? "success" : "neutral"}
+            />
+          </span>
+        </span>
+      }
+      description={<span className="block text-sm leading-6">{description}</span>}
+      onCheckedChange={onCheckedChange}
+    />
   );
 }

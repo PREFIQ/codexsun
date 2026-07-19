@@ -22,6 +22,5 @@ export function forceDeleteTenantRole(id: number) {
   return apiDelete<TenantRole>(`${path}/${id}/force`, "tenant");
 }
 function toApi(payload: TenantRoleSavePayload) {
-  const { isProtected: _protected, ...value } = payload;
-  return value;
+  return payload;
 }

@@ -41,6 +41,7 @@ export class AuthService {
     return {
       accessToken: signAuthToken({
         email: user.email,
+        name: user.name,
         tenantCode: tenant.tenantCode,
         tenantDbName: tenant.dbName,
         tenantId: tenant.uuid,
@@ -49,6 +50,7 @@ export class AuthService {
         userType: "tenant"
       }),
       email: user.email,
+      name: user.name,
       tenantCode: tenant.tenantCode,
       tenantDbName: tenant.dbName,
       tenantId: tenant.uuid,

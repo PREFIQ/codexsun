@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@codexsun/ui/components/button";
 import { GlobalLoader } from "@codexsun/ui/components/global-loader";
-import { getTenantUserLabel } from "../../shared/api/tenant-context";
+import { getTenantUserIdentity } from "../../shared/api/tenant-context";
 import { useBillingDashboard } from "./dashboard.hooks";
 import type { DashboardRecent } from "./dashboard.types";
 import {
@@ -35,6 +35,7 @@ export function BillingDashboardWorkspace({
 }) {
   const query = useBillingDashboard();
   const dashboard = query.data;
+  const signedInUser = getTenantUserIdentity();
   const openList = (target: BillingDashboardListTarget) => {
     if (onNavigate) {
       onNavigate(target);
@@ -76,7 +77,7 @@ export function BillingDashboardWorkspace({
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border bg-background/90 px-4 py-2 text-sm font-medium">
                 <UserRound className="size-4" />
-                Signed in as {getTenantUserLabel()}
+                Signed in as {signedInUser.name}
               </span>
               {dashboard ? <ProjectionFreshness projectedAt={dashboard.projectedAt} /> : null}
               <Button

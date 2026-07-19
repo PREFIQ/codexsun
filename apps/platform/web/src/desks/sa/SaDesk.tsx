@@ -15,6 +15,7 @@ import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemen
 import { GlobalLoader } from "@codexsun/ui/components/global-loader";
 import { AppOperationsStrip, useAppOperationsQuery } from "../../modules/app-orchestration";
 import type { OrchestratedAppId } from "../../modules/app-orchestration";
+import { logout } from "../../shared/api/platform-api";
 import { AuthGate } from "../../shared/auth/AuthGate";
 
 function lazyWorkspace<Props>(loader: () => Promise<ComponentType<Props>>) {
@@ -129,6 +130,11 @@ export function SaDesk() {
       "",
       `/sa/app-operations?app=${appId}`
     );
+  }
+
+  async function handleLogout() {
+    await logout("sa");
+    window.location.assign("/sa/login");
   }
 
   const menuItems: SidemenuItem[] = [
@@ -273,7 +279,9 @@ export function SaDesk() {
   return (
     <AuthGate desk="sa">
       <SuperLayout
+        homeHref="/"
         menuItems={menuItems}
+        onLogout={handleLogout}
         versionLabel={`v ${__APP_VERSION__}`}
         workspace={page === "task-manager" ? "task-manager" : "platform"}
       >

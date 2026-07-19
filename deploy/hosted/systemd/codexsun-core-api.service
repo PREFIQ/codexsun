@@ -1,0 +1,24 @@
+[Unit]
+Description=CODEXSUN Core API
+After=network-online.target mariadb.service codexsun-platform-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sundar
+Group=sundar
+WorkingDirectory=/home/sundar/codexsun
+EnvironmentFile=/home/sundar/codexsun/.env
+ExecStart=/usr/bin/node /home/sundar/codexsun/dist/apps/core/api/server.js
+Restart=always
+RestartSec=3
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=codexsun-core-api
+
+[Install]
+WantedBy=multi-user.target

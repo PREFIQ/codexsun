@@ -16,7 +16,7 @@ Object.assign(process.env, {
   DEFAULT_TENANT_DOMAIN: `${tenantSlug}.localhost`,
   DEFAULT_TENANT_NAME: "CODEXSUN Bootstrap E2E",
   DEFAULT_TENANT_SLUG: tenantSlug,
-  ENABLE_DEFAULT_TENANT_SEED: "1",
+  ENABLE_DEFAULT_TENANT_SEED: "0",
   NODE_ENV: "test"
 });
 
@@ -25,11 +25,12 @@ const { bootstrapPlatformDatabase, closePlatformDatabase } =
   await import("../../apps/platform/api/src/database/platform-database.js");
 const { closeAllTenantDatabases } =
   await import("../../apps/platform/api/src/database/tenant-database.js");
-const { seedDefaultTenant } =
-  await import("../../apps/platform/api/src/modules/tenant/tenant.seed.js");
-const { bootstrapCoreDatabase, closeCoreDatabase } =
-  await import("../../apps/core/api/src/database/core-database.js");
-const { bootstrapBillingDatabase, closeAllBillingDatabases } =
+const { TenantService } =
+  await import("../../apps/platform/api/src/modules/tenant/tenant.service.js");
+const { DatabaseMaintenanceService } =
+  await import("../../apps/platform/api/src/modules/database-maintenance/database-maintenance.service.js");
+const { closeCoreDatabase } = await import("../../apps/core/api/src/database/core-database.js");
+const { closeAllBillingDatabases } =
   await import("../../apps/billing/api/src/database/billing-database.js");
 
 const admin = await createConnection({
@@ -41,16 +42,37 @@ const admin = await createConnection({
 
 try {
   await bootstrapPlatformDatabase();
-  await seedDefaultTenant();
-  await bootstrapCoreDatabase(tenantDatabaseName);
-  await bootstrapBillingDatabase(tenantDatabaseName);
+  const tenant = await new TenantService().createTenant({
+    corporateId: tenantCode,
+    dbHost: env.DB_HOST,
+    dbName: tenantDatabaseName,
+    dbPort: env.DB_PORT,
+    dbSecretRef: "DB_PASSWORD",
+    dbType: env.DB_DRIVER,
+    dbUser: env.DB_USER,
+    defaultLandingApp: "billing",
+    enabledModuleKeys: ["platform.application", "billing.sales"],
+    mobile: null,
+    payloadSettings: {
+      apps: { enabled: ["platform.application", "billing.sales"] },
+      landing: { app: "billing", mode: "tenant" },
+      seed: { source: "tenant-selected-app-provisioning-e2e" }
+    },
+    primaryDomain: `${tenantSlug}.localhost`,
+    slug: tenantSlug,
+    status: "active",
+    tenantCode,
+    tenantName: "CODEXSUN Bootstrap E2E"
+  });
 
   const initial = await loadState();
   assert.equal(initial.platform.tenants, 1);
   assert.equal(initial.platform.tenantDomains, 1);
-  assert.equal(initial.platform.subscriptions, 1);
+  assert.equal(initial.platform.subscriptions, 0);
   assert.ok(initial.platform.apps > 0);
   assert.ok(initial.platform.plans > 0);
+  assert.equal(initial.platform.completedRuns, 1);
+  assert.equal(initial.platform.runningRuns, 0);
   assert.equal(initial.tenant.moduleSettings, 2);
   assert.equal(initial.tenant.enabledBillingModules, 1);
   assert.equal(initial.tenant.companies, 1);
@@ -60,6 +82,21 @@ try {
   assert.equal(initial.tenant.demoSuppliers, 1);
   assert.equal(initial.tenant.billingSettings, 1);
   assert.equal(initial.tenant.billingTables, 8);
+  assert.equal(initial.tenant.mailTables, 0);
+  assert.equal(initial.tenant.migrationCount, 20);
+
+  await admin.changeUser({ database: masterDatabaseName });
+  await admin.query(`DROP DATABASE \`${tenantDatabaseName}\``);
+  const reinstalledRun = await new DatabaseMaintenanceService().reinstallTenant(tenant.id, {
+    note: "Warm-cache tenant reinstall E2E."
+  });
+  assert.equal(reinstalledRun?.status, "completed");
+  const reinstalled = await loadState();
+  assert.deepEqual(reinstalled.tenant, initial.tenant);
+  assert.equal(reinstalled.platform.completedRuns, 2);
+  assert.equal(reinstalled.platform.runningRuns, 0);
+
+  await insertLegacyDuplicateRun(tenant.id);
 
   await closeAllBillingDatabases();
   await closeCoreDatabase();
@@ -67,15 +104,16 @@ try {
   await closePlatformDatabase();
 
   await bootstrapPlatformDatabase();
-  await seedDefaultTenant();
-  await bootstrapCoreDatabase(tenantDatabaseName);
-  await bootstrapBillingDatabase(tenantDatabaseName);
 
   const restarted = await loadState();
-  assert.deepEqual(restarted, initial);
+  assert.deepEqual(restarted.tenant, initial.tenant);
+  assert.deepEqual(withoutRunCounts(restarted.platform), withoutRunCounts(initial.platform));
+  assert.equal(restarted.platform.completedRuns, 3);
+  assert.equal(restarted.platform.runningRuns, 0);
   console.log("Platform/Core/Billing bootstrap E2E passed", {
     masterDatabaseName,
     state: restarted,
+    tenantId: tenant.id,
     tenantDatabaseName
   });
 } finally {
@@ -93,7 +131,9 @@ async function loadState() {
   await admin.changeUser({ database: masterDatabaseName });
   const platform = {
     apps: await count("platform_apps"),
+    completedRuns: await countWhere("database_maintenance_runs", "status = 'completed'"),
     plans: await count("plans"),
+    runningRuns: await countWhere("database_maintenance_runs", "status = 'running'"),
     subscriptions: await count("subscriptions"),
     tenantDomains: await count("tenant_domains"),
     tenants: await count("tenants")
@@ -118,6 +158,13 @@ async function loadState() {
       "module_settings",
       "module_key = 'billing.sales' AND enabled = 1"
     ),
+    mailTables: await countNamedTables([
+      "mail_settings",
+      "mail_messages",
+      "mail_attachments",
+      "mail_events"
+    ]),
+    migrationCount: await count("schema_migrations"),
     moduleSettings: await count("module_settings")
   };
   return { platform, tenant };
@@ -142,4 +189,33 @@ async function countBillingRootTables() {
     "SELECT COUNT(*) AS row_count FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('billing_sales','billing_purchases','billing_export_sales','billing_quotations','billing_payments','billing_receipts','billing_settings','billing_dashboard_snapshots')"
   );
   return Number(rows[0]?.row_count ?? 0);
+}
+
+async function countNamedTables(tableNames: string[]) {
+  const placeholders = tableNames.map(() => "?").join(",");
+  const [rows] = await admin.query<Array<RowDataPacket & { row_count: number | string }>>(
+    `SELECT COUNT(*) AS row_count FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (${placeholders})`,
+    tableNames
+  );
+  return Number(rows[0]?.row_count ?? 0);
+}
+
+async function insertLegacyDuplicateRun(tenantId: number) {
+  await admin.changeUser({ database: masterDatabaseName });
+  const createdAt = new Date("2026-07-18T16:41:26.000Z");
+  const values = [
+    ["e2e00001", "running", null],
+    ["e2e00002", "completed", createdAt]
+  ] as const;
+  for (const [uuid, status, completedAt] of values) {
+    await admin.query(
+      "INSERT INTO database_maintenance_runs (uuid, database_scope, target_key, database_name, operation, status, details_json, created_at, completed_at) VALUES (?, 'tenant', ?, ?, 'migrate', ?, '{}', ?, ?)",
+      [uuid, String(tenantId), tenantDatabaseName, status, createdAt, completedAt]
+    );
+  }
+}
+
+function withoutRunCounts(platform: Awaited<ReturnType<typeof loadState>>["platform"]) {
+  const { completedRuns: _completedRuns, runningRuns: _runningRuns, ...stable } = platform;
+  return stable;
 }

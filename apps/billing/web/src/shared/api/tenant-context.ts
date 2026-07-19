@@ -47,18 +47,29 @@ export function getFinancialYearId(): number | null {
 }
 
 export function getTenantUserLabel(): string {
+  return getTenantUserIdentity().name;
+}
+
+export function getTenantUserIdentity(): { email: string; name: string } {
   const token = getToken("tenant");
-  if (!token) return "user";
+  if (!token) return { email: "", name: "Tenant User" };
 
   try {
     const encoded = token.split(".")[1];
-    if (!encoded) return "user";
-    const payload = JSON.parse(atob(encoded.replace(/-/g, "+").replace(/_/g, "/"))) as {
+    if (!encoded) return { email: "", name: "Tenant User" };
+    const normalized = encoded.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(padded)) as {
       email?: unknown;
+      name?: unknown;
     };
-    if (typeof payload.email !== "string" || !payload.email.trim()) return "user";
-    return payload.email.split("@")[0]?.trim() || "user";
+    const email = typeof payload.email === "string" ? payload.email.trim() : "";
+    const name = typeof payload.name === "string" ? payload.name.trim() : "";
+    return {
+      email,
+      name: name || email.split("@")[0]?.trim() || "Tenant User"
+    };
   } catch {
-    return "user";
+    return { email: "", name: "Tenant User" };
   }
 }

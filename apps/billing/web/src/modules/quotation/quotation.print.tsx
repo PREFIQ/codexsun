@@ -35,7 +35,7 @@ export function QuotationPrintRoutePage() {
     };
   }, [autoPrint, quotationQuery.data, settingsQuery.isLoading]);
 
-  if (quotationQuery.isLoading) {
+  if (quotationQuery.isLoading || settingsQuery.isLoading) {
     return <GlobalLoader />;
   }
 
@@ -84,7 +84,11 @@ export function QuotationPrintDocument({
   copy: QuotationPrintCopy;
   quotation: Quotation;
 }) {
-  const addressMode = useBillingSettings().data?.printing.addressMode ?? "billing_and_shipping";
+  const layout = useBillingSettings().data?.layout;
+  const showPo = layout?.usePo ?? false;
+  const showDc = layout?.useDc ?? false;
+  const showColour = layout?.useColour ?? false;
+  const showSize = layout?.useSize ?? false;
   const pages = chunkItems(quotation.items, 12);
 
   return (
@@ -98,27 +102,16 @@ export function QuotationPrintDocument({
           isMultiPage={pages.length > 1}
           pageIndex={pageIndex}
           pageCount={pages.length}
-          addressMode={addressMode}
+          showColour={showColour}
+          showDc={showDc}
+          showPo={showPo}
+          showSize={showSize}
           quotation={quotation}
         />
       ))}
     </WorkspacePrintSheet>
   );
 }
-
-const quotationPrintHeadings = [
-  "S.no",
-  "Particulars",
-  "HSN",
-  "PO",
-  "DC",
-  "Qty",
-  "Rate",
-  "Taxable",
-  "GST %",
-  "GST TAX",
-  "Total"
-];
 
 function QuotationPrintPage({
   copy,
@@ -127,7 +120,10 @@ function QuotationPrintPage({
   isMultiPage,
   pageIndex,
   pageCount,
-  addressMode,
+  showColour,
+  showDc,
+  showPo,
+  showSize,
   quotation
 }: {
   copy: QuotationPrintCopy;
@@ -136,11 +132,29 @@ function QuotationPrintPage({
   isMultiPage: boolean;
   pageIndex: number;
   pageCount: number;
-  addressMode: "billing_only" | "billing_and_shipping";
+  showColour: boolean;
+  showDc: boolean;
+  showPo: boolean;
+  showSize: boolean;
   quotation: Quotation;
 }) {
   const splitTax = quotation.taxType === "cgst-sgst";
   const blankRows = isLastPage ? Math.max(0, 12 - items.length) : 0;
+  const headings = [
+    "S.no",
+    ...(showPo ? ["PO"] : []),
+    ...(showDc ? ["DC"] : []),
+    "Particulars",
+    "HSN Code",
+    ...(showColour ? ["Colour"] : []),
+    ...(showSize ? ["Size"] : []),
+    "Qty",
+    "Rate",
+    "Taxable",
+    "GST %",
+    "GST TAX",
+    "Total"
+  ];
 
   return (
     <article
@@ -170,22 +184,12 @@ function QuotationPrintPage({
             />
           </div>
           <div className="border-l border-slate-300 px-2 py-2">
-            {addressMode === "billing_only" ? (
-              <div className="space-y-1">
-                <PrintPair label="Quotation No:">{quotation.quotationNumber}</PrintPair>
-                <PrintPair label="Date:">{formatDate(quotation.date)}</PrintPair>
-                <PrintPair label="Work Order:">{quotation.workOrderNo || "-"}</PrintPair>
-              </div>
-            ) : (
-              <>
-                <div className="font-medium">Buyer (Ship to)</div>
-                <QuotationBuyerAddress
-                  address={quotation.shippingAddressDetails}
-                  gstin={quotation.customerGstin}
-                  name={quotation.customerName}
-                />
-              </>
-            )}
+            <div className="mb-1 font-medium">Document Details</div>
+            <div className="space-y-1">
+              <PrintPair label="Quotation No:">{quotation.quotationNumber}</PrintPair>
+              <PrintPair label="Date:">{formatDate(quotation.date)}</PrintPair>
+              <PrintPair label="Work Order No:">{quotation.workOrderNo || "-"}</PrintPair>
+            </div>
           </div>
         </section>
 
@@ -193,7 +197,7 @@ function QuotationPrintPage({
           <table className="w-full border-collapse text-[10px]">
             <thead>
               <tr className="border-b border-slate-300">
-                {quotationPrintHeadings.map((heading) => (
+                {headings.map((heading) => (
                   <th
                     key={heading}
                     className="border-r border-slate-300 px-2 py-2 text-center font-semibold last:border-r-0"
@@ -208,25 +212,41 @@ function QuotationPrintPage({
                 <tr>
                   <td
                     className="border-b border-slate-300 px-2 py-1 text-left font-semibold"
-                    colSpan={quotationPrintHeadings.length}
+                    colSpan={headings.length}
                   >
                     Carry forward from previous page
                   </td>
                 </tr>
               ) : null}
               {items.map(({ item, index }) => (
-                <QuotationPrintItemRow key={item.id} item={item} index={index} />
+                <QuotationPrintItemRow
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  showColour={showColour}
+                  showDc={showDc}
+                  showPo={showPo}
+                  showSize={showSize}
+                />
               ))}
               {Array.from({ length: blankRows }).map((_, index) => (
-                <QuotationPrintBlankRow key={`blank-${pageIndex}-${index}`} />
+                <QuotationPrintBlankRow
+                  key={`blank-${pageIndex}-${index}`}
+                  columnCount={headings.length}
+                />
               ))}
               {isLastPage ? (
-                <QuotationPrintTotalRow quotation={quotation} />
+                <QuotationPrintTotalRow
+                  quotation={quotation}
+                  leadingColumnCount={
+                    3 + Number(showPo) + Number(showDc) + Number(showColour) + Number(showSize)
+                  }
+                />
               ) : (
                 <tr>
                   <td
                     className="border-t border-slate-300 px-2 py-2 text-right font-semibold"
-                    colSpan={quotationPrintHeadings.length}
+                    colSpan={headings.length}
                   >
                     To be continued...
                   </td>
@@ -292,27 +312,40 @@ function QuotationPrintPage({
 
 function QuotationPrintItemRow({
   item,
-  index
+  index,
+  showColour,
+  showDc,
+  showPo,
+  showSize
 }: {
   item: Quotation["items"][number];
   index: number;
+  showColour: boolean;
+  showDc: boolean;
+  showPo: boolean;
+  showSize: boolean;
 }) {
   return (
     <tr className="align-top">
       <td className="border-r border-slate-200 px-2 py-2 text-center">{index + 1}</td>
+      {showPo ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.poNo || "-"}</td>
+      ) : null}
+      {showDc ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.dcNo || "-"}</td>
+      ) : null}
       <td className="border-r border-slate-200 px-2 py-2">
         <div className="font-medium">
           {[item.productName, item.description].filter(Boolean).join(" - ")}
         </div>
-        <div>
-          {[item.colour ? `Colour : ${item.colour}` : "", item.size ? `Size : ${item.size}` : ""]
-            .filter(Boolean)
-            .join(" - ")}
-        </div>
       </td>
       <td className="border-r border-slate-200 px-2 py-2 text-center">{item.hsnCode || "-"}</td>
-      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.poNo || "-"}</td>
-      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.dcNo || "-"}</td>
+      {showColour ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.colour || "-"}</td>
+      ) : null}
+      {showSize ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.size || "-"}</td>
+      ) : null}
       <td className="border-r border-slate-200 px-2 py-2 text-center">{item.quantity}</td>
       <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.rate)}</td>
       <td className="border-r border-slate-200 px-2 py-2 text-right">
@@ -325,23 +358,26 @@ function QuotationPrintItemRow({
   );
 }
 
-function QuotationPrintBlankRow() {
+function QuotationPrintBlankRow({ columnCount }: { columnCount: number }) {
   return (
     <tr className="h-6">
-      {quotationPrintHeadings.map((heading, index) => (
-        <td
-          key={heading}
-          className={index === quotationPrintHeadings.length - 1 ? "" : "border-r border-slate-200"}
-        />
+      {Array.from({ length: columnCount }).map((_, index) => (
+        <td key={index} className={index === columnCount - 1 ? "" : "border-r border-slate-200"} />
       ))}
     </tr>
   );
 }
 
-function QuotationPrintTotalRow({ quotation }: { quotation: Quotation }) {
+function QuotationPrintTotalRow({
+  leadingColumnCount,
+  quotation
+}: {
+  leadingColumnCount: number;
+  quotation: Quotation;
+}) {
   return (
     <tr className="border-t border-slate-300 font-semibold">
-      <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={5}>
+      <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={leadingColumnCount}>
         Total
       </td>
       <td className="border-r border-slate-200 px-2 py-2 text-center">

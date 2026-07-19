@@ -9,7 +9,8 @@ import type {
 } from "./tenant.types.js";
 import { resolveEnabledApps, resolveLandingApp } from "../app-registry/index.js";
 import { EntitlementAccessService } from "../entitlement/entitlement.access.js";
-import { provisionTenantDatabase, provisionTenantStorage } from "./tenant.seed.js";
+import { provisionTenantStorage } from "./tenant.seed.js";
+import { DatabaseMaintenanceService } from "../database-maintenance/database-maintenance.service.js";
 import { env } from "../../env.js";
 import {
   defaultTenantDomainForSlug,
@@ -19,7 +20,8 @@ import {
 export class TenantService {
   constructor(
     private readonly repository = new TenantRepository(),
-    private readonly access = new EntitlementAccessService()
+    private readonly access = new EntitlementAccessService(),
+    private readonly maintenance = new DatabaseMaintenanceService()
   ) {}
 
   listTenants() {
@@ -61,7 +63,9 @@ export class TenantService {
   async createTenant(input: TenantSavePayload) {
     const tenant = await this.repository.create(this.normalize(input));
     await provisionTenantStorage(tenant);
-    await provisionTenantDatabase(tenant);
+    await this.maintenance.setupTenant(tenant.id, {
+      note: "Automatic provisioning after tenant creation."
+    });
     return tenant;
   }
 
@@ -69,7 +73,9 @@ export class TenantService {
     const tenant = await this.repository.update(id, this.normalize(input));
     if (tenant) {
       await provisionTenantStorage(tenant);
-      await provisionTenantDatabase(tenant);
+      await this.maintenance.reinstallTenant(tenant.id, {
+        note: "Automatic provisioning after tenant update."
+      });
     }
     return tenant;
   }

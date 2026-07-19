@@ -1,5 +1,8 @@
 export { tenantUserRoleModule } from "./tenant-user-role.module.js";
-export { migrateTenantUserRoleModule } from "./tenant-user-role.migration.js";
+export {
+  migrateTenantUserRoleModule,
+  tenantUserRoleMigration
+} from "./tenant-user-role.migration.js";
 export { seedTenantUserRoleModule } from "./tenant-user-role.seed.js";
 export type {
   TenantUserRole,

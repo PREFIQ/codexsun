@@ -145,7 +145,10 @@ export async function migratePlatformDatabase() {
   await database
     .insertInto("codexsun_migrations")
     .ignore()
-    .values({ name: "001_platform_foundation" })
+    .values([
+      { name: "001_platform_foundation" },
+      { name: "005_database_maintenance_run_lifecycle" }
+    ])
     .execute();
   console.info("[database] platform migration applied: 001_platform_foundation");
 }

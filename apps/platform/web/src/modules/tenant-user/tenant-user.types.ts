@@ -8,5 +8,10 @@ export type TenantUser = {
   status: TenantUserStatus;
   uuid: string;
 };
-export type TenantUserSavePayload = Omit<TenantUser, "id" | "uuid">;
+export type TenantUserSavePayload = {
+  email: string;
+  name: string;
+  password?: string;
+  status: TenantUserStatus;
+};
 export type TenantUserListFilters = { search?: string };

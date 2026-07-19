@@ -8,5 +8,10 @@ export type TenantPermission = {
   status: TenantPermissionStatus;
   uuid: string;
 };
-export type TenantPermissionSavePayload = Omit<TenantPermission, "id" | "uuid">;
+export type TenantPermissionSavePayload = {
+  description: string;
+  key: string;
+  label: string;
+  status: TenantPermissionStatus;
+};
 export type TenantPermissionListFilters = { search?: string };

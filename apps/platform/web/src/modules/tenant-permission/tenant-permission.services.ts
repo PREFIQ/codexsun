@@ -26,6 +26,5 @@ export function forceDeleteTenantPermission(id: number) {
   return apiDelete<TenantPermission>(`${path}/${id}/force`, "tenant");
 }
 function toApi(payload: TenantPermissionSavePayload) {
-  const { isProtected: _protected, ...value } = payload;
-  return value;
+  return payload;
 }

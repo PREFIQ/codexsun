@@ -38,7 +38,7 @@ import {
   type LandingAppOption
 } from "@codexsun/core-web/modules/organisation/default-company";
 import { listFinancialYears } from "@codexsun/core-web/modules/organisation/financial-year";
-import { getToken, setTenantDbName, setTenantId } from "../../shared/api/platform-api";
+import { getToken, logout } from "../../shared/api/platform-api";
 import { setPlatformDocumentTitle } from "../../shared/document/PageTitle";
 
 function lazyWorkspace<Props>(loader: () => Promise<ComponentType<Props>>) {
@@ -335,6 +335,7 @@ const ACCOUNTING_YEAR_CONTEXT_STORAGE_KEY = "codexsun.tenant.financial-year-id";
 
 export function AppDesk() {
   const queryClient = useQueryClient();
+  const signedInUser = signedInTenantUser();
   const [page, setPage] = useState<AppPage>(() => pageFromUrl(readPublishedLandingApp()));
   const [publishedLandingApp, setPublishedLandingApp] = useState<PlatformAppId | null>(() =>
     readPublishedLandingApp()
@@ -432,13 +433,6 @@ export function AppDesk() {
   }, [enabledApps, publishedLandingApp]);
 
   useEffect(() => {
-    if (runtime?.tenant) {
-      setTenantId(runtime.tenant.uuid);
-      setTenantDbName(runtime.tenant.dbName);
-    }
-  }, [runtime?.tenant]);
-
-  useEffect(() => {
     if (!selectedCompany) {
       setCompanyContextId(null);
       return;
@@ -486,6 +480,11 @@ export function AppDesk() {
   function publishLandingApp(nextLandingApp: PlatformAppId) {
     setPublishedLandingApp(nextLandingApp);
     window.localStorage.setItem(LANDING_APP_STORAGE_KEY, nextLandingApp);
+  }
+
+  async function handleLogout() {
+    await logout("tenant");
+    window.location.assign("/login");
   }
 
   function updateGlobalDefault(companyId: number, financialYearId: number) {
@@ -613,14 +612,19 @@ export function AppDesk() {
           title: selectedCompany?.name ?? activeWorkspaceTitle
         }}
         headerTitle={activePageTitle}
+        homeHref="/"
         menuItems={menuItems}
+        onLogout={handleLogout}
         subtitle={null}
         title={null}
+        user={signedInUser}
         versionLabel={`v ${__APP_VERSION__}`}
         workspaceItems={workspaceItems}
       >
         <main className="mx-auto w-[calc(100%-2rem)] max-w-[92rem] space-y-5 py-4 lg:w-[calc(100%-3rem)] lg:py-5">
-          {safePage === "application.overview" ? <ApplicationOverview /> : null}
+          {safePage === "application.overview" ? (
+            <ApplicationOverview signedInUser={signedInUser} />
+          ) : null}
           {safePage === "application.landing" ? (
             <LandingDesk
               enabledApps={enabledApps}
@@ -904,9 +908,11 @@ function LandingDesk({
   );
 }
 
-function ApplicationOverview() {
-  const signedInLabel = signedInTenantLabel();
-
+function ApplicationOverview({
+  signedInUser
+}: {
+  signedInUser: ReturnType<typeof signedInTenantUser>;
+}) {
   return (
     <section className="space-y-5">
       <div className="overflow-hidden rounded-md border bg-card shadow-sm">
@@ -928,7 +934,9 @@ function ApplicationOverview() {
             </div>
             <div className="inline-flex w-fit items-center gap-2 rounded-full border bg-background/90 px-4 py-2 text-sm font-medium shadow-sm">
               <UserRoundIcon className="size-4" />
-              <span>Signed in as {signedInLabel}</span>
+              <span>
+                Signed in as {signedInUser.name} · {signedInUser.email}
+              </span>
             </div>
           </div>
         </div>
@@ -1110,23 +1118,44 @@ function recordIdFromUrl() {
   return new URLSearchParams(window.location.search).get("record") || undefined;
 }
 
-function signedInTenantLabel() {
+function signedInTenantUser() {
   const token = getToken("tenant");
-  const email = token ? decodeTokenEmail(token) : "";
-  return email ? email.split("@")[0] : "user";
+  const identity = token ? decodeTokenIdentity(token) : null;
+  const email = identity?.email || "user@codexsun.app";
+  const name = identity?.name || email.split("@")[0] || "User";
+  return {
+    email,
+    fallback: userInitials(name),
+    name
+  };
 }
 
-function decodeTokenEmail(token: string) {
+function decodeTokenIdentity(token: string) {
   try {
     const encoded = token.split(".")[1];
-    if (!encoded) return "";
+    if (!encoded) return null;
     const payload = JSON.parse(atob(encoded.replace(/-/g, "+").replace(/_/g, "/"))) as {
       email?: unknown;
+      name?: unknown;
     };
-    return typeof payload.email === "string" ? payload.email : "";
+    if (typeof payload.email !== "string" || !payload.email.trim()) return null;
+    return {
+      email: payload.email.trim(),
+      name: typeof payload.name === "string" ? payload.name.trim() : ""
+    };
   } catch {
-    return "";
+    return null;
   }
+}
+
+function userInitials(name: string) {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+  return initials || "U";
 }
 
 function renderOwnedLocationPage(page: AppPage) {

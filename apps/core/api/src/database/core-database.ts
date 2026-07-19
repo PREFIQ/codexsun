@@ -26,6 +26,16 @@ const connectionIdleMs = 10 * 60 * 1000;
 const evictionTimer = setInterval(() => void evictIdleCoreDatabases(), 60_000);
 evictionTimer.unref();
 
+export const coreTenantMigrations = [
+  {
+    description: "Flatten legacy Core table names before module-owned migrations.",
+    name: "003_flatten_core_table_names"
+  },
+  { description: commonMigration.description, name: commonMigration.key },
+  { description: organisationMigration.description, name: organisationMigration.key },
+  { description: masterMigration.description, name: masterMigration.key }
+] as const;
+
 export function resolveCoreDatabaseName(value: unknown) {
   const requested = typeof value === "string" ? value.trim() : "";
   if (!requested) throw new Error("x-tenant-db is required for Core database access.");
@@ -98,6 +108,15 @@ export async function bootstrapCoreDatabase(databaseName: string) {
   }
 }
 
+export async function migrateCoreTenantDatabase(databaseName: string) {
+  const name = resolveCoreDatabaseName(databaseName);
+  const active = bootstrapping.get(name);
+  if (active) await active.catch(() => undefined);
+  await closeCoreDatabaseConnection(name);
+  migrated.delete(name);
+  await bootstrapCoreDatabase(name);
+}
+
 async function recordCoreMigration(database: Kysely<CoreDatabase>, name: string) {
   await sql`INSERT IGNORE INTO schema_migrations (name) VALUES (${name})`.execute(database);
 }
@@ -148,6 +167,13 @@ export async function closeCoreDatabase() {
   connections.clear();
   migrated.clear();
   await Promise.all(open.map((database) => database.destroy()));
+}
+
+async function closeCoreDatabaseConnection(name: string) {
+  const entry = connections.get(name);
+  if (!entry) return;
+  connections.delete(name);
+  await entry.database.destroy();
 }
 
 export async function evictIdleCoreDatabases(now = Date.now()) {

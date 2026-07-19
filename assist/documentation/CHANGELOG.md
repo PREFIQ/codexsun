@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.36
+Current version: 1.0.37
 
-Release tag: v-1.0.36
+Release tag: v-1.0.37
 
-Changelog label: v 1.0.36
+Changelog label: v 1.0.37
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -20,7 +20,205 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
 
+## v-1.0.37
+
+### [v 1.0.37] 2026-07-19 1:39 pm - Billing-First Public Product Experience
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Bumped workspace version to 1.0.37.
+- Repositioned the Platform-owned public application site around a billing-first product story covering quotations,
+  invoices, GST-ready document preparation, e-way bills, e-invoices, sales, purchases, receipts, payments, ledgers,
+  receivables, reports, and digital document history.
+- Rewrote Home, Billing, Features, Security, Blog, Updates, About, Contact, Privacy, and Terms with practical content for
+  billing staff, accounts teams, business owners, new-employee onboarding, responsibility changes, and staff handovers.
+- Removed tenant-architecture, multi-tenant, multi-company, and industry-pack marketing language from the rendered public
+  experience while retaining the existing backend-driven brand, theme, login, and connected-site contract.
+- Added reusable billing editorial data for invoice, compliance, accounts, monitoring, automation, handover, and digital
+  documentation stories without moving application business behavior outside its owning modules.
+- Added colour-coded billing and accounts cards, animated live-status indicators, rotating control rings, document-flow
+  interactions, responsive hover states, and reduced-motion-safe fallbacks.
+- Limited AI and maintenance messaging to supporting concerns: reviewed assistance for repetitive preparation and
+  unobtrusive background processing for exports, integrations, documents, and service operations.
+- Added a CODEXSUN fallback brand for an unconfigured local public portal while preserving configured organisation branding.
+- Verified formatting, Platform Web lint and TypeScript, Platform module boundaries, root dependency layout, version
+  alignment, production build output, all public routes, billing-language exclusions, and desktop/mobile rendering.
+
 ## v-1.0.36
+
+### [v 1.0.36] 2026-07-19 - Billing-First Public Product Story
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Reworked the complete public application site around invoicing, e-way bills, e-invoices, accounts, live monitoring,
+  staff controls, handovers, workflow accuracy, and digital documents.
+- Removed tenant-architecture, multi-tenant, and industry-pack language from customer-facing copy while preserving the
+  existing backend-driven branding and application entry contract.
+- Added colour-coded billing content, animated document-flow cues, live status accents, and reduced-motion-safe
+  interactions across the public pages.
+- Kept maintenance and AI as supporting product concerns rather than the primary marketing story.
+
+### [v 1.0.36] 2026-07-19 - Rich Tenant Product Experience
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Upgraded the tenant-aware public application site with richer product storytelling, tenant-derived workspace previews,
+  progressive-growth journeys, operational outcomes, editorial blog presentation, release guidance, support preparation,
+  page-owned FAQs, and expanded privacy and terms content.
+- Added and wired a dedicated `/security` page covering domain-based tenant resolution, authenticated access, role and
+  permission scope, tenant database routing, audit expectations, and evidence-based assurance without unsupported
+  certification claims.
+- Expanded the shared tenant-site visual system with responsive product-preview, security-model, capability, growth,
+  editorial, FAQ, assurance, and legal content blocks while preserving the tenant portal module as the only public data
+  contract.
+
+### [v 1.0.36] 2026-07-19 - Tenant-Aware Public Application Pages
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Refactored the Platform tenant home into an extensible public application-site composition with tenant-aware context,
+  shared navigation and footer blocks, landing sections, and a reusable page template under `src/public/tenant-site`.
+- Added and wired public Workspace, Features, Blog, Updates, About, Contact, Privacy, and Terms pages. Every page resolves
+  the current tenant's domain branding, theme, content, login route, and connected public-site URL through the existing
+  tenant portal read contract.
+- Expanded the application footer into standard Workspace, Company, and Application navigation groups without coupling
+  the app-owned public pages to the separate Sites application.
+
+### [v 1.0.36] 2026-07-19 - Platform Tenant Home Public Ownership
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Moved the tenant-facing Platform home page and its page stylesheet from the tenant portal module into
+  `apps/platform/web/src/public`, while keeping tenant portal data access and types owned by the module.
+- Updated the `/` route to lazy-load the new `public/tenant-home.tsx` entry directly.
+
+### [v 1.0.36] 2026-07-19 - Platform Dashboard Home Correction
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Corrected the shared dashboard Home action to return to the Platform root on the current app origin. Local access
+  from `http://127.0.0.1:7020` now returns to `http://127.0.0.1:7020/` instead of the public Sites hostname.
+
+### [v 1.0.36] 2026-07-19 - Dashboard Header Actions
+
+#### Database Changes
+
+- Database update: No.
+
+#### App Codebase Changes
+
+- Removed the unused desk-tools suitcase control and the hardcoded notification count from the shared dashboard top
+  bar.
+- Dashboard Home now resolves the tenant-configured public site with the deployed Codexsun public-site origin as its
+  fallback, and top-bar Logout now closes the active desk session before returning to its login page.
+
+### [v 1.0.36] 2026-07-18 10:52 pm - Warm-Cache Tenant Reinstall Repair
+
+#### Database Changes
+
+- Database update: No new schema definition. Existing tenant databases can be repaired through the same managed
+  setup/reinstall path.
+- Core and Billing maintenance lifecycles now invalidate only the target tenant's in-process bootstrap state before
+  rerunning their owned migrations and repeatable seeds. This restores the complete selected-app schema even when the
+  database was dropped or recreated while the Platform API remained running.
+
+#### App Codebase Changes
+
+- Tenant app composition now calls the forced Core and Billing tenant migration contracts for every managed setup,
+  reinstall, safe migration, tenant save/update, and database CLI migration.
+- Expanded the bootstrap E2E to warm both app caches, drop the tenant database, run Re-install in the same process,
+  and verify the complete 20-migration Billing schema is rebuilt with no running maintenance rows.
+
+### [v 1.0.36] 2026-07-18 10:32 pm - Selected-App Tenant Provisioning Lifecycle
+
+#### Database Changes
+
+- Tenant creation, update, setup, reinstall, safe migration, and database CLI migration now apply the selected app
+  lifecycle in dependency order: Platform tenant foundation first, Core prerequisites before Billing, Billing-owned
+  migrations and repeatable seeds next, and Mail only when Mail is enabled.
+- Billing-selected tenants now receive the complete 20-row migration ledger and all Core/Billing tables during the
+  initial tenant save instead of stopping at the Platform/Mail foundation.
+- Database maintenance operations now complete or fail their original run row. The Platform migration removes the
+  historical duplicate `running` row when its exact matching terminal row was written at the same timestamp.
+- Existing tenant data is preserved. Re-running the tenant migration is required to install missing selected-app
+  tables in already-created tenant databases.
+
+#### App Codebase Changes
+
+- Added public Core and Billing tenant database lifecycle exports and a Platform composition sequence that consumes
+  module-owned migrations without moving schema behavior out of the owning applications.
+- Tenant database migration plans now include the complete selected-app plan, so pending migration status reflects
+  Core, Billing, and Mail requirements rather than Platform foundation migrations alone.
+- Expanded the bootstrap E2E to create a Billing-selected tenant through the same Tenant Service save path, verify all
+  required tables and 20 migrations, confirm Mail remains uninstalled when not selected, and validate both run
+  finalization and legacy-run reconciliation across restart.
+
+### [v 1.0.36] 2026-07-18 10:09 pm - Tenant App Selection Cards
+
+#### Database Changes
+
+- Database update: No. Tenant app activation continues to use the existing registry and tenant connection contracts.
+
+#### App Codebase Changes
+
+- Reworked Tenant app-selection cards in both show and upsert flows with the established three-column tile layout,
+  app-specific icons, Enabled/Disabled status pills, descriptions, and top-aligned activation switches.
+- Kept the Application connection visibly enabled and locked, preserved landing-app selection and save behavior, and
+  added an iconless option to the shared workspace status badge for compact card statuses.
+
+### [v 1.0.36] 2026-07-18 9:59 pm - Established Login Experience Restored
+
+#### Database Changes
+
+- Database update: No. Authentication persistence and API contracts are unchanged.
+
+#### App Codebase Changes
+
+- Restored the established shared `AuthLayout` experience for `/login`, `/sa/login`, and the shared admin login route,
+  including the CODEXSUN brand mark, desk-specific badge, design-system fields, submit button, loading state, and error
+  presentation.
+- Removed the replacement public-site login markup, tenant-portal branding request, cross-login links, and its obsolete
+  page-specific stylesheet without changing login submission, development auto-login, or post-login destinations.
+
+### [v 1.0.36] 2026-07-18 9:40 pm - Same-Origin Core and Billing API Routing
+
+#### Database Changes
+
+- Database update: No. This fix changes browser-to-API routing only.
+
+#### App Codebase Changes
+
+- Replaced browser-facing loopback Core and Billing API URLs with same-origin `/api/core` and `/api/billing` gateway
+  paths so Platform works from `127.0.0.1:7020`, `app.codexsun.test`, tenant app domains, and `app.codexsun.com` without
+  CORS exceptions.
+- Added Core and Billing proxying to their local Vite entry points, the Platform Vite server, and the hosted nginx
+  Platform server while preserving existing tenant authorization and database-context headers.
+- Added hosted Core and Billing API systemd units and deployment commands required by the production API proxies.
+- Documented same-origin Platform/Core/Billing API routing and hosted verification commands.
 
 ### [v 1.0.36] 2026-07-18 2:40 pm - Marketing and Tenant App Portal Separation
 

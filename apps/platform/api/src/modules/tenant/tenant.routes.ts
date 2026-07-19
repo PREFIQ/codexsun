@@ -4,7 +4,6 @@ import { ok, registerContractRoute } from "@codexsun/framework/http";
 import { TenantService } from "./tenant.service.js";
 import type { TenantSavePayload } from "./tenant.types.js";
 
-const tenantService = new TenantService();
 const portalContentSchema = z.object({
   description: z.string(),
   label: z.string(),
@@ -26,6 +25,7 @@ function notFound(requestId: string) {
 }
 
 export async function registerTenantRoutes(app: FastifyInstance) {
+  const tenantService = new TenantService();
   registerContractRoute(app, {
     method: "GET",
     url: "/public/app-portal",

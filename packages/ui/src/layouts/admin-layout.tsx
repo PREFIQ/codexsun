@@ -17,6 +17,8 @@ import type { SidemenuItem } from "../blocks/menu/sidemenu/sub/sidemenu-section"
 type AdminLayoutProps = {
   actions?: ReactNode;
   children: ReactNode;
+  homeHref?: string;
+  onLogout?: () => void | Promise<void>;
   subtitle?: ReactNode;
   title?: ReactNode;
   versionLabel?: string;
@@ -90,6 +92,8 @@ const adminWorkspaceItems = [
 export function AdminLayout({
   actions,
   children,
+  homeHref = "/",
+  onLogout,
   subtitle = "Internal staff workspace for support and operations.",
   title = "Staff Admin Desk",
   versionLabel
@@ -102,9 +106,10 @@ export function AdminLayout({
         title: "Staff Admin Desk"
       }}
       headerTitle="Staff Admin Desk"
-      homeHref="/admin"
+      homeHref={homeHref}
       logoutHref="/admin/login"
       menuItems={adminMenuItems}
+      {...(onLogout ? { onLogout } : {})}
       subtitle={subtitle}
       title={title}
       {...(versionLabel ? { versionLabel } : {})}

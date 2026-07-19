@@ -1,11 +1,16 @@
 import { sql, type Kysely } from "kysely";
 import type { PlatformDatabase, TenantDatabase } from "../../database/schema.js";
-import { migrateTenantPermissionModule } from "../tenant-permission/index.js";
-import { migrateTenantRolePermissionModule } from "../tenant-role-permission/index.js";
-import { migrateTenantRoleModule } from "../tenant-role/index.js";
-import { migrateTenantUserRoleModule } from "../tenant-user-role/index.js";
-import { migrateTenantUserModule } from "../tenant-user/index.js";
-import { migrateMailModule, seedMailModule } from "@codexsun/mail-api";
+import {
+  migrateTenantPermissionModule,
+  tenantPermissionMigration
+} from "../tenant-permission/index.js";
+import {
+  migrateTenantRolePermissionModule,
+  tenantRolePermissionMigration
+} from "../tenant-role-permission/index.js";
+import { migrateTenantRoleModule, tenantRoleMigration } from "../tenant-role/index.js";
+import { migrateTenantUserRoleModule, tenantUserRoleMigration } from "../tenant-user-role/index.js";
+import { migrateTenantUserModule, tenantUserMigration } from "../tenant-user/index.js";
 
 export const tenantMigration = {
   key: "platform.tenant.foundation",
@@ -14,16 +19,47 @@ export const tenantMigration = {
 
 export const tenantRuntimeMigrations = [
   {
-    description:
-      "Tenant runtime foundation tables, module settings, identity/access, and tenant migration ledger.",
+    description: "Tenant migration ledger and runtime foundation.",
     name: "001_tenant_foundation",
     statements: [
       "RENAME legacy tenant_* tables to module-owned names when present",
-      "CREATE TABLE IF NOT EXISTS schema_migrations (...)",
-      "CREATE TABLE IF NOT EXISTS module_settings (...)",
-      "RUN module-owned tenant access migrations in dependency order",
-      "INSERT IGNORE INTO schema_migrations (name) VALUES ('001_tenant_foundation'), ('002_runtime_table_names'), ('004_flatten_access_table_names')"
+      "CREATE TABLE IF NOT EXISTS schema_migrations (...)"
     ]
+  },
+  {
+    description: "Tenant application module settings.",
+    name: "002_runtime_table_names",
+    statements: ["CREATE TABLE IF NOT EXISTS module_settings (...)"]
+  },
+  {
+    description: "Tenant users and authentication identities.",
+    name: tenantUserMigration.key,
+    statements: ["RUN platform.tenant-user migration"]
+  },
+  {
+    description: "Tenant roles and lifecycle state.",
+    name: tenantRoleMigration.key,
+    statements: ["RUN platform.tenant-role migration"]
+  },
+  {
+    description: "Tenant permission catalog.",
+    name: tenantPermissionMigration.key,
+    statements: ["RUN platform.tenant-permission migration"]
+  },
+  {
+    description: "Tenant user-to-role assignments.",
+    name: tenantUserRoleMigration.key,
+    statements: ["RUN platform.tenant-user-role migration"]
+  },
+  {
+    description: "Tenant role-to-permission assignments.",
+    name: tenantRolePermissionMigration.key,
+    statements: ["RUN platform.tenant-role-permission migration"]
+  },
+  {
+    description: "Flatten legacy tenant access table names.",
+    name: "004_flatten_access_table_names",
+    statements: ["RENAME legacy access_* tables to module-owned names when present"]
   }
 ] as const;
 
@@ -95,22 +131,22 @@ export async function migrateTenantRuntimeModule(database: Kysely<TenantDatabase
     .addColumn("updated_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .execute();
 
+  await database
+    .insertInto("schema_migrations")
+    .ignore()
+    .values([{ name: "001_tenant_foundation" }, { name: "002_runtime_table_names" }])
+    .execute();
+
   await migrateTenantUserModule(database);
   await migrateTenantRoleModule(database);
   await migrateTenantPermissionModule(database);
   await migrateTenantUserRoleModule(database);
   await migrateTenantRolePermissionModule(database);
-  await migrateMailModule(database as never);
-  await seedMailModule(database as never);
 
   await database
     .insertInto("schema_migrations")
     .ignore()
-    .values([
-      { name: "001_tenant_foundation" },
-      { name: "002_runtime_table_names" },
-      { name: "004_flatten_access_table_names" }
-    ])
+    .values({ name: "004_flatten_access_table_names" })
     .execute();
   console.info(
     "[database] tenant runtime migrations applied through: 004_flatten_access_table_names"

@@ -8,5 +8,10 @@ export type TenantRole = {
   status: TenantRoleStatus;
   uuid: string;
 };
-export type TenantRoleSavePayload = Omit<TenantRole, "id" | "uuid">;
+export type TenantRoleSavePayload = {
+  description: string;
+  key: string;
+  label: string;
+  status: TenantRoleStatus;
+};
 export type TenantRoleListFilters = { search?: string };

@@ -10,6 +10,7 @@ export type AuthTokenPayload = {
   iat: number;
   iss: "codexsun-platform-api";
   jti: string;
+  name?: string;
   sessionIssuedAt: string;
   tenantCode?: string;
   tenantDbName?: string;

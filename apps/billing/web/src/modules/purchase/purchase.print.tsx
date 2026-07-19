@@ -5,7 +5,7 @@ import { Button } from "@codexsun/ui/components/button";
 import { GlobalLoader } from "@codexsun/ui/components/global-loader";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { PageTitle } from "../../shared/document/PageTitle";
-import { BillingCompanyName, BillingDocumentHeader } from "../settings";
+import { BillingCompanyName, BillingDocumentHeader, useBillingSettings } from "../settings";
 import { usePurchaseRecord } from "./purchase.hooks";
 import { formatDate, formatMoney } from "./purchase.services";
 import type { Purchase } from "./purchase.types";
@@ -17,10 +17,12 @@ export function PurchasePrintRoutePage() {
   const purchaseId = search.get("id");
   const autoPrint = search.get("autoprint") === "1";
   const purchaseQuery = usePurchaseRecord(purchaseId, true);
+  const settingsQuery = useBillingSettings();
   const autoPrintTriggered = useRef(false);
 
   useEffect(() => {
-    if (!autoPrint || !purchaseQuery.data || autoPrintTriggered.current) return;
+    if (!autoPrint || !purchaseQuery.data || settingsQuery.isLoading || autoPrintTriggered.current)
+      return;
     const closeAfterPrint = () => window.close();
     window.addEventListener("afterprint", closeAfterPrint, { once: true });
     const timeout = window.setTimeout(() => {
@@ -31,9 +33,9 @@ export function PurchasePrintRoutePage() {
       window.clearTimeout(timeout);
       window.removeEventListener("afterprint", closeAfterPrint);
     };
-  }, [autoPrint, purchaseQuery.data]);
+  }, [autoPrint, purchaseQuery.data, settingsQuery.isLoading]);
 
-  if (purchaseQuery.isLoading) {
+  if (purchaseQuery.isLoading || settingsQuery.isLoading) {
     return <GlobalLoader />;
   }
 
@@ -80,6 +82,11 @@ export function PurchasePrintDocument({
   copy: PurchasePrintCopy;
   purchase: Purchase;
 }) {
+  const layout = useBillingSettings().data?.layout;
+  const showPo = layout?.usePo ?? false;
+  const showDc = layout?.useDc ?? false;
+  const showColour = layout?.useColour ?? false;
+  const showSize = layout?.useSize ?? false;
   const pages = chunkItems(purchase.items, 12);
 
   return (
@@ -93,26 +100,16 @@ export function PurchasePrintDocument({
           isMultiPage={pages.length > 1}
           pageIndex={pageIndex}
           pageCount={pages.length}
+          showColour={showColour}
+          showDc={showDc}
+          showPo={showPo}
+          showSize={showSize}
           purchase={purchase}
         />
       ))}
     </WorkspacePrintSheet>
   );
 }
-
-const purchasePrintHeadings = [
-  "S.no",
-  "Particulars",
-  "HSN",
-  "PO",
-  "DC",
-  "Qty",
-  "Rate",
-  "Taxable",
-  "GST %",
-  "GST TAX",
-  "Total"
-];
 
 function PurchasePrintPage({
   copy,
@@ -121,6 +118,10 @@ function PurchasePrintPage({
   isMultiPage,
   pageIndex,
   pageCount,
+  showColour,
+  showDc,
+  showPo,
+  showSize,
   purchase
 }: {
   copy: PurchasePrintCopy;
@@ -129,10 +130,29 @@ function PurchasePrintPage({
   isMultiPage: boolean;
   pageIndex: number;
   pageCount: number;
+  showColour: boolean;
+  showDc: boolean;
+  showPo: boolean;
+  showSize: boolean;
   purchase: Purchase;
 }) {
   const splitTax = purchase.taxType === "cgst-sgst";
   const blankRows = isLastPage ? Math.max(0, 12 - items.length) : 0;
+  const headings = [
+    "S.no",
+    ...(showPo ? ["PO"] : []),
+    ...(showDc ? ["DC"] : []),
+    "Particulars",
+    "HSN Code",
+    ...(showColour ? ["Colour"] : []),
+    ...(showSize ? ["Size"] : []),
+    "Qty",
+    "Rate",
+    "Taxable",
+    "GST %",
+    "GST TAX",
+    "Total"
+  ];
 
   return (
     <article
@@ -181,7 +201,7 @@ function PurchasePrintPage({
           <table className="w-full border-collapse text-[10px]">
             <thead>
               <tr className="border-b border-slate-300">
-                {purchasePrintHeadings.map((heading) => (
+                {headings.map((heading) => (
                   <th
                     key={heading}
                     className="border-r border-slate-300 px-2 py-2 text-center font-semibold last:border-r-0"
@@ -196,25 +216,41 @@ function PurchasePrintPage({
                 <tr>
                   <td
                     className="border-b border-slate-300 px-2 py-1 text-left font-semibold"
-                    colSpan={purchasePrintHeadings.length}
+                    colSpan={headings.length}
                   >
                     Carry forward from previous page
                   </td>
                 </tr>
               ) : null}
               {items.map(({ item, index }) => (
-                <PurchasePrintItemRow key={item.id} item={item} index={index} />
+                <PurchasePrintItemRow
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  showColour={showColour}
+                  showDc={showDc}
+                  showPo={showPo}
+                  showSize={showSize}
+                />
               ))}
               {Array.from({ length: blankRows }).map((_, index) => (
-                <PurchasePrintBlankRow key={`blank-${pageIndex}-${index}`} />
+                <PurchasePrintBlankRow
+                  key={`blank-${pageIndex}-${index}`}
+                  columnCount={headings.length}
+                />
               ))}
               {isLastPage ? (
-                <PurchasePrintTotalRow purchase={purchase} />
+                <PurchasePrintTotalRow
+                  purchase={purchase}
+                  leadingColumnCount={
+                    3 + Number(showPo) + Number(showDc) + Number(showColour) + Number(showSize)
+                  }
+                />
               ) : (
                 <tr>
                   <td
                     className="border-t border-slate-300 px-2 py-2 text-right font-semibold"
-                    colSpan={purchasePrintHeadings.length}
+                    colSpan={headings.length}
                   >
                     To be continued...
                   </td>
@@ -278,23 +314,42 @@ function PurchasePrintPage({
   );
 }
 
-function PurchasePrintItemRow({ item, index }: { item: Purchase["items"][number]; index: number }) {
+function PurchasePrintItemRow({
+  item,
+  index,
+  showColour,
+  showDc,
+  showPo,
+  showSize
+}: {
+  item: Purchase["items"][number];
+  index: number;
+  showColour: boolean;
+  showDc: boolean;
+  showPo: boolean;
+  showSize: boolean;
+}) {
   return (
     <tr className="align-top">
       <td className="border-r border-slate-200 px-2 py-2 text-center">{index + 1}</td>
+      {showPo ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.poNo || "-"}</td>
+      ) : null}
+      {showDc ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.dcNo || "-"}</td>
+      ) : null}
       <td className="border-r border-slate-200 px-2 py-2">
         <div className="font-medium">
           {[item.productName, item.description].filter(Boolean).join(" - ")}
         </div>
-        <div>
-          {[item.colour ? `Colour : ${item.colour}` : "", item.size ? `Size : ${item.size}` : ""]
-            .filter(Boolean)
-            .join(" - ")}
-        </div>
       </td>
       <td className="border-r border-slate-200 px-2 py-2 text-center">{item.hsnCode || "-"}</td>
-      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.poNo || "-"}</td>
-      <td className="border-r border-slate-200 px-2 py-2 text-center">{item.dcNo || "-"}</td>
+      {showColour ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.colour || "-"}</td>
+      ) : null}
+      {showSize ? (
+        <td className="border-r border-slate-200 px-2 py-2 text-center">{item.size || "-"}</td>
+      ) : null}
       <td className="border-r border-slate-200 px-2 py-2 text-center">{item.quantity}</td>
       <td className="border-r border-slate-200 px-2 py-2 text-right">{money(item.rate)}</td>
       <td className="border-r border-slate-200 px-2 py-2 text-right">
@@ -307,23 +362,26 @@ function PurchasePrintItemRow({ item, index }: { item: Purchase["items"][number]
   );
 }
 
-function PurchasePrintBlankRow() {
+function PurchasePrintBlankRow({ columnCount }: { columnCount: number }) {
   return (
     <tr className="h-6">
-      {purchasePrintHeadings.map((heading, index) => (
-        <td
-          key={heading}
-          className={index === purchasePrintHeadings.length - 1 ? "" : "border-r border-slate-200"}
-        />
+      {Array.from({ length: columnCount }).map((_, index) => (
+        <td key={index} className={index === columnCount - 1 ? "" : "border-r border-slate-200"} />
       ))}
     </tr>
   );
 }
 
-function PurchasePrintTotalRow({ purchase }: { purchase: Purchase }) {
+function PurchasePrintTotalRow({
+  leadingColumnCount,
+  purchase
+}: {
+  leadingColumnCount: number;
+  purchase: Purchase;
+}) {
   return (
     <tr className="border-t border-slate-300 font-semibold">
-      <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={5}>
+      <td className="border-r border-slate-200 px-2 py-2 text-right" colSpan={leadingColumnCount}>
         Total
       </td>
       <td className="border-r border-slate-200 px-2 py-2 text-center">

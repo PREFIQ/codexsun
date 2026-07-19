@@ -25,6 +25,6 @@ export function forceDeleteTenantUser(id: number) {
   return apiDelete<TenantUser>(`${path}/${id}/force`, "tenant");
 }
 function toApi(payload: TenantUserSavePayload) {
-  const { isProtected: _protected, ...value } = payload;
-  return value.password ? value : { ...value, password: undefined };
+  const { password, ...value } = payload;
+  return password ? { ...value, password } : value;
 }

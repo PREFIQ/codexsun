@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 import { AppLayout } from "./app-layout";
-import type { SidebarBrand } from "../blocks/menu/sidemenu/app-sidebar";
+import type { SidebarBrand, SidebarUser } from "../blocks/menu/sidemenu/app-sidebar";
 import type { TopMenuWorkspaceItem } from "../blocks/menu/sidemenu/top-menu";
 import type { SidemenuItem } from "../blocks/menu/sidemenu/sub/sidemenu-section";
 
@@ -19,8 +19,11 @@ type ApplicationLayoutProps = {
   children: ReactNode;
   menuItems?: SidemenuItem[];
   headerTitle?: ReactNode;
+  homeHref?: string;
+  onLogout?: () => void | Promise<void>;
   subtitle?: ReactNode;
   title?: ReactNode;
+  user?: SidebarUser;
   versionLabel?: string;
   workspaceItems?: TopMenuWorkspaceItem[];
 };
@@ -80,9 +83,12 @@ export function ApplicationLayout({
   brand,
   children,
   headerTitle = "Overview",
+  homeHref = "/",
   menuItems = applicationMenuItems,
+  onLogout,
   subtitle = "Tenant application workspace.",
   title = "Application Desk",
+  user,
   versionLabel,
   workspaceItems = applicationWorkspaceItems
 }: ApplicationLayoutProps) {
@@ -95,17 +101,14 @@ export function ApplicationLayout({
         title: brand?.title ?? "Application Desk"
       }}
       headerTitle={headerTitle}
-      homeHref="/app"
+      homeHref={homeHref}
       logoutHref="/login"
       menuItems={menuItems}
+      {...(onLogout ? { onLogout } : {})}
       subtitle={subtitle}
       title={title}
+      {...(user ? { user } : {})}
       {...(versionLabel ? { versionLabel } : {})}
-      user={{
-        email: "user@codexsun.app",
-        fallback: "U",
-        name: "User"
-      }}
       userMenuItems={[
         {
           icon: LifeBuoyIcon,

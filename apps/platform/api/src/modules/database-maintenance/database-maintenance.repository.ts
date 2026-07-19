@@ -5,7 +5,7 @@ import { platformDatabaseName } from "../../database/platform-database.js";
 import { quoteIdentifier } from "../../database/database-utils.js";
 import type { Tenant } from "../tenant/index.js";
 import { TenantRepository } from "../tenant/index.js";
-import { tenantRuntimeMigrations } from "../tenant/tenant.migration.js";
+import { tenantDatabaseMigrationsFor } from "../../database/tenant-app-database.js";
 import type {
   DatabaseMaintenanceRun,
   DatabaseMigrationRow,
@@ -77,7 +77,7 @@ export class DatabaseMaintenanceRepository {
     const tables = await this.tenantTables(tenant);
     return {
       ...status,
-      migrationPlan: this.tenantMigrationPlan(status.migrations),
+      migrationPlan: this.tenantMigrationPlan(tenant, status.migrations),
       tables
     };
   }
@@ -107,11 +107,9 @@ export class DatabaseMaintenanceRepository {
         uuid: randomBytes(4).toString("hex")
       })
       .executeTakeFirst();
-    return (
-      (await this.runs(input.scope, input.targetKey)).find(
-        (run) => run.id === Number(result.insertId)
-      ) ?? null
-    );
+    const run = await this.findRun(Number(result.insertId));
+    if (!run) throw new Error("Database maintenance run could not be read after creation.");
+    return run;
   }
 
   async findRun(id: number) {
@@ -304,9 +302,10 @@ export class DatabaseMaintenanceRepository {
     }
   }
 
-  private tenantMigrationPlan(applied: DatabaseMigrationRow[]) {
+  private tenantMigrationPlan(tenant: Tenant, applied: DatabaseMigrationRow[]) {
     const appliedNames = new Set(applied.map((migration) => migration.name));
-    const available = tenantRuntimeMigrations.map((migration) => ({
+    const definitions = tenantDatabaseMigrationsFor(tenant);
+    const available = definitions.map((migration) => ({
       description: migration.description,
       name: migration.name
     }));
@@ -315,7 +314,7 @@ export class DatabaseMaintenanceRepository {
       applied,
       available,
       dryRunScript: pending.flatMap((migration) => {
-        const definition = tenantRuntimeMigrations.find((item) => item.name === migration.name);
+        const definition = definitions.find((item) => item.name === migration.name);
         return definition
           ? [`-- ${definition.name}: ${definition.description}`, ...definition.statements]
           : [`-- ${migration.name}`];

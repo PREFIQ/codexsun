@@ -53,7 +53,7 @@ export class TenantRoleService {
         `Role cannot be force deleted because ${counts.userRoles} user-role and ${counts.rolePermissions} role-permission assignments reference it.`,
         counts
       );
-    const r = (await this.repository.forceDelete(c.id))!;
+    const r = await this.delete(c.id);
     await this.audit("force-deleted", r);
     return r;
   }
@@ -88,6 +88,17 @@ export class TenantRoleService {
       throw e;
     }
   }
+  private async delete(id: number) {
+    try {
+      return (await this.repository.forceDelete(id))!;
+    } catch (e) {
+      if (isReferenced(e))
+        throw AppError.conflict(
+          "Role cannot be force deleted because access assignments reference it."
+        );
+      throw e;
+    }
+  }
 }
 function normalize(v: TenantRoleSavePayload) {
   return {
@@ -96,4 +107,13 @@ function normalize(v: TenantRoleSavePayload) {
     label: v.label.trim(),
     status: v.status
   };
+}
+
+function isReferenced(e: unknown) {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    (("code" in e && (e as { code?: unknown }).code === "ER_ROW_IS_REFERENCED_2") ||
+      ("errno" in e && (e as { errno?: unknown }).errno === 1451))
+  );
 }

@@ -1,8 +1,12 @@
 import { z } from "zod";
 export const tenantRoleSchema = z.object({
   description: z.string().trim().max(500),
-  isProtected: z.boolean(),
-  key: z.string().trim().min(2).max(160),
-  label: z.string().trim().min(2).max(180),
+  key: z
+    .string()
+    .trim()
+    .min(2, "Role key is required.")
+    .max(120)
+    .regex(/^[a-z0-9._-]+$/, "Use lowercase letters, numbers, dots, underscores, or hyphens."),
+  label: z.string().trim().min(2, "Role name is required.").max(160),
   status: z.enum(["active", "inactive"])
 });

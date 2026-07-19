@@ -36,6 +36,13 @@ Tenant context should include:
 
 Current implementation note: tenant login resolves the tenant database for tenant user authentication, and Core business requests require a validated `x-tenant-db` context. Core rejects the Platform master database and routes repositories through the request-bound tenant database connection. Core Common master tables therefore do not duplicate tenant identity in `tenant_id` columns; the selected database is their isolation boundary.
 
+Tenant database provisioning follows the tenant's selected application set. Platform identity/access migrations run
+first. Billing activation then runs Core's owned prerequisite migrations and seeds before Billing's owned migrations
+and seeds. Mail migrations run only when Mail is enabled; Task Manager currently has no tenant SQL lifecycle. Tenant
+create/update and managed setup, reinstall, and migration actions use this same ordered composition contract.
+Managed lifecycle actions invalidate only the target tenant's Core and Billing bootstrap state before running, so a
+database recreated while the API process remains online receives the complete selected-app schema.
+
 Tenant context must be available in:
 
 - HTTP requests.

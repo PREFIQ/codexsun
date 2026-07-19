@@ -13,9 +13,54 @@ const AppDesk = lazy(() =>
 const HealthPage = lazy(() =>
   import("../public/health/HealthPage").then((module) => ({ default: module.HealthPage }))
 );
-const TenantPortalPage = lazy(() =>
-  import("../modules/tenant-portal").then((module) => ({
-    default: module.TenantPortalPage
+const TenantHome = lazy(() =>
+  import("../public/tenant-home").then((module) => ({
+    default: module.TenantHome
+  }))
+);
+const TenantWorkspacePage = lazy(() =>
+  import("../public/tenant-site/pages/workspace.page").then((module) => ({
+    default: module.TenantWorkspacePage
+  }))
+);
+const TenantFeaturesPage = lazy(() =>
+  import("../public/tenant-site/pages/features.page").then((module) => ({
+    default: module.TenantFeaturesPage
+  }))
+);
+const TenantSecurityPage = lazy(() =>
+  import("../public/tenant-site/pages/security.page").then((module) => ({
+    default: module.TenantSecurityPage
+  }))
+);
+const TenantBlogPage = lazy(() =>
+  import("../public/tenant-site/pages/blog.page").then((module) => ({
+    default: module.TenantBlogPage
+  }))
+);
+const TenantUpdatesPage = lazy(() =>
+  import("../public/tenant-site/pages/updates.page").then((module) => ({
+    default: module.TenantUpdatesPage
+  }))
+);
+const TenantAboutPage = lazy(() =>
+  import("../public/tenant-site/pages/about.page").then((module) => ({
+    default: module.TenantAboutPage
+  }))
+);
+const TenantContactPage = lazy(() =>
+  import("../public/tenant-site/pages/contact.page").then((module) => ({
+    default: module.TenantContactPage
+  }))
+);
+const TenantPrivacyPage = lazy(() =>
+  import("../public/tenant-site/pages/privacy.page").then((module) => ({
+    default: module.TenantPrivacyPage
+  }))
+);
+const TenantTermsPage = lazy(() =>
+  import("../public/tenant-site/pages/terms.page").then((module) => ({
+    default: module.TenantTermsPage
   }))
 );
 const LoginPage = lazy(() =>
@@ -30,9 +75,63 @@ const DataBridgeDesk = lazy(() =>
 const rootRoute = createRootRoute();
 
 const homeRoute = createRoute({
-  component: TenantPortalPage,
+  component: TenantHome,
   getParentRoute: () => rootRoute,
   path: "/"
+});
+
+const workspaceRoute = createRoute({
+  component: TenantWorkspacePage,
+  getParentRoute: () => rootRoute,
+  path: "/workspace"
+});
+
+const featuresRoute = createRoute({
+  component: TenantFeaturesPage,
+  getParentRoute: () => rootRoute,
+  path: "/features"
+});
+
+const securityRoute = createRoute({
+  component: TenantSecurityPage,
+  getParentRoute: () => rootRoute,
+  path: "/security"
+});
+
+const blogRoute = createRoute({
+  component: TenantBlogPage,
+  getParentRoute: () => rootRoute,
+  path: "/blog"
+});
+
+const updatesRoute = createRoute({
+  component: TenantUpdatesPage,
+  getParentRoute: () => rootRoute,
+  path: "/updates"
+});
+
+const aboutRoute = createRoute({
+  component: TenantAboutPage,
+  getParentRoute: () => rootRoute,
+  path: "/about"
+});
+
+const contactRoute = createRoute({
+  component: TenantContactPage,
+  getParentRoute: () => rootRoute,
+  path: "/contact"
+});
+
+const privacyRoute = createRoute({
+  component: TenantPrivacyPage,
+  getParentRoute: () => rootRoute,
+  path: "/privacy"
+});
+
+const termsRoute = createRoute({
+  component: TenantTermsPage,
+  getParentRoute: () => rootRoute,
+  path: "/terms"
 });
 
 const healthRoute = createRoute({
@@ -85,6 +184,15 @@ const dataBridgeRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
+  workspaceRoute,
+  featuresRoute,
+  securityRoute,
+  blogRoute,
+  updatesRoute,
+  aboutRoute,
+  contactRoute,
+  privacyRoute,
+  termsRoute,
   healthRoute,
   tenantLoginRoute,
   saLoginRoute,
