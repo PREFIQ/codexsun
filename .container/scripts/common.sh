@@ -85,8 +85,10 @@ import_repo_value() {
 }
 
 prepare_deploy_env() {
+  deploy_env_created=0
   if [ ! -f "$DEPLOY_ENV" ]; then
     cp "$CONTAINER_DIR/deploy.env.example" "$DEPLOY_ENV"
+    deploy_env_created=1
     echo "Created $DEPLOY_ENV."
   fi
 
@@ -98,6 +100,23 @@ prepare_deploy_env() {
   set_env_value BILLING_STACK_API_IMAGE_TAG "$version"
   set_env_value BILLING_STACK_WEB_IMAGE_TAG "$version"
   set_env_value BILLING_STACK_MIGRATIONS_IMAGE_TAG "$version"
+  set_env_value ECOMMERCE_STACK_API_IMAGE_TAG "$version"
+  set_env_value ECOMMERCE_STACK_WEB_IMAGE_TAG "$version"
+  set_env_value ECOMMERCE_STACK_MIGRATIONS_IMAGE_TAG "$version"
+  set_env_value B2BCONNECT_STACK_API_IMAGE_TAG "$version"
+  set_env_value B2BCONNECT_STACK_WEB_IMAGE_TAG "$version"
+  set_env_value B2BCONNECT_STACK_MIGRATIONS_IMAGE_TAG "$version"
+  set_env_value SITES_STACK_WEB_IMAGE_TAG "$version"
+
+  if [ "$deploy_env_created" = "1" ]; then
+    for key in DB_USER DB_PASSWORD DB_MASTER_NAME; do
+      value=$(repo_env_value "$key")
+      if [ -n "$value" ]; then
+        set_env_value "$key" "$value"
+        echo "Initialized $key from repository .env."
+      fi
+    done
+  fi
 
   for key in \
     DB_PASSWORD JWT_SECRET \
@@ -110,6 +129,10 @@ prepare_deploy_env() {
   ensure_secret MARIADB_ROOT_PASSWORD
   ensure_secret REDIS_PASSWORD
   ensure_secret JWT_SECRET
+
+  if [ "$(env_value DB_USER root)" = "root" ]; then
+    set_env_value MARIADB_ROOT_PASSWORD "$(env_value DB_PASSWORD "")"
+  fi
 
   super_password=$(env_value SUPER_ADMIN_PASSWORD "")
   if [ -n "$super_password" ]; then

@@ -4,11 +4,37 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { join, resolve } from "node:path";
+import { matchesServiceHealthContract } from "./dev-stack-health.mjs";
+import { marketplaceServices, productStackContract } from "./product-stack-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const stackName = process.argv[2] ?? "platform";
 
 const services = {
+  "b2bconnect-api": {
+    color: "\x1b[93m",
+    command: ["b2bconnect-api"],
+    label: "B2B Connect api",
+    logLabel: "b2bconnect-api"
+  },
+  "b2bconnect-web": {
+    color: "\x1b[96m",
+    command: ["b2bconnect-web"],
+    label: "B2B Connect web",
+    logLabel: "b2bconnect-web"
+  },
+  "ecommerce-api": {
+    color: "\x1b[95m",
+    command: ["ecommerce-api"],
+    label: "Ecommerce api",
+    logLabel: "ecommerce-api"
+  },
+  "ecommerce-web": {
+    color: "\x1b[92m",
+    command: ["ecommerce-web"],
+    label: "Ecommerce web",
+    logLabel: "ecommerce-web"
+  },
   "billing-api": {
     color: "\x1b[33m",
     command: ["billing-api"],
@@ -60,10 +86,13 @@ const services = {
 const stacks = {
   api: ["platform-api", "core-api", "billing-api"],
   all: ["platform-api", "core-api", "platform-web", "billing-api", "billing-web"],
-  billing: ["platform-api", "core-api", "billing-api", "billing-web"],
+  billing: productStackContract.billing.services,
+  b2bconnect: productStackContract.b2bconnect.services,
   core: ["platform-api", "core-api", "platform-web", "core-web"],
   "data-bridge": ["data-bridge-api", "data-bridge-web"],
+  ecommerce: productStackContract.ecommerce.services,
   "kitchen-serve": ["platform-api", "core-api", "kitchen-serve-api", "kitchen-serve-web"],
+  marketplaces: marketplaceServices,
   platform: ["platform-api", "core-api", "billing-api", "platform-web"],
   sites: ["sites-web"],
   web: ["platform-web"]
@@ -85,18 +114,19 @@ for (const serviceName of stacks[stackName]) {
 console.log("");
 
 const stackServices = stacks[stackName];
-if (stackServices.includes("platform-api")) {
-  startService("platform-api");
-  const env = loadDotEnv();
-  await waitForPort(requiredPort(env.PLATFORM_API_PORT, "PLATFORM_API_PORT"));
-}
-if (stackServices.includes("core-api")) {
-  startService("core-api");
-  const env = loadDotEnv();
-  await waitForPort(requiredPort(env.CORE_API_PORT, "CORE_API_PORT"));
+const env = loadDotEnv();
+const dependencyApiPorts = {
+  "platform-api": ["PLATFORM_API_PORT", env.PLATFORM_API_PORT],
+  "core-api": ["CORE_API_PORT", env.CORE_API_PORT],
+  "billing-api": ["BILLING_API_PORT", env.BILLING_API_PORT]
+};
+const dependencyServices = new Set(stackDependencies(stackName));
+for (const serviceName of stackServices) {
+  if (!dependencyServices.has(serviceName)) continue;
+  await attachOrStartDependency(serviceName);
 }
 for (const serviceName of stackServices) {
-  if (serviceName !== "platform-api" && serviceName !== "core-api") startService(serviceName);
+  if (!dependencyServices.has(serviceName)) startService(serviceName);
 }
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
@@ -127,13 +157,55 @@ function startService(serviceName) {
   });
 }
 
-async function waitForPort(port) {
+async function attachOrStartDependency(serviceName) {
+  const [envKey, configuredPort] = dependencyApiPorts[serviceName] ?? [];
+  const port = requiredPort(configuredPort, envKey ?? `${serviceName} port`);
+  if (await canConnect(port)) {
+    if (!(await isExpectedServiceHealthy(port, serviceName))) {
+      console.error(
+        `Dependency ${serviceName} is using port ${port}, but its health contract did not match. ` +
+          "The existing process was left untouched."
+      );
+      stopChildren();
+      process.exit(1);
+    }
+    console.log(`  = attached to existing ${serviceName} on port ${port}`);
+    return;
+  }
+
+  startService(serviceName);
+  await waitForHealthyService(port, serviceName);
+}
+
+function stackDependencies(name) {
+  if (productStackContract[name]) return productStackContract[name].foundationServices;
+  if (name === "marketplaces") return ["platform-api", "core-api", "billing-api"];
+  if (name === "core") return ["platform-api"];
+  if (name === "kitchen-serve") return ["platform-api", "core-api"];
+  return [];
+}
+
+async function waitForHealthyService(port, serviceName) {
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
-    if (await canConnect(port)) return;
+    if (await isExpectedServiceHealthy(port, serviceName)) return;
     await new Promise((resolveWait) => setTimeout(resolveWait, 250));
   }
-  throw new Error(`Timed out waiting for platform API on port ${port}`);
+  stopChildren();
+  throw new Error(`Timed out waiting for a healthy ${serviceName} on port ${port}`);
+}
+
+async function isExpectedServiceHealthy(port, serviceName) {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/health`, {
+      signal: AbortSignal.timeout(1_500)
+    });
+    if (!response.ok) return false;
+    const payload = await response.json();
+    return matchesServiceHealthContract(payload, serviceName);
+  } catch {
+    return false;
+  }
 }
 
 function canConnect(port) {

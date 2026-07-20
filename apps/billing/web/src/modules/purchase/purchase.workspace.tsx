@@ -61,6 +61,34 @@ function isAdminSession() {
   }
 }
 
+function printPurchaseFromList(purchaseId: string) {
+  const frame = document.createElement("iframe");
+  let cleanupTimer: number | undefined;
+  const cleanup = () => {
+    if (cleanupTimer !== undefined) window.clearTimeout(cleanupTimer);
+    frame.remove();
+  };
+
+  frame.setAttribute("aria-hidden", "true");
+  frame.tabIndex = -1;
+  frame.style.position = "fixed";
+  frame.style.left = "-10000px";
+  frame.style.width = "1px";
+  frame.style.height = "1px";
+  frame.style.border = "0";
+  frame.addEventListener(
+    "load",
+    () => frame.contentWindow?.addEventListener("afterprint", cleanup, { once: true }),
+    { once: true }
+  );
+  const printPath = window.location.pathname.startsWith("/app/")
+    ? "/app/billing/purchase/print"
+    : "/billing/purchase/print";
+  frame.src = `${printPath}?id=${encodeURIComponent(purchaseId)}&autoprint=1`;
+  document.body.append(frame);
+  cleanupTimer = window.setTimeout(cleanup, 120_000);
+}
+
 export function PurchaseWorkspace({ initialRecordId }: { initialRecordId?: string | undefined }) {
   const queryClient = useQueryClient();
   const settingsQuery = useBillingSettings();
@@ -451,13 +479,7 @@ export function PurchaseWorkspace({ initialRecordId }: { initialRecordId?: strin
             deleteMutation.mutate(purchase.id);
         }}
         onRevoke={(purchase) => revokeMutation.mutate(purchase.id)}
-        onPrint={(purchase) =>
-          window.open(
-            `${window.location.origin}/billing/purchase/print?id=${encodeURIComponent(purchase.id)}&autoprint=1`,
-            "_blank",
-            "noopener,noreferrer"
-          )
-        }
+        onPrint={(purchase) => printPurchaseFromList(purchase.id)}
         canAdminRevoke={canAdminRevoke}
         onView={(purchase) => setView({ mode: "show", purchase })}
         page={currentPage}

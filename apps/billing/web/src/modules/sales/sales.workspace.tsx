@@ -6,7 +6,6 @@ import { Button } from "@codexsun/ui/components/button";
 import { WorkspaceFilters } from "@codexsun/ui/workspace/filters";
 import { WorkspacePage } from "@codexsun/ui/workspace/page";
 import { WorkspacePagination } from "@codexsun/ui/workspace/pagination";
-import { WorkspaceLookup } from "@codexsun/ui/workspace/lookup";
 import { WorkspaceTableEmptyState, WorkspaceTablePanel } from "@codexsun/ui/workspace/table";
 import { buildShowingLabel } from "@codexsun/ui/workspace/utils";
 import { cn } from "@codexsun/ui/lib/utils";
@@ -44,7 +43,6 @@ const saleColumnCatalog = [
   { id: "gst", label: "GST" },
   { id: "total", label: "Total" },
   { id: "status", label: "Status" },
-  { id: "invoice", label: "Invoice" },
   { id: "action", label: "Action" }
 ] as const;
 
@@ -68,7 +66,7 @@ export function SalesWorkspace({ initialRecordId }: { initialRecordId?: string |
   const [view, setView] = useState<SaleView>({ mode: "list" });
   const [searchValue, setSearchValue] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [contactFilter, setContactFilter] = useState("all");
+  const [pendingListPrintId, setPendingListPrintId] = useState<string | null>(null);
   const [selectedSaleIds, setSelectedSaleIds] = useState<Set<string>>(() => new Set());
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(saleColumnCatalog.map((column) => [column.id, true]))
@@ -81,6 +79,28 @@ export function SalesWorkspace({ initialRecordId }: { initialRecordId?: string |
     search: searchValue,
     status: statusFilter
   });
+
+  useEffect(() => {
+    if (view.mode !== "show" || pendingListPrintId !== view.sale.id) return;
+
+    let printFrame = 0;
+    let settleFrame = 0;
+    const restoreList = () => {
+      setPendingListPrintId(null);
+      setView({ mode: "list" });
+    };
+
+    window.addEventListener("afterprint", restoreList, { once: true });
+    printFrame = window.requestAnimationFrame(() => {
+      settleFrame = window.requestAnimationFrame(() => window.print());
+    });
+
+    return () => {
+      window.cancelAnimationFrame(printFrame);
+      window.cancelAnimationFrame(settleFrame);
+      window.removeEventListener("afterprint", restoreList);
+    };
+  }, [pendingListPrintId, view]);
 
   useEffect(() => {
     if (!initialRecordId) return;
@@ -168,16 +188,8 @@ export function SalesWorkspace({ initialRecordId }: { initialRecordId?: string |
   });
 
   const entries = salesQuery.data?.items ?? [];
-  const contactOptions = useMemo(() => buildSaleContactFilterOptions(entries), [entries]);
-  const filteredEntries = useMemo(() => {
-    return entries.filter((sale) => {
-      const matchesContact = contactFilter === "all" || saleContactKey(sale) === contactFilter;
-      return matchesContact;
-    });
-  }, [contactFilter, entries]);
-
   const totalPages = Math.max(1, Math.ceil((salesQuery.data?.total ?? 0) / rowsPerPage));
-  const pageEntries = filteredEntries;
+  const pageEntries = entries;
   const pageTotals = useMemo(
     () =>
       pageEntries.reduce(
@@ -190,10 +202,6 @@ export function SalesWorkspace({ initialRecordId }: { initialRecordId?: string |
         { amount: 0, quantity: 0, subtotal: 0, taxAmount: 0 }
       ),
     [pageEntries]
-  );
-  const selectedEntries = useMemo(
-    () => entries.filter((sale) => selectedSaleIds.has(sale.id)),
-    [entries, selectedSaleIds]
   );
   const pageSelectableEntries = pageEntries.filter(canSelectSale);
   const pageSelected =
@@ -336,44 +344,6 @@ export function SalesWorkspace({ initialRecordId }: { initialRecordId?: string |
           )
         }
       />
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/70 bg-card px-4 py-3 text-sm shadow-sm">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div className="ml-1 min-w-64">
-            <WorkspaceLookup
-              options={[
-                { label: "All contacts", value: "all" },
-                ...contactOptions.map((option) => ({ label: option.label, value: option.id }))
-              ]}
-              placeholder="Search contact"
-              value={contactFilter}
-              onTextChange={(value) => {
-                if (!value) {
-                  setContactFilter("all");
-                  setSelectedSaleIds(new Set());
-                  setCurrentPage(1);
-                }
-              }}
-              onValueChange={(value) => {
-                setContactFilter(value || "all");
-                setSelectedSaleIds(new Set());
-                setCurrentPage(1);
-              }}
-            />
-          </div>
-        </div>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <span>{selectedEntries.length} selected</span>
-          <Button
-            className="h-8 rounded-md px-2"
-            disabled={!selectedEntries.length}
-            onClick={() => setSelectedSaleIds(new Set())}
-            type="button"
-            variant="ghost"
-          >
-            Clear
-          </Button>
-        </div>
-      </div>
       {salesQuery.isError ? (
         <WorkspaceTablePanel>
           <WorkspaceTableEmptyState>
@@ -393,13 +363,10 @@ export function SalesWorkspace({ initialRecordId }: { initialRecordId?: string |
             deleteMutation.mutate(sale.id);
         }}
         onRevoke={(sale) => revokeMutation.mutate(sale.id)}
-        onPrint={(sale) =>
-          window.open(
-            `${window.location.origin}/billing/sales/print?id=${encodeURIComponent(sale.id)}&autoprint=1`,
-            "_blank",
-            "noopener,noreferrer"
-          )
-        }
+        onPrint={(sale) => {
+          setPendingListPrintId(sale.id);
+          setView({ mode: "show", sale });
+        }}
         canAdminRevoke={canAdminRevoke}
         onView={(sale) => setView({ mode: "show", sale })}
         page={currentPage}
@@ -463,20 +430,5 @@ function PageTotal({ label, strong, value }: { label: string; strong?: boolean; 
       <span className="text-muted-foreground">{label}</span>
       <span className={cn("font-medium text-foreground", strong && "font-semibold")}>{value}</span>
     </div>
-  );
-}
-
-function saleContactKey(sale: Sale) {
-  return sale.customerName.trim().toLowerCase();
-}
-
-function buildSaleContactFilterOptions(entries: Sale[]) {
-  const byKey = new Map<string, string>();
-  for (const sale of entries) {
-    const key = saleContactKey(sale);
-    if (!byKey.has(key)) byKey.set(key, sale.customerName || key);
-  }
-  return Array.from(byKey, ([id, label]) => ({ id, label })).sort((left, right) =>
-    left.label.localeCompare(right.label)
   );
 }

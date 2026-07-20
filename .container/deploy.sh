@@ -10,48 +10,72 @@ ACTION=${2:-up}
 
 usage() {
   cat <<'EOF'
-Usage: .container/deploy.sh billing {up|--reinstall|build|migrate|ps|logs|down}
+Usage: .container/deploy.sh {billing|ecommerce|b2bconnect|sites} ACTION
 
-  up           Build, migrate, and start Billing.
-  --reinstall  Remove only Billing containers/images, rebuild without cache,
-               run forward migrations, and start Billing. Data is preserved.
-  build        Build the Billing images.
+Actions:
+  up           Build locally, migrate when applicable, and start the stack.
+  --reinstall  Replace only the selected stack's containers/images, rebuild
+               without cache, migrate, and start. Named volumes are preserved.
+  build        Build the selected stack images locally.
+  publish      Build and push versioned images to CODEXSUN_IMAGE_REGISTRY.
+  upgrade      Pull versioned images, migrate, and recreate only app containers.
   migrate      Run safe forward migrations and print migration state.
-  ps           Show Billing containers.
-  logs         Follow Billing logs.
-  down         Remove only Billing containers. Volumes are preserved.
+  ps           Show the selected stack containers.
+  logs         Follow the selected stack logs.
+  down         Remove only the selected stack containers. Volumes are preserved.
 
-This command never starts, stops, recreates, or removes MariaDB, Redis, or Media.
+MariaDB, Redis, Media, deployment credentials, databases, and uploads are never
+removed or recreated by this command.
 EOF
 }
 
-[ "$STACK" = "billing" ] || {
-  usage >&2
-  exit 64
-}
-
-case "$ACTION" in
-  up|--reinstall|build|migrate|ps|logs|down) ;;
+case "$STACK" in
+  billing|ecommerce|b2bconnect|sites) ;;
   -h|--help) usage; exit 0 ;;
   *) usage >&2; exit 64 ;;
 esac
+
+case "$ACTION" in
+  up|--reinstall|build|publish|upgrade|migrate|ps|logs|down) ;;
+  -h|--help) usage; exit 0 ;;
+  *) usage >&2; exit 64 ;;
+esac
+
+if [ "$STACK" = "sites" ] && [ "$ACTION" = "migrate" ]; then
+  echo "The public Sites stack has no database migration target." >&2
+  exit 64
+fi
 
 prepare_deploy_env
 validate_deploy_env
 require_docker
 
-require_billing_dependencies() {
-  network=$(env_value CODEXSUN_DOCKER_NETWORK codexsun-network)
-  media_data=$(env_value MEDIA_DATA_VOLUME codexsun-media-data)
+compose_stack() {
+  stack_compose "$STACK" "$@"
+}
 
+compose_all() {
+  if [ "$STACK" = "sites" ]; then
+    stack_compose "$STACK" "$@"
+  else
+    stack_compose "$STACK" --profile tools "$@"
+  fi
+}
+
+require_stack_dependencies() {
+  network=$(env_value CODEXSUN_DOCKER_NETWORK codexsun-network)
   docker network inspect "$network" >/dev/null 2>&1 || {
     echo "Required Docker network is missing: $network" >&2
-    echo "Run: bash .container/setup.sh" >&2
+    echo "Run: bash .container/setup.sh $STACK" >&2
     exit 69
   }
+
+  [ "$STACK" = "sites" ] && return
+
+  media_data=$(env_value MEDIA_DATA_VOLUME codexsun-media-data)
   docker volume inspect "$media_data" >/dev/null 2>&1 || {
     echo "Required Media volume is missing: $media_data" >&2
-    echo "Run: bash .container/setup.sh" >&2
+    echo "Run: bash .container/setup.sh $STACK" >&2
     exit 69
   }
 
@@ -62,78 +86,113 @@ require_billing_dependencies() {
       2>/dev/null || true)
     [ "$state" = "running" ] && [ "$health" = "healthy" ] || {
       echo "Required dependency is not healthy: $container (state=${state:-missing}, health=${health:-missing})" >&2
-      echo "deploy.sh will not modify infrastructure. Run: bash .container/setup.sh" >&2
+      echo "deploy.sh will not modify infrastructure. Run: bash .container/setup.sh $STACK" >&2
       exit 69
     }
   done
 }
 
-billing_image() {
+stack_image() {
   suffix="$1"
-  tag_key="$2"
-  default_tag="$3"
-  registry=$(env_value CODEXSUN_IMAGE_REGISTRY codexsun)
-  tag=$(env_value "$tag_key" "$default_tag")
-  printf '%s/billing-stack-%s:%s' "$registry" "$suffix" "$tag"
+  registry=${CODEXSUN_IMAGE_REGISTRY:-$(env_value CODEXSUN_IMAGE_REGISTRY codexsun)}
+  upper_stack=$(printf '%s' "$STACK" | tr '[:lower:]' '[:upper:]')
+  case "$suffix" in
+    api) tag_key="${upper_stack}_STACK_API_IMAGE_TAG" ;;
+    web) tag_key="${upper_stack}_STACK_WEB_IMAGE_TAG" ;;
+    migrations) tag_key="${upper_stack}_STACK_MIGRATIONS_IMAGE_TAG" ;;
+    *) echo "Unknown image role: $suffix" >&2; exit 64 ;;
+  esac
+  tag=$(env_value "$tag_key" "$(env_value CODEXSUN_VERSION 1.0.37)")
+  if [ "$STACK" = "sites" ]; then
+    printf '%s/sites-stack-web:%s' "$registry" "$tag"
+  else
+    printf '%s/%s-stack-%s:%s' "$registry" "$STACK" "$suffix" "$tag"
+  fi
 }
 
-remove_billing_images() {
-  for image in \
-    "$(billing_image api BILLING_STACK_API_IMAGE_TAG 1.0.33)" \
-    "$(billing_image web BILLING_STACK_WEB_IMAGE_TAG 1.0.33)" \
-    "$(billing_image migrations BILLING_STACK_MIGRATIONS_IMAGE_TAG 1.0.33)"; do
+remove_stack_images() {
+  roles="api web migrations"
+  [ "$STACK" = "sites" ] && roles="web"
+  for role in $roles; do
+    image=$(stack_image "$role")
     if docker image inspect "$image" >/dev/null 2>&1; then
       docker image rm "$image" >/dev/null || {
-        echo "Failed to remove Billing image: $image" >&2
+        echo "Failed to remove image: $image" >&2
         exit 74
       }
-      echo "Removed Billing image: $image"
+      echo "Removed image: $image"
     fi
   done
 }
 
-build_billing() {
-  stack_compose billing --profile tools config --quiet
-  stack_compose billing --profile tools build "$@"
+build_stack() {
+  compose_all config --quiet
+  compose_all build "$@"
 }
 
-migrate_billing() {
-  require_billing_dependencies
-  echo "Checking and applying forward database migrations. Database deletion is disabled."
-  stack_compose billing --profile tools run --rm platform-migrate
+publish_stack() {
+  build_stack --pull
+  compose_all push
+}
+
+migration_service() {
+  case "$STACK" in
+    billing) printf '%s' platform-migrate ;;
+    ecommerce) printf '%s' ecommerce-migrate ;;
+    b2bconnect) printf '%s' b2bconnect-migrate ;;
+    *) return 1 ;;
+  esac
+}
+
+migrate_stack() {
+  require_stack_dependencies
+  service=$(migration_service)
+  echo "Applying forward migrations for $STACK. Database deletion is disabled."
+  compose_all run --rm "$service"
   echo "Applied migration state:"
-  stack_compose billing --profile tools run --rm platform-migrate npm run db:migrations:list
+  compose_all run --rm "$service" npm run db:migrations:list -w @codexsun/platform-api
 }
 
-start_billing() {
-  require_billing_dependencies
-  stack_compose billing up -d --no-build --remove-orphans --wait --wait-timeout 240
+start_stack() {
+  require_stack_dependencies
+  compose_stack up -d --no-build --remove-orphans --wait --wait-timeout 300
 }
 
-up_billing() {
-  build_billing
-  migrate_billing
-  start_billing
+up_stack() {
+  build_stack
+  [ "$STACK" = "sites" ] || migrate_stack
+  start_stack
 }
 
-reinstall_billing() {
-  require_billing_dependencies
-  echo "Removing Billing containers only. Database and all named volumes are preserved."
-  stack_compose billing down --remove-orphans
-  remove_billing_images
-  build_billing --pull --no-cache
-  migrate_billing
-  start_billing
+reinstall_stack() {
+  require_stack_dependencies
+  echo "Replacing $STACK containers and images. Named volumes and deployment input are preserved."
+  compose_stack down --remove-orphans
+  remove_stack_images
+  build_stack --pull --no-cache
+  [ "$STACK" = "sites" ] || migrate_stack
+  start_stack
+}
+
+upgrade_stack() {
+  require_stack_dependencies
+  registry=${CODEXSUN_IMAGE_REGISTRY:-$(env_value CODEXSUN_IMAGE_REGISTRY codexsun)}
+  echo "Pulling the versioned $STACK release from $registry."
+  compose_all pull
+  [ "$STACK" = "sites" ] || migrate_stack
+  start_stack
 }
 
 case "$ACTION" in
-  up) up_billing ;;
-  --reinstall) reinstall_billing ;;
-  build) build_billing ;;
-  migrate) migrate_billing ;;
-  ps) stack_compose billing ps ;;
-  logs) stack_compose billing logs -f --tail=150 ;;
-  down) stack_compose billing down --remove-orphans ;;
+  up) up_stack ;;
+  --reinstall) reinstall_stack ;;
+  build) build_stack ;;
+  publish) publish_stack ;;
+  upgrade) upgrade_stack ;;
+  migrate) migrate_stack ;;
+  ps) compose_stack ps ;;
+  logs) compose_stack logs -f --tail=150 ;;
+  down) compose_stack down --remove-orphans ;;
 esac
 
-echo "Billing action completed: $ACTION"
+echo "$STACK action completed: $ACTION"

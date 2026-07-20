@@ -1,15 +1,42 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { AppError } from "../errors/app-error.js";
 
-export type TenantAccessClaims = {
+export type PlatformAccessClaims = {
   aud?: string;
   email?: string;
   exp?: number;
   iss?: string;
+  name?: string;
+  sessionIssuedAt?: string;
+  tenantCode?: string;
   tenantDbName?: string;
   tenantId?: string;
+  tenantUuid?: string;
+  userId?: string;
   userType?: string;
 };
+
+export type PlatformUserType = "super_admin" | "staff" | "tenant";
+
+export function requirePlatformAccess(input: {
+  allowedUserTypes?: readonly PlatformUserType[];
+  authorization: string | string[] | undefined;
+  secret: string;
+}) {
+  const authorization = headerValue(input.authorization);
+  const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+  if (!token) throw AppError.unauthorized("Platform authentication is required.");
+
+  const claims = verify(token, input.secret);
+  if (!claims) throw AppError.unauthorized("Platform session is invalid or expired.");
+  if (
+    input.allowedUserTypes &&
+    !input.allowedUserTypes.includes(claims.userType as PlatformUserType)
+  ) {
+    throw AppError.forbidden("This Platform session cannot access the requested application desk.");
+  }
+  return claims;
+}
 
 export function requireTenantAccess(input: {
   authorization: string | string[] | undefined;
@@ -17,13 +44,14 @@ export function requireTenantAccess(input: {
   tenantDatabase: string;
   tenantId: string | string[] | undefined;
 }) {
-  const authorization = headerValue(input.authorization);
   const tenantId = headerValue(input.tenantId);
-  const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
-  if (!token || !tenantId) throw AppError.unauthorized("Tenant authentication is required.");
+  if (!tenantId) throw AppError.unauthorized("Tenant authentication is required.");
 
-  const claims = verify(token, input.secret);
-  if (!claims) throw AppError.unauthorized("Tenant session is invalid or expired.");
+  const claims = requirePlatformAccess({
+    allowedUserTypes: ["tenant"],
+    authorization: input.authorization,
+    secret: input.secret
+  });
   if (
     claims.userType !== "tenant" ||
     claims.tenantId !== tenantId ||
@@ -34,7 +62,7 @@ export function requireTenantAccess(input: {
   return claims;
 }
 
-function verify(token: string, secret: string): TenantAccessClaims | null {
+function verify(token: string, secret: string): PlatformAccessClaims | null {
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   const [head, body, signature] = parts as [string, string, string];
@@ -43,7 +71,7 @@ function verify(token: string, secret: string): TenantAccessClaims | null {
   try {
     const claims = JSON.parse(
       Buffer.from(body, "base64url").toString("utf8")
-    ) as TenantAccessClaims;
+    ) as PlatformAccessClaims;
     if (
       claims.iss !== "codexsun-platform-api" ||
       claims.aud !== "codexsun-platform" ||

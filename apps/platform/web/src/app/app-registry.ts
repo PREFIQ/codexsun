@@ -27,6 +27,11 @@ import type { SidemenuItem } from "@codexsun/ui/blocks/menu/sidemenu/sub/sidemen
 
 export type PlatformAppId = "application" | "billing" | "mail" | "task-manager";
 
+export type BillingNavigationFeatures = {
+  exportSales: boolean;
+  quotation: boolean;
+};
+
 export type PlatformAppDefinition = {
   accentClass: string;
   alwaysEnabled: boolean;
@@ -103,7 +108,8 @@ export function defaultLandingApp(value: unknown, moduleKeys: string[]): Platfor
 export function appMenuFor(
   appId: PlatformAppId,
   activePage: string,
-  onSelect: (page: string) => void
+  onSelect: (page: string) => void,
+  billingFeatures?: BillingNavigationFeatures
 ): SidemenuItem {
   if (appId === "mail") {
     return {
@@ -124,11 +130,15 @@ export function appMenuFor(
           isActive: activePage === "billing.overview",
           onSelect: () => onSelect("billing.overview")
         },
-        {
-          title: "Quotation",
-          isActive: activePage === "billing.quotation",
-          onSelect: () => onSelect("billing.quotation")
-        },
+        ...(billingFeatures?.quotation !== false
+          ? [
+              {
+                title: "Quotation",
+                isActive: activePage === "billing.quotation",
+                onSelect: () => onSelect("billing.quotation")
+              }
+            ]
+          : []),
         {
           title: "Sales",
           isActive: activePage === "billing.sales",
@@ -139,11 +149,15 @@ export function appMenuFor(
           isActive: activePage === "billing.purchase",
           onSelect: () => onSelect("billing.purchase")
         },
-        {
-          title: "Export Sales",
-          isActive: activePage === "billing.export-sales",
-          onSelect: () => onSelect("billing.export-sales")
-        },
+        ...(billingFeatures?.exportSales !== false
+          ? [
+              {
+                title: "Export Sales",
+                isActive: activePage === "billing.export-sales",
+                onSelect: () => onSelect("billing.export-sales")
+              }
+            ]
+          : []),
         {
           title: "Payment",
           isActive: activePage === "billing.payment",
@@ -327,7 +341,8 @@ export function appMenuFor(
 export function appMenuItemsFor(
   appId: PlatformAppId,
   activePage: string,
-  onSelect: (page: string) => void
+  onSelect: (page: string) => void,
+  billingFeatures?: BillingNavigationFeatures
 ): SidemenuItem[] {
   if (appId === "mail") {
     return [
@@ -394,11 +409,15 @@ export function appMenuItemsFor(
           activePage === "billing.receipt",
         title: "Billing",
         items: [
-          {
-            title: "Quotation",
-            isActive: activePage === "billing.quotation",
-            onSelect: () => onSelect("billing.quotation")
-          },
+          ...(billingFeatures?.quotation !== false
+            ? [
+                {
+                  title: "Quotation",
+                  isActive: activePage === "billing.quotation",
+                  onSelect: () => onSelect("billing.quotation")
+                }
+              ]
+            : []),
           {
             title: "Sales",
             isActive: activePage === "billing.sales",
@@ -409,11 +428,15 @@ export function appMenuItemsFor(
             isActive: activePage === "billing.purchase",
             onSelect: () => onSelect("billing.purchase")
           },
-          {
-            title: "Export Sales",
-            isActive: activePage === "billing.export-sales",
-            onSelect: () => onSelect("billing.export-sales")
-          },
+          ...(billingFeatures?.exportSales !== false
+            ? [
+                {
+                  title: "Export Sales",
+                  isActive: activePage === "billing.export-sales",
+                  onSelect: () => onSelect("billing.export-sales")
+                }
+              ]
+            : []),
           {
             title: "Payment",
             isActive: activePage === "billing.payment",

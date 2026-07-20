@@ -17,15 +17,19 @@ apps/
     web/              # Main shell: login, SA desk, tenant desk, navigation
 
   core/
-    src/              # Contacts, companies, products, common masters, shared tenant records
+    api/              # Core API package; owned source is under api/src/modules
     web/              # Core frontend: common/master screens, lookups, reusable tenant data UI
 
   billing/
-    src/              # Billing backend modules and thin package exports
+    api/              # Billing API package; owned source is under api/src/modules
     web/              # Billing frontend routes/screens/forms
 
+  b2bconnect/
+    api/              # Standalone configurable B2B Connect API runtime
+    web/              # Configurable B2B portal shell and modules
+
   ecommerce/
-    src/              # Ecommerce backend modules and thin package exports
+    api/              # Ecommerce API package; owned source is under api/src/modules
     web/              # Ecommerce storefront/admin frontend
 
   crm/
@@ -37,20 +41,21 @@ apps/
     web/              # Sites/frontend builder screens and public-site app code
 ```
 
-## `src` Versus `api`
+## `api/src` Ownership
 
-For business apps, use `src`, not `api`.
-
-`src` is the meaningful name because a business app is more than HTTP routes. It owns domain rules, application use cases, contracts, infrastructure, migrations, events, queues, workers, sync behavior, tests, and interface adapters.
-
-Use `api` only for a runnable API process whose job is composition or gateway behavior.
+Runnable backend workspace packages use `apps/{app}/api`, and their owned source remains under
+`apps/{app}/api/src`. The package name does not reduce the app to HTTP routes: domain rules,
+application services, persistence, migrations, events, queues, workers, sync behavior, tests, and
+interface adapters remain inside its module folders.
 
 Correct:
 
 ```text
-apps/billing/src
+apps/billing/api/src
 apps/billing/web
-apps/ecommerce/src
+apps/b2bconnect/api/src
+apps/b2bconnect/web
+apps/ecommerce/api/src
 apps/ecommerce/web
 ```
 
@@ -63,25 +68,25 @@ apps/platform/web
 
 ## Business App Source Root
 
-Business app `src/` roots should stay flat and thin:
+Business app `api/src/` roots should stay flat and thin:
 
 ```text
-apps/{app}/src/
+apps/{app}/api/src/
   index.ts
   modules/
 ```
 
-Do not add top-level `api/`, `migrations/`, `queues/`, `seeders/`, `sync/`, `workers/`, `contracts/`, `domain/`, `application/`, `infrastructure/`, or `interface/` folders under a business app `src/`.
+Do not add top-level `migrations/`, `queues/`, `seeders/`, `sync/`, `workers/`, `contracts/`, `domain/`, `application/`, `infrastructure/`, or `interface/` folders beside `modules/` under a business app `api/src/`.
 
 Those concerns belong inside the owning module file:
 
 ```text
-apps/{app}/src/modules/{module}/{module}.routes.ts
-apps/{app}/src/modules/{module}/{module}.migration.ts
-apps/{app}/src/modules/{module}/{module}.worker.ts
-apps/{app}/src/modules/{module}/{module}.seed.ts
-apps/{app}/src/modules/{module}/{module}.sync.ts
-apps/{app}/src/modules/{module}/{module}.types.ts
+apps/{app}/api/src/modules/{module}/{module}.routes.ts
+apps/{app}/api/src/modules/{module}/{module}.migration.ts
+apps/{app}/api/src/modules/{module}/{module}.worker.ts
+apps/{app}/api/src/modules/{module}/{module}.seed.ts
+apps/{app}/api/src/modules/{module}/{module}.sync.ts
+apps/{app}/api/src/modules/{module}/{module}.types.ts
 ```
 
 If a package needs public subpath compatibility such as `@codexsun/billing/api` or `@codexsun/billing/migrations`, expose those package exports from the module index instead of recreating top-level source folders.
@@ -95,6 +100,7 @@ Business UI belongs to the app that owns the business meaning:
 ```text
 apps/core/web       # Common/master tenant UI
 apps/billing/web    # Billing entries, billing settings, billing reports
+apps/b2bconnect/web # Configurable B2B buyer/seller portal
 apps/ecommerce/web  # Catalog, cart, orders, storefront/admin
 apps/crm/web        # Leads, customers, pipeline, activities
 apps/sites/web      # Site builder, pages, themes, public site tools
@@ -136,7 +142,7 @@ Frontend module API calls belong in `{module}.services.ts`, React Query/custom h
 For Billing, the strict pairing is:
 
 ```text
-apps/billing/src/modules/sales/
+apps/billing/api/src/modules/sales/
 apps/billing/web/pages/modules/sales/
 apps/billing/web/shared/
 ```
@@ -149,6 +155,7 @@ Examples:
 
 - Billing owns quotations, sales, export sales, purchase, receipt, payment, billing document settings, and billing-specific compliance fields.
 - Ecommerce owns catalog sales flow, storefront/admin ecommerce behavior, cart, ecommerce orders, and ecommerce-specific settings.
+- B2bconnect owns organisations, buyer requirements, seller offers, enquiries, and marketplace verification workflows.
 - Core owns contacts, companies, products, common modules, and shared tenant master records.
 - Platform owns tenant identity, auth, roles, permissions, activation, subscription, audit, settings, files, notifications, and app registry behavior.
 
@@ -164,12 +171,12 @@ Ecommerce order confirmed
 
 ## Module File Pattern
 
-Inside `apps/{app}/src/modules/{module}/`, use one folder with module-prefixed files. Do not create deep boundary folders for each concern.
+Inside `apps/{app}/api/src/modules/{module}/`, use one folder with module-prefixed files. Do not create deep boundary folders for each concern.
 
 Required pattern:
 
 ```text
-apps/billing/src/modules/quotation/
+apps/billing/api/src/modules/quotation/
   quotation.module.ts       # Module definition and registration
   quotation.service.ts      # Use cases and business operations
   quotation.repository.ts   # Database adapter
@@ -187,18 +194,18 @@ apps/billing/src/modules/quotation/
 Follow the same pattern for every module:
 
 ```text
-apps/{app}/src/modules/{module}/{module}.module.ts
-apps/{app}/src/modules/{module}/{module}.service.ts
-apps/{app}/src/modules/{module}/{module}.repository.ts
-apps/{app}/src/modules/{module}/{module}.routes.ts
-apps/{app}/src/modules/{module}/{module}.events.ts
-apps/{app}/src/modules/{module}/{module}.migration.ts
-apps/{app}/src/modules/{module}/{module}.worker.ts
-apps/{app}/src/modules/{module}/{module}.seed.ts
-apps/{app}/src/modules/{module}/{module}.sync.ts
-apps/{app}/src/modules/{module}/{module}.test.ts
-apps/{app}/src/modules/{module}/{module}.types.ts
-apps/{app}/src/modules/{module}/index.ts
+apps/{app}/api/src/modules/{module}/{module}.module.ts
+apps/{app}/api/src/modules/{module}/{module}.service.ts
+apps/{app}/api/src/modules/{module}/{module}.repository.ts
+apps/{app}/api/src/modules/{module}/{module}.routes.ts
+apps/{app}/api/src/modules/{module}/{module}.events.ts
+apps/{app}/api/src/modules/{module}/{module}.migration.ts
+apps/{app}/api/src/modules/{module}/{module}.worker.ts
+apps/{app}/api/src/modules/{module}/{module}.seed.ts
+apps/{app}/api/src/modules/{module}/{module}.sync.ts
+apps/{app}/api/src/modules/{module}/{module}.test.ts
+apps/{app}/api/src/modules/{module}/{module}.types.ts
+apps/{app}/api/src/modules/{module}/index.ts
 ```
 
 This is strict for new modules and for module cleanup work. It keeps modules compact, readable, and close to the NestJS mental model without requiring NestJS itself.
@@ -225,6 +232,13 @@ ecommerce-suite
   billing
   ecommerce
 
+b2bconnect-suite
+  shared packages
+  framework
+  platform
+  core
+  b2bconnect
+
 crm-suite
   shared packages
   framework
@@ -236,10 +250,25 @@ sites-suite
   shared packages
   framework
   platform
+  core
   sites
 ```
 
 The codebase is developed app-by-app. Containers bind the selected apps and shared packages together.
+
+The root development stack contract is executable in `tools/product-stack-contract.mjs`:
+
+```text
+billing:    framework + platform + core + billing
+b2bconnect: framework + platform + core + b2bconnect
+ecommerce:  framework + platform + core + billing + ecommerce
+sites:      framework + platform + core + sites
+```
+
+Foundation APIs start in dependency order before the owned application API and web runtime. This
+composition does not permit private imports or cross-app table writes. B2B Connect and Ecommerce
+consume Platform, Core, and Billing only through stable public HTTP contracts, injected contracts,
+or approved events.
 
 ## Docker Direction
 

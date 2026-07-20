@@ -62,6 +62,34 @@ function isAdminSession() {
   }
 }
 
+function printExportSaleFromList(exportSaleId: string) {
+  const frame = document.createElement("iframe");
+  let cleanupTimer: number | undefined;
+  const cleanup = () => {
+    if (cleanupTimer !== undefined) window.clearTimeout(cleanupTimer);
+    frame.remove();
+  };
+
+  frame.setAttribute("aria-hidden", "true");
+  frame.tabIndex = -1;
+  frame.style.position = "fixed";
+  frame.style.left = "-10000px";
+  frame.style.width = "1px";
+  frame.style.height = "1px";
+  frame.style.border = "0";
+  frame.addEventListener(
+    "load",
+    () => frame.contentWindow?.addEventListener("afterprint", cleanup, { once: true }),
+    { once: true }
+  );
+  const printPath = window.location.pathname.startsWith("/app/")
+    ? "/app/billing/export-sales/print"
+    : "/billing/export-sales/print";
+  frame.src = `${printPath}?id=${encodeURIComponent(exportSaleId)}&autoprint=1`;
+  document.body.append(frame);
+  cleanupTimer = window.setTimeout(cleanup, 120_000);
+}
+
 export function ExportSalesWorkspace({
   initialRecordId
 }: {
@@ -401,13 +429,7 @@ export function ExportSalesWorkspace({
             deleteMutation.mutate(exportSale.id);
         }}
         onRevoke={(exportSale) => revokeMutation.mutate(exportSale.id)}
-        onPrint={(exportSale) =>
-          window.open(
-            `${window.location.origin}/billing/export-sales/print?id=${encodeURIComponent(exportSale.id)}&autoprint=1`,
-            "_blank",
-            "noopener,noreferrer"
-          )
-        }
+        onPrint={(exportSale) => printExportSaleFromList(exportSale.id)}
         canAdminRevoke={canAdminRevoke}
         onView={(exportSale) => setView({ mode: "show", exportSale })}
         page={currentPage}

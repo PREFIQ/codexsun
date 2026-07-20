@@ -53,7 +53,7 @@ from its handler and let the framework create the standard API envelope.
 Modules must use one module folder with NestJS-like filenames. Do not create many nested boundary folders inside a module.
 
 ```text
-apps/{app}/src/modules/{module}/
+apps/{app}/api/src/modules/{module}/
   {module}.module.ts       # Module definition and registration
   {module}.service.ts      # Use cases and business operations
   {module}.repository.ts   # Database adapter and persistence implementation
@@ -70,7 +70,7 @@ apps/{app}/src/modules/{module}/
 Example:
 
 ```text
-apps/billing/src/modules/quotation/
+apps/billing/api/src/modules/quotation/
   quotation.module.ts
   quotation.service.ts
   quotation.repository.ts
@@ -145,7 +145,8 @@ Strict naming rules:
 
 ## Standard App Source Structure
 
-Business apps must use `src/` for backend/module source and `web/` for frontend source.
+Business apps use an `api/` workspace for the runnable backend and keep backend/module source under
+that package's `src/`; frontend source remains in the sibling `web/` workspace.
 
 ```text
 apps/
@@ -154,15 +155,19 @@ apps/
     web/              # Runnable platform shell and route composer
 
   core/
-    src/              # Core backend modules
+    api/              # Runnable Core API; owned source lives under api/src
     web/              # Core frontend modules
 
   billing/
-    src/              # Billing backend modules and thin package exports
+    api/              # Runnable Billing API; owned source lives under api/src
     web/              # Billing frontend modules
 
+  b2bconnect/
+    api/              # Standalone configurable B2B Connect API runtime
+    web/              # Configurable B2B frontend modules
+
   ecommerce/
-    src/              # Ecommerce backend modules
+    api/              # Runnable Ecommerce API; owned source lives under api/src
     web/              # Ecommerce frontend modules
 
   crm/
@@ -174,14 +179,14 @@ apps/
     web/              # Sites frontend modules
 ```
 
-Use `src`, not `api`, for business app backend code because a business app owns more than HTTP routes: domain rules, application use cases, contracts, infrastructure, migrations, events, queues, workers, sync behavior, tests, and interface adapters all live under the app backend source.
+The Platform API owns gateway/composition, auth, tenant context, RBAC, app registry, and shared
+runtime wiring. A business app API owns its domain modules and exposes only intentional package and
+HTTP contracts; the `api` package name never permits business behavior in its composition root.
 
-Use `api` only for a runnable API process such as `apps/platform/api`, where the responsibility is gateway/composition, auth, tenant context, RBAC, app registry, route registration, database bootstrap, and shared runtime wiring.
-
-Business app `src/` roots must remain flat:
+Business app `api/src/` roots must remain flat:
 
 ```text
-apps/{app}/src/
+apps/{app}/api/src/
   index.ts
   modules/
 ```
@@ -194,6 +199,7 @@ Frontend ownership follows the same boundary:
 - `apps/core/web` owns common/master tenant screens and shared tenant data UI.
 - `apps/billing/web` owns billing entries, billing settings, billing reports, and billing forms.
 - `apps/ecommerce/web`, `apps/crm/web`, and `apps/sites/web` own their own app-specific screens and routes.
+- `apps/b2bconnect/web` owns deployment-branded B2B buyer/seller portal screens and routes.
 - `packages/ui` owns reusable design-system primitives only. It must not absorb app-specific business screens or rules.
 
 Runnable app web packages use `apps/{app}/web/src/modules/{module}/` for app-owned frontend workflows:
@@ -292,19 +298,19 @@ Do not put unstable business rules in the shared kernel.
 
 ### App Boundaries (Physical)
 
-| App/Package          | Role                              | Owns                                                                                                                                                       |
-| -------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/framework` | Shared kernel                     | DB abstraction, HTTP helpers, errors, modules registry, health check, testing utilities                                                                    |
-| `packages/platform`  | Platform services                 | Auth, tenants, audit, settings, permissions, roles, subscription (scaffold), users, catalog, notifications, files, activity, agents, templates, API client |
-| `packages/ui`        | Design system                     | React components, layouts, workspace patterns, blocks (sidemenu, tables, forms)                                                                            |
-| `apps/core/src`      | Master/business backend modules   | Common definitions, contacts, companies, and products with database-backed tenant records; work orders and generic core records remain temporary           |
-| `apps/core/web`      | Core frontend modules             | Common/master tenant screens, lookup controls, and reusable tenant record workspace UI                                                                     |
-| `apps/billing/src`   | Billing backend modules           | Quotation, sales, export sales, purchase, receipt, payment contracts, routes, migrations, workers, seeders, and sync rules under module folders            |
-| `apps/billing/web`   | Billing frontend modules          | Billing entry workspaces, billing settings, billing forms, and billing reports                                                                             |
-| `apps/mail/api`      | Mail backend module               | Tenant mail settings, encrypted credentials, messages, attachments, delivery/sync events, SMTP/IMAP workers, and queue contracts                           |
-| `apps/mail/web`      | Mail frontend module              | Mailboxes, rich compose, provider settings, message reader, and public Billing document-mail integration                                                   |
-| `apps/platform/api`  | API gateway + platform routes     | Route registration, guard functions (session, tenant, feature, permission), migration runner, DB bootstrap                                                 |
-| `apps/platform/web`  | Platform shell and React composer | Login, SA desk, Admin desk, Tenant desk shell, design system pages, route/menu composition, API client integration                                         |
+| App/Package            | Role                              | Owns                                                                                                                                                       |
+| ---------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/framework`   | Shared kernel                     | DB abstraction, HTTP helpers, errors, modules registry, health check, testing utilities                                                                    |
+| `packages/platform`    | Platform services                 | Auth, tenants, audit, settings, permissions, roles, subscription (scaffold), users, catalog, notifications, files, activity, agents, templates, API client |
+| `packages/ui`          | Design system                     | React components, layouts, workspace patterns, blocks (sidemenu, tables, forms)                                                                            |
+| `apps/core/api/src`    | Master/business backend modules   | Common definitions, contacts, companies, and products with database-backed tenant records; work orders and generic core records remain temporary           |
+| `apps/core/web`        | Core frontend modules             | Common/master tenant screens, lookup controls, and reusable tenant record workspace UI                                                                     |
+| `apps/billing/api/src` | Billing backend modules           | Quotation, sales, export sales, purchase, receipt, payment contracts, routes, migrations, workers, seeders, and sync rules under module folders            |
+| `apps/billing/web`     | Billing frontend modules          | Billing entry workspaces, billing settings, billing forms, and billing reports                                                                             |
+| `apps/mail/api`        | Mail backend module               | Tenant mail settings, encrypted credentials, messages, attachments, delivery/sync events, SMTP/IMAP workers, and queue contracts                           |
+| `apps/mail/web`        | Mail frontend module              | Mailboxes, rich compose, provider settings, message reader, and public Billing document-mail integration                                                   |
+| `apps/platform/api`    | API gateway + platform routes     | Route registration, guard functions (session, tenant, feature, permission), migration runner, DB bootstrap                                                 |
+| `apps/platform/web`    | Platform shell and React composer | Login, SA desk, Admin desk, Tenant desk shell, design system pages, route/menu composition, API client integration                                         |
 
 ### Table Ownership
 
@@ -347,9 +353,9 @@ graph TD
   framework[packages/framework]
   platform[packages/platform]
   ui[packages/ui]
-  core[apps/core/src]
+  core[apps/core/api/src]
   coreweb[apps/core/web]
-  billing[apps/billing/src]
+  billing[apps/billing/api/src]
   billingweb[apps/billing/web]
   api[apps/platform/api]
   web[apps/platform/web]
@@ -448,8 +454,13 @@ Current registered modules in `platformModuleCatalog`:
 7. **Industry scoping is defined but not implemented** — `ModuleScope` includes `"industry"` but no industry modules or tables exist yet.
 8. **GST/ZETRO are placeholders** — Tax identity types and HSN codes exist in core contracts; full compliance APIs and ZETRO assistant are future work.
 
-9. **Business apps use strict backend/frontend module folders** - Business apps such as Core, Billing, Ecommerce, CRM, and Sites use `src/index.ts` plus `src/modules/` for backend modules and `web/pages/index.ts` plus `web/pages/modules/` for frontend modules. Only runnable gateway surfaces such as `apps/platform/api` use `api/`.
+9. **Business apps use strict backend/frontend module folders** - Runnable business backends use `api/src/index.ts` plus `api/src/modules/`; frontend modules remain under the app's `web` workspace. The API composition root registers modules but does not own business behavior.
 10. **Platform web composes app web packages** - `apps/platform/web` remains the shell and route/menu composer. Business screens must live in the owning app web package and be imported or registered through app manifests.
+
+Current runtime composition supersedes the earlier gateway wording in decision 3: Platform, Core,
+Billing, B2B Connect, and Ecommerce run as app-owned API packages. Product stacks start selected APIs
+in dependency order and integrate through public contracts, injected dependencies, or approved
+events; Platform does not absorb another app's business routes or CRUD.
 
 ### Tenant Readiness Tracking
 

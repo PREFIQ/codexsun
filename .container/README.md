@@ -1,140 +1,108 @@
-# CODEXSUN Billing Deployment
+# CODEXSUN Container Deployment
 
-This bundle deploys exactly four independent stacks on one external Docker network:
+This directory provides one persistent infrastructure layer and four independently replaceable product stacks.
 
-1. MariaDB
-2. Redis
-3. Media
-4. Billing
+| Product | Source composition | Runtime services |
+| --- | --- | --- |
+| Billing | Framework + Platform + Core + Billing | Platform API/Web, Core API/Web, Billing API/Web |
+| Ecommerce | Framework + Platform + Core + Billing + Ecommerce | Platform, Core, Billing and Ecommerce APIs, Ecommerce Web |
+| B2B Connect | Framework + Platform + Core + B2B Connect | Platform, Core and B2B APIs, B2B Web |
+| Public Sites | Framework + Platform + Core + Sites | Static `codexsun.com`, `logicx.in`, and `techmedia.in` Web containers |
 
-The Billing stack contains the shared Framework plus Platform, Core, and Billing API/Web applications. Kitchen Serve and Data Bridge are not built or deployed. A tiny compile-time Data Bridge stub only preserves the current Platform workspace import until that optional route is removed from Platform itself.
+The Sites release participates in the Framework/Platform/Core source-impact contract, but its production image contains only the compiled static sites. Unused application APIs are not shipped in Nginx.
 
-## Layout
+MariaDB, Redis, and Media are installed once. Product deployment commands never recreate them and never delete their named volumes. Normal upgrades replace only versioned application containers, so databases, credentials, uploads, and application storage remain stable.
 
-```text
-.container/
-  database/mariadb/   MariaDB image, configuration, grants, Compose
-  database/redis/     Redis image and Compose
-  media/              File Browser image and Compose
-  billing/            shared API/Web images and Billing Compose
-  deploy.env.example  safe template
-  deploy.env          ignored deployment input generated locally/on server
-  prepare-env.sh      imports or generates secrets
-  setup-media.sh      initializes the media administrator
-  setup.sh            installs/reinstalls the complete four-stack deployment
-  deploy.sh           deploys or reinstalls only the Billing application stack
-```
+## First installation
 
-Every stack joins `codexsun-network`. Persistent data uses stable named volumes and is preserved by normal `down` and upgrade operations.
-
-## Deployment input and secrets
-
-Create or refresh the private input file:
+Docker Desktop or Docker Engine with Compose v2 is required. From the repository root:
 
 ```bash
-bash .container/prepare-env.sh
+bash .container/setup.sh all
 ```
 
-For each supported credential, preparation uses this priority:
+Install only one product by replacing `all` with `billing`, `ecommerce`, `b2bconnect`, or `sites`.
 
-1. Existing non-placeholder value in `.container/deploy.env`.
-2. Matching value from the repository `.env`.
-3. A random 32-byte hexadecimal secret.
+On first use, `prepare-env.sh` creates the ignored `.container/deploy.env`. `DB_USER`, `DB_PASSWORD`, and `DB_MASTER_NAME` are imported from the repository `.env`; missing infrastructure secrets are generated. Once created, deployment credentials are retained across subsequent setup and upgrade runs. Review the file before production use, especially public origins, registry, administrator values, and `CODEXSUN_VERIFIED_BACKUP_ID`.
 
-The generated `.container/deploy.env` is ignored by Git and restricted to the current user where the host supports POSIX permissions. Review it before deployment to set public origins, API URLs, registry names, and optional GSP credentials.
+MariaDB listens inside Docker on `3306` and is exposed to the host at `127.0.0.1:3307` by default. Applications use the private `codexsun-mariadb:3306` address.
 
-Generated values include MariaDB root, Redis, database, JWT, and media credentials. `MEDIA_ADMIN_PASSWORD` is always synchronized with the resolved `SUPER_ADMIN_PASSWORD` when the latter exists. Secret values are never printed.
+## Development and release updates
 
-When `ENABLE_DEFAULT_TENANT_SEED=1`, preparation validates the full `DEFAULT_TENANT_*` configuration before any Billing teardown. Missing identity defaults are prepared for a CODEXSUN tenant, and missing tenant-admin identity values reuse the configured Super Admin. The values are passed only to the Billing API containers. Complete setup also reconciles the MariaDB application grant required to create configured tenant databases on both new and existing database volumes.
-
-Before a production Billing migration, set `CODEXSUN_VERIFIED_BACKUP_ID` to the verified backup run ID. For a confirmed empty first deployment, record that verification explicitly with a value such as `initial-empty-database-YYYYMMDD`; never reuse that marker for an existing database.
-
-## Images
-
-Application images use workspace version `1.0.33` and are refreshed automatically from `package.json` by `prepare-env.sh`:
-
-- `codexsun/billing-stack-api:1.0.33`
-- `codexsun/billing-stack-web:1.0.33`
-- `codexsun/billing-stack-migrations:1.0.33`
-- `codexsun/mariadb:11.8-codexsun-1.0.33`
-- `codexsun/redis:7.4-codexsun-1.0.33`
-- `codexsun/media:1.0.33-filebrowser2.63.5`
-
-The shared API image runs Platform, Core, or Billing according to `CODEXSUN_RUNTIME`. The shared web image contains only the Platform, Core, and Billing production bundles and selects one with `CODEXSUN_WEB_APP`.
-
-## First deployment
-
-Confirm the database is empty or take and verify a backup, then record its identifier in `.container/deploy.env` as described above.
-
-Install the complete deployment in dependency order:
+For a local source update, rebuild and replace only the selected product:
 
 ```bash
-bash .container/setup.sh
+bash .container/deploy.sh billing up
 ```
 
-Cleanly reinstall every container and image while preserving MariaDB, Redis, Media, and Billing named volumes:
+For a production-style immutable update, publish versioned images to a registry and pull them on the server:
 
 ```bash
-bash .container/setup.sh --reinstall
+# Build machine / CI
+CODEXSUN_IMAGE_REGISTRY=registry.example.com/codexsun \
+  bash .container/deploy.sh billing publish
+
+# Deployment host
+CODEXSUN_IMAGE_REGISTRY=registry.example.com/codexsun \
+  bash .container/deploy.sh billing upgrade
 ```
 
-`setup.sh --reinstall` never passes `--volumes`, removes a Docker volume, or calls a database reset/drop command.
+`upgrade` pulls the selected version, runs its safe forward migrations, and recreates only that product's containers. It does not change `.container/deploy.env`, MariaDB, Redis, Media, uploads, or named volumes. Increment the root workspace version before publishing a new immutable release tag. Authenticate Docker to a private registry before `publish` or `upgrade`.
 
-Billing deployment builds the shared images, runs the explicit Platform -> Core -> Billing forward-migration stack, prints the applied migration ledger, then starts all six app containers and waits for health checks. Future Accounts modules under Core/Billing automatically enter this build and migration boundary.
-
-Cleanly reinstall only Billing backend/frontend containers and images:
+Available actions are:
 
 ```bash
-bash .container/deploy.sh billing --reinstall
+bash .container/deploy.sh PRODUCT up
+bash .container/deploy.sh PRODUCT --reinstall
+bash .container/deploy.sh PRODUCT build
+bash .container/deploy.sh PRODUCT publish
+bash .container/deploy.sh PRODUCT upgrade
+bash .container/deploy.sh PRODUCT migrate
+bash .container/deploy.sh PRODUCT ps
+bash .container/deploy.sh PRODUCT logs
+bash .container/deploy.sh PRODUCT down
 ```
 
-This Billing command verifies MariaDB and Redis health but never starts, stops, recreates, or removes MariaDB, Redis, or Media. Existing databases, uploads, and Billing storage remain mounted and unchanged except for required forward migrations.
+`--reinstall` performs a no-cache rebuild of the selected application stack while preserving all named volumes. `down` also preserves volumes. There is intentionally no implicit destructive reset command.
 
-## Other commands
+## Persistent resources
 
-```bash
-bash .container/deploy.sh billing build
-bash .container/deploy.sh billing migrate
-bash .container/deploy.sh billing ps
-bash .container/deploy.sh billing logs
-bash .container/deploy.sh billing down
-```
+The stable Docker volumes include MariaDB data/backups, Redis data, Media files/metadata, and per-product application storage. B2B Connect stores its SQLite database in its application volume. MariaDB owns separate master databases for Billing, Ecommerce, and B2B Connect.
 
-Normal `down` never removes volumes.
+Before a production database migration, set `CODEXSUN_VERIFIED_BACKUP_ID` to the verified backup run ID. For a confirmed empty first install, record a unique marker such as `initial-empty-database-YYYYMMDD`.
 
-## Media administration
-
-Complete setup calls:
+Media administration can be reconciled independently:
 
 ```bash
 bash .container/setup-media.sh
 ```
 
-The helper updates or creates the File Browser `admin` user from `MEDIA_ADMIN_PASSWORD`. The long-running media container does not contain the password in its command arguments.
+Only the explicit `--reinstall --wipe-media` combination removes media data; the helper validates mounts and targets before doing so.
 
-Recreate only File Browser metadata while preserving uploads:
+## Default host ports
 
-```bash
-bash .container/setup-media.sh --reinstall
-```
+All published ports bind to `127.0.0.1` unless `CODEXSUN_BIND_ADDRESS` is changed.
 
-Wipe metadata and uploaded media only with both flags:
-
-```bash
-bash .container/setup-media.sh --reinstall --wipe-media
-```
-
-The wipe refuses to continue while another container mounts the media volume and verifies every requested volume removal.
-
-## Default private ports
-
-| Stack/service | Port |
+| Service | Host port |
 | --- | ---: |
-| MariaDB | `3306` |
-| Redis | `6379` |
-| Media | `7090` |
-| Platform API/Web | `7010` / `7020` |
-| Core API/Web | `7030` / `7040` |
+| MariaDB / Redis / Media | `3307` / `6379` / `7090` |
+| Billing Platform API/Web | `7010` / `7020` |
+| Billing Core API/Web | `7030` / `7040` |
 | Billing API/Web | `7050` / `7060` |
+| B2B Platform/Core APIs | `7210` / `7230` |
+| B2B API/Web | `7135` / `7140` |
+| Ecommerce Platform/Core/Billing APIs | `7310` / `7330` / `7350` |
+| Ecommerce API/Web | `7150` / `7160` |
+| `codexsun.com` / `logicx.in` / `techmedia.in` | `7170` / `7180` / `7190` |
 
-Ports bind to `127.0.0.1` by default. Put Nginx or Caddy on the same host and keep MariaDB, Redis, and Media private.
+For public Sites, configure DNS/TLS and a host reverse proxy to route `codexsun.com` to `127.0.0.1:7170`, `logicx.in` to `127.0.0.1:7180`, and `techmedia.in` to `127.0.0.1:7190`. Keep MariaDB and Redis private.
+
+## Verification
+
+With all products running:
+
+```bash
+bash .container/smoke-test.sh
+```
+
+The smoke test checks every HTTP service, each public site's compiled identity, MariaDB port/database initialization, and persistent B2B SQLite storage.

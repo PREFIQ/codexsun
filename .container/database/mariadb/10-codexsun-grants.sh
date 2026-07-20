@@ -12,7 +12,14 @@ apply_grants() {
   fi
 }
 
+db_user=${CODEXSUN_DB_USER:-root}
+db_password=${CODEXSUN_DB_PASSWORD:-${MARIADB_ROOT_PASSWORD}}
+escaped_user=$(printf '%s' "$db_user" | sed "s/'/''/g")
+escaped_password=$(printf '%s' "$db_password" | sed "s/'/''/g")
+
 apply_grants <<SQL
-GRANT ALL PRIVILEGES ON *.* TO '${MARIADB_USER}'@'%' WITH GRANT OPTION;
+CREATE USER IF NOT EXISTS '${escaped_user}'@'%' IDENTIFIED BY '${escaped_password}';
+ALTER USER '${escaped_user}'@'%' IDENTIFIED BY '${escaped_password}';
+GRANT ALL PRIVILEGES ON *.* TO '${escaped_user}'@'%' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 SQL

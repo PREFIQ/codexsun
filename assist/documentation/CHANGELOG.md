@@ -47,6 +47,9 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 - Added a CODEXSUN fallback brand for an unconfigured local public portal while preserving configured organisation branding.
 - Verified formatting, Platform Web lint and TypeScript, Platform module boundaries, root dependency layout, version
   alignment, production build output, all public routes, billing-language exclusions, and desktop/mobile rendering.
+- Added independent Billing, B2B Connect, and Ecommerce development/release boundaries. Product dev runners now attach
+  to already healthy foundation APIs without stopping them, stack-impact tooling limits product-only verification, and
+  stack release plans define product-scoped services, database migrations, health-gated rollout, and rollback.
 
 ## v-1.0.36
 

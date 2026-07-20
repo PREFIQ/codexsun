@@ -23,6 +23,7 @@ CODEXSUN is intended to be:
 - Tenant domain mapping exists in the master database through `tenant_domain_mappings`.
 - Tenant module activation exists through `tenant_module_activation`.
 - Tenant login resolves `tenantCode`, verifies active tenant status, resolves the tenant database, and reads `users` from that tenant database.
+- Fixed-tenant B2B deployments use Platform login without a visible tenant selector. The B2B frontend supplies its code-owned deployment tenant code, and the B2B API independently verifies the Platform token, tenant headers, resolved database, and matching deployment code.
 - Tenant sessions include `tenantId` and `tenantCode`.
 - Tenant web API calls send `x-tenant-id`.
 - Tenant API routes reject missing or mismatched tenant context.

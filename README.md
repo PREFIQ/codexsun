@@ -29,30 +29,34 @@ Platform web: <http://127.0.0.1:7020>
 
 ## Docker Deployment
 
-Docker deployment files live in `.container/`. The stack runs Platform,
-Core, Billing, MariaDB/Redis options, and file storage as separate
-containers while reusing one built application image.
+Docker deployment files live in `.container/`. Shared MariaDB, Redis, and
+Media services are installed once; Billing, Ecommerce, B2B Connect, and the
+three public Sites are independently replaceable product stacks.
 
 ```bash
-cp .container/deploy.env.example .container/deploy.env
-bash .container/setup.sh
+bash .container/setup.sh all
 ```
 
-For normal CI/CD upgrades use:
+Install a single product by replacing `all` with `billing`, `ecommerce`,
+`b2bconnect`, or `sites`. For a local source update:
 
 ```bash
-bash .container/upgrade-containers.sh
+bash .container/deploy.sh billing up
 ```
 
-For a clean Docker reinstall of the app/file/Redis containers and volumes use:
+For a registry-based release, publish on CI and upgrade only that application
+stack on the deployment host:
 
 ```bash
-bash .container/hard-reinstall.sh
+bash .container/deploy.sh billing publish
+bash .container/deploy.sh billing upgrade
 ```
 
-See `.container/README.md` for internal/external MariaDB, Redis, file server,
-Docker admin, MariaDB admin, Redis admin, and GitHub Actions deployment
-details.
+MariaDB is exposed at `127.0.0.1:3307`; its application username, password,
+and Billing master database are initially imported from the repository `.env`.
+Normal updates preserve deployment configuration, credentials, databases,
+uploads, and named volumes. See `.container/README.md` for the full port map,
+registry flow, persistence contract, and verification commands.
 
 ## Workspace
 

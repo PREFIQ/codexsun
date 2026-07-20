@@ -71,7 +71,7 @@ export function BillingSettingsWorkspace() {
       await queryClient.invalidateQueries({ queryKey: billingSettingsQueryKey() });
       toast.success("Billing settings published", {
         description:
-          "Quotation, sales, purchase, and export sales screens will use the updated controls."
+          "Billing navigation and document flows now use the published feature and layout controls."
       });
     },
     onError: (error) => {

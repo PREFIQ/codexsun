@@ -73,7 +73,6 @@ export function SalesList({
                 ...(visibleColumns.gst ? ["GST"] : []),
                 ...(visibleColumns.total ? ["Total"] : []),
                 ...(visibleColumns.status ? ["Status"] : []),
-                ...(visibleColumns.invoice ? ["Invoice"] : []),
                 "Print",
                 ...(visibleColumns.action ? ["Action"] : [])
               ].map((heading) => (
@@ -164,11 +163,6 @@ export function SalesList({
                 {visibleColumns.status ? (
                   <td className="px-4 py-2.5">
                     <StatusPill sale={sale} />
-                  </td>
-                ) : null}
-                {visibleColumns.invoice ? (
-                  <td className="px-4 py-2.5 font-semibold text-sky-700">
-                    {sale.generatedSalesInvoiceNo || "-"}
                   </td>
                 ) : null}
                 <td className="px-4 py-2.5 text-center">

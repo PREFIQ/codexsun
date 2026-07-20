@@ -12,6 +12,42 @@ const requestedMode = process.argv[3]?.trim();
 const requestedPort = process.argv[4]?.trim();
 
 const apps = {
+  "b2bconnect-api": {
+    displayName: "b2bconnect-api",
+    cwd: "apps/b2bconnect/api",
+    envKey: "B2BCONNECT_API_PORT",
+    hostKey: "API_HOST",
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
+  },
+  "b2bconnect-web": {
+    displayName: "b2bconnect-web",
+    cwd: "apps/b2bconnect/web",
+    envKey: "B2BCONNECT_WEB_PORT",
+    hostKey: "B2BCONNECT_WEB_HOST",
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
+  },
+  "ecommerce-api": {
+    displayName: "ecommerce-api",
+    cwd: "apps/ecommerce/api",
+    envKey: "ECOMMERCE_API_PORT",
+    hostKey: "API_HOST",
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
+  },
+  "ecommerce-web": {
+    displayName: "ecommerce-web",
+    cwd: "apps/ecommerce/web",
+    envKey: "ECOMMERCE_WEB_PORT",
+    hostKey: "ECOMMERCE_WEB_HOST",
+    fallbackHost: "127.0.0.1",
+    command: process.execPath,
+    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
+  },
   "billing-api": {
     displayName: "billing-api",
     cwd: "apps/billing/api",
@@ -137,7 +173,9 @@ if (
   app === "core-api" ||
   app === "billing-api" ||
   app === "data-bridge-api" ||
-  app === "kitchen-serve-api"
+  app === "kitchen-serve-api" ||
+  app === "b2bconnect-api" ||
+  app === "ecommerce-api"
 ) {
   ensurePlatformApiDependencies();
 }

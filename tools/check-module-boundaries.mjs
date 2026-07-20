@@ -5,6 +5,14 @@ const requestedApp = process.argv[2]?.trim();
 
 const moduleRoots = [
   {
+    app: "b2bconnect-api",
+    path: join(process.cwd(), "apps", "b2bconnect", "api", "src", "modules")
+  },
+  {
+    app: "ecommerce-api",
+    path: join(process.cwd(), "apps", "ecommerce", "api", "src", "modules")
+  },
+  {
     app: "mail-api",
     path: join(process.cwd(), "apps", "mail", "api", "src", "modules")
   },
@@ -58,8 +66,29 @@ const reducedBackendRoles = [
   "seed",
   "types"
 ];
+const shellOnlyBackendModules = new Set(["b2bconnect-api/app-info", "ecommerce-api/app-info"]);
+const shellOnlyBackendRoles = ["module", "routes", "types"];
+const capabilityBackendRoles = new Map([
+  ["b2bconnect-api/authentication", ["module", "service", "routes", "types"]],
+  ["b2bconnect-api/client-portal", ["module", "service", "routes", "types"]],
+  ["b2bconnect-api/administration", ["module", "service", "routes", "types"]],
+  ["b2bconnect-api/super-administration", ["module", "service", "routes", "types"]],
+  [
+    "b2bconnect-api/business-profile",
+    ["module", "service", "repository", "routes", "migration", "types"]
+  ],
+  ["b2bconnect-api/network-blueprint", ["module", "service", "routes", "types"]]
+]);
 
 const webModuleRoots = [
+  {
+    app: "b2bconnect-web",
+    path: join(process.cwd(), "apps", "b2bconnect", "web", "src", "modules")
+  },
+  {
+    app: "ecommerce-web",
+    path: join(process.cwd(), "apps", "ecommerce", "web", "src", "modules")
+  },
   {
     app: "mail-web",
     path: join(process.cwd(), "apps", "mail", "web", "src", "modules")
@@ -87,6 +116,18 @@ const webModuleRoots = [
 ];
 
 const requiredFrontendRoles = ["workspace", "list", "form", "services", "hooks", "types", "schema"];
+const shellOnlyFrontendModules = new Set(["b2bconnect-web/overview", "ecommerce-web/overview"]);
+const shellOnlyFrontendRoles = ["module", "workspace", "services", "hooks", "types"];
+const capabilityFrontendRoles = new Map([
+  [
+    "b2bconnect-web/authentication",
+    ["module", "workspace", "form", "services", "hooks", "types", "schema"]
+  ],
+  ["b2bconnect-web/client-portal", ["module", "workspace", "services", "hooks", "types"]],
+  ["b2bconnect-web/administration", ["module", "workspace", "services", "hooks", "types"]],
+  ["b2bconnect-web/super-administration", ["module", "workspace", "services", "hooks", "types"]],
+  ["b2bconnect-web/network-blueprint", ["module", "workspace", "services", "hooks", "types"]]
+]);
 const backendBehaviorMarkers = {
   events: ["create"],
   migration: ["migrate"],
@@ -123,10 +164,14 @@ for (const root of moduleRoots) {
       validateBillingReportBackend(modulePath);
       continue;
     }
+    const moduleLabel = `${root.app}/${moduleDir.name}`;
     const moduleRoles =
-      root.app === "platform-api" && reducedPlatformBackendModules.has(moduleDir.name)
-        ? reducedBackendRoles
-        : requiredBackendRoles;
+      capabilityBackendRoles.get(moduleLabel) ??
+      (shellOnlyBackendModules.has(moduleLabel)
+        ? shellOnlyBackendRoles
+        : root.app === "platform-api" && reducedPlatformBackendModules.has(moduleDir.name)
+          ? reducedBackendRoles
+          : requiredBackendRoles);
     for (const role of moduleRoles) {
       const filePath = join(modulePath, `${moduleDir.name}.${role}.ts`);
       if (!existsSync(filePath)) {
@@ -157,9 +202,17 @@ for (const root of webModuleRoots) {
       validateBillingReportFrontend(modulePath);
       continue;
     }
-    if (!existsSync(join(modulePath, `${moduleDir.name}.services.ts`))) continue;
+    const moduleLabel = `${root.app}/${moduleDir.name}`;
+    const moduleRoles =
+      capabilityFrontendRoles.get(moduleLabel) ??
+      (shellOnlyFrontendModules.has(moduleLabel) ? shellOnlyFrontendRoles : requiredFrontendRoles);
+    if (
+      !shellOnlyFrontendModules.has(moduleLabel) &&
+      !existsSync(join(modulePath, `${moduleDir.name}.services.ts`))
+    )
+      continue;
 
-    for (const role of requiredFrontendRoles) {
+    for (const role of moduleRoles) {
       const extension = ["form", "list", "workspace"].includes(role) ? "tsx" : "ts";
       const filePath = join(modulePath, `${moduleDir.name}.${role}.${extension}`);
       if (!existsSync(filePath)) {

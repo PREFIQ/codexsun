@@ -16,6 +16,20 @@ Git tags use the `v-` prefix:
 v-1.0.<reference>
 ```
 
+Workspace package versions describe a tested source-repository baseline and remain lockstep. Deployable
+product stacks additionally have independent semantic release lines without changing package versions:
+
+```text
+v-billing-X.Y.Z
+v-b2bconnect-X.Y.Z
+v-ecommerce-X.Y.Z
+```
+
+Stack tags identify an independently deployable API/web product unit and must follow the service and
+database boundary in `tools/product-stack-contract.mjs`. Creating a stack tag is an explicit release
+operation; architecture or implementation work alone does not create one. Shared Platform/Core contract
+changes are released through the normal lockstep baseline first and must pass every affected stack gate.
+
 Changelog entry labels use the human-readable form:
 
 ```text

@@ -27,6 +27,7 @@ import {
   appWorkspaceItems,
   defaultLandingApp,
   enabledAppIds,
+  type BillingNavigationFeatures,
   type PlatformAppId
 } from "../../app/app-registry";
 import { getTenantRuntime } from "../../modules/tenant/tenant.services";
@@ -215,8 +216,14 @@ const FinancialYearWorkspace = lazyWorkspace(() =>
 const QuotationWorkspace = lazyWorkspace(() =>
   import("@codexsun/billing-web/modules/quotation").then((module) => module.QuotationWorkspace)
 );
+const QuotationPrintRoutePage = lazyWorkspace(() =>
+  import("@codexsun/billing-web/modules/quotation").then((module) => module.QuotationPrintRoutePage)
+);
 const SalesWorkspace = lazyWorkspace(() =>
   import("@codexsun/billing-web/modules/sales").then((module) => module.SalesWorkspace)
+);
+const SalesPrintRoutePage = lazyWorkspace(() =>
+  import("@codexsun/billing-web/modules/sales").then((module) => module.SalesPrintRoutePage)
 );
 const BillingDashboardWorkspace = lazyWorkspace(() =>
   import("@codexsun/billing-web/modules/dashboard").then(
@@ -248,9 +255,17 @@ const DocumentSettingsWorkspace = lazyWorkspace(() =>
 const PurchaseWorkspace = lazyWorkspace(() =>
   import("../../modules/purchase/purchase.workspace").then((module) => module.PurchaseWorkspace)
 );
+const PurchasePrintRoutePage = lazyWorkspace(() =>
+  import("@codexsun/billing-web/modules/purchase").then((module) => module.PurchasePrintRoutePage)
+);
 const ExportSalesWorkspace = lazyWorkspace(() =>
   import("../../modules/export-sales/export-sales.workspace").then(
     (module) => module.ExportSalesWorkspace
+  )
+);
+const ExportSalesPrintRoutePage = lazyWorkspace(() =>
+  import("@codexsun/billing-web/modules/export-sales").then(
+    (module) => module.ExportSalesPrintRoutePage
   )
 );
 const PaymentWorkspace = lazyWorkspace(() =>
@@ -297,9 +312,13 @@ type AppPage =
   | "application.access.role-permissions"
   | "billing.overview"
   | "billing.quotation"
+  | "billing.quotation.print"
   | "billing.sales"
+  | "billing.sales.print"
   | "billing.purchase"
+  | "billing.purchase.print"
   | "billing.export-sales"
+  | "billing.export-sales.print"
   | "billing.payment"
   | "billing.receipt"
   | "billing.reports.customer-statement"
@@ -378,13 +397,6 @@ export function AppDesk() {
         ? persistedLandingApp
         : runtimeLandingApp;
   const activeApp = appFromPage(page, landingApp, switchableApps);
-  const safePage =
-    (page.startsWith("billing") ||
-      (page.startsWith("core") && !page.startsWith("core.organisation"))) &&
-    !switchableApps.includes("billing")
-      ? pageForApp(landingApp)
-      : page;
-  const activePageTitle = titleForPage(safePage);
   const activeCompanies = useMemo(
     () => (companiesQuery.data ?? []).filter((company) => company.isActive),
     [companiesQuery.data]
@@ -411,6 +423,14 @@ export function AppDesk() {
     },
     queryKey: ["billing", "settings", companyContextId]
   });
+  const appSafePage =
+    (page.startsWith("billing") ||
+      (page.startsWith("core") && !page.startsWith("core.organisation"))) &&
+    !switchableApps.includes("billing")
+      ? pageForApp(landingApp)
+      : page;
+  const safePage = resolveBillingFeaturePage(appSafePage, billingSettingsQuery.data?.features);
+  const activePageTitle = titleForPage(safePage);
   const accountingYear = selectedFinancialYear?.name ?? "Accounting year";
   const defaultSelectionMutation = useMutation({
     mutationFn: saveDefaultCompany,
@@ -424,6 +444,17 @@ export function AppDesk() {
   useEffect(() => {
     setPlatformDocumentTitle(activePageTitle);
   }, [activePageTitle]);
+
+  useEffect(() => {
+    if (!isBillingFeaturePageDisabled(page, billingSettingsQuery.data?.features)) return;
+    const fallbackPage: AppPage = "billing.overview";
+    setPage(fallbackPage);
+    window.history.replaceState(
+      { page: fallbackPage },
+      "",
+      `/app/${fallbackPage.replaceAll(".", "/")}`
+    );
+  }, [billingSettingsQuery.data?.features, page]);
 
   useEffect(() => {
     if (publishedLandingApp && !enabledApps.includes(publishedLandingApp)) {
@@ -462,19 +493,23 @@ export function AppDesk() {
   }, [landingApp, publishedLandingApp, runtimeQuery.isLoading, shouldResolveLandingPath]);
 
   function selectPage(nextPage: AppPage) {
-    setPage(nextPage);
-    window.history.pushState({ page: nextPage }, "", `/app/${nextPage.replaceAll(".", "/")}`);
-    setPlatformDocumentTitle(titleForPage(nextPage));
+    const allowedPage = resolveBillingFeaturePage(nextPage, billingSettingsQuery.data?.features);
+    setPage(allowedPage);
+    window.history.pushState({ page: allowedPage }, "", `/app/${allowedPage.replaceAll(".", "/")}`);
+    setPlatformDocumentTitle(titleForPage(allowedPage));
   }
 
   function selectBillingRecord(nextPage: AppPage, recordId: string) {
-    setPage(nextPage);
+    const allowedPage = resolveBillingFeaturePage(nextPage, billingSettingsQuery.data?.features);
+    setPage(allowedPage);
     window.history.pushState(
-      { page: nextPage, recordId },
+      { page: allowedPage, recordId },
       "",
-      `/app/${nextPage.replaceAll(".", "/")}?record=${encodeURIComponent(recordId)}`
+      allowedPage === nextPage
+        ? `/app/${allowedPage.replaceAll(".", "/")}?record=${encodeURIComponent(recordId)}`
+        : `/app/${allowedPage.replaceAll(".", "/")}`
     );
-    setPlatformDocumentTitle(titleForPage(nextPage));
+    setPlatformDocumentTitle(titleForPage(allowedPage));
   }
 
   function publishLandingApp(nextLandingApp: PlatformAppId) {
@@ -504,8 +539,11 @@ export function AppDesk() {
         : activeApp === "task-manager"
           ? "Task Manager"
           : "Application";
-  const menuItems = appMenuItemsFor(activeApp, safePage, (nextPage) =>
-    selectPage(nextPage as AppPage)
+  const menuItems = appMenuItemsFor(
+    activeApp,
+    safePage,
+    (nextPage) => selectPage(nextPage as AppPage),
+    billingSettingsQuery.data?.features
   );
   const workspaceItems = appWorkspaceItems(switchableApps, activeApp).map((item) => ({
     ...item,
@@ -645,15 +683,19 @@ export function AppDesk() {
             <BillingOverview onNavigate={selectPage} onNavigateToRecord={selectBillingRecord} />
           ) : null}
           {safePage === "billing.quotation" ? <QuotationWorkspace /> : null}
+          {safePage === "billing.quotation.print" ? <QuotationPrintRoutePage /> : null}
           {safePage === "billing.sales" ? (
             <BillingSales initialRecordId={recordIdFromUrl()} />
           ) : null}
+          {safePage === "billing.sales.print" ? <SalesPrintRoutePage /> : null}
           {safePage === "billing.purchase" ? (
             <PurchaseWorkspace initialRecordId={recordIdFromUrl()} />
           ) : null}
+          {safePage === "billing.purchase.print" ? <PurchasePrintRoutePage /> : null}
           {safePage === "billing.export-sales" ? (
             <ExportSalesWorkspace initialRecordId={recordIdFromUrl()} />
           ) : null}
+          {safePage === "billing.export-sales.print" ? <ExportSalesPrintRoutePage /> : null}
           {safePage === "billing.payment" ? (
             <PaymentWorkspace initialRecordId={recordIdFromUrl()} />
           ) : null}
@@ -748,10 +790,14 @@ function pageFromUrl(landingApp: PlatformAppId | null): AppPage {
     key === "application.access.role-permissions" ||
     key === "billing.overview" ||
     key === "billing.quotation" ||
+    key === "billing.quotation.print" ||
     key === "billing.desk" ||
     key === "billing.sales" ||
+    key === "billing.sales.print" ||
     key === "billing.purchase" ||
+    key === "billing.purchase.print" ||
     key === "billing.export-sales" ||
+    key === "billing.export-sales.print" ||
     key === "billing.payment" ||
     key === "billing.receipt" ||
     key === "billing.reports.customer-statement" ||
@@ -1116,6 +1162,23 @@ function BillingOverview({
 
 function recordIdFromUrl() {
   return new URLSearchParams(window.location.search).get("record") || undefined;
+}
+
+function isBillingFeaturePageDisabled(
+  page: AppPage,
+  features: BillingNavigationFeatures | undefined
+) {
+  if (!features) return false;
+  if (page.startsWith("billing.quotation")) return !features.quotation;
+  if (page.startsWith("billing.export-sales")) return !features.exportSales;
+  return false;
+}
+
+function resolveBillingFeaturePage(
+  page: AppPage,
+  features: BillingNavigationFeatures | undefined
+): AppPage {
+  return isBillingFeaturePageDisabled(page, features) ? "billing.overview" : page;
 }
 
 function signedInTenantUser() {
