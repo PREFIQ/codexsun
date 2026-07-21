@@ -1,10 +1,10 @@
 # CODEXSUN Container Deployment
 
-This directory provides one persistent infrastructure layer and the independently replaceable Billing product stack.
+This directory provides one persistent infrastructure layer and the composed CODEXSUN Platform runtime.
 
-| Product | Source composition                    | Runtime services                                |
-| ------- | ------------------------------------- | ----------------------------------------------- |
-| Billing | Framework + Platform + Core + Billing | Platform API/Web, Core API/Web, Billing API/Web |
+| Product  | Source composition                         | Runtime services          |
+| -------- | ------------------------------------------ | ------------------------- |
+| CODEXSUN | Framework + UI + Platform + Core + Billing | Platform API/Platform Web |
 
 MariaDB, Redis, and Media are installed once. Product deployment commands never recreate them and never delete their named volumes. Normal upgrades replace only versioned application containers, so databases, credentials, uploads, and application storage remain stable.
 
@@ -76,12 +76,10 @@ Only the explicit `--reinstall --wipe-media` combination removes media data; the
 
 All published ports bind to `127.0.0.1` unless `CODEXSUN_BIND_ADDRESS` is changed.
 
-| Service                  |                Host port |
-| ------------------------ | -----------------------: |
-| MariaDB / Redis / Media  | `3307` / `6379` / `7090` |
-| Billing Platform API/Web |          `7010` / `7020` |
-| Billing Core API/Web     |          `7030` / `7040` |
-| Billing API/Web          |          `7050` / `7060` |
+| Service                 |                Host port |
+| ----------------------- | -----------------------: |
+| MariaDB / Redis / Media | `3307` / `6379` / `7090` |
+| Platform API/Web        |          `7010` / `7020` |
 
 ## Verification
 

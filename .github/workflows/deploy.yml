@@ -12,10 +12,6 @@ jobs:
     env:
       PLATFORM_API_PORT: 7010
       PLATFORM_WEB_PORT: 7020
-      CORE_API_PORT: 7030
-      CORE_WEB_PORT: 7040
-      BILLING_API_PORT: 7050
-      BILLING_WEB_PORT: 7060
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
       DB_USER: codexsun
@@ -25,13 +21,11 @@ jobs:
       CODEXSUN_REDIS_URL: redis://127.0.0.1:6379
       CODEXSUN_QUEUE_BACKEND: bullmq-redis
       PLATFORM_WEB_ORIGIN: http://localhost:7020
-      CORE_WEB_ORIGIN: http://localhost:7040
-      BILLING_WEB_ORIGIN: http://localhost:7060
       PLATFORM_API_URL: http://localhost:7010
-      CORE_API_URL: http://localhost:7030
+      CORE_API_URL: http://localhost:7010
       VITE_PLATFORM_API_URL: http://localhost:7010
-      VITE_CORE_API_URL: http://localhost:7030
-      VITE_BILLING_API_URL: http://localhost:7050
+      VITE_CORE_API_URL: http://localhost:7010
+      VITE_BILLING_API_URL: http://localhost:7010
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

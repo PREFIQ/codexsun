@@ -1,16 +1,14 @@
 FROM node:26.5.0-bookworm-slim AS build
 
 ARG VITE_PLATFORM_API_URL=http://localhost:7010
-ARG VITE_CORE_API_URL=http://localhost:7030
-ARG VITE_BILLING_API_URL=http://localhost:7050
+ARG VITE_CORE_API_URL=http://localhost:7010
+ARG VITE_BILLING_API_URL=http://localhost:7010
 ARG VITE_TENANT_NAME=Codexsun
 ENV VITE_PLATFORM_API_URL=$VITE_PLATFORM_API_URL
 ENV VITE_CORE_API_URL=$VITE_CORE_API_URL
 ENV VITE_BILLING_API_URL=$VITE_BILLING_API_URL
 ENV VITE_TENANT_NAME=$VITE_TENANT_NAME
 ENV PLATFORM_WEB_PORT=7020
-ENV CORE_WEB_PORT=7040
-ENV BILLING_WEB_PORT=7060
 ENV NODE_ENV=development
 
 WORKDIR /app
@@ -47,8 +45,6 @@ LABEL org.opencontainers.image.title="CODEXSUN Billing Stack Web" \
 COPY .container/scripts/nginx-spa.conf /etc/nginx/conf.d/default.conf
 COPY .container/scripts/web-entrypoint.sh /usr/local/bin/codexsun-web-entrypoint
 COPY --from=build /app/dist/apps/platform/web /opt/codexsun-web/platform
-COPY --from=build /app/dist/apps/core/web /opt/codexsun-web/core
-COPY --from=build /app/dist/apps/billing/web /opt/codexsun-web/billing
 
 RUN chmod +x /usr/local/bin/codexsun-web-entrypoint
 EXPOSE 80

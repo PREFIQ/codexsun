@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.38
+Current version: 1.0.39
 
-Release tag: v-1.0.38
+Release tag: v-1.0.39
 
-Changelog label: v 1.0.38
+Changelog label: v 1.0.39
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -19,6 +19,34 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 #### App Codebase Changes
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
+
+## v-1.0.39
+
+### [v 1.0.39] 2026-07-21 10:18 am - Unified Platform Runtime and Package Manifests
+
+#### Database Changes
+
+- Database update: No (runtime, tooling, packaging, deployment, and documentation changes only).
+
+#### App Codebase Changes
+
+- Consolidated application startup into the single root `npm run dev` command, which launches only the Platform API on
+  port 7010 and Platform Web on port 7020.
+- Converted Core, Billing, and Mail into Platform-composed API/web packages while retaining Framework and UI as shared
+  infrastructure packages with explicit ownership boundaries.
+- Removed standalone Core and Billing server/Vite entrypoints, obsolete ports 7030 through 7060, the domain gateway,
+  product-specific process controls, and stale development environment variables.
+- Reduced container, hosted nginx, systemd, CI, smoke-test, and product-stack configuration to the composed Platform API
+  and Platform Web deployment.
+- Consolidated shared compiler, lint, build, type, Vite, Tailwind, and operational tooling into the root `package.json`;
+  workspace manifests now retain only package checks and direct runtime dependency contracts.
+- Moved database operations and the sole development command to the root manifest, removed unused dependency declarations,
+  transferred UI-owned fonts and editor/style dependencies to `@codexsun/ui`, and regenerated the single root lockfile.
+- Added composed Platform runtime E2E coverage and updated persistence and live-mass harnesses to consume the Platform
+  composition root instead of standalone product applications.
+- Updated startup, deployment, app-orchestration, package-management, inventory, and UI verification documentation to
+  describe the two-port composed Platform runtime.
+- Bumped workspace version to 1.0.39.
 
 ## v-1.0.38
 

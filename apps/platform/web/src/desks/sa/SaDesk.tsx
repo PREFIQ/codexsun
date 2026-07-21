@@ -348,8 +348,7 @@ function pageFromUrl(): SaPage {
 }
 
 function appIdFromUrl(): OrchestratedAppId {
-  const value = new URLSearchParams(window.location.search).get("app");
-  return value === "core" || value === "billing" ? value : "platform";
+  return "platform";
 }
 
 function SaOverview({ onOpenApp }: { onOpenApp: (appId: OrchestratedAppId) => void }) {
@@ -362,7 +361,7 @@ function SaOverview({ onOpenApp }: { onOpenApp: (appId: OrchestratedAppId) => vo
         </p>
         <h1 className="mt-1 text-2xl font-semibold">Apps</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Live service state and maintenance access for every runnable app in this repository.
+          Live state for the single Platform runtime and its composed workspace packages.
         </p>
       </section>
       {apps.error ? (

@@ -2,11 +2,7 @@ import { loadEnv } from "@codexsun/framework/env";
 import { z } from "zod";
 
 const envSchema = z.object({
-  API_HOST: z.string().default("127.0.0.1"),
-  BILLING_API_PORT: z.coerce.number().int().positive(),
-  BILLING_WEB_ORIGIN: z.string().min(1, "BILLING_WEB_ORIGIN is required"),
-  PLATFORM_WEB_ORIGIN: z.string().min(1, "PLATFORM_WEB_ORIGIN is required"),
-  CORE_API_URL: z.string().url().default("http://127.0.0.1:7030"),
+  CORE_API_URL: z.string().url().default("http://127.0.0.1:7010"),
   DB_HOST: z.string().default("127.0.0.1"),
   DB_MASTER_NAME: z.string().min(1, "DB_MASTER_NAME is required"),
   DB_PASSWORD: z.string(),

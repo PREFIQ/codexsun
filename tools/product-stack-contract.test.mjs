@@ -3,13 +3,15 @@ import test from "node:test";
 import { matchesServiceHealthContract } from "./dev-stack-health.mjs";
 import { affectedProductStacks, productStackContract } from "./product-stack-contract.mjs";
 
-test("product stacks bind the required foundation without sharing business ownership", () => {
+test("product packages compose into the single Platform runtime without sharing ownership", () => {
   assert.deepEqual(productStackContract.billing.formula, [
     "framework",
     "platform",
     "core",
     "billing"
   ]);
+  assert.deepEqual(productStackContract.billing.services, ["platform-api", "platform-web"]);
+  assert.equal(productStackContract.billing.deploymentPolicy, "composed-platform-release");
 });
 
 test("stack impact keeps product-only changes inside their release boundary", () => {

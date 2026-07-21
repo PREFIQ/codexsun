@@ -1,17 +1,8 @@
-import {
-  Layers3Icon,
-  ReceiptTextIcon,
-  ServerCogIcon,
-  PlayIcon,
-  SquareIcon,
-  RotateCcwIcon
-} from "lucide-react";
-import { Button, StatusBadge } from "@codexsun/ui";
+import { ServerCogIcon } from "lucide-react";
+import { StatusBadge } from "@codexsun/ui";
 import type { OrchestratedApp, OrchestratedAppId } from "./app-orchestration.types";
 const icons = {
-  platform: ServerCogIcon,
-  core: Layers3Icon,
-  billing: ReceiptTextIcon
+  platform: ServerCogIcon
 };
 export const appOperationTones: Record<
   OrchestratedAppId,
@@ -22,18 +13,6 @@ export const appOperationTones: Record<
     icon: "border-cyan-200 bg-white/70 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950/70 dark:text-cyan-300",
     metric:
       "border-cyan-100 from-cyan-50/80 via-card to-blue-50/70 dark:border-cyan-900 dark:from-cyan-950/35 dark:to-blue-950/25"
-  },
-  core: {
-    card: "border-violet-200/80 from-violet-100 via-purple-50 to-fuchsia-100 hover:border-violet-300 dark:border-violet-800/70 dark:from-violet-950/70 dark:via-purple-950/50 dark:to-fuchsia-950/70",
-    icon: "border-violet-200 bg-white/70 text-violet-700 dark:border-violet-800 dark:bg-violet-950/70 dark:text-violet-300",
-    metric:
-      "border-violet-100 from-violet-50/80 via-card to-fuchsia-50/70 dark:border-violet-900 dark:from-violet-950/35 dark:to-fuchsia-950/25"
-  },
-  billing: {
-    card: "border-amber-200/80 from-amber-100 via-yellow-50 to-orange-100 hover:border-amber-300 dark:border-amber-800/70 dark:from-amber-950/70 dark:via-yellow-950/50 dark:to-orange-950/70",
-    icon: "border-amber-200 bg-white/70 text-amber-700 dark:border-amber-800 dark:bg-amber-950/70 dark:text-amber-300",
-    metric:
-      "border-amber-100 from-amber-50/80 via-card to-orange-50/70 dark:border-amber-900 dark:from-amber-950/35 dark:to-orange-950/25"
   }
 };
 export function AppOperationsStrip({
@@ -87,19 +66,7 @@ export function AppOperationsStrip({
     </section>
   );
 }
-export function AppServiceList({
-  app,
-  busy,
-  onRestart,
-  onStart,
-  onStop
-}: {
-  app: OrchestratedApp;
-  busy: boolean;
-  onRestart: (serviceId: "api" | "web") => void;
-  onStart: (serviceId: "api" | "web") => void;
-  onStop: (serviceId: "api" | "web") => void;
-}) {
+export function AppServiceList({ app }: { app: OrchestratedApp }) {
   return (
     <section className="rounded-md border bg-card shadow-sm">
       <div className="border-b px-5 py-4">
@@ -116,35 +83,6 @@ export function AppServiceList({
               <div className="text-sm text-muted-foreground">127.0.0.1:{service.port}</div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busy || !app.managed || service.online}
-                  onClick={() => onStart(service.id)}
-                >
-                  <PlayIcon className="size-3.5" />
-                  Start
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busy || !app.managed || service.managedPid === null}
-                  onClick={() => onStop(service.id)}
-                >
-                  <SquareIcon className="size-3.5" />
-                  Stop
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busy || !app.managed || service.managedPid === null}
-                  onClick={() => onRestart(service.id)}
-                >
-                  <RotateCcwIcon className="size-3.5" />
-                  Restart
-                </Button>
-              </div>
               <span className="text-sm text-muted-foreground">
                 {service.responseMs === null ? "—" : `${service.responseMs} ms`}
               </span>

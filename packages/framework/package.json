@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/framework",
-  "version": "1.0.38",
+  "version": "1.0.39",
   "private": true,
   "type": "module",
   "exports": {
@@ -68,10 +68,7 @@
     "dotenv": "^17.4.2",
     "fastify": "^5.2.1",
     "mariadb": "^3.5.3",
-    "mysql2": "^3.11.5",
+    "mysql2": "^3.22.3",
     "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "typescript": "^7.0.2"
   }
 }

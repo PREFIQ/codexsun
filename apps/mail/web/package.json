@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/mail-web",
-  "version": "1.0.38",
+  "version": "1.0.39",
   "private": true,
   "type": "module",
   "exports": {
@@ -13,7 +13,7 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@codexsun/ui": "^1.0.38",
+    "@codexsun/ui": "^1.0.39",
     "@tanstack/react-query": "^5.100.10",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
@@ -21,9 +21,5 @@
     "react": "^19.0.0",
     "sonner": "^2.0.7",
     "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@types/react": "^19.0.2",
-    "typescript": "^7.0.2"
   }
 }

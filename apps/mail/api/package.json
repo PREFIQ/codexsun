@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/mail-api",
-  "version": "1.0.38",
+  "version": "1.0.39",
   "private": true,
   "type": "module",
   "exports": {
@@ -14,7 +14,7 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@codexsun/framework": "^1.0.38",
+    "@codexsun/framework": "^1.0.39",
     "fastify": "^5.2.1",
     "imapflow": "^1.0.195",
     "kysely": "^0.29.0",
@@ -22,12 +22,5 @@
     "node-pop3": "^0.11.0",
     "nodemailer": "^7.0.10",
     "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@types/mailparser": "^3.4.6",
-    "@types/node": "^26.1.1",
-    "@types/nodemailer": "^7.0.4",
-    "tsx": "^4.19.2",
-    "typescript": "^7.0.2"
   }
 }

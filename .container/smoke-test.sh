@@ -24,10 +24,6 @@ bind=$(env_value CODEXSUN_BIND_ADDRESS 127.0.0.1)
 
 http_ok "http://${bind}:$(env_value PLATFORM_API_HOST_PORT 7010)/health" billing-platform-api
 http_ok "http://${bind}:$(env_value PLATFORM_WEB_HOST_PORT 7020)/health" billing-platform-web
-http_ok "http://${bind}:$(env_value CORE_API_HOST_PORT 7030)/health" billing-core-api
-http_ok "http://${bind}:$(env_value CORE_WEB_HOST_PORT 7040)/health" billing-core-web
-http_ok "http://${bind}:$(env_value BILLING_API_HOST_PORT 7050)/health" billing-api
-http_ok "http://${bind}:$(env_value BILLING_WEB_HOST_PORT 7060)/health" billing-web
 
 published_port=$(docker port codexsun-mariadb 3306/tcp)
 case "$published_port" in

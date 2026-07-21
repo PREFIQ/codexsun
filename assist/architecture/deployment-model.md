@@ -90,36 +90,32 @@ services. Core supplies tenant-owned common masters through fixed public contrac
 the owner of invoices and financial documents. A stack is a deployment composition, not a shared
 business CRUD boundary.
 
-### Development failure boundaries
+### Development runtime boundary
 
-Product development commands own only their product processes. If a dependency port belongs to an
-unknown or unhealthy process, startup fails without killing that process. The runner starts a missing
-dependency only when its port is free and then owns that child for the lifetime of the command.
+The root development command owns only Platform API `7010` and Platform Web `7020`. Core, Billing,
+Mail, Framework, and UI are npm workspace packages composed into those two processes. No product
+package may introduce a standalone API or web listener.
 
 Changing Framework, Platform, Core, or another public foundation contract is intentionally wider work:
 `npm run stack:impact -- <changed files>` lists every product verification gate that must run. A change
 to shared foundation code impacts all product stacks.
 
-### Independent live releases
+### Composed live releases
 
-Each product has an independent deployment release line even though npm workspace package versions
-remain lockstep for repository compatibility. Deployment tags use `v-billing-X.Y.Z`. A product
-major/minor/patch release builds and replaces only the product services declared by
-`tools/product-stack-contract.mjs`; healthy foundation services
-remain unchanged. Use `npm run stack:plan -- billing` to print the exact verification, service,
-database, rollout, and rollback boundary.
+Workspace package versions remain lockstep for repository compatibility. Product changes preserve
+their owned database and module boundaries, but deployment replaces the composed Platform API and
+Platform Web services declared by `tools/product-stack-contract.mjs`. Use
+`npm run stack:plan -- billing` to print the verification, database, rollout, and rollback boundary.
 
 Production rollout must use an inactive/blue-green slot or a rolling replacement with readiness and
-health gates. Traffic moves only after the new product API and web are healthy. Rollback switches
-traffic to the previous product release without reverting Platform, Core, Billing, or another product.
+health gates. Traffic moves only after the new Platform API and web are healthy. Rollback switches
+traffic to the previous composed runtime release.
 Product database migrations are restricted to the product-owned scope and use expand-contract:
 backward-compatible additions deploy first, destructive contraction occurs only after the rollback
 window. A migration requiring an immediate destructive change is not independently deployable.
 
-Shared public contracts remain backward compatible across supported product releases. A breaking
-Platform/Core contract is introduced beside the old contract, consumers migrate and release one stack
-at a time, and the old contract is removed only after usage reaches zero. A shared dependency change
-must never be hidden inside a product image or trigger an automatic all-stack live deployment.
+Shared public contracts remain explicit between workspace packages. A breaking contract must update
+the owner and all composed consumers in the same verified repository release.
 
 ## Root Dist Rule
 
@@ -130,13 +126,10 @@ Expected shape:
 ```text
 dist/apps/platform/api
 dist/apps/platform/web
-dist/apps/core
-dist/apps/core/web
-dist/apps/billing
-dist/apps/billing/web
-dist/apps/crm/web
+dist/apps/core/api
+dist/apps/billing/api
+dist/apps/mail/api
 dist/packages/framework
-dist/packages/platform
 dist/packages/ui
 ```
 
@@ -144,16 +137,13 @@ Root build/dev workflows should clean app-local `.turbo` folders under `apps/` s
 
 ## Hosted Platform Runtime
 
-The non-container hosted baseline serves `dist/apps/platform/web` as static files through nginx and runs the compiled
-Platform, Core, and Billing API servers under systemd. Production nginx must not proxy the web root to Vite, and
-hosted services must not depend on `npm run dev` remaining attached to a shell.
+The non-container hosted baseline serves `dist/apps/platform/web` as static files through nginx and runs one compiled
+Platform API server under systemd. Production nginx must not proxy the web root to Vite, and hosted services must not
+depend on `npm run dev` remaining attached to a shell.
 
-Local Windows development uses a host gateway on `127.0.0.1:80`: `app.codexsun.test` and tenant app hosts such as
-`aaran.test` route to Platform. Platform `/` is an app-workspace portal.
-Browser API traffic stays on same-origin gateway paths: `/api/platform` reaches Platform, `/api/core` reaches Core,
-and `/api/billing` reaches Billing. The Platform path preserves the original host for tenant-domain resolution, while
-all paths retain tenant access headers. The root `npm run dev:domains` command starts the APIs, Platform web, and this
-gateway.
+Browser API traffic keeps the stable same-origin paths `/api/platform`, `/api/core`, and `/api/billing`, but nginx and
+the Platform Vite proxy route every path to Platform API `7010`. Platform Web is the only browser runtime on `7020`.
+Core and Billing retain route ownership inside their packages after composition.
 
 The public app portal is a safe tenant projection. Shared navigation, slider, features, updates, and footer components
 are rendered by Platform, while tenant-specific content is stored under `tenants.payload_settings.appPortal`. The

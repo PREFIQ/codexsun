@@ -8,7 +8,7 @@ function stack({
 }) {
   return Object.freeze({
     databaseScopes: Object.freeze(databaseScopes),
-    deploymentPolicy: "independent-product-release",
+    deploymentPolicy: "composed-platform-release",
     formula: Object.freeze(formula),
     foundationServices: Object.freeze(foundationServices),
     migrationPolicy: "expand-contract-with-product-scoped-rollback",
@@ -23,9 +23,9 @@ export const productStackContract = Object.freeze({
   billing: stack({
     databaseScopes: ["platform-master", "tenant-core", "tenant-billing"],
     formula: ["framework", "platform", "core", "billing"],
-    foundationServices: ["platform-api", "core-api"],
+    foundationServices: [],
     ownedDatabaseScopes: ["tenant-billing"],
-    productServices: ["billing-api", "billing-web"],
+    productServices: ["platform-api", "platform-web"],
     releaseTagPrefix: "v-billing-"
   })
 });

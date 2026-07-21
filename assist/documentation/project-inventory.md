@@ -7,7 +7,7 @@
 This document records what is present in the current CODEXSUN workspace. Use it as the first practical inventory before
 planning new work, because some assist files describe future direction or older foundation snapshots.
 
-Last reviewed: 2026-07-08.
+Last reviewed: 2026-07-21.
 
 ## Current Workspace Shape
 
@@ -47,7 +47,7 @@ assist/
 
 The root package uses npm workspaces with `apps/*/*`, `packages/*`, and `tools/*`.
 
-## Runtime Apps
+## Runtime Application And Composed Packages
 
 ### Platform
 
@@ -57,6 +57,8 @@ Platform owns the SaaS foundation.
   platform operations.
 - `apps/platform/web`: React/Vite shell for the domain-resolved tenant app portal, login, super-admin desk, admin
   desk, tenant desk, tenant UI, and design-system gallery.
+
+Platform is the only runnable application: API `7010` and Web `7020`.
 
 Current Platform API modules:
 
@@ -71,10 +73,10 @@ Current Platform Web modules:
 
 ### Core
 
-Core owns shared business foundation modules that future apps can reuse.
+Core owns shared business foundation modules consumed by Platform.
 
-- `apps/core/api`: Fastify API package for core/common domain modules.
-- `apps/core/web`: React/Vite frontend for core/common module screens.
+- `apps/core/api`: Fastify plugin package registered by Platform API.
+- `apps/core/web`: React module package bundled by Platform Web.
 
 Current Core common modules include location masters, contacts, products, work orders, organisation setup, and the
 accounts masters `ledger-groups` and `ledgers`. Each accounts master owns its API migration, repository, service,
@@ -84,8 +86,8 @@ routes, seed, and frontend workspace; ledgers reference ledger groups within the
 
 Billing owns billing-related business modules.
 
-- `apps/billing/api`: Fastify API package for billing domain modules.
-- `apps/billing/web`: React/Vite frontend for billing workflows.
+- `apps/billing/api`: Fastify plugin package registered by Platform API.
+- `apps/billing/web`: React module package bundled by Platform Web.
 
 Current Billing module:
 
@@ -100,10 +102,9 @@ Mail owns tenant-scoped outbound delivery, inbound synchronization, message hist
 
 Billing document screens consume Mail only through its public web contract to capture the visible invoice or quotation as a PDF and enqueue a branded customer email.
 
-Product development and release tooling preserves those boundaries. A product dev command attaches
-to an already healthy dependency API and stops only processes it started. `npm run stack:impact --
-<changed files>` identifies the verification blast radius, while `npm run stack:plan -- <stack>`
-prints the independently deployable services, owned migration scopes, and health-gated rollback plan.
+Product development and release tooling preserves those ownership boundaries while deploying one composed runtime.
+`npm run stack:impact -- <changed files>` identifies the verification blast radius, while
+`npm run stack:plan -- <stack>` prints the composed Platform services, owned migration scopes, and rollback plan.
 
 The `.env` contract contains network configuration only: API/web hosts or origins and ports. Product
 names, purpose text, taglines, and other business identity must not be added to `.env`.
@@ -126,27 +127,32 @@ shared styling.
 Important root commands:
 
 ```text
-npm run dev:api
-npm run dev:web
-npm run dev:domains
+npm run dev
 npm run build
 npm run typecheck
 npm run lint
 npm run check
 npm run verify:platform
-npm run verify:billing
-npm run verify:core
 npm run check:module-boundaries
+npm run dependencies:check
 npm run db:migrate
 npm run db:seed
 npm run db:drop
 npm run dbmigrate:fresh
-npm run test:e2e:tenant
+npm run test:e2e:composed-runtime
+npm run test:e2e:bootstrap
+npm run test:e2e:persistence
+npm run test:e2e:organisation
 npm run version:show
 npm run version:bump
 npm run changelog:append
 npm run check:versions
 ```
+
+Shared development dependencies and operational commands are declared only in
+the root `package.json`. Workspace manifests retain their package identity,
+build/typecheck/lint scripts, and direct runtime dependencies. Only the root
+manifest exposes `npm run dev`.
 
 Database commands currently route through `@codexsun/platform-api` and `apps/platform/api/src/database/db-cli.ts`.
 

@@ -12,42 +12,6 @@ const requestedMode = process.argv[3]?.trim();
 const requestedPort = process.argv[4]?.trim();
 
 const apps = {
-  "billing-api": {
-    displayName: "billing-api",
-    cwd: "apps/billing/api",
-    envKey: "BILLING_API_PORT",
-    hostKey: "API_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
-  },
-  "billing-web": {
-    displayName: "billing-web",
-    cwd: "apps/billing/web",
-    envKey: "BILLING_WEB_PORT",
-    hostKey: "BILLING_WEB_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
-  },
-  "core-api": {
-    displayName: "core-api",
-    cwd: "apps/core/api",
-    envKey: "CORE_API_PORT",
-    hostKey: "API_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
-  },
-  "core-web": {
-    displayName: "core-web",
-    cwd: "apps/core/web",
-    envKey: "CORE_WEB_PORT",
-    hostKey: "CORE_WEB_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
-  },
   "platform-api": {
     displayName: "api",
     cwd: "apps/platform/api",
@@ -82,7 +46,7 @@ const port = parseRequiredPort(
 const host = process.env[config.hostKey] || env[config.hostKey] || config.fallbackHost;
 await freePort(port, host);
 
-if (app === "platform-api" || app === "core-api" || app === "billing-api") {
+if (app === "platform-api") {
   ensurePlatformApiDependencies();
 }
 

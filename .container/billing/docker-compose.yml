@@ -4,8 +4,6 @@ x-api-env: &api-env
   NODE_ENV: production
   API_HOST: 0.0.0.0
   PLATFORM_API_PORT: 7010
-  CORE_API_PORT: 7030
-  BILLING_API_PORT: 7050
   CODEXSUN_ALLOW_MISSING_ENV: "1"
   AUTH_MODE: ${AUTH_MODE:-jwt}
   DB_DRIVER: mariadb
@@ -16,10 +14,8 @@ x-api-env: &api-env
   DB_MASTER_NAME: ${DB_MASTER_NAME:-codexsun_master}
   JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
   PLATFORM_WEB_ORIGIN: ${PLATFORM_WEB_ORIGIN:-http://localhost:7020}
-  CORE_WEB_ORIGIN: ${CORE_WEB_ORIGIN:-http://localhost:7040}
-  BILLING_WEB_ORIGIN: ${BILLING_WEB_ORIGIN:-http://localhost:7060}
-  PLATFORM_API_URL: ${PLATFORM_API_URL:-http://codexsun-platform-api:7010}
-  CORE_API_URL: ${CORE_API_URL:-http://codexsun-core-api:7030}
+  PLATFORM_API_URL: ${PLATFORM_API_URL:-http://127.0.0.1:7010}
+  CORE_API_URL: ${CORE_API_URL:-http://127.0.0.1:7010}
   CODEXSUN_QUEUE_BACKEND: ${CODEXSUN_QUEUE_BACKEND:-bullmq-redis}
   CODEXSUN_REDIS_URL: ${CODEXSUN_REDIS_URL:?CODEXSUN_REDIS_URL is required}
   CODEXSUN_QUEUE_WORKER_ENABLED: ${CODEXSUN_QUEUE_WORKER_ENABLED:-1}
@@ -101,7 +97,6 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *api-env
-      CODEXSUN_RUNTIME: platform-api
       HEALTH_PORT: 7010
       PLATFORM_API_PORT: 7010
     ports:
@@ -115,67 +110,15 @@ services:
       args:
         CODEXSUN_VERSION: ${CODEXSUN_VERSION:-1.0.38}
         VITE_PLATFORM_API_URL: ${VITE_PLATFORM_API_URL:-http://localhost:7010}
-        VITE_CORE_API_URL: ${VITE_CORE_API_URL:-http://localhost:7030}
-        VITE_BILLING_API_URL: ${VITE_BILLING_API_URL:-http://localhost:7050}
+        VITE_CORE_API_URL: ${VITE_CORE_API_URL:-http://localhost:7010}
+        VITE_BILLING_API_URL: ${VITE_BILLING_API_URL:-http://localhost:7010}
         VITE_TENANT_NAME: ${VITE_TENANT_NAME:-Codexsun}
     container_name: codexsun-platform-web
-    environment:
-      CODEXSUN_WEB_APP: platform
     depends_on:
       platform-api:
         condition: service_healthy
     ports:
       - "${CODEXSUN_BIND_ADDRESS:-127.0.0.1}:${PLATFORM_WEB_HOST_PORT:-7020}:80"
-
-  core-api:
-    <<: *api-service
-    container_name: codexsun-core-api
-    environment:
-      <<: *api-env
-      CODEXSUN_RUNTIME: core-api
-      HEALTH_PORT: 7030
-      CORE_API_PORT: 7030
-    depends_on:
-      platform-api:
-        condition: service_healthy
-    ports:
-      - "${CODEXSUN_BIND_ADDRESS:-127.0.0.1}:${CORE_API_HOST_PORT:-7030}:7030"
-
-  core-web:
-    <<: *web-service
-    container_name: codexsun-core-web
-    environment:
-      CODEXSUN_WEB_APP: core
-    depends_on:
-      core-api:
-        condition: service_healthy
-    ports:
-      - "${CODEXSUN_BIND_ADDRESS:-127.0.0.1}:${CORE_WEB_HOST_PORT:-7040}:80"
-
-  billing-api:
-    <<: *api-service
-    container_name: codexsun-billing-api
-    environment:
-      <<: *api-env
-      CODEXSUN_RUNTIME: billing-api
-      HEALTH_PORT: 7050
-      BILLING_API_PORT: 7050
-    depends_on:
-      core-api:
-        condition: service_healthy
-    ports:
-      - "${CODEXSUN_BIND_ADDRESS:-127.0.0.1}:${BILLING_API_HOST_PORT:-7050}:7050"
-
-  billing-web:
-    <<: *web-service
-    container_name: codexsun-billing-web
-    environment:
-      CODEXSUN_WEB_APP: billing
-    depends_on:
-      billing-api:
-        condition: service_healthy
-    ports:
-      - "${CODEXSUN_BIND_ADDRESS:-127.0.0.1}:${BILLING_WEB_HOST_PORT:-7060}:80"
 
   platform-migrate:
     build:
@@ -190,8 +133,6 @@ services:
     environment:
       <<: *api-env
       PLATFORM_API_PORT: 7010
-      CORE_API_PORT: 7030
-      BILLING_API_PORT: 7050
     volumes:
       - billing-stack-data:/storage
       - media-data:/storage/media

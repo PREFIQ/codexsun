@@ -3,6 +3,10 @@ import type { FastifyInstance } from "fastify";
 import { createConnection, type RowDataPacket } from "mysql2/promise";
 import { createApiApp } from "@codexsun/framework/api";
 import {
+  runWithBillingScope,
+  withBillingScope
+} from "../../apps/billing/api/src/auth/billing-scope.js";
+import {
   bootstrapBillingDatabase,
   closeAllBillingDatabases
 } from "../../apps/billing/api/src/database/billing-database.js";
@@ -39,6 +43,7 @@ const admin = await createConnection({
   user: env.DB_USER
 });
 let api: FastifyInstance | null = null;
+let billingScopeHeaders = { "x-company-id": "1", "x-financial-year-id": "1" };
 
 try {
   await prepareTenant(databaseName);
@@ -47,6 +52,10 @@ try {
   await admin.changeUser({ database: databaseName });
   await assertIndiaCountryDefault(admin);
   const references = await loadReferences(admin);
+  billingScopeHeaders = {
+    "x-company-id": String(references.companyId),
+    "x-financial-year-id": String(references.financialYearId)
+  };
   const quotationService = new QuotationService();
   const paymentService = new PaymentService();
   const purchaseService = new PurchaseService();
@@ -56,6 +65,10 @@ try {
     cookieSecret: "billing-persistence-e2e-secret",
     corsOrigins: [],
     environment: "test"
+  });
+  api.addHook("onRequest", (request, _reply, done) => {
+    if (!request.url.startsWith("/billing/")) return done();
+    runWithBillingScope(request, done);
   });
   await registerQuotationRoutes(api);
   await registerPurchaseRoutes(api);
@@ -68,7 +81,10 @@ try {
   await registerContactRoutes(api);
   await api.ready();
   const timings: Record<string, number> = {};
-  const context = await quotationService.getContext(databaseName);
+  const context = await withBillingScope(
+    { companyId: references.companyId, financialYearId: references.financialYearId },
+    () => quotationService.getContext(databaseName)
+  );
   assert.equal(context.companyId, references.companyId);
   assert.equal(context.financialYearId, references.financialYearId);
   assert.equal(context.currencyId, references.currencyId);
@@ -692,14 +708,29 @@ try {
   await closeAllBillingDatabases();
   await bootstrapBillingDatabase(databaseName);
 
-  const persistedQuotation = await quotationService.get(databaseName, quotation.id);
-  const persistedPayment = await paymentService.get(databaseName, payment.id);
-  const persistedPaymentActivity = await paymentService.activity(databaseName, payment.id);
-  const persistedPurchase = await purchaseService.get(databaseName, purchase.id);
-  const persistedSale = await salesService.getSale(databaseName, sale.id);
-  const persistedSale12 = await salesService.getSale(databaseName, sale12.id);
-  const persistedSale24 = await salesService.getSale(databaseName, sale24.id);
-  const persistedMergedSale = await salesService.getSale(databaseName, mergedConversion.sale.id);
+  const [
+    persistedQuotation,
+    persistedPayment,
+    persistedPaymentActivity,
+    persistedPurchase,
+    persistedSale,
+    persistedSale12,
+    persistedSale24,
+    persistedMergedSale
+  ] = await withBillingScope(
+    { companyId: references.companyId, financialYearId: references.financialYearId },
+    () =>
+      Promise.all([
+        quotationService.get(databaseName, quotation.id),
+        paymentService.get(databaseName, payment.id),
+        paymentService.activity(databaseName, payment.id),
+        purchaseService.get(databaseName, purchase.id),
+        salesService.getSale(databaseName, sale.id),
+        salesService.getSale(databaseName, sale12.id),
+        salesService.getSale(databaseName, sale24.id),
+        salesService.getSale(databaseName, mergedConversion.sale.id)
+      ])
+  );
   assert.equal(persistedQuotation?.quotationNumber, "QT-PERSIST-001");
   assert.equal(persistedQuotation?.items[0]?.description, "Dummy persisted product");
   assert.equal(persistedSale?.invoiceNumber, "INV-PERSIST-001");
@@ -1291,7 +1322,7 @@ async function requestData(
 ): Promise<ApiRecord> {
   const startedAt = performance.now();
   const response = await app.inject({
-    headers: { "x-tenant-db": tenantDatabase },
+    headers: { ...billingScopeHeaders, "x-tenant-db": tenantDatabase },
     method,
     payload,
     url
@@ -1313,7 +1344,7 @@ async function requestList(
 ): Promise<ApiRecord[]> {
   const startedAt = performance.now();
   const response = await app.inject({
-    headers: { "x-tenant-db": tenantDatabase },
+    headers: { ...billingScopeHeaders, "x-tenant-db": tenantDatabase },
     method: "GET",
     url
   });
@@ -1335,7 +1366,9 @@ async function expectApiError(
   code: string
 ) {
   const response = await app.inject({
-    headers: tenantDatabase ? { "x-tenant-db": tenantDatabase } : {},
+    headers: tenantDatabase
+      ? { ...billingScopeHeaders, "x-tenant-db": tenantDatabase }
+      : billingScopeHeaders,
     method,
     payload,
     url

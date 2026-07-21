@@ -1,6 +1,6 @@
 import { GlobalLoader, StatusBadge } from "@codexsun/ui";
 import { AppOrchestrationForm } from "./app-orchestration.form";
-import { useAppOperationActions, useAppOperationsQuery } from "./app-orchestration.hooks";
+import { useAppOperationsQuery } from "./app-orchestration.hooks";
 import { appOperationTones, AppServiceList } from "./app-orchestration.list";
 import type { OrchestratedAppId } from "./app-orchestration.types";
 export function AppOrchestrationWorkspace({
@@ -11,15 +11,7 @@ export function AppOrchestrationWorkspace({
   onBack: () => void;
 }) {
   const query = useAppOperationsQuery();
-  const actions = useAppOperationActions();
   const app = query.data?.find((item) => item.id === appId);
-  const busy =
-    actions.start.isPending ||
-    actions.stop.isPending ||
-    actions.update.isPending ||
-    actions.startService.isPending ||
-    actions.stopService.isPending ||
-    actions.restartService.isPending;
   if (query.isLoading) {
     return <GlobalLoader className="min-h-[24rem]" fullScreen={false} />;
   }
@@ -59,14 +51,7 @@ export function AppOrchestrationWorkspace({
           </StatusBadge>
         </div>
         <div className="relative z-10 mt-5">
-          <AppOrchestrationForm
-            app={app}
-            busy={busy}
-            onRefresh={() => void query.refetch()}
-            onStart={() => actions.start.mutate(app.id)}
-            onStop={() => actions.stop.mutate(app.id)}
-            onUpdate={() => actions.update.mutate(app.id)}
-          />
+          <AppOrchestrationForm busy={query.isFetching} onRefresh={() => void query.refetch()} />
         </div>
       </section>
       <div className="grid gap-4 md:grid-cols-4">
@@ -91,17 +76,10 @@ export function AppOrchestrationWorkspace({
           value={app.terminalPid === null ? "—" : String(app.terminalPid)}
         />
       </div>
-      <AppServiceList
-        app={app}
-        busy={busy}
-        onStart={(serviceId) => actions.startService.mutate({ id: app.id, serviceId })}
-        onStop={(serviceId) => actions.stopService.mutate({ id: app.id, serviceId })}
-        onRestart={(serviceId) => actions.restartService.mutate({ id: app.id, serviceId })}
-      />
+      <AppServiceList app={app} />
       <section className="rounded-md border bg-card p-5 text-sm text-muted-foreground">
-        Open & start launches this app in a new visible terminal. Stop is enabled only when this
-        orchestrator recorded the terminal PID. Update opens dependency and typecheck work in a
-        separate terminal.
+        Platform is the only runtime. Core, Billing, Mail, Framework, and UI are composed workspace
+        packages and do not own standalone processes or ports.
       </section>
     </main>
   );

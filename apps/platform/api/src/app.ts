@@ -1,8 +1,12 @@
 import { createApiApp, registerHealthRoute, registerRequestLogging } from "@codexsun/framework/api";
 import { registerModules } from "@codexsun/framework/modules";
 import { createMailModule } from "@codexsun/mail-api";
-import { closeAllBillingDatabases } from "@codexsun/billing-api";
-import { closeCoreDatabase } from "@codexsun/core-api";
+import {
+  billingApiModuleKeys,
+  closeAllBillingDatabases,
+  registerBillingApi
+} from "@codexsun/billing-api";
+import { closeCoreDatabase, coreApiModuleKeys, registerCoreApi } from "@codexsun/core-api";
 import { AppError } from "@codexsun/framework/errors";
 import type { FastifyRequest } from "fastify";
 import type { HealthCheck } from "@codexsun/framework/health";
@@ -77,6 +81,8 @@ export async function createApp() {
       check: () => ({
         details: {
           modules: [
+            ...coreApiModuleKeys,
+            ...billingApiModuleKeys,
             appRegistryModule.key,
             tenantModule.key,
             tenantUserModule.key,
@@ -111,6 +117,10 @@ export async function createApp() {
   console.info("[platform.routes] health ready");
   await registerAuthRoutes(app);
   console.info("[platform.routes] auth ready");
+  await registerCoreApi(app);
+  console.info("[platform.routes] Core package ready");
+  await registerBillingApi(app);
+  console.info("[platform.routes] Billing package ready");
   await registerModules(
     [
       appRegistryModule,

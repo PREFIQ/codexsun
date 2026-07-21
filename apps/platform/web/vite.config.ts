@@ -32,29 +32,24 @@ export default defineConfig(({ command }) => ({
             "/api/billing": {
               changeOrigin: false,
               rewrite: (path) => path.replace(/^\/api\/billing/u, "") || "/",
-              target: `http://127.0.0.1:${requireEnvNumber(
-                process.env.BILLING_API_PORT,
-                "BILLING_API_PORT"
-              )}`
+              target: platformApiTarget()
             },
             "/api/core": {
               changeOrigin: false,
               rewrite: (path) => path.replace(/^\/api\/core/u, "") || "/",
-              target: `http://127.0.0.1:${requireEnvNumber(
-                process.env.CORE_API_PORT,
-                "CORE_API_PORT"
-              )}`
+              target: platformApiTarget()
             },
             "/api/platform": {
               changeOrigin: false,
               rewrite: (path) => path.replace(/^\/api\/platform/u, "") || "/",
-              target: `http://127.0.0.1:${requireEnvNumber(
-                process.env.PLATFORM_API_PORT,
-                "PLATFORM_API_PORT"
-              )}`
+              target: platformApiTarget()
             }
           }
         }
       }
     : {})
 }));
+
+function platformApiTarget() {
+  return `http://127.0.0.1:${requireEnvNumber(process.env.PLATFORM_API_PORT, "PLATFORM_API_PORT")}`;
+}

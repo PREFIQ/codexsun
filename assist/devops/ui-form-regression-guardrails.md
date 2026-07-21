@@ -85,29 +85,20 @@ These rules exist because tenant/common/master form changes recently caused avoi
 Run these after any shared form, common module, master module, lookup, switch, layout, or button change:
 
 ```bash
-npm run verify:platform-ui
-```
-
-This command must run:
-
-```bash
-npm run typecheck -w @codexsun/platform-web
-npx playwright test apps/platform/web/e2e/tenant-modules.spec.ts
-npm run e2e:platform
+npm run check
+npm run build
+npm run test:e2e:composed-runtime
 ```
 
 For a faster first pass during active development:
 
 ```bash
-npm run verify:tenant-ui
-```
-
-This command must run:
-
-```bash
 npm run typecheck -w @codexsun/platform-web
-npx playwright test apps/platform/web/e2e/tenant-modules.spec.ts
+npm run lint -w @codexsun/platform-web
 ```
+
+Complete browser verification against the root `npm run dev` runtime when the
+change affects interaction or layout behavior.
 
 ## Manual Smoke Checklist
 

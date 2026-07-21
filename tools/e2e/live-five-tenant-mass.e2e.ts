@@ -8,6 +8,7 @@ import { SubscriptionService } from "../../apps/platform/api/src/modules/subscri
 import { TenantService } from "../../apps/platform/api/src/modules/tenant/tenant.service.js";
 import type { Tenant } from "../../apps/platform/api/src/modules/tenant/tenant.types.js";
 import { signAuthToken } from "../../apps/platform/api/src/auth/jwt.js";
+import { createApp as createPlatformApp } from "../../apps/platform/api/src/app.js";
 import {
   bootstrapCoreDatabase,
   closeCoreDatabase,
@@ -26,7 +27,6 @@ import {
   bootstrapBillingDatabase,
   closeAllBillingDatabases
 } from "../../apps/billing/api/src/database/billing-database.js";
-import { createApp as createBillingApp } from "../../apps/billing/api/src/app.js";
 import { ExportSalesService } from "../../apps/billing/api/src/modules/export-sales/export-sales.service.js";
 import type { ExportSaleSavePayload } from "../../apps/billing/api/src/modules/export-sales/export-sales.types.js";
 import { PaymentService } from "../../apps/billing/api/src/modules/payment/payment.service.js";
@@ -70,7 +70,7 @@ const purchaseService = new PurchaseService();
 const exportSalesService = new ExportSalesService();
 const paymentService = new PaymentService();
 const receiptService = new ReceiptService();
-let billingApp: Awaited<ReturnType<typeof createBillingApp>> | null = null;
+let platformApp: Awaited<ReturnType<typeof createPlatformApp>> | null = null;
 
 try {
   const tenants = await provisionTenants();
@@ -99,7 +99,7 @@ try {
   assert.equal(Number(masterCounts[0]?.domains), 5);
   assert.equal(Number(masterCounts[0]?.subscriptions), 5);
 
-  billingApp = await createBillingApp();
+  platformApp = await createPlatformApp();
   const routeAudit = await verifyLiveRoutes(tenants, generated);
   assert.equal(
     routeAudit.mismatchedTenantAccepted,
@@ -137,7 +137,7 @@ try {
     totalLineItems: generated.reduce((sum, entry) => sum + entry.lineItems, 0)
   });
 } finally {
-  await billingApp?.close();
+  await platformApp?.close();
   await closeAllBillingDatabases();
   await closeCoreDatabase();
   await closeAllTenantDatabases();
@@ -846,7 +846,7 @@ async function verifyLiveRoutes(
   tenants: Tenant[],
   generated: Array<Awaited<ReturnType<typeof generateTenantLoad>>>
 ) {
-  assert.ok(billingApp);
+  assert.ok(platformApp);
   for (const [index, tenant] of tenants.entries()) {
     const expected = generated[index]?.documentCount ?? maximumRecordsPerTenant;
     for (const path of [
@@ -857,7 +857,7 @@ async function verifyLiveRoutes(
       "/billing/payments/page?page=1&pageSize=200&search=&status=all",
       "/billing/receipts/page?page=1&pageSize=200&search=&status=all"
     ]) {
-      const response = await billingApp.inject({
+      const response = await platformApp.inject({
         headers: tenantHeaders(tenant),
         method: "GET",
         url: path
@@ -874,13 +874,13 @@ async function verifyLiveRoutes(
   const source = generated[0];
   const target = tenants[1];
   assert.ok(source?.firstIds.payment && target);
-  const isolated = await billingApp.inject({
+  const isolated = await platformApp.inject({
     headers: tenantHeaders(target),
     method: "GET",
     url: `/billing/payments/${source.firstIds.payment}`
   });
   assert.equal(isolated.statusCode, 404, isolated.body);
-  const mismatched = await billingApp.inject({
+  const mismatched = await platformApp.inject({
     headers: {
       ...tenantHeaders(target),
       "x-tenant-db": source.tenant.dbName

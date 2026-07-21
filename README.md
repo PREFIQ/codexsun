@@ -4,19 +4,20 @@ Software makes simple.
 
 CODEXSUN is a monorepo foundation for a multi-tenant business application
 platform. The current workspace includes the Platform API, Platform web shell,
-shared Framework, Platform, and UI packages, Core business modules, Billing
-entry modules, a tenant-owned Mail service and workspace, master database
-bootstrap, and version/changelog tooling.
+shared Framework and UI packages, composed Core and Billing business modules,
+tenant-owned Mail modules, master database bootstrap, and version/changelog
+tooling.
 
 ## Start
 
 ```bash
 npm install
-npm run dev:api
-npm run dev:web
+npm run dev
 ```
 
-Run API and web in separate terminals. During frontend-only work, keep `dev:api` running and restart only `dev:web`.
+The single root command starts the Platform API and Platform web shell together.
+Core, Billing, and Mail attach as packages; they have no standalone development
+entrypoints.
 
 Install dependencies only from this repository root. All apps, packages, and
 tools resolve dependencies from the root `node_modules`; workspace-local
@@ -30,7 +31,8 @@ Platform web: <http://127.0.0.1:7020>
 ## Docker Deployment
 
 Docker deployment files live in `.container/`. Shared MariaDB, Redis, and
-Media services are installed once alongside the independently replaceable Billing stack.
+Media services are installed once alongside the composed Platform API and web
+runtime.
 
 ```bash
 bash .container/setup.sh billing
@@ -42,8 +44,8 @@ For a local source update:
 bash .container/deploy.sh billing up
 ```
 
-For a registry-based release, publish on CI and upgrade only that application
-stack on the deployment host:
+For a registry-based release, publish on CI and upgrade the Platform stack on
+the deployment host:
 
 ```bash
 bash .container/deploy.sh billing publish
@@ -61,10 +63,13 @@ registry flow, persistence contract, and verification commands.
 ```text
 apps/platform/api
 apps/platform/web
-apps/core
-apps/billing
+apps/core/api
+apps/core/web
+apps/billing/api
+apps/billing/web
+apps/mail/api
+apps/mail/web
 packages/framework
-packages/platform
 packages/ui
 tools/version
 assist
@@ -81,11 +86,12 @@ assist/devops/ui-form-regression-guardrails.md
 Required commands:
 
 ```bash
-npm run verify:tenant-ui
-npm run verify:platform-ui
+npm run check
+npm run build
 ```
 
-Use `verify:tenant-ui` while developing form changes. Use `verify:platform-ui` before finishing shared UI, lookup, common module, or master module work.
+Use the root checks before finishing shared UI, lookup, common module, or master
+module work.
 
 ## Strict App Module Shape
 
