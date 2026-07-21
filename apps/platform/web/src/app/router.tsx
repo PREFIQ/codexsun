@@ -66,12 +66,6 @@ const TenantTermsPage = lazy(() =>
 const LoginPage = lazy(() =>
   import("../public/login/LoginPage").then((module) => ({ default: module.LoginPage }))
 );
-const DataBridgeDesk = lazy(() =>
-  import("../desks/data-bridge/DataBridgeDesk").then((module) => ({
-    default: module.DataBridgeDesk
-  }))
-);
-
 const rootRoute = createRootRoute();
 
 const homeRoute = createRoute({
@@ -176,12 +170,6 @@ const appSplatRoute = createRoute({
   path: "/app/$"
 });
 
-const dataBridgeRoute = createRoute({
-  component: DataBridgeDesk,
-  getParentRoute: () => rootRoute,
-  path: "/data-bridge/$"
-});
-
 const routeTree = rootRoute.addChildren([
   homeRoute,
   workspaceRoute,
@@ -199,8 +187,7 @@ const routeTree = rootRoute.addChildren([
   adminLoginRoute,
   saSplatRoute,
   adminRoute,
-  appSplatRoute,
-  dataBridgeRoute
+  appSplatRoute
 ]);
 
 export const router = createRouter({ routeTree });

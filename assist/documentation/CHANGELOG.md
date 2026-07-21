@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.37
+Current version: 1.0.38
 
-Release tag: v-1.0.37
+Release tag: v-1.0.38
 
-Changelog label: v 1.0.37
+Changelog label: v 1.0.38
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -20,6 +20,38 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
 
+## v-1.0.38
+
+### [v 1.0.38] 2026-07-21 9:26 am - Repository Application Cleanup
+
+#### Database Changes
+
+- Database update: No (manual).
+
+#### App Codebase Changes
+
+- Removed the complete B2B Connect and Ecommerce application boundaries, including API/web workspaces, public pages,
+  authentication and profile modules, container projects, deployment composition, routes, menus, environment values,
+  package dependencies, generated output, and active documentation references.
+- Removed the complete Data Bridge and Kitchen Serve application boundaries, including their migration/reconciliation
+  and service-order modules, Platform desk/orchestration integration, development and preflight services, runtime ports,
+  deployment stubs, workspace packages, local JSON runtime stores, generated artifacts, and active documentation.
+- Removed the complete Sites application boundary and all CODEXSUN, LogicX, and Tech Media client implementations,
+  media assets, Vite workspace, development/domain routes, product-stack contract, static container project, hosted
+  publishing configuration, environment values, release tags, build output, and active architecture references.
+- Reduced the active repository to Platform, Core, Billing, and Mail with eleven npm workspaces, one Billing product
+  release contract, and one container deployment composed from Billing plus the persistent MariaDB, Redis, and Media
+  infrastructure layer.
+- Cleaned root scripts, module-boundary registration, app orchestration, package manifests, the root lockfile, environment
+  templates, Docker helpers, hosted nginx guidance, repository inventory, deployment documentation, caches, and root
+  production output so removed applications are not part of active source or generated artifacts.
+- Updated the supported development baseline to Node.js 26.5.0, npm 12.0.1, and TypeScript 7.0.2 while retaining npm
+  as the sole root workspace package manager and preserving a single root dependency tree and build-output directory.
+- Verified a clean npm installation, module ownership boundaries, the reduced product-stack contract, TypeScript, ESLint,
+  production builds, dependency layout, version alignment, shell syntax, diff integrity, and active-source/generated-output
+  trace scans after the cleanup. Database-backed and live-browser E2E suites were not part of this cleanup verification.
+- Bumped workspace version to 1.0.38.
+
 ## v-1.0.37
 
 ### [v 1.0.37] 2026-07-19 1:39 pm - Billing-First Public Product Experience
@@ -30,6 +62,8 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 #### App Codebase Changes
 
+- Removed the Sites application, its three public-site clients, static assets, workspace package, development commands,
+  product-stack contract, container image/Compose project, hosted publishing rules, and environment/deployment entries.
 - Bumped workspace version to 1.0.37.
 - Repositioned the Platform-owned public application site around a billing-first product story covering quotations,
   invoices, GST-ready document preparation, e-way bills, e-invoices, sales, purchases, receipts, payments, ledgers,
@@ -47,9 +81,6 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 - Added a CODEXSUN fallback brand for an unconfigured local public portal while preserving configured organisation branding.
 - Verified formatting, Platform Web lint and TypeScript, Platform module boundaries, root dependency layout, version
   alignment, production build output, all public routes, billing-language exclusions, and desktop/mobile rendering.
-- Added independent Billing, B2B Connect, and Ecommerce development/release boundaries. Product dev runners now attach
-  to already healthy foundation APIs without stopping them, stack-impact tooling limits product-only verification, and
-  stack release plans define product-scoped services, database migrations, health-gated rollout, and rollback.
 
 ## v-1.0.36
 
@@ -280,7 +311,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 #### App Codebase Changes
 
-- Added the dated Billing, Accounting, Compliance, and Business Services plan under `assist/execution/planning.md`, excluding Data Bridge and Kitchen Serve from the product scope.
+- Added the dated Billing, Accounting, Compliance, and Business Services plan under `assist/execution/planning.md`.
 - Recorded the live Billing and Core capability inventory, current readiness limitations, and the prioritized GST, bookkeeping, audit, receivable/payable, purchase-automation, and commercial-document roadmap.
 - Defined module ownership boundaries for Billing documents, Accounting books, Compliance workflows, reporting read models, and asynchronous integrations so future work does not become a centralized business engine.
 - Added adjacent client-service plans for collections, virtual CFO, loan readiness, payroll, TDS, inventory control, CRM, industry packs, digital commerce, document automation, migration, and managed back-office operations.
@@ -323,7 +354,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 #### App Codebase Changes
 
-- Consolidated production deployment into four independent MariaDB, Redis, Media, and Billing stacks; Billing now packages Framework-backed Platform, Core, and Billing services while excluding Kitchen Serve and Data Bridge runtimes.
+- Consolidated production deployment into four independent MariaDB, Redis, Media, and Billing stacks; Billing now packages Framework-backed Platform, Core, and Billing services.
 - Live-tested the complete local Docker deployment, including production migration gating, persistent Billing storage ownership, the Platform public-storage compatibility link, authenticated Redis and Media access, and health checks for all six Billing services.
 - Split complete-stack lifecycle into non-destructive `setup.sh` install/reinstall commands and a Billing-only `deploy.sh`; Billing reinstall now replaces only application containers/images, applies forward migrations, reports the migration ledger, and cannot manage infrastructure or remove database volumes.
 - Added repeatable default-tenant deployment inputs, persistent tenant-storage mapping, and setup-time MariaDB grant reconciliation; live install, full reinstall, and Billing-only reinstall preserve the `1:1:19:1` master/tenant migration-and-user signature while all endpoints remain healthy.
@@ -404,7 +435,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 - Replaced animated workspace table and lookup skeletons with plain loading states so initial data requests no longer shimmer or fade the surrounding interface.
 - Kept the last settled table rows visible while Company, Contact, Product, and Work Order searches request their next server-filtered result, preventing table collapse and flicker during typing.
-- Applied the plain table-loading state across Core, Platform, Billing, and Data Bridge workspaces through the shared workspace table primitive and the remaining module-owned custom tables.
+- Applied the plain table-loading state across Core, Platform, and Billing workspaces through the shared workspace table primitive and the remaining module-owned custom tables.
 
 ### [v 1.0.32] 2026-07-14 06:37 pm - Company Billing Compliance Bootstrap
 
@@ -432,7 +463,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 - Added `assist/execution/setup.md` as the production Docker setup helper, documenting the active `.container/` deployment bundle, image build inputs, runtime services, environment requirements, upgrade path, clean reinstall flow, storage, admin tooling, reverse proxy notes, and pre-production checks.
 - Recorded the installed Docker image base and runtime packages used by the production build: Node.js 22 Bookworm slim with `ca-certificates`, `curl`, `git`, `mariadb-client`, `nano`, `redis-tools`, and `sudo`.
-- Replaced the shared runtime image with independently versioned Platform, Core, Billing, and Kitchen Serve API/Web images plus a dedicated migration runner.
+- Replaced the shared runtime image with independently versioned Platform, Core, and Billing API/Web images plus a dedicated migration runner.
 - Split MariaDB, Redis, Pictures, Files, and every application stack into individually deployable Compose projects joined through the external `codexsun-network`.
 - Added explicit persistent volumes for database data/backups, Redis, each app stack, picture content/metadata, and file content/metadata; reinstall now preserves all data unless a targeted wipe flag is explicitly enabled.
 - Added the Pictures/Files media setup workflow that initializes both File Browser databases and keeps their admin passwords synchronized with `SUPER_ADMIN_PASSWORD` from the repository `.env` without printing the credential.
@@ -646,7 +677,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 ## v-1.0.21
 
-### [v 1.0.21] 2026-07-11 5:42 pm - Data Bridge Foundation and Super Admin Desk
+### [v 1.0.21] 2026-07-11 5:42 pm - Super Admin App Operations
 
 #### Database Changes
 
@@ -654,20 +685,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 #### App Codebase Changes
 
-- Added the isolated `apps/data-bridge` API and web application bundles with dedicated ports, workspace packages, development stack, environment configuration, and build tooling.
-- Added the Data Bridge controlled migration workflow for discovery, mapping, review, approval, execution, and reconciliation across schema-upgrade and data-transfer tracks.
-- Defined the required Data Bridge areas: Overview, Migration Projects, Connections & Secrets, Discovery Snapshots, Schema Comparison, Mappings & Transforms, Review & Approvals, Execution Runs, and Reconciliation & Audit.
-- Added fail-closed execution guards requiring tenant context, approved project status, a successful dry run, an approval reference, and an immutable plan checksum.
-- Added Data Bridge to the Super Admin app switcher and exposed it through the authenticated `/data-bridge` desk with its own sidebar and workspace shell.
-- Removed the earlier embedded Data Bridge entry from the Super Admin Database menu.
 - Removed the redundant page-title breadcrumb segment from the Super Admin top bar.
-- Restricted the Super Admin and Data Bridge app switchers to Platform and Data Bridge so tenant Application and Staff desks cannot be entered from this context.
-- Added Data Bridge architecture, security, module-boundary, runtime, and verification documentation.
-- Verified the Data Bridge API, Data Bridge web, shared UI, and Platform web with focused typechecks, API safety tests, browser interaction checks, and design QA.
-- Added the isolated KitchenServe API and web app on ports `7110` and `7120`, supported by Platform, Core, Framework, and UI without Billing or Accounts dependencies.
-- Added the tenant-scoped waiter-order lifecycle from draft capture through kitchen submission, preparation, ready-to-serve, served, bill-waiting, and closed states.
-- Added real MariaDB persistence for KitchenServe orders, order items, and station-specific kitchen tickets with transactional order creation and validated tenant database selection.
-- Added KitchenServe desks for floor and tables, menu, waiter orders, kitchen display, ready-to-serve, bill waiting, order history, and settings.
 - Replaced the Super Admin overview dashboard cards with a compact live strip for every runnable repository app.
 - Added App Operations maintenance pages with service availability, port response time, managed uptime, terminal PID, and per-service health metrics.
 - Added guarded Open & start, Stop, Update, and Refresh controls; app starts and updates open in new visible terminals while stop is limited to process trees recorded by the orchestrator.
@@ -1045,7 +1063,6 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 #### App Codebase Changes
 
 - Reduced the copied workspace to the current runnable foundation: `apps/platform/api`, `apps/platform/web`, `packages/framework`, `packages/ui`, and tooling.
-- Removed stale Core, Billing, Accounts, Ecommerce, CRM, Sites, and copied Platform package wiring from workspace references, dependency manifests, TypeScript config, Vite aliases, package lock state, preflight, and dist collection.
 - Reorganized Platform Web into a clean source structure:
   - `src/app` for bootstrap, providers, router, and design-system setup.
   - `src/desks` for `/sa`, `/admin`, and `/app` desk shells.

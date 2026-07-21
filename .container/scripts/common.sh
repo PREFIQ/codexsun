@@ -100,13 +100,6 @@ prepare_deploy_env() {
   set_env_value BILLING_STACK_API_IMAGE_TAG "$version"
   set_env_value BILLING_STACK_WEB_IMAGE_TAG "$version"
   set_env_value BILLING_STACK_MIGRATIONS_IMAGE_TAG "$version"
-  set_env_value ECOMMERCE_STACK_API_IMAGE_TAG "$version"
-  set_env_value ECOMMERCE_STACK_WEB_IMAGE_TAG "$version"
-  set_env_value ECOMMERCE_STACK_MIGRATIONS_IMAGE_TAG "$version"
-  set_env_value B2BCONNECT_STACK_API_IMAGE_TAG "$version"
-  set_env_value B2BCONNECT_STACK_WEB_IMAGE_TAG "$version"
-  set_env_value B2BCONNECT_STACK_MIGRATIONS_IMAGE_TAG "$version"
-  set_env_value SITES_STACK_WEB_IMAGE_TAG "$version"
 
   if [ "$deploy_env_created" = "1" ]; then
     for key in DB_USER DB_PASSWORD DB_MASTER_NAME; do

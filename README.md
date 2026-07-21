@@ -30,15 +30,13 @@ Platform web: <http://127.0.0.1:7020>
 ## Docker Deployment
 
 Docker deployment files live in `.container/`. Shared MariaDB, Redis, and
-Media services are installed once; Billing, Ecommerce, B2B Connect, and the
-three public Sites are independently replaceable product stacks.
+Media services are installed once alongside the independently replaceable Billing stack.
 
 ```bash
-bash .container/setup.sh all
+bash .container/setup.sh billing
 ```
 
-Install a single product by replacing `all` with `billing`, `ecommerce`,
-`b2bconnect`, or `sites`. For a local source update:
+For a local source update:
 
 ```bash
 bash .container/deploy.sh billing up
@@ -65,8 +63,6 @@ apps/platform/api
 apps/platform/web
 apps/core
 apps/billing
-apps/data-bridge
-apps/kitchen-serve
 packages/framework
 packages/platform
 packages/ui

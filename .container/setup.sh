@@ -10,10 +10,9 @@ TARGET=billing
 
 usage() {
   cat <<'EOF'
-Usage: .container/setup.sh [--reinstall] [billing|ecommerce|b2bconnect|sites|all]
+Usage: .container/setup.sh [--reinstall] [billing]
 
-Installs/starts MariaDB, Redis, and Media once, then deploys the selected product
-stack. "all" installs all four product stacks using non-conflicting host ports.
+Installs/starts MariaDB, Redis, and Media once, then deploys Billing.
 
 --reinstall cleanly replaces CODEXSUN containers and images, then runs safe
 forward migrations. Named volumes, databases, credentials, and uploads remain.
@@ -24,7 +23,7 @@ EOF
 for arg in "$@"; do
   case "$arg" in
     --reinstall) MODE=reinstall ;;
-    billing|ecommerce|b2bconnect|sites|all) TARGET=$arg ;;
+    billing) TARGET=$arg ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; exit 64 ;;
   esac
@@ -35,7 +34,7 @@ run_preflight
 infrastructure_image() {
   stack="$1"
   registry=$(env_value CODEXSUN_IMAGE_REGISTRY codexsun)
-  version=$(env_value CODEXSUN_VERSION 1.0.37)
+  version=$(env_value CODEXSUN_VERSION 1.0.38)
   case "$stack" in
     mariadb) tag=$(env_value MARIADB_IMAGE_TAG "11.8-codexsun-${version}") ;;
     redis) tag=$(env_value REDIS_IMAGE_TAG "7.4-codexsun-${version}") ;;
@@ -59,9 +58,7 @@ remove_infrastructure_images() {
 }
 
 stop_all_containers() {
-  for stack in sites b2bconnect ecommerce billing; do
-    bash "$SCRIPT_DIR/deploy.sh" "$stack" down >/dev/null 2>&1 || true
-  done
+  bash "$SCRIPT_DIR/deploy.sh" billing down >/dev/null 2>&1 || true
   stack_compose media down --remove-orphans
   stack_compose database/redis down --remove-orphans
   stack_compose database/mariadb down --remove-orphans
@@ -96,13 +93,7 @@ deploy_target() {
   fi
 }
 
-if [ "$TARGET" = "all" ]; then
-  for stack in billing ecommerce b2bconnect sites; do
-    deploy_target "$stack"
-  done
-  bash "$SCRIPT_DIR/smoke-test.sh"
-else
-  deploy_target "$TARGET"
-fi
+deploy_target "$TARGET"
+bash "$SCRIPT_DIR/smoke-test.sh"
 
 echo "CODEXSUN setup completed: mode=$MODE target=$TARGET"

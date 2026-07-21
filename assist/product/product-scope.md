@@ -81,14 +81,6 @@ Includes:
 - Documents.
 - Reports.
 
-### Configurable Marketplaces
-
-- `b2bconnect` is a generic B2B portal application connecting verified buyers and sellers. Each
-  deployment owns its brand, tagline, and purpose in app code or deployment-profile data, while the
-  environment supplies only network hosts and ports. Tirupur Connect is one possible deployment.
-- `ecommerce` is a generic public multi-vendor marketplace application. Lifeshoppy, Tech Media, and
-  Tirupur Direct are examples of independently branded deployments using the same application
-  boundary and their own code/database profiles.
 - The two products have separate application, API, frontend, module, and data ownership. Shared
   behavior is limited to stable platform/framework contracts and reusable design-system primitives.
 

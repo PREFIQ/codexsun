@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import {
-  DatabaseZapIcon,
   KeyRoundIcon,
   ListChecksIcon,
   LogOutIcon,
@@ -81,12 +80,6 @@ function superWorkspaceItems(activeWorkspace: "platform" | "task-manager") {
       icon: ListChecksIcon,
       active: activeWorkspace === "task-manager",
       url: "/sa/task-manager"
-    },
-    {
-      title: "Data Bridge",
-      description: "Schema comparison and controlled data migration.",
-      icon: DatabaseZapIcon,
-      url: "/data-bridge"
     }
   ];
 }

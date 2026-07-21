@@ -26,20 +26,6 @@ export const appDefinitions = [
     description: "Quotations, sales, purchase, payment, and receipt.",
     managed: true,
     services: [service("api", "API", 7050), service("web", "Web", 7060)]
-  },
-  {
-    id: "data-bridge",
-    label: "Data Bridge",
-    description: "Schema comparison and controlled data migration.",
-    managed: true,
-    services: [service("api", "API", 7090), service("web", "Web", 7100)]
-  },
-  {
-    id: "kitchen-serve",
-    label: "KitchenServe",
-    description: "Waiter, kitchen, serving, and bill-waiting operations.",
-    managed: true,
-    services: [service("api", "API", 7110), service("web", "Web", 7120)]
   }
 ] as const;
 

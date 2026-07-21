@@ -62,7 +62,6 @@ Do not build these in the first scaffold:
 - Billing workflows.
 - Accounting workflows.
 - CRM workflows.
-- Ecommerce workflows.
 - Offline sync engine.
 - Docker runtime.
 - Mobile app.

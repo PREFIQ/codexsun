@@ -22,7 +22,6 @@ Apps include:
 
 - `platform`
 - `billing`
-- `ecommerce`
 - `crm`
 - `cxsync`
 - `cxdeploy`

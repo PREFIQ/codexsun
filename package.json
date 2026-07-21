@@ -1,8 +1,8 @@
 {
   "name": "codexsun",
-  "version": "1.0.37",
+  "version": "1.0.38",
   "private": true,
-  "packageManager": "npm@11.17.0",
+  "packageManager": "npm@12.0.1",
   "description": "CODEXSUN",
   "type": "module",
   "workspaces": [
@@ -11,20 +11,11 @@
     "tools/*"
   ],
   "scripts": {
-    "dev": "node tools/dev-stack.mjs marketplaces",
+    "dev": "node tools/dev-stack.mjs all",
     "dev:api": "node tools/dev-stack.mjs api",
     "dev:web": "node tools/dev-stack.mjs web",
-    "dev:sites": "node tools/dev-stack.mjs sites",
-    "dev:sites:all": "concurrently -n codexsun,logicx,techmedia -c blue,green,magenta \"npm run dev:codexsun\" \"npm run dev:logicx\" \"npm run dev:techmedia\"",
     "dev:domain-gateway": "node tools/dev-domain-gateway.mjs",
-    "dev:domains": "concurrently -k -n api,platform,sites,gateway -c cyan,green,magenta,yellow \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:sites:all\" \"npm run dev:domain-gateway\"",
-    "dev:codexsun": "npm run dev:codexsun -w @codexsun/sites-web",
-    "dev:logicx": "npm run dev:logicx -w @codexsun/sites-web",
-    "dev:techmedia": "npm run dev:techmedia -w @codexsun/sites-web",
-    "dev:data-bridge": "node tools/dev-stack.mjs data-bridge",
-    "dev:b2bconnect": "node tools/dev-stack.mjs b2bconnect",
-    "dev:ecommerce": "node tools/dev-stack.mjs ecommerce",
-    "dev:marketplaces": "node tools/dev-stack.mjs marketplaces",
+    "dev:domains": "concurrently -k -n api,platform,gateway -c cyan,green,yellow \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:domain-gateway\"",
     "test:product-stacks": "node --test tools/product-stack-contract.test.mjs",
     "stack:impact": "node tools/stack-impact.mjs",
     "stack:plan": "node tools/stack-release-plan.mjs",
@@ -40,11 +31,6 @@
     "verify:platform": "npm run check:module-boundaries && npm run typecheck && npm run build",
     "verify:billing": "npm run test:product-stacks && node tools/check-module-boundaries.mjs billing && npm run typecheck -w @codexsun/billing-api && npm run typecheck -w @codexsun/billing-web && npm run lint -w @codexsun/billing-api && npm run lint -w @codexsun/billing-web && npm run build -w @codexsun/billing-api && npm run build -w @codexsun/billing-web && npm run dependencies:check",
     "verify:core": "npm run check:module-boundaries && npm run typecheck && npm run build",
-    "verify:data-bridge": "npm run check:module-boundaries && npm run typecheck && npm run build",
-    "verify:b2bconnect": "npm run test:product-stacks && node tools/check-module-boundaries.mjs b2bconnect && npm run test:auth -w @codexsun/b2bconnect-api && npm run test:business-profile -w @codexsun/b2bconnect-api && npm run typecheck -w @codexsun/b2bconnect-api && npm run typecheck -w @codexsun/b2bconnect-web && npm run lint -w @codexsun/b2bconnect-api && npm run lint -w @codexsun/b2bconnect-web && npm run build -w @codexsun/b2bconnect-api && npm run build -w @codexsun/b2bconnect-web && npm run dependencies:check",
-    "verify:ecommerce": "npm run test:product-stacks && node tools/check-module-boundaries.mjs ecommerce && npm run typecheck -w @codexsun/ecommerce-api && npm run typecheck -w @codexsun/ecommerce-web && npm run lint -w @codexsun/ecommerce-api && npm run lint -w @codexsun/ecommerce-web && npm run build -w @codexsun/ecommerce-api && npm run build -w @codexsun/ecommerce-web && npm run dependencies:check",
-    "verify:kitchen-serve": "npm run check:module-boundaries && npm run typecheck && npm run build",
-    "verify:sites": "node tools/check-module-boundaries.mjs sites && npm run typecheck -w @codexsun/sites-web && npm run lint -w @codexsun/sites-web && npm run build -w @codexsun/sites-web && npm run dependencies:check",
     "check": "npm run check:module-boundaries && npm run typecheck && npm run lint",
     "check:module-boundaries": "node tools/check-module-boundaries.mjs",
     "check:core-boundaries": "node tools/check-module-boundaries.mjs core",
@@ -75,7 +61,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.1",
-    "@types/node": "^22.10.2",
+    "@types/node": "^26.1.1",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@typescript-eslint/eslint-plugin": "^8.18.1",
@@ -86,11 +72,12 @@
     "recharts": "^2.15.4",
     "tailwindcss": "^4.3.1",
     "turbo": "^2.10.4",
-    "typescript": "^5.7.2"
+    "typescript": "^7.0.2",
+    "typescript-eslint-compiler": "npm:typescript@6.0.3"
   },
   "engines": {
-    "node": ">=22.0.0",
-    "npm": ">=11.0.0"
+    "node": ">=26.5.0",
+    "npm": ">=12.0.1"
   },
   "allowScripts": {
     "esbuild": true

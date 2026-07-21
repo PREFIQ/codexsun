@@ -1,9 +1,7 @@
 import {
-  DatabaseZapIcon,
   Layers3Icon,
   ReceiptTextIcon,
   ServerCogIcon,
-  UtensilsIcon,
   PlayIcon,
   SquareIcon,
   RotateCcwIcon
@@ -13,9 +11,7 @@ import type { OrchestratedApp, OrchestratedAppId } from "./app-orchestration.typ
 const icons = {
   platform: ServerCogIcon,
   core: Layers3Icon,
-  billing: ReceiptTextIcon,
-  "data-bridge": DatabaseZapIcon,
-  "kitchen-serve": UtensilsIcon
+  billing: ReceiptTextIcon
 };
 export const appOperationTones: Record<
   OrchestratedAppId,
@@ -38,18 +34,6 @@ export const appOperationTones: Record<
     icon: "border-amber-200 bg-white/70 text-amber-700 dark:border-amber-800 dark:bg-amber-950/70 dark:text-amber-300",
     metric:
       "border-amber-100 from-amber-50/80 via-card to-orange-50/70 dark:border-amber-900 dark:from-amber-950/35 dark:to-orange-950/25"
-  },
-  "data-bridge": {
-    card: "border-emerald-200/80 from-emerald-100 via-green-50 to-teal-100 hover:border-emerald-300 dark:border-emerald-800/70 dark:from-emerald-950/70 dark:via-green-950/50 dark:to-teal-950/70",
-    icon: "border-emerald-200 bg-white/70 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300",
-    metric:
-      "border-emerald-100 from-emerald-50/80 via-card to-teal-50/70 dark:border-emerald-900 dark:from-emerald-950/35 dark:to-teal-950/25"
-  },
-  "kitchen-serve": {
-    card: "border-orange-200/80 from-orange-100 via-amber-50 to-lime-100 hover:border-orange-300 dark:border-orange-800/70 dark:from-orange-950/70 dark:via-amber-950/50 dark:to-lime-950/70",
-    icon: "border-orange-200 bg-white/70 text-orange-700 dark:border-orange-800 dark:bg-orange-950/70 dark:text-orange-300",
-    metric:
-      "border-orange-100 from-orange-50/80 via-card to-lime-50/70 dark:border-orange-900 dark:from-orange-950/35 dark:to-lime-950/25"
   }
 };
 export function AppOperationsStrip({

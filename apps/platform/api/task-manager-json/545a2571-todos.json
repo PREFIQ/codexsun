@@ -91,32 +91,6 @@
     "groupName": ""
   },
   {
-    "id": "todo-1d9e626d",
-    "title": "Tirupur Direct - App",
-    "description": "<p>want to plan on Tirupur direct</p>",
-    "status": "open",
-    "priority": "medium",
-    "dueDate": "",
-    "position": 7,
-    "createdAt": "2026-07-11T07:02:53.586Z",
-    "updatedAt": "2026-07-11T07:02:53.586Z",
-    "category": "work",
-    "groupName": ""
-  },
-  {
-    "id": "todo-78fb7e0a",
-    "title": "Tirupur Connect -app",
-    "description": "<p>want to work on tirupur connect</p>",
-    "status": "open",
-    "priority": "medium",
-    "dueDate": "",
-    "position": 8,
-    "createdAt": "2026-07-11T07:03:29.522Z",
-    "updatedAt": "2026-07-11T07:03:29.522Z",
-    "category": "work",
-    "groupName": ""
-  },
-  {
     "id": "todo-af460103",
     "title": "Tenkasi Sports -app",
     "description": "<p>want to work on tenakasi sports</p>",

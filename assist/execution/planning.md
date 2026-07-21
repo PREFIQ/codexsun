@@ -9,11 +9,6 @@ Last reviewed: 2026-07-17.
 
 Batch reference: #35.
 
-Scope exclusions for this plan:
-
-- Data Bridge
-- Kitchen Serve
-
 The plan concentrates on Billing, Accounting, GST and other business services that can attract and retain Indian SME
 clients.
 
@@ -437,17 +432,17 @@ Operate CODEXSUN for clients who do not have trained internal staff:
 
 ## Commercial Packages
 
-| Package | Customer promise | Primary capabilities |
-| --- | --- | --- |
-| Starter Billing | Professional GST billing quickly | Sales, purchase, quotation, receipt, payment, and print |
-| Smart Books | Accounts update from business documents | Posting, vouchers, reconciliation, and financial reports |
-| GST Control | File with fewer mismatches | GSTR-1, GSTR-3B, GSTR-2B, IMS, reconciliation, and calendar |
-| Audit Pro | Find errors before filing or review | Sales/purchase audit, approvals, locks, and audit trail |
-| Collections Pro | Collect receivables faster | Ageing, reminders, promises, links, assignments, and forecasts |
-| CFO Desk | Understand cash, profit, and risk | MIS, forecasts, budgets, profitability, and monthly review |
-| Payroll Desk | Complete monthly employee processing | Attendance, payroll, deductions, payslips, and compliance working |
-| Industry Pro | Software shaped for the client's business | Garments, service, printing, uPVC, distribution, manufacturing, or POS pack |
-| Managed Office | CODEXSUN operated for the client | Data entry, reconciliation, closing, compliance preparation, and reporting |
+| Package         | Customer promise                          | Primary capabilities                                                        |
+| --------------- | ----------------------------------------- | --------------------------------------------------------------------------- |
+| Starter Billing | Professional GST billing quickly          | Sales, purchase, quotation, receipt, payment, and print                     |
+| Smart Books     | Accounts update from business documents   | Posting, vouchers, reconciliation, and financial reports                    |
+| GST Control     | File with fewer mismatches                | GSTR-1, GSTR-3B, GSTR-2B, IMS, reconciliation, and calendar                 |
+| Audit Pro       | Find errors before filing or review       | Sales/purchase audit, approvals, locks, and audit trail                     |
+| Collections Pro | Collect receivables faster                | Ageing, reminders, promises, links, assignments, and forecasts              |
+| CFO Desk        | Understand cash, profit, and risk         | MIS, forecasts, budgets, profitability, and monthly review                  |
+| Payroll Desk    | Complete monthly employee processing      | Attendance, payroll, deductions, payslips, and compliance working           |
+| Industry Pro    | Software shaped for the client's business | Garments, service, printing, uPVC, distribution, manufacturing, or POS pack |
+| Managed Office  | CODEXSUN operated for the client          | Data entry, reconciliation, closing, compliance preparation, and reporting  |
 
 Every paid package must connect to Plan Access and tenant-specific Entitlements. Tenant Access must display the effective
 result before release.

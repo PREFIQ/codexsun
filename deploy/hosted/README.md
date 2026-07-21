@@ -12,17 +12,13 @@ These checked-in files target the current host layout:
 - Core API: `127.0.0.1:7030`
 - Billing API: `127.0.0.1:7050`
 - Platform web root: `/var/www/codexsun-platform`
-- CODEXSUN site root: `/var/www/sites/codexsun`
-- LogicX site root: `/var/www/sites/logicx`
-- Tech Media site root: `/var/www/sites/techmedia`
 
-The maintained nginx configuration maps `codexsun.com`, `logicx.in`, and `techmedia.in` to their independent Sites
-artifacts. `app.codexsun.com` and unmatched tenant domains serve Platform; Platform then resolves the request hostname
-through its tenant-domain module.
+The maintained nginx configuration maps `app.codexsun.com` and unmatched tenant domains to Platform. Platform then
+resolves the request hostname through its tenant-domain module.
 
 Platform `/` renders the tenant app portal only. Its shared top menu, slider, features, updates, and footer receive a
-safe tenant-specific projection from `payloadSettings.appPortal`. The separate Sites artifacts never run inside the
-Platform bundle. A configured portal can link back to its marketing site without importing that site.
+safe tenant-specific projection from `payloadSettings.appPortal`. A configured portal can link to an external public
+URL without importing it into Platform.
 
 ## Generate the server GitHub key
 
@@ -71,27 +67,16 @@ npm run build -w @codexsun/platform-api
 npm run build -w @codexsun/core-api
 npm run build -w @codexsun/billing-api
 npm run build -w @codexsun/platform-web
-npm run build -w @codexsun/sites-web
 
-sudo install -d -o www-data -g www-data \
-  /var/www/codexsun-platform \
-  /var/www/sites/codexsun \
-  /var/www/sites/logicx \
-  /var/www/sites/techmedia
+sudo install -d -o www-data -g www-data /var/www/codexsun-platform
 sudo rsync -a --delete dist/apps/platform/web/ /var/www/codexsun-platform/
-sudo rsync -a --delete dist/apps/sites/web/codexsun/ /var/www/sites/codexsun/
-sudo rsync -a --delete dist/apps/sites/web/logicx/ /var/www/sites/logicx/
-sudo rsync -a --delete dist/apps/sites/web/techmedia/ /var/www/sites/techmedia/
 ```
 
 Platform Vite reads client variables from the root `.env`. Production should set `VITE_PLATFORM_API_URL` to
 `/api/platform`, `VITE_CORE_API_URL` to `/api/core`, and `VITE_BILLING_API_URL` to `/api/billing` so browser requests
-stay on the hosted origin. Set
-`VITE_PLATFORM_WEB_ORIGIN=https://app.codexsun.com` before building Sites so public-site login and application links
-leave the marketing domains for Platform. Set `PLATFORM_WEB_ORIGIN=https://app.codexsun.com` for API origin policy and
-`PLATFORM_PUBLIC_SITE_ORIGIN=https://codexsun.com` for the canonical app portal's return link. Dashboard Home buttons
-return to the Platform root on the current app origin. `PLATFORM_WEB_PORT` is dev-only and is not required by the
-production build.
+stay on the hosted origin. Set `PLATFORM_WEB_ORIGIN=https://app.codexsun.com` for API origin policy. Dashboard Home
+buttons return to the Platform root on the current app origin. `PLATFORM_WEB_PORT` is dev-only and is not required by
+the production build.
 
 ## Install process supervision and nginx
 
@@ -144,9 +129,6 @@ Expected unauthenticated status: health `200`, session `401`, and web root `200`
 Verify each HTTP hostname before enabling TLS:
 
 ```sh
-curl --resolve codexsun.com:80:127.0.0.1 --fail http://codexsun.com/ >/dev/null
-curl --resolve logicx.in:80:127.0.0.1 --fail http://logicx.in/ >/dev/null
-curl --resolve techmedia.in:80:127.0.0.1 --fail http://techmedia.in/ >/dev/null
 curl --resolve app.codexsun.com:80:127.0.0.1 --fail \
   http://app.codexsun.com/api/platform/health
 curl --resolve app.codexsun.com:80:127.0.0.1 --fail \
@@ -157,13 +139,9 @@ curl --resolve app.codexsun.com:80:127.0.0.1 --fail \
 
 ## Connect live domains
 
-Point the public DNS `A` records for `codexsun.com`, `logicx.in`, `techmedia.in`, and `app.codexsun.com` to the
-server. Add matching `www` CNAME records where required. After DNS resolves, install certificates:
+Point the `app.codexsun.com` DNS `A` record to the server. After DNS resolves, install its certificate:
 
 ```sh
-sudo certbot --nginx -d codexsun.com -d www.codexsun.com
-sudo certbot --nginx -d logicx.in -d www.logicx.in
-sudo certbot --nginx -d techmedia.in -d www.techmedia.in
 sudo certbot --nginx -d app.codexsun.com
 ```
 
@@ -175,11 +153,8 @@ For local Windows domain testing, add these entries to the administrator-managed
 `npm run dev:domains` after environment changes:
 
 ```text
-127.0.0.1 codexsun.test
 127.0.0.1 app.codexsun.test
 127.0.0.1 aaran.test
-127.0.0.1 logicx.test
-127.0.0.1 techmedia.test
 ```
 
 Register `aaran.test` or another tenant app host through Tenant Domains before expecting tenant-specific portal data.

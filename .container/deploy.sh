@@ -10,7 +10,7 @@ ACTION=${2:-up}
 
 usage() {
   cat <<'EOF'
-Usage: .container/deploy.sh {billing|ecommerce|b2bconnect|sites} ACTION
+Usage: .container/deploy.sh billing ACTION
 
 Actions:
   up           Build locally, migrate when applicable, and start the stack.
@@ -30,7 +30,7 @@ EOF
 }
 
 case "$STACK" in
-  billing|ecommerce|b2bconnect|sites) ;;
+  billing) ;;
   -h|--help) usage; exit 0 ;;
   *) usage >&2; exit 64 ;;
 esac
@@ -41,11 +41,6 @@ case "$ACTION" in
   *) usage >&2; exit 64 ;;
 esac
 
-if [ "$STACK" = "sites" ] && [ "$ACTION" = "migrate" ]; then
-  echo "The public Sites stack has no database migration target." >&2
-  exit 64
-fi
-
 prepare_deploy_env
 validate_deploy_env
 require_docker
@@ -55,11 +50,7 @@ compose_stack() {
 }
 
 compose_all() {
-  if [ "$STACK" = "sites" ]; then
-    stack_compose "$STACK" "$@"
-  else
-    stack_compose "$STACK" --profile tools "$@"
-  fi
+  stack_compose "$STACK" --profile tools "$@"
 }
 
 require_stack_dependencies() {
@@ -69,8 +60,6 @@ require_stack_dependencies() {
     echo "Run: bash .container/setup.sh $STACK" >&2
     exit 69
   }
-
-  [ "$STACK" = "sites" ] && return
 
   media_data=$(env_value MEDIA_DATA_VOLUME codexsun-media-data)
   docker volume inspect "$media_data" >/dev/null 2>&1 || {
@@ -102,17 +91,12 @@ stack_image() {
     migrations) tag_key="${upper_stack}_STACK_MIGRATIONS_IMAGE_TAG" ;;
     *) echo "Unknown image role: $suffix" >&2; exit 64 ;;
   esac
-  tag=$(env_value "$tag_key" "$(env_value CODEXSUN_VERSION 1.0.37)")
-  if [ "$STACK" = "sites" ]; then
-    printf '%s/sites-stack-web:%s' "$registry" "$tag"
-  else
-    printf '%s/%s-stack-%s:%s' "$registry" "$STACK" "$suffix" "$tag"
-  fi
+  tag=$(env_value "$tag_key" "$(env_value CODEXSUN_VERSION 1.0.38)")
+  printf '%s/%s-stack-%s:%s' "$registry" "$STACK" "$suffix" "$tag"
 }
 
 remove_stack_images() {
   roles="api web migrations"
-  [ "$STACK" = "sites" ] && roles="web"
   for role in $roles; do
     image=$(stack_image "$role")
     if docker image inspect "$image" >/dev/null 2>&1; then
@@ -138,8 +122,6 @@ publish_stack() {
 migration_service() {
   case "$STACK" in
     billing) printf '%s' platform-migrate ;;
-    ecommerce) printf '%s' ecommerce-migrate ;;
-    b2bconnect) printf '%s' b2bconnect-migrate ;;
     *) return 1 ;;
   esac
 }
@@ -160,7 +142,7 @@ start_stack() {
 
 up_stack() {
   build_stack
-  [ "$STACK" = "sites" ] || migrate_stack
+  migrate_stack
   start_stack
 }
 
@@ -170,7 +152,7 @@ reinstall_stack() {
   compose_stack down --remove-orphans
   remove_stack_images
   build_stack --pull --no-cache
-  [ "$STACK" = "sites" ] || migrate_stack
+  migrate_stack
   start_stack
 }
 
@@ -179,7 +161,7 @@ upgrade_stack() {
   registry=${CODEXSUN_IMAGE_REGISTRY:-$(env_value CODEXSUN_IMAGE_REGISTRY codexsun)}
   echo "Pulling the versioned $STACK release from $registry."
   compose_all pull
-  [ "$STACK" = "sites" ] || migrate_stack
+  migrate_stack
   start_stack
 }
 

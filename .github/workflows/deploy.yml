@@ -16,8 +16,6 @@ jobs:
       CORE_WEB_PORT: 7040
       BILLING_API_PORT: 7050
       BILLING_WEB_PORT: 7060
-      KITCHEN_SERVE_API_PORT: 7110
-      KITCHEN_SERVE_WEB_PORT: 7120
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
       DB_USER: codexsun
@@ -29,18 +27,16 @@ jobs:
       PLATFORM_WEB_ORIGIN: http://localhost:7020
       CORE_WEB_ORIGIN: http://localhost:7040
       BILLING_WEB_ORIGIN: http://localhost:7060
-      KITCHEN_SERVE_WEB_ORIGIN: http://localhost:7120
       PLATFORM_API_URL: http://localhost:7010
       CORE_API_URL: http://localhost:7030
       VITE_PLATFORM_API_URL: http://localhost:7010
       VITE_CORE_API_URL: http://localhost:7030
       VITE_BILLING_API_URL: http://localhost:7050
-      VITE_KITCHEN_SERVE_API_URL: http://localhost:7110
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 26.5.0
           cache: npm
       - run: npm ci
       - run: npm run check:module-boundaries

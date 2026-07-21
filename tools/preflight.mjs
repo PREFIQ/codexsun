@@ -12,42 +12,6 @@ const requestedMode = process.argv[3]?.trim();
 const requestedPort = process.argv[4]?.trim();
 
 const apps = {
-  "b2bconnect-api": {
-    displayName: "b2bconnect-api",
-    cwd: "apps/b2bconnect/api",
-    envKey: "B2BCONNECT_API_PORT",
-    hostKey: "API_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
-  },
-  "b2bconnect-web": {
-    displayName: "b2bconnect-web",
-    cwd: "apps/b2bconnect/web",
-    envKey: "B2BCONNECT_WEB_PORT",
-    hostKey: "B2BCONNECT_WEB_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
-  },
-  "ecommerce-api": {
-    displayName: "ecommerce-api",
-    cwd: "apps/ecommerce/api",
-    envKey: "ECOMMERCE_API_PORT",
-    hostKey: "API_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
-  },
-  "ecommerce-web": {
-    displayName: "ecommerce-web",
-    cwd: "apps/ecommerce/web",
-    envKey: "ECOMMERCE_WEB_PORT",
-    hostKey: "ECOMMERCE_WEB_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
-  },
   "billing-api": {
     displayName: "billing-api",
     cwd: "apps/billing/api",
@@ -62,42 +26,6 @@ const apps = {
     cwd: "apps/billing/web",
     envKey: "BILLING_WEB_PORT",
     hostKey: "BILLING_WEB_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
-  },
-  "data-bridge-api": {
-    displayName: "data-bridge-api",
-    cwd: "apps/data-bridge/api",
-    envKey: "DATA_BRIDGE_API_PORT",
-    hostKey: "API_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
-  },
-  "data-bridge-web": {
-    displayName: "data-bridge-web",
-    cwd: "apps/data-bridge/web",
-    envKey: "DATA_BRIDGE_WEB_PORT",
-    hostKey: "DATA_BRIDGE_WEB_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
-  },
-  "kitchen-serve-api": {
-    displayName: "kitchen-serve-api",
-    cwd: "apps/kitchen-serve/api",
-    envKey: "KITCHEN_SERVE_API_PORT",
-    hostKey: "API_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
-  },
-  "kitchen-serve-web": {
-    displayName: "kitchen-serve-web",
-    cwd: "apps/kitchen-serve/web",
-    envKey: "KITCHEN_SERVE_WEB_PORT",
-    hostKey: "KITCHEN_SERVE_WEB_HOST",
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
@@ -137,15 +65,6 @@ const apps = {
     fallbackHost: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
-  },
-  "sites-web": {
-    displayName: "sites-web",
-    cwd: "apps/sites/web",
-    envKey: "SITES_WEB_PORT",
-    hostKey: "SITES_WEB_HOST",
-    fallbackHost: "127.0.0.1",
-    command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
   }
 };
 
@@ -155,11 +74,6 @@ if (!app || !apps[app]) {
 }
 
 const config = apps[app];
-const sitesMode = app === "sites-web" ? requestedMode || "codexsun" : undefined;
-if (sitesMode && !new Set(["codexsun", "logicx", "techmedia"]).has(sitesMode)) {
-  console.error(`Unknown Sites client "${sitesMode}". Use codexsun, logicx, or techmedia.`);
-  process.exit(1);
-}
 const env = loadDotEnv();
 const port = parseRequiredPort(
   requestedPort || process.env[config.envKey] || env[config.envKey],
@@ -168,25 +82,13 @@ const port = parseRequiredPort(
 const host = process.env[config.hostKey] || env[config.hostKey] || config.fallbackHost;
 await freePort(port, host);
 
-if (
-  app === "platform-api" ||
-  app === "core-api" ||
-  app === "billing-api" ||
-  app === "data-bridge-api" ||
-  app === "kitchen-serve-api" ||
-  app === "b2bconnect-api" ||
-  app === "ecommerce-api"
-) {
+if (app === "platform-api" || app === "core-api" || app === "billing-api") {
   ensurePlatformApiDependencies();
 }
 
 const child = spawn(
   config.command,
-  [
-    ...config.args,
-    ...(sitesMode ? ["--mode", sitesMode] : []),
-    ...(app.endsWith("-web") ? ["--port", String(port)] : [])
-  ],
+  [...config.args, ...(app.endsWith("-web") ? ["--port", String(port)] : [])],
   {
     cwd: resolve(root, config.cwd),
     env: {

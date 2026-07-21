@@ -1,4 +1,4 @@
-export type OrchestratedAppId = "platform" | "core" | "billing" | "data-bridge" | "kitchen-serve";
+export type OrchestratedAppId = "platform" | "core" | "billing";
 export type OrchestratedAppStatus = "online" | "partial" | "offline";
 export interface OrchestratedService {
   id: "api" | "web";

@@ -5,36 +5,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { createConnection } from "node:net";
 import { join, resolve } from "node:path";
 import { matchesServiceHealthContract } from "./dev-stack-health.mjs";
-import { marketplaceServices, productStackContract } from "./product-stack-contract.mjs";
+import { productStackContract } from "./product-stack-contract.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const stackName = process.argv[2] ?? "platform";
 
 const services = {
-  "b2bconnect-api": {
-    color: "\x1b[93m",
-    command: ["b2bconnect-api"],
-    label: "B2B Connect api",
-    logLabel: "b2bconnect-api"
-  },
-  "b2bconnect-web": {
-    color: "\x1b[96m",
-    command: ["b2bconnect-web"],
-    label: "B2B Connect web",
-    logLabel: "b2bconnect-web"
-  },
-  "ecommerce-api": {
-    color: "\x1b[95m",
-    command: ["ecommerce-api"],
-    label: "Ecommerce api",
-    logLabel: "ecommerce-api"
-  },
-  "ecommerce-web": {
-    color: "\x1b[92m",
-    command: ["ecommerce-web"],
-    label: "Ecommerce web",
-    logLabel: "ecommerce-web"
-  },
   "billing-api": {
     color: "\x1b[33m",
     command: ["billing-api"],
@@ -49,52 +25,16 @@ const services = {
   },
   "core-api": { color: "\x1b[35m", command: ["core-api"], label: "core api", logLabel: "core-api" },
   "core-web": { color: "\x1b[34m", command: ["core-web"], label: "core web", logLabel: "core-web" },
-  "data-bridge-api": {
-    color: "\x1b[95m",
-    command: ["data-bridge-api"],
-    label: "Data Bridge api",
-    logLabel: "data-bridge-api"
-  },
-  "data-bridge-web": {
-    color: "\x1b[96m",
-    command: ["data-bridge-web"],
-    label: "Data Bridge web",
-    logLabel: "data-bridge-web"
-  },
-  "kitchen-serve-api": {
-    color: "\x1b[91m",
-    command: ["kitchen-serve-api"],
-    label: "KitchenServe api",
-    logLabel: "kitchen-serve-api"
-  },
-  "kitchen-serve-web": {
-    color: "\x1b[92m",
-    command: ["kitchen-serve-web"],
-    label: "KitchenServe web",
-    logLabel: "kitchen-serve-web"
-  },
   "platform-api": { color: "\x1b[36m", command: ["platform-api"], label: "api", logLabel: "api" },
-  "platform-web": { color: "\x1b[32m", command: ["platform-web"], label: "web", logLabel: "web" },
-  "sites-web": {
-    color: "\x1b[94m",
-    command: ["sites-web", "codexsun"],
-    label: "Sites web",
-    logLabel: "sites-web"
-  }
+  "platform-web": { color: "\x1b[32m", command: ["platform-web"], label: "web", logLabel: "web" }
 };
 
 const stacks = {
   api: ["platform-api", "core-api", "billing-api"],
   all: ["platform-api", "core-api", "platform-web", "billing-api", "billing-web"],
   billing: productStackContract.billing.services,
-  b2bconnect: productStackContract.b2bconnect.services,
   core: ["platform-api", "core-api", "platform-web", "core-web"],
-  "data-bridge": ["data-bridge-api", "data-bridge-web"],
-  ecommerce: productStackContract.ecommerce.services,
-  "kitchen-serve": ["platform-api", "core-api", "kitchen-serve-api", "kitchen-serve-web"],
-  marketplaces: marketplaceServices,
   platform: ["platform-api", "core-api", "billing-api", "platform-web"],
-  sites: ["sites-web"],
   web: ["platform-web"]
 };
 
@@ -179,9 +119,7 @@ async function attachOrStartDependency(serviceName) {
 
 function stackDependencies(name) {
   if (productStackContract[name]) return productStackContract[name].foundationServices;
-  if (name === "marketplaces") return ["platform-api", "core-api", "billing-api"];
   if (name === "core") return ["platform-api"];
-  if (name === "kitchen-serve") return ["platform-api", "core-api"];
   return [];
 }
 

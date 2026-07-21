@@ -21,8 +21,6 @@ product stacks additionally have independent semantic release lines without chan
 
 ```text
 v-billing-X.Y.Z
-v-b2bconnect-X.Y.Z
-v-ecommerce-X.Y.Z
 ```
 
 Stack tags identify an independently deployable API/web product unit and must follow the service and

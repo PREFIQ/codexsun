@@ -107,7 +107,7 @@ Each reduced Common module must own concrete migration SQL, repository queries, 
 
 ### Mandatory Boundary Audit For Every Application
 
-The same ownership discipline applies to Core, Platform, Billing, Data Bridge, Kitchen Serve, and every future application. Before an application change is finalized, audit its complete backend and frontend module tree for wrapper/alias roles, inherited or metadata-driven generic CRUD, private cross-module imports, centralized business implementations, stale exports and proxies, misplaced files, and business behavior stored in app-level shared folders. Composition roots contain registration and lifecycle composition only; leaf modules own executable behavior.
+The same ownership discipline applies to Core, Platform, Billing, and every future application. Before an application change is finalized, audit its complete backend and frontend module tree for wrapper/alias roles, inherited or metadata-driven generic CRUD, private cross-module imports, centralized business implementations, stale exports and proxies, misplaced files, and business behavior stored in app-level shared folders. Composition roots contain registration and lifecycle composition only; leaf modules own executable behavior.
 
 Allowed shared infrastructure is narrow: API transport/session context, environment readers, observability, and reusable `@codexsun/ui` controls. Shared code must not know a business module's fields, validation, tables, lifecycle, routes, forms, lists, workspaces, settings, or print behavior.
 
@@ -162,21 +162,10 @@ apps/
     api/              # Runnable Billing API; owned source lives under api/src
     web/              # Billing frontend modules
 
-  b2bconnect/
-    api/              # Standalone configurable B2B Connect API runtime
-    web/              # Configurable B2B frontend modules
-
-  ecommerce/
-    api/              # Runnable Ecommerce API; owned source lives under api/src
-    web/              # Ecommerce frontend modules
-
   crm/
     src/              # CRM backend modules
     web/              # CRM frontend modules
 
-  sites/
-    src/              # Sites backend modules
-    web/              # Sites frontend modules
 ```
 
 The Platform API owns gateway/composition, auth, tenant context, RBAC, app registry, and shared
@@ -198,8 +187,7 @@ Frontend ownership follows the same boundary:
 - `apps/platform/web` owns the shell, login, SA/admin desks, tenant desk layout, global navigation, activation, and route composition.
 - `apps/core/web` owns common/master tenant screens and shared tenant data UI.
 - `apps/billing/web` owns billing entries, billing settings, billing reports, and billing forms.
-- `apps/ecommerce/web`, `apps/crm/web`, and `apps/sites/web` own their own app-specific screens and routes.
-- `apps/b2bconnect/web` owns deployment-branded B2B buyer/seller portal screens and routes.
+- `apps/crm/web` owns its own app-specific screens and routes.
 - `packages/ui` owns reusable design-system primitives only. It must not absorb app-specific business screens or rules.
 
 Runnable app web packages use `apps/{app}/web/src/modules/{module}/` for app-owned frontend workflows:
@@ -380,13 +368,11 @@ Key rule: `packages/platform` depends on `packages/framework` **only**. `apps/co
 
 ### App Suite Bundles
 
-| Bundle           | Includes                                                                      | Purpose                                                                               |
-| ---------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Base SaaS        | shared packages + `framework` + `platform` + `core`                           | Tenant, identity, RBAC, common modules, contacts, products, work orders               |
-| Billing Software | shared packages + `framework` + `platform` + `core` + `billing`               | Entry billing with industry feature flags and document settings                       |
-| Ecommerce Suite  | shared packages + `framework` + `platform` + `core` + `billing` + `ecommerce` | Ecommerce app consuming core masters and billing documents                            |
-| CRM Suite        | shared packages + `framework` + `platform` + `core` + `crm`                   | CRM app with shared identity, tenant, and core customer data foundation               |
-| Sites Suite      | shared packages + `framework` + `platform` + `sites`                          | Sites app with platform identity, settings, files, and site-specific publishing tools |
+| Bundle           | Includes                                                        | Purpose                                                                 |
+| ---------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Base SaaS        | shared packages + `framework` + `platform` + `core`             | Tenant, identity, RBAC, common modules, contacts, products, work orders |
+| Billing Software | shared packages + `framework` + `platform` + `core` + `billing` | Entry billing with industry feature flags and document settings         |
+| CRM Suite        | shared packages + `framework` + `platform` + `core` + `crm`     | CRM app with shared identity, tenant, and core customer data foundation |
 
 Billing industry fields must stay as billing settings/features. Examples: offset billing uses PO/DC, garments uses colour/size, uPVC can add length/width/area later. Shared billing fields remain particulars, quantity, price, GST, subtotal, totals, and document controls.
 
@@ -441,7 +427,6 @@ Current registered modules in `platformModuleCatalog`:
 | `app.zetro`              | tenant   | Future                      |
 | `app.mail`               | tenant   | Future                      |
 | `app.blog`               | tenant   | Future                      |
-| `app.sites`              | tenant   | Future                      |
 
 ### Boundary Decisions
 
@@ -458,7 +443,7 @@ Current registered modules in `platformModuleCatalog`:
 10. **Platform web composes app web packages** - `apps/platform/web` remains the shell and route/menu composer. Business screens must live in the owning app web package and be imported or registered through app manifests.
 
 Current runtime composition supersedes the earlier gateway wording in decision 3: Platform, Core,
-Billing, B2B Connect, and Ecommerce run as app-owned API packages. Product stacks start selected APIs
+and Billing run as app-owned API packages. Product stacks start selected APIs
 in dependency order and integrate through public contracts, injected dependencies, or approved
 events; Platform does not absorb another app's business routes or CRUD.
 

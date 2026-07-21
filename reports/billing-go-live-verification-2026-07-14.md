@@ -7,15 +7,12 @@
 | Verification date               | 14 July 2026            |
 | CODEXSUN version                | 1.0.32                  |
 | Applications in scope           | Platform, Core, Billing |
-| Explicitly excluded             | Data Bridge             |
 | Application entry verdict       | **GREEN**               |
 | Blocking defect in tested scope | **None found**          |
 
 ## Executive confirmation
 
 Platform, Core, and Billing are green for application entry and Billing persistence within the tested scope. Randomized master data, all six Billing document flows, restart persistence, tenant isolation, production builds, and live frontend entry were verified successfully.
-
-Data Bridge is excluded from this verdict by instruction. Its repository-wide boundary findings do not change the Platform/Core/Billing result and must not be represented as part of this report's scope.
 
 ## Verified database and tenant coverage
 
@@ -100,7 +97,6 @@ No unresolved production defect was found in the tested Platform/Core/Billing en
 ## Non-blocking observations
 
 - The Billing production build reports a main JavaScript chunk of approximately 555 kB minified and 124 kB gzip. It built successfully and did not block live entry. Further route-level lazy loading remains a performance improvement rather than a release blocker.
-- Data Bridge boundary completeness is intentionally excluded from this report.
 
 ## Release interpretation
 

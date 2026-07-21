@@ -4,7 +4,7 @@
 
 CODEXSUN is developed as one codebase with many app bundles. Each business app should be owned separately in source code, while deployable containers can bind the required apps, shared packages, backend runtime, frontend runtime, and workers together.
 
-This keeps Billing, Ecommerce, CRM, Sites, and future apps independent enough to develop, test, package, and deploy separately without losing the shared platform foundation.
+This keeps Billing, CRM, and future apps independent enough to develop, test, package, and deploy separately without losing the shared platform foundation.
 
 ## Standard App Folder Shape
 
@@ -24,21 +24,10 @@ apps/
     api/              # Billing API package; owned source is under api/src/modules
     web/              # Billing frontend routes/screens/forms
 
-  b2bconnect/
-    api/              # Standalone configurable B2B Connect API runtime
-    web/              # Configurable B2B portal shell and modules
-
-  ecommerce/
-    api/              # Ecommerce API package; owned source is under api/src/modules
-    web/              # Ecommerce storefront/admin frontend
-
   crm/
     src/              # CRM backend modules and thin package exports
     web/              # CRM frontend routes/screens/forms
 
-  sites/
-    src/              # Sites backend modules and thin package exports
-    web/              # Sites/frontend builder screens and public-site app code
 ```
 
 ## `api/src` Ownership
@@ -53,10 +42,6 @@ Correct:
 ```text
 apps/billing/api/src
 apps/billing/web
-apps/b2bconnect/api/src
-apps/b2bconnect/web
-apps/ecommerce/api/src
-apps/ecommerce/web
 ```
 
 Special platform runtime:
@@ -100,10 +85,7 @@ Business UI belongs to the app that owns the business meaning:
 ```text
 apps/core/web       # Common/master tenant UI
 apps/billing/web    # Billing entries, billing settings, billing reports
-apps/b2bconnect/web # Configurable B2B buyer/seller portal
-apps/ecommerce/web  # Catalog, cart, orders, storefront/admin
 apps/crm/web        # Leads, customers, pipeline, activities
-apps/sites/web      # Site builder, pages, themes, public site tools
 ```
 
 Shared UI primitives stay in `packages/ui`. Do not move business rules or business-specific forms into `packages/ui`.
@@ -154,20 +136,10 @@ Each business app backend owns its own business rules, tables, migrations, event
 Examples:
 
 - Billing owns quotations, sales, export sales, purchase, receipt, payment, billing document settings, and billing-specific compliance fields.
-- Ecommerce owns catalog sales flow, storefront/admin ecommerce behavior, cart, ecommerce orders, and ecommerce-specific settings.
-- B2bconnect owns organisations, buyer requirements, seller offers, enquiries, and marketplace verification workflows.
 - Core owns contacts, companies, products, common modules, and shared tenant master records.
 - Platform owns tenant identity, auth, roles, permissions, activation, subscription, audit, settings, files, notifications, and app registry behavior.
 
 When one app needs another app to react, prefer contracts and events instead of direct cross-module table writes.
-
-Example:
-
-```text
-Ecommerce order confirmed
-  -> publish ecommerce.order.confirmed
-  -> Billing creates invoice or proforma through Billing rules
-```
 
 ## Module File Pattern
 
@@ -224,21 +196,6 @@ billing-suite
   core
   billing
 
-ecommerce-suite
-  shared packages
-  framework
-  platform
-  core
-  billing
-  ecommerce
-
-b2bconnect-suite
-  shared packages
-  framework
-  platform
-  core
-  b2bconnect
-
 crm-suite
   shared packages
   framework
@@ -246,12 +203,6 @@ crm-suite
   core
   crm
 
-sites-suite
-  shared packages
-  framework
-  platform
-  core
-  sites
 ```
 
 The codebase is developed app-by-app. Containers bind the selected apps and shared packages together.
@@ -260,15 +211,10 @@ The root development stack contract is executable in `tools/product-stack-contra
 
 ```text
 billing:    framework + platform + core + billing
-b2bconnect: framework + platform + core + b2bconnect
-ecommerce:  framework + platform + core + billing + ecommerce
-sites:      framework + platform + core + sites
 ```
 
 Foundation APIs start in dependency order before the owned application API and web runtime. This
-composition does not permit private imports or cross-app table writes. B2B Connect and Ecommerce
-consume Platform, Core, and Billing only through stable public HTTP contracts, injected contracts,
-or approved events.
+composition does not permit private imports or cross-app table writes.
 
 ## Docker Direction
 
@@ -281,19 +227,11 @@ docker/
     web.Dockerfile
     worker.Dockerfile
 
-  ecommerce/
-    api.Dockerfile
-    web.Dockerfile
-    worker.Dockerfile
-
   crm/
     api.Dockerfile
     web.Dockerfile
     worker.Dockerfile
 
-  sites/
-    api.Dockerfile
-    web.Dockerfile
 ```
 
 Containers can include their required shared packages and app packages, but tenant context, permission checks, activation checks, audit context, and feature flags must remain active in every runtime.
@@ -309,9 +247,7 @@ dist/apps/core
 dist/apps/core/web
 dist/apps/billing
 dist/apps/billing/web
-dist/apps/ecommerce/web
 dist/apps/crm/web
-dist/apps/sites/web
 dist/packages/framework
 dist/packages/platform
 dist/packages/ui

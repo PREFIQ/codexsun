@@ -70,7 +70,7 @@ Supported direction:
 
 Examples:
 
-- Ecommerce product images should use S3-compatible storage in cloud.
+- Public product images should use S3-compatible storage in cloud.
 - Invoice documents should use S3-compatible storage in cloud.
 - Compliance documents should use durable object storage.
 - Queue jobs, events, and logs should reference files instead of carrying file blobs.
@@ -123,10 +123,10 @@ Use:
 
 # Enforced database ownership
 
-The Platform master database is restricted to global Platform and Super Admin state. Core masters/common data, Billing, KitchenServe, tenant users, tenant roles, and tenant permissions belong only to the selected tenant database.
+The Platform master database is restricted to global Platform and Super Admin state. Core masters/common data, Billing, tenant users, tenant roles, and tenant permissions belong only to the selected tenant database.
 
 Core Common tables inside a dedicated tenant database must not add redundant `tenant_id` columns or accept a second tenant selector. Their tenant identity is the validated database context. Cross-tenant or shared-database tables in other application boundaries may still require explicit tenant keys when their storage model calls for them.
 
 Business APIs must require an explicit validated tenant database context and must reject `DB_MASTER_NAME`. They must not bootstrap business tables into the master database during application startup.
 
-Project Manager, Task Manager, and Data Bridge retain their existing JSON stores and are outside this SQL database split.
+Project Manager and Task Manager retain their existing JSON stores and are outside this SQL database split.

@@ -11,8 +11,6 @@ Billing owns the current deployable business release boundary:
 - Core API/Web
 - Billing API/Web
 
-Kitchen Serve and Data Bridge have no deployment service or runtime image in this bundle. Platform's current Data Bridge workspace import is satisfied by a disabled build stub, so Data Bridge application source is not copied into the production web image.
-
 ## Prepare private input
 
 ```bash

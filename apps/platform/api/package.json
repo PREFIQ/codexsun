@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/platform-api",
-  "version": "1.0.37",
+  "version": "1.0.38",
   "private": true,
   "type": "module",
   "scripts": {
@@ -23,10 +23,10 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@codexsun/billing-api": "^1.0.37",
-    "@codexsun/core-api": "^1.0.37",
-    "@codexsun/framework": "^1.0.37",
-    "@codexsun/mail-api": "^1.0.37",
+    "@codexsun/billing-api": "^1.0.38",
+    "@codexsun/core-api": "^1.0.38",
+    "@codexsun/framework": "^1.0.38",
+    "@codexsun/mail-api": "^1.0.38",
     "bullmq": "^5.79.3",
     "fastify": "^5.2.1",
     "ioredis": "^5.11.1",
@@ -36,6 +36,6 @@
   },
   "devDependencies": {
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^7.0.2"
   }
 }

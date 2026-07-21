@@ -5,24 +5,8 @@ const requestedApp = process.argv[2]?.trim();
 
 const moduleRoots = [
   {
-    app: "b2bconnect-api",
-    path: join(process.cwd(), "apps", "b2bconnect", "api", "src", "modules")
-  },
-  {
-    app: "ecommerce-api",
-    path: join(process.cwd(), "apps", "ecommerce", "api", "src", "modules")
-  },
-  {
     app: "mail-api",
     path: join(process.cwd(), "apps", "mail", "api", "src", "modules")
-  },
-  {
-    app: "kitchen-serve-api",
-    path: join(process.cwd(), "apps", "kitchen-serve", "api", "src", "modules")
-  },
-  {
-    app: "data-bridge-api",
-    path: join(process.cwd(), "apps", "data-bridge", "api", "src", "modules")
   },
   {
     app: "billing-api",
@@ -66,40 +50,14 @@ const reducedBackendRoles = [
   "seed",
   "types"
 ];
-const shellOnlyBackendModules = new Set(["b2bconnect-api/app-info", "ecommerce-api/app-info"]);
+const shellOnlyBackendModules = new Set();
 const shellOnlyBackendRoles = ["module", "routes", "types"];
-const capabilityBackendRoles = new Map([
-  ["b2bconnect-api/authentication", ["module", "service", "routes", "types"]],
-  ["b2bconnect-api/client-portal", ["module", "service", "routes", "types"]],
-  ["b2bconnect-api/administration", ["module", "service", "routes", "types"]],
-  ["b2bconnect-api/super-administration", ["module", "service", "routes", "types"]],
-  [
-    "b2bconnect-api/business-profile",
-    ["module", "service", "repository", "routes", "migration", "types"]
-  ],
-  ["b2bconnect-api/network-blueprint", ["module", "service", "routes", "types"]]
-]);
+const capabilityBackendRoles = new Map();
 
 const webModuleRoots = [
   {
-    app: "b2bconnect-web",
-    path: join(process.cwd(), "apps", "b2bconnect", "web", "src", "modules")
-  },
-  {
-    app: "ecommerce-web",
-    path: join(process.cwd(), "apps", "ecommerce", "web", "src", "modules")
-  },
-  {
     app: "mail-web",
     path: join(process.cwd(), "apps", "mail", "web", "src", "modules")
-  },
-  {
-    app: "kitchen-serve-web",
-    path: join(process.cwd(), "apps", "kitchen-serve", "web", "src", "modules")
-  },
-  {
-    app: "data-bridge-web",
-    path: join(process.cwd(), "apps", "data-bridge", "web", "src", "modules")
   },
   {
     app: "billing-web",
@@ -116,18 +74,9 @@ const webModuleRoots = [
 ];
 
 const requiredFrontendRoles = ["workspace", "list", "form", "services", "hooks", "types", "schema"];
-const shellOnlyFrontendModules = new Set(["b2bconnect-web/overview", "ecommerce-web/overview"]);
+const shellOnlyFrontendModules = new Set();
 const shellOnlyFrontendRoles = ["module", "workspace", "services", "hooks", "types"];
-const capabilityFrontendRoles = new Map([
-  [
-    "b2bconnect-web/authentication",
-    ["module", "workspace", "form", "services", "hooks", "types", "schema"]
-  ],
-  ["b2bconnect-web/client-portal", ["module", "workspace", "services", "hooks", "types"]],
-  ["b2bconnect-web/administration", ["module", "workspace", "services", "hooks", "types"]],
-  ["b2bconnect-web/super-administration", ["module", "workspace", "services", "hooks", "types"]],
-  ["b2bconnect-web/network-blueprint", ["module", "workspace", "services", "hooks", "types"]]
-]);
+const capabilityFrontendRoles = new Map();
 const backendBehaviorMarkers = {
   events: ["create"],
   migration: ["migrate"],

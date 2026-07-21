@@ -38,7 +38,7 @@ Examples:
 
 Examples:
 
-- E-commerce platforms.
+- Marketplace platforms.
 - Payment gateways.
 - Logistics providers.
 - CRM systems.

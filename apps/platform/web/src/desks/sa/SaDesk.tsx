@@ -349,12 +349,7 @@ function pageFromUrl(): SaPage {
 
 function appIdFromUrl(): OrchestratedAppId {
   const value = new URLSearchParams(window.location.search).get("app");
-  return value === "core" ||
-    value === "billing" ||
-    value === "data-bridge" ||
-    value === "kitchen-serve"
-    ? value
-    : "platform";
+  return value === "core" || value === "billing" ? value : "platform";
 }
 
 function SaOverview({ onOpenApp }: { onOpenApp: (appId: OrchestratedAppId) => void }) {

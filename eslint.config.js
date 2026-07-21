@@ -1,6 +1,24 @@
 import js from "@eslint/js";
-import tsParser from "@typescript-eslint/parser";
-import tsPlugin from "@typescript-eslint/eslint-plugin";
+import { registerHooks } from "node:module";
+
+// TypeScript 7 uses the native compiler and no longer exposes the legacy
+// compiler API consumed by typescript-eslint 8. Keep lint parsing on the
+// latest TypeScript 6 compiler until typescript-eslint supports TypeScript 7.
+const eslintCompilerUrl = import.meta.resolve("typescript-eslint-compiler");
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier === "typescript") {
+      return { shortCircuit: true, url: eslintCompilerUrl };
+    }
+
+    return nextResolve(specifier, context);
+  }
+});
+
+const [{ default: tsParser }, { default: tsPlugin }] = await Promise.all([
+  import("@typescript-eslint/parser"),
+  import("@typescript-eslint/eslint-plugin")
+]);
 
 export default [
   {

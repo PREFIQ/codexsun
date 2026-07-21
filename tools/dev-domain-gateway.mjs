@@ -7,10 +7,7 @@ const listenHost = process.env.CODEXSUN_DEV_DOMAIN_HOST?.trim() || "127.0.0.1";
 const listenPort = parsePort(process.env.CODEXSUN_DEV_DOMAIN_PORT || "80");
 
 const hostRoutes = new Map([
-  ["codexsun.test", { label: "CODEXSUN site", port: 7130, type: "site" }],
   ["app.codexsun.test", { label: "CODEXSUN app portal", port: 7020, type: "platform" }],
-  ["logicx.test", { label: "LogicX site", port: 7131, type: "site" }],
-  ["techmedia.test", { label: "Tech Media site", port: 7132, type: "site" }],
   ["aaran.test", { label: "Aaran tenant workspace", port: 7020, type: "platform" }]
 ]);
 

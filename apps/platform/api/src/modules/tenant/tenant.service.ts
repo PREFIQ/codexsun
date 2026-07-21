@@ -151,11 +151,7 @@ function publicPortalForTenant(tenant: Tenant | null, domain: string): TenantPub
   const settings =
     tenant && isRecord(tenant.payloadSettings.appPortal) ? tenant.payloadSettings.appPortal : {};
   const brandName = portalText(settings.brandName, tenant?.tenantName ?? "Your workspace", 80);
-  const publicSiteUrl =
-    safePublicUrl(settings.publicSiteUrl) ??
-    (tenant && domain === normalizeTenantDomain(env.PLATFORM_WEB_ORIGIN)
-      ? safePublicUrl(env.PLATFORM_PUBLIC_SITE_ORIGIN)
-      : null);
+  const publicSiteUrl = safePublicUrl(settings.publicSiteUrl);
   const theme = portalThemes.has(settings.theme as TenantPortalTheme)
     ? (settings.theme as TenantPortalTheme)
     : "blue";

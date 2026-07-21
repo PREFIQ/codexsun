@@ -6,9 +6,7 @@ import type { OrchestratedAppId } from "./app-orchestration.types.js";
 const root = resolve(import.meta.dirname, "../../../../../..");
 const commands: Record<Exclude<OrchestratedAppId, "platform">, Record<ServiceId, string>> = {
   core: { api: "core-api", web: "core-web" },
-  billing: { api: "billing-api", web: "billing-web" },
-  "data-bridge": { api: "data-bridge-api", web: "data-bridge-web" },
-  "kitchen-serve": { api: "kitchen-serve-api", web: "kitchen-serve-web" }
+  billing: { api: "billing-api", web: "billing-web" }
 };
 
 export class AppOrchestrationService {

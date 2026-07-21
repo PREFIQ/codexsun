@@ -10,7 +10,7 @@ It is based on the current planning conversation and should be treated as the pr
 
 CODEXSUN will first build the base framework, platform, core modules, design system UI, maintenance tools, deployment tools, and operational foundation.
 
-Business patterns such as billing, ecommerce, CRM, garments, uPVC, POS, and offset printing will come after the foundation is stable.
+Business patterns such as billing, CRM, garments, uPVC, POS, and offset printing will come after the foundation is stable.
 
 Initial priority order:
 
@@ -32,7 +32,6 @@ The monorepo must support multiple runnable apps where each app can run on its o
 Example app pattern:
 
 - Base + Framework + Platform + Core + Billing app in one runnable app.
-- Base + Framework + Platform + Core + Ecommerce app in one runnable app.
 - Base + Framework + Platform + Core + CRM app in one runnable app.
 
 Each app can communicate with other apps through APIs, internal APIs, and events where required.
@@ -45,7 +44,6 @@ Recommended structure:
 apps/
   platform/
   billing/
-  ecommerce/
   crm/
   cxsync/
   cxdeploy/
@@ -121,9 +119,6 @@ apps/billing/
   worker/
   docker/
 
-apps/ecommerce/
-  api/
-  web/
   worker/
   docker/
 
@@ -305,7 +300,6 @@ Used by:
 
 - Platform web.
 - Billing web.
-- Ecommerce web.
 - CRM web.
 - Electron desktop app.
 - React Native mobile app.
@@ -441,7 +435,7 @@ Reason:
 - Simple deployment for authenticated SaaS dashboards.
 - Clean separation from the Fastify backend.
 - Less framework overlap than using a full-stack web framework.
-- Good fit for Platform, billing, ecommerce, CRM, cxsync, and cxdeploy dashboards.
+- Good fit for Platform, billing, CRM, cxsync, and cxdeploy dashboards.
 - Type-safe route structure through TanStack Router.
 - Strong fit with TanStack Query and TanStack Table.
 
@@ -478,7 +472,6 @@ The package should be used by:
 
 - Platform app.
 - Billing app.
-- Ecommerce app.
 - CRM app.
 - cxsync dashboard.
 - cxdeploy dashboard.
@@ -672,7 +665,6 @@ File browser: FileBrowser.org supported in a custom combined storage utility con
 Storage should support mixed usage:
 
 - Small local/dev files can use local filesystem.
-- Ecommerce product images should use S3-compatible storage in cloud.
 - Invoice documents should use S3-compatible storage in cloud.
 - Compliance documents should use durable object storage.
 - Self-hosted deployments can use MinIO as S3-compatible storage.
@@ -917,7 +909,7 @@ Expected Core subpaths:
 @codexsun/core/notes
 ```
 
-Core is business-common. Billing, ecommerce, CRM, and future business apps can depend on Core modules.
+Core is business-common. Billing, CRM, and future business apps can depend on Core modules.
 
 ## Package Pattern Rule
 
@@ -1163,12 +1155,12 @@ billing.invoice.create
 billing.invoice.cancel
 billing.payment.receive
 crm.lead.assign
-ecommerce.order.fulfill
+inventory.stock.adjust
 ```
 
 Permission parts:
 
-- `scope`: platform, core, billing, crm, ecommerce, cxsync, cxdeploy, or another app/module area.
+- `scope`: platform, core, billing, crm, cxsync, cxdeploy, or another app/module area.
 - `module`: functional module inside the scope.
 - `resource`: business object or capability.
 - `action`: view, create, update, delete, manage, approve, cancel, export, import, assign, sync, repair, or another clear action.
