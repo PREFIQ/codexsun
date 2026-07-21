@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/platform-api",
-  "version": "1.0.40",
+  "version": "1.0.41",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,10 +9,10 @@
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
-    "@codexsun/billing-api": "^1.0.40",
-    "@codexsun/core-api": "^1.0.40",
-    "@codexsun/framework": "^1.0.40",
-    "@codexsun/mail-api": "^1.0.40",
+    "@codexsun/billing-api": "^1.0.41",
+    "@codexsun/core-api": "^1.0.41",
+    "@codexsun/framework": "^1.0.41",
+    "@codexsun/mail-api": "^1.0.41",
     "bullmq": "^5.79.3",
     "fastify": "^5.2.1",
     "kysely": "^0.29.0",

@@ -18,51 +18,52 @@ export default defineConfig(({ command, mode }) => {
   };
 
   return {
-  build: {
-    chunkSizeWarningLimit: 900,
-    emptyOutDir: true,
-    outDir: "../../../dist/apps/platform/web"
-  },
-  cacheDir: "../../../node_modules/.vite/platform-web",
-  envDir: "../../..",
-  define: {
-    __APP_VERSION__: JSON.stringify(rootPackage.version),
-    "import.meta.env.VITE_DEV_AUTO_TENANT_LOGIN": JSON.stringify(
-      runtimeEnv.DEV_AUTO_TENANT_LOGIN ?? "0"
-    ),
-    "import.meta.env.VITE_PLATFORM_API_URL": JSON.stringify(
-      requireEnvValue(runtimeEnv.PLATFORM_API_URL, "PLATFORM_API_URL")
-    ),
-    "import.meta.env.VITE_TENANT_NAME": JSON.stringify(
-      runtimeEnv.DEFAULT_TENANT_NAME || "Codexsun"
-    )
-  },
-  plugins: [tailwindcss(), react()],
-  ...(command === "serve"
-    ? {
-        server: {
-          host: "127.0.0.1",
-          port: requireEnvNumber(runtimeEnv.PLATFORM_WEB_PORT, "PLATFORM_WEB_PORT"),
-          proxy: {
-            "/api/billing": {
-              changeOrigin: false,
-              rewrite: (path) => path.replace(/^\/api\/billing/u, "") || "/",
-              target: platformApiTarget(runtimeEnv)
+    build: {
+      chunkSizeWarningLimit: 900,
+      emptyOutDir: true,
+      outDir: "../../../dist/apps/platform/web"
+    },
+    cacheDir: "../../../node_modules/.vite/platform-web",
+    envDir: "../../..",
+    define: {
+      __APP_VERSION__: JSON.stringify(rootPackage.version),
+      "import.meta.env.VITE_DEV_AUTO_TENANT_LOGIN": JSON.stringify(
+        runtimeEnv.DEV_AUTO_TENANT_LOGIN ?? "0"
+      ),
+      "import.meta.env.VITE_PLATFORM_API_URL": JSON.stringify("/api/platform"),
+      "import.meta.env.VITE_TENANT_NAME": JSON.stringify(
+        runtimeEnv.DEFAULT_TENANT_NAME || "Codexsun"
+      )
+    },
+    plugins: [tailwindcss(), react()],
+    ...(command === "serve"
+      ? {
+          server: {
+            headers: {
+              "Permissions-Policy": "unload=*"
             },
-            "/api/core": {
-              changeOrigin: false,
-              rewrite: (path) => path.replace(/^\/api\/core/u, "") || "/",
-              target: platformApiTarget(runtimeEnv)
-            },
-            "/api/platform": {
-              changeOrigin: false,
-              rewrite: (path) => path.replace(/^\/api\/platform/u, "") || "/",
-              target: platformApiTarget(runtimeEnv)
+            host: "127.0.0.1",
+            port: requireEnvNumber(runtimeEnv.PLATFORM_WEB_PORT, "PLATFORM_WEB_PORT"),
+            proxy: {
+              "/api/billing": {
+                changeOrigin: false,
+                rewrite: (path) => path.replace(/^\/api\/billing/u, "") || "/",
+                target: platformApiTarget(runtimeEnv)
+              },
+              "/api/core": {
+                changeOrigin: false,
+                rewrite: (path) => path.replace(/^\/api\/core/u, "") || "/",
+                target: platformApiTarget(runtimeEnv)
+              },
+              "/api/platform": {
+                changeOrigin: false,
+                rewrite: (path) => path.replace(/^\/api\/platform/u, "") || "/",
+                target: platformApiTarget(runtimeEnv)
+              }
             }
           }
         }
-      }
-    : {})
+      : {})
   };
 });
 

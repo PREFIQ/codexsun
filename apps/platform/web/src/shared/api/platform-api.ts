@@ -134,11 +134,36 @@ async function request<T>(path: string, options: RequestInit = {}, desk?: Desk):
       ...options.headers
     }
   });
-  const envelope = (await response.json()) as ApiEnvelope<T>;
+
+  const responseText = await response.text();
+  let envelope: ApiEnvelope<T> | null = null;
+  if (responseText) {
+    try {
+      envelope = JSON.parse(responseText) as ApiEnvelope<T>;
+    } catch {
+      if (!response.ok) throw new Error(apiUnavailableMessage(response));
+      throw new Error("Platform API returned an invalid response.");
+    }
+  }
+
+  if (!envelope) {
+    throw new Error(
+      response.ok ? "Platform API returned an empty response." : apiUnavailableMessage(response)
+    );
+  }
+
   if (!response.ok || !envelope.success) {
     throw new Error(envelope.success ? "Request failed" : envelope.error.message);
   }
   return envelope.data;
+}
+
+function apiUnavailableMessage(response: Response): string {
+  if (response.status >= 500) {
+    return `Platform API is unavailable (${response.status} ${response.statusText || "Server Error"}).`;
+  }
+
+  return `Platform API request failed (${response.status} ${response.statusText || "Request Error"}).`;
 }
 
 export function apiGet<T>(path: string, desk?: Desk): Promise<T> {

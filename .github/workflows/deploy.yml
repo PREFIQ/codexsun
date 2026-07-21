@@ -22,10 +22,6 @@ jobs:
       CODEXSUN_QUEUE_BACKEND: bullmq-redis
       PLATFORM_WEB_ORIGIN: http://localhost:7020
       PLATFORM_API_URL: http://localhost:7010
-      CORE_API_URL: http://localhost:7010
-      VITE_PLATFORM_API_URL: http://localhost:7010
-      VITE_CORE_API_URL: http://localhost:7010
-      VITE_BILLING_API_URL: http://localhost:7010
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.40
+Current version: 1.0.41
 
-Release tag: v-1.0.40
+Release tag: v-1.0.41
 
-Changelog label: v 1.0.40
+Changelog label: v 1.0.41
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -20,6 +20,26 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
 
+## v-1.0.41
+
+### [v 1.0.41] 2026-07-21 10:58 pm - Platform Runtime Resilience and Browser Compatibility
+
+#### Database Changes
+
+- Database update: No (runtime transport, process supervision, deployment routing, browser compatibility, tests, and documentation only).
+
+#### App Codebase Changes
+
+- Fixed local login CORS by deriving exact `localhost:7020` and `127.0.0.1:7020` development origins from the canonical Platform Web configuration while retaining exact-origin production enforcement.
+- Changed Platform browser API traffic to the same-origin `/api/platform` route and added matching Vite and nginx proxies so live cloud bundles never embed loopback or container-only API addresses.
+- Separated development dependency installation from production Web compilation so deployed Vite bundles use production mode.
+- Added API-first readiness gates and continuous API/Web health supervision to the combined root `dev` runtime while retaining `dev:api` for backend-only development and `dev:web` for frontend-only development.
+- Made the separate `dev:web` startup wait for the configured Platform API health endpoint before launching Vite, preventing transient `ECONNREFUSED` proxy failures when frontend and backend commands start concurrently.
+- Normalized empty and non-JSON gateway responses in the Platform browser transport so upstream failures produce actionable availability messages instead of `Unexpected end of JSON input`.
+- Added the `Permissions-Policy: unload=*` compatibility response header in Vite and nginx for Chromium browser-extension listeners, including injected frames.
+- Added trusted login-preflight and rejected-origin E2E coverage, and verified composed runtime startup, same-origin login routing, browser response headers, module boundaries, dependency layout, TypeScript, lint, and production builds.
+- Bumped workspace version to 1.0.41.
+
 ## v-1.0.40
 
 ### [v 1.0.40] 2026-07-21 1:46 pm - Environment Contract Consolidation
@@ -32,10 +52,15 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 
 - Consolidated the development and deployment environment contracts so each runtime feature has one canonical variable.
 - Removed the duplicate `API_HOST`, `PLATFORM_WEB_ORIGINS`, `VITE_PLATFORM_API_URL`, `VITE_TENANT_NAME`, and `VITE_DEV_AUTO_TENANT_LOGIN` environment entries.
-- Made `PLATFORM_API_URL` the single API endpoint consumed by the Platform server, Vite proxy, browser build, Core, Billing, and Mail.
+- Made `PLATFORM_API_URL` the single internal API endpoint consumed by the Platform server and Vite proxy; browser builds now use the fixed same-origin `/api/platform` route.
 - Reused `DEFAULT_TENANT_NAME` and `DEV_AUTO_TENANT_LOGIN` for browser build configuration instead of maintaining frontend-only aliases.
 - Reduced the primary runtime block to `NODE_ENV`, `PLATFORM_API_PORT`, `PLATFORM_WEB_PORT`, `PLATFORM_WEB_ORIGIN`, and `PLATFORM_API_URL`.
 - Derived local CORS compatibility for equivalent `localhost` and `127.0.0.1` origins from the single configured Web origin.
+- Added exact login-preflight coverage, kept unconfigured origins blocked, and routed container/browser API traffic through same-origin nginx and Vite proxies so cloud bundles never embed loopback API addresses.
+- Separated development dependency installation from production Vite compilation so live bundles report production mode while retaining all build tooling.
+- Added an `unload` compatibility permissions policy to Platform Vite and nginx responses so legacy browser-extension listeners, including injected frames, do not emit Chromium policy violations during the staged deprecation.
+- Sequenced the consolidated development startup behind API and Web health gates, made legacy `dev:api` and `dev:web` commands start the complete Platform runtime, and stopped the stack when either owned process exits.
+- Normalized empty and non-JSON gateway responses in the Platform browser transport so an unavailable API produces an actionable error instead of an `Unexpected end of JSON input` exception.
 - Required published application and infrastructure ports, public URLs, and GSP endpoints to come from deployment environment input while retaining fixed private container implementation ports.
 - Updated container build arguments, Compose wiring, preflight startup, smoke checks, examples, and deployment documentation for the consolidated contract.
 - Bumped workspace version to 1.0.40.

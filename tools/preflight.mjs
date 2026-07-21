@@ -42,6 +42,11 @@ const port = parseRequiredPort(
   requestedPort ? `${config.envKey} command override` : config.envKey
 );
 const host = config.host;
+
+if (app === "platform-web") {
+  await waitForPlatformApi(process.env.PLATFORM_API_URL || env.PLATFORM_API_URL);
+}
+
 await freePort(port, host);
 
 if (app === "platform-api") {
@@ -50,10 +55,7 @@ if (app === "platform-api") {
 
 const child = spawn(
   config.command,
-  [
-    ...config.args,
-    ...(app.endsWith("-web") ? ["--host", host, "--port", String(port)] : [])
-  ],
+  [...config.args, ...(app.endsWith("-web") ? ["--host", host, "--port", String(port)] : [])],
   {
     cwd: resolve(root, config.cwd),
     env: {
@@ -265,6 +267,38 @@ function probePort(port, host) {
 
 function waitForPortRelease() {
   return new Promise((resolveWait) => setTimeout(resolveWait, 100));
+}
+
+async function waitForPlatformApi(apiUrl) {
+  const rawUrl = String(apiUrl ?? "").trim();
+  if (!rawUrl) {
+    console.error("  x Missing required API configuration: PLATFORM_API_URL");
+    process.exit(1);
+  }
+
+  const healthUrl = `${rawUrl.replace(/\/$/u, "")}/health`;
+  const startedAt = Date.now();
+  let lastStatus = "not reachable";
+
+  console.log(`\n  - Waiting for Platform API at ${healthUrl}`);
+  while (Date.now() - startedAt < 90_000) {
+    try {
+      const response = await fetch(healthUrl, { signal: AbortSignal.timeout(2_000) });
+      lastStatus = `HTTP ${response.status}`;
+      if (response.ok) {
+        console.log("  ok Platform API is ready");
+        return;
+      }
+    } catch (error) {
+      lastStatus = error instanceof Error ? error.message : String(error);
+    }
+
+    await new Promise((resolveWait) => setTimeout(resolveWait, 500));
+  }
+
+  console.error(`  x Platform API did not become healthy: ${lastStatus}`);
+  console.error("  x Start it separately with: npm run dev:api\n");
+  process.exit(1);
 }
 
 function getPidsOnPort(port) {

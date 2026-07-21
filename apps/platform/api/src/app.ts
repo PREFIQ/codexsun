@@ -159,11 +159,21 @@ export async function createApp() {
 }
 
 function platformWebOrigins() {
+  const configuredOrigins = [env.PLATFORM_WEB_ORIGIN];
+  if (env.NODE_ENV !== "production") {
+    configuredOrigins.push(
+      `http://127.0.0.1:${env.PLATFORM_WEB_PORT}`,
+      `http://localhost:${env.PLATFORM_WEB_PORT}`
+    );
+  }
+
   return Array.from(
     new Set(
-      localOriginAliases(env.PLATFORM_WEB_ORIGIN)
-        .map((origin) => origin.trim().replace(/\/$/u, ""))
+      configuredOrigins
+        .map((origin) => origin.trim())
         .filter(Boolean)
+        .flatMap(localOriginAliases)
+        .map((origin) => origin.trim().replace(/\/$/u, ""))
     )
   );
 }

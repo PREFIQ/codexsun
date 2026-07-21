@@ -2,10 +2,8 @@ ARG NODE_RUNTIME_VERSION=26.5.0
 FROM node:${NODE_RUNTIME_VERSION}-bookworm-slim AS build
 
 ARG NPM_RUNTIME_VERSION=12.0.1
-ARG PLATFORM_API_URL
 ARG DEFAULT_TENANT_NAME=Codexsun
 ARG DEV_AUTO_TENANT_LOGIN=0
-ENV PLATFORM_API_URL=$PLATFORM_API_URL
 ENV DEFAULT_TENANT_NAME=$DEFAULT_TENANT_NAME
 ENV DEV_AUTO_TENANT_LOGIN=$DEV_AUTO_TENANT_LOGIN
 ENV NODE_ENV=development
@@ -27,8 +25,11 @@ COPY apps/mail/web ./apps/mail/web
 
 RUN rm -rf apps/platform/web/public/storage \
   && mkdir -p apps/platform/web/public/storage \
-  && npm ci \
-  && npm run build -w @codexsun/framework \
+  && npm ci
+
+ENV NODE_ENV=production
+
+RUN npm run build -w @codexsun/framework \
   && npm run build -w @codexsun/core-web \
   && npm run build -w @codexsun/billing-web \
   && npm run build -w @codexsun/mail-web \

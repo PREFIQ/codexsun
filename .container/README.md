@@ -34,9 +34,11 @@ On first use, `prepare-env.sh` creates the ignored `.container/deploy.env`. Data
 
 Mail is available to the tenant by default. Configure `MAIL_ENABLED` and the `MAIL_SMTP_*`/`MAIL_FROM_*` values in `deploy.env` only when a verified SMTP provider is ready; tenant company Mail settings continue to take priority over this deployment fallback.
 
-`PLATFORM_API_PORT` and `PLATFORM_WEB_PORT` are the only published application port settings. `PLATFORM_API_URL` is the single API endpoint used by both server and browser builds. Core, Billing, Mail, and Platform all use that same composed API; there are no module-specific or `VITE_` URL aliases.
+`PLATFORM_API_PORT` and `PLATFORM_WEB_PORT` are the only published application port settings. `PLATFORM_API_URL` is the internal/server endpoint for the composed API. Browser builds use the same-origin `/api/platform` path; local Vite and the runtime nginx container proxy that path to Platform API. Core, Billing, Mail, and Platform all use that same composed API.
 
-`PLATFORM_WEB_ORIGIN` is the single canonical public Web origin and CORS source. For local development, the API automatically accepts the equivalent `localhost` or `127.0.0.1` origin with the same port.
+`PLATFORM_WEB_ORIGIN` is the canonical public Web origin and the only configured CORS source. Development automatically accepts `localhost` and `127.0.0.1` on `PLATFORM_WEB_PORT`. For live cloud deployment, set the canonical origin to its exact HTTPS value. Normal Platform Web traffic remains same-origin through `/api/platform` and does not depend on CORS. Never use wildcard CORS with credentialed requests.
+
+Platform Web sends `Permissions-Policy: unload=*` in development and from the runtime nginx container. This temporarily permits legacy `unload` listeners, including browser-extension injected frames, during Chromium's staged deprecation. No other browser permission is widened.
 
 MariaDB listens inside Docker on `3306` and is exposed to the host at `127.0.0.1:3307` by default. Applications use the private `codexsun-mariadb:3306` address.
 

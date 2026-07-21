@@ -145,6 +145,10 @@ Browser API traffic keeps the stable same-origin paths `/api/platform`, `/api/co
 the Platform Vite proxy route every path to Platform API `7010`. Platform Web is the only browser runtime on `7020`.
 Core and Billing retain route ownership inside their packages after composition.
 
+Platform Web embeds `/api/platform` as its browser API base in development and production. It must never embed a
+loopback or container-only API hostname in a cloud browser bundle. `PLATFORM_WEB_ORIGIN` defines the canonical CORS
+origin for direct API clients. Wildcard CORS is prohibited because authenticated requests may carry credentials.
+
 The public app portal is a safe tenant projection. Shared navigation, slider, features, updates, and footer components
 are rendered by Platform, while tenant-specific content is stored under `tenants.payload_settings.appPortal`. The
 exact app hostname must be registered through Tenant Domains; the canonical Platform hostname may resolve the
