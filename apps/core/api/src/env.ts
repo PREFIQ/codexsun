@@ -4,8 +4,7 @@ import { z } from "zod";
 const envSchema = z.object({
   PLATFORM_API_URL: z
     .string()
-    .url("PLATFORM_API_URL must be a valid URL")
-    .default("http://127.0.0.1:7010"),
+    .url("PLATFORM_API_URL must be a valid URL"),
   DB_HOST: z.string().default("127.0.0.1"),
   DB_MASTER_NAME: z.string().min(1, "DB_MASTER_NAME is required"),
   DB_PASSWORD: z.string(),

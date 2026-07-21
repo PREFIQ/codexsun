@@ -1,7 +1,7 @@
 import { getTenantDbName, getTenantId, getToken } from "../../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../../shared/env/client-env";
 import type { DistrictOption, CityListFilters, CityRecord, CitySavePayload } from "./city.types";
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const baseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 const path = "/core/common/location/cities";
 type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 async function request<T>(url: string, options: RequestInit = {}) {

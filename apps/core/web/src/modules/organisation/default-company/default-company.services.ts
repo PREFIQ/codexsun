@@ -5,7 +5,7 @@ import type {
   DefaultCompanyRecord,
   DefaultCompanySavePayload
 } from "./default-company.types";
-const base = requiredClientEnv("VITE_CORE_API_URL");
+const base = requiredClientEnv("VITE_PLATFORM_API_URL");
 const path = "/core/organisation/default-company";
 type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 async function request<T>(suffix = "", options: RequestInit = {}) {

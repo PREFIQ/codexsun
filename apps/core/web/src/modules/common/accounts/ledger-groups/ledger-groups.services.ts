@@ -5,7 +5,7 @@ import type {
   LedgerGroupRecord,
   LedgerGroupSavePayload
 } from "./ledger-groups.types";
-const base = requiredClientEnv("VITE_CORE_API_URL");
+const base = requiredClientEnv("VITE_PLATFORM_API_URL");
 const path = "/core/common/accounts/ledger-groups";
 type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 async function request<T>(suffix = "", options: RequestInit = {}) {

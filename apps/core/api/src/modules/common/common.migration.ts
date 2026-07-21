@@ -1,63 +1,119 @@
 import type { Kysely } from "kysely";
 import type { CoreDatabase } from "../../database/core-database.js";
-import { migrateLocationModules } from "./location/location.migration.js";
-import { migrateAddressTypes } from "./contacts/address-types/address-types.migration.js";
-import { migrateBankNames } from "./contacts/bank-names/bank-names.migration.js";
-import { migrateContactGroups } from "./contacts/contact-groups/contact-groups.migration.js";
-import { migrateContactTypes } from "./contacts/contact-types/contact-types.migration.js";
-import { migrateCurrencies } from "./others/currencies/currencies.migration.js";
-import { migrateMonths } from "./others/months/months.migration.js";
-import { migratePaymentTerms } from "./others/payment-terms/payment-terms.migration.js";
-import { migratePriorities } from "./others/priorities/priorities.migration.js";
-import { migrateSalesTypes } from "./others/sales-types/sales-types.migration.js";
-import { migrateBrands } from "./products/brands/brands.migration.js";
-import { migrateColours } from "./products/colours/colours.migration.js";
-import { migrateHsnCodes } from "./products/hsn-codes/hsn-codes.migration.js";
-import { migrateProductCategories } from "./products/product-categories/product-categories.migration.js";
-import { migrateProductGroups } from "./products/product-groups/product-groups.migration.js";
-import { migrateProductTypes } from "./products/product-types/product-types.migration.js";
-import { migrateSizes } from "./products/sizes/sizes.migration.js";
-import { migrateStyles } from "./products/styles/styles.migration.js";
-import { migrateTaxes } from "./products/taxes/taxes.migration.js";
-import { migrateUnits } from "./products/units/units.migration.js";
-import { migrateDestinations } from "./workorder/destinations/destinations.migration.js";
-import { migrateStockRejectionTypes } from "./workorder/stock-rejection-types/stock-rejection-types.migration.js";
-import { migrateTransports } from "./workorder/transports/transports.migration.js";
-import { migrateWarehouses } from "./workorder/warehouses/warehouses.migration.js";
-import { migrateWorkOrderTypes } from "./workorder/work-order-types/work-order-types.migration.js";
-import { migrateLedgerGroups } from "./accounts/ledger-groups/ledger-groups.migration.js";
-import { migrateLedgers } from "./accounts/ledgers/ledgers.migration.js";
+import { locationMigrationSteps } from "./location/location.migration.js";
+import {
+  addressTypesMigration,
+  migrateAddressTypes
+} from "./contacts/address-types/address-types.migration.js";
+import {
+  bankNamesMigration,
+  migrateBankNames
+} from "./contacts/bank-names/bank-names.migration.js";
+import {
+  contactGroupsMigration,
+  migrateContactGroups
+} from "./contacts/contact-groups/contact-groups.migration.js";
+import {
+  contactTypesMigration,
+  migrateContactTypes
+} from "./contacts/contact-types/contact-types.migration.js";
+import {
+  currenciesMigration,
+  migrateCurrencies
+} from "./others/currencies/currencies.migration.js";
+import { migrateMonths, monthsMigration } from "./others/months/months.migration.js";
+import {
+  migratePaymentTerms,
+  paymentTermsMigration
+} from "./others/payment-terms/payment-terms.migration.js";
+import {
+  migratePriorities,
+  prioritiesMigration
+} from "./others/priorities/priorities.migration.js";
+import {
+  migrateSalesTypes,
+  salesTypesMigration
+} from "./others/sales-types/sales-types.migration.js";
+import { brandsMigration, migrateBrands } from "./products/brands/brands.migration.js";
+import { coloursMigration, migrateColours } from "./products/colours/colours.migration.js";
+import { hsnCodesMigration, migrateHsnCodes } from "./products/hsn-codes/hsn-codes.migration.js";
+import {
+  migrateProductCategories,
+  productCategoriesMigration
+} from "./products/product-categories/product-categories.migration.js";
+import {
+  migrateProductGroups,
+  productGroupsMigration
+} from "./products/product-groups/product-groups.migration.js";
+import {
+  migrateProductTypes,
+  productTypesMigration
+} from "./products/product-types/product-types.migration.js";
+import { migrateSizes, sizesMigration } from "./products/sizes/sizes.migration.js";
+import { migrateStyles, stylesMigration } from "./products/styles/styles.migration.js";
+import { migrateTaxes, taxesMigration } from "./products/taxes/taxes.migration.js";
+import { migrateUnits, unitsMigration } from "./products/units/units.migration.js";
+import {
+  destinationsMigration,
+  migrateDestinations
+} from "./workorder/destinations/destinations.migration.js";
+import {
+  migrateStockRejectionTypes,
+  stockRejectionTypesMigration
+} from "./workorder/stock-rejection-types/stock-rejection-types.migration.js";
+import {
+  migrateTransports,
+  transportsMigration
+} from "./workorder/transports/transports.migration.js";
+import {
+  migrateWarehouses,
+  warehousesMigration
+} from "./workorder/warehouses/warehouses.migration.js";
+import {
+  migrateWorkOrderTypes,
+  workOrderTypesMigration
+} from "./workorder/work-order-types/work-order-types.migration.js";
+import {
+  ledgerGroupsMigration,
+  migrateLedgerGroups
+} from "./accounts/ledger-groups/ledger-groups.migration.js";
+import { ledgersMigration, migrateLedgers } from "./accounts/ledgers/ledgers.migration.js";
 
 export const commonMigration = {
   description: "Common module aggregator migrations.",
   key: "core.common.foundation-v1"
 };
+
+export const commonMigrationSteps = [
+  ...locationMigrationSteps,
+  { ...ledgerGroupsMigration, migrate: migrateLedgerGroups },
+  { ...ledgersMigration, migrate: migrateLedgers },
+  { ...addressTypesMigration, migrate: migrateAddressTypes },
+  { ...bankNamesMigration, migrate: migrateBankNames },
+  { ...contactGroupsMigration, migrate: migrateContactGroups },
+  { ...contactTypesMigration, migrate: migrateContactTypes },
+  { ...currenciesMigration, migrate: migrateCurrencies },
+  { ...monthsMigration, migrate: migrateMonths },
+  { ...paymentTermsMigration, migrate: migratePaymentTerms },
+  { ...prioritiesMigration, migrate: migratePriorities },
+  { ...salesTypesMigration, migrate: migrateSalesTypes },
+  { ...brandsMigration, migrate: migrateBrands },
+  { ...coloursMigration, migrate: migrateColours },
+  { ...hsnCodesMigration, migrate: migrateHsnCodes },
+  { ...productCategoriesMigration, migrate: migrateProductCategories },
+  { ...productGroupsMigration, migrate: migrateProductGroups },
+  { ...productTypesMigration, migrate: migrateProductTypes },
+  { ...sizesMigration, migrate: migrateSizes },
+  { ...stylesMigration, migrate: migrateStyles },
+  { ...taxesMigration, migrate: migrateTaxes },
+  { ...unitsMigration, migrate: migrateUnits },
+  { ...destinationsMigration, migrate: migrateDestinations },
+  { ...stockRejectionTypesMigration, migrate: migrateStockRejectionTypes },
+  { ...transportsMigration, migrate: migrateTransports },
+  { ...warehousesMigration, migrate: migrateWarehouses },
+  { ...workOrderTypesMigration, migrate: migrateWorkOrderTypes }
+] as const;
+
 export async function migrateCommonModule(database: Kysely<CoreDatabase>) {
-  await migrateLocationModules(database);
-  await migrateLedgerGroups(database);
-  await migrateLedgers(database);
-  await migrateAddressTypes(database);
-  await migrateBankNames(database);
-  await migrateContactGroups(database);
-  await migrateContactTypes(database);
-  await migrateCurrencies(database);
-  await migrateMonths(database);
-  await migratePaymentTerms(database);
-  await migratePriorities(database);
-  await migrateSalesTypes(database);
-  await migrateBrands(database);
-  await migrateColours(database);
-  await migrateHsnCodes(database);
-  await migrateProductCategories(database);
-  await migrateProductGroups(database);
-  await migrateProductTypes(database);
-  await migrateSizes(database);
-  await migrateStyles(database);
-  await migrateTaxes(database);
-  await migrateUnits(database);
-  await migrateDestinations(database);
-  await migrateStockRejectionTypes(database);
-  await migrateTransports(database);
-  await migrateWarehouses(database);
-  await migrateWorkOrderTypes(database);
+  for (const step of commonMigrationSteps) await step.migrate(database);
 }

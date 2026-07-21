@@ -7,7 +7,7 @@ import {
   getToken
 } from "./tenant-context";
 
-const API_BASE_URL = requiredClientEnv("VITE_BILLING_API_URL");
+const API_BASE_URL = requiredClientEnv("VITE_PLATFORM_API_URL");
 
 export type ApiEnvelope<T> = {
   data: T;

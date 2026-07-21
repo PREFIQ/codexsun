@@ -8,6 +8,7 @@ import {
   normalizeTenantDomain,
   TenantDomainRepository
 } from "../tenant-domain/tenant-domain.repository.js";
+import { seedTenantDomain } from "../tenant-domain/tenant-domain.seed.js";
 import {
   tenantPrivateStorageRoot,
   tenantPublicStorageRoot,
@@ -68,10 +69,10 @@ export class TenantRepository {
       ...tenantInput,
       id: Number(result.insertId)
     };
-    tenant.primaryDomain = await this.domains.upsertPrimaryDomain({
-      domain: tenant.primaryDomain,
-      tenantId: tenant.id
-    });
+    tenant.primaryDomain = await seedTenantDomain(
+      { domain: tenant.primaryDomain, tenantId: tenant.id },
+      (domain) => this.domains.upsertPrimaryDomain(domain)
+    );
     await this.audit(tenant.id, "tenant.created");
     return tenant;
   }
@@ -85,10 +86,10 @@ export class TenantRepository {
       .set(toTenantRow(tenant))
       .where("id", "=", tenant.id)
       .execute();
-    tenant.primaryDomain = await this.domains.upsertPrimaryDomain({
-      domain: tenant.primaryDomain,
-      tenantId: tenant.id
-    });
+    tenant.primaryDomain = await seedTenantDomain(
+      { domain: tenant.primaryDomain, tenantId: tenant.id },
+      (domain) => this.domains.upsertPrimaryDomain(domain)
+    );
     await this.audit(tenant.id, "tenant.updated");
     return tenant;
   }

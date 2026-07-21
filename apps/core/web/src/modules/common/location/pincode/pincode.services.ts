@@ -6,7 +6,7 @@ import type {
   PincodeRecord,
   PincodeSavePayload
 } from "./pincode.types";
-const baseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const baseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 const path = "/core/common/location/pincodes";
 type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 async function request<T>(url: string, options: RequestInit = {}) {

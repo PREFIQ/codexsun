@@ -11,7 +11,11 @@ import {
   seedPlatformDatabase
 } from "./platform-database.js";
 import { TenantRepository } from "../modules/tenant/tenant.repository.js";
-import { provisionTenantDatabase, seedDefaultTenant } from "../modules/tenant/tenant.seed.js";
+import {
+  migrateTenantDatabase,
+  seedDefaultTenant,
+  seedTenantDatabase
+} from "../modules/tenant/tenant.seed.js";
 import { env } from "../env.js";
 import { assertDatabaseName, quoteIdentifier } from "./database-utils.js";
 
@@ -132,7 +136,7 @@ async function migrateTenantAppDatabases() {
     console.info(
       `[database] migrating tenant app modules for "${tenant.tenantCode}" (${tenant.dbName})`
     );
-    await provisionTenantDatabase(tenant);
+    await migrateTenantDatabase(tenant);
   }
 }
 
@@ -143,7 +147,7 @@ async function seedTenantAppDatabases() {
     console.info(
       `[seeder] seeding tenant app modules for "${tenant.tenantCode}" (${tenant.dbName})`
     );
-    await provisionTenantDatabase(tenant);
+    await seedTenantDatabase(tenant);
   }
 }
 

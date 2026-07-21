@@ -1,5 +1,11 @@
 import { sql, type Kysely } from "kysely";
 import type { CoreDatabase } from "../../../database/core-database.js";
+
+export const companyMigration = {
+  description: "Tenant company and company-owned detail tables.",
+  key: "core.organisation.company"
+} as const;
+
 export async function migrateCompanyModule(database: Kysely<CoreDatabase>) {
   await sql
     .raw(

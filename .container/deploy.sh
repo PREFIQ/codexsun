@@ -132,7 +132,7 @@ migrate_stack() {
   echo "Applying forward migrations for $STACK. Database deletion is disabled."
   compose_all run --rm "$service"
   echo "Applied migration state:"
-  compose_all run --rm "$service" npm run db:migrations:list -w @codexsun/platform-api
+  compose_all run --rm "$service" npm run db:migrations:list
 }
 
 start_stack() {

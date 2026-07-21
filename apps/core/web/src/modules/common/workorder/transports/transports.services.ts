@@ -6,7 +6,7 @@ import type {
   TransportsSavePayload
 } from "./transports.types";
 
-const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const coreApiBaseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 const transportsPath = "/core/common/workorder/transports";
 type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 

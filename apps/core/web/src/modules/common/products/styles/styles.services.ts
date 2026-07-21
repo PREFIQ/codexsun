@@ -2,7 +2,7 @@ import { getTenantDbName, getTenantId, getToken } from "../../../../shared/api/t
 import { requiredClientEnv } from "../../../../shared/env/client-env";
 import type { StylesListFilters, StylesRecord, StylesSavePayload } from "./styles.types";
 
-const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const coreApiBaseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 const stylesPath = "/core/common/products/styles";
 type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 

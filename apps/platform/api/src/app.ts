@@ -47,7 +47,7 @@ export async function createApp() {
   const app = await createApiApp({
     appName: "CODEXSUN Platform API",
     cookieSecret: env.JWT_SECRET,
-    corsOrigins: [env.PLATFORM_WEB_ORIGIN],
+    corsOrigins: platformWebOrigins(),
     environment: env.NODE_ENV,
     shutdownHooks: [
       async () => {
@@ -156,6 +156,29 @@ export async function createApp() {
   console.info("[platform.boot] bootstrap completed");
 
   return app;
+}
+
+function platformWebOrigins() {
+  return Array.from(
+    new Set(
+      localOriginAliases(env.PLATFORM_WEB_ORIGIN)
+        .map((origin) => origin.trim().replace(/\/$/u, ""))
+        .filter(Boolean)
+    )
+  );
+}
+
+function localOriginAliases(origin: string) {
+  const origins = [origin];
+  const url = new URL(origin);
+  if (url.hostname === "localhost") {
+    url.hostname = "127.0.0.1";
+    origins.push(url.origin);
+  } else if (url.hostname === "127.0.0.1") {
+    url.hostname = "localhost";
+    origins.push(url.origin);
+  }
+  return origins;
 }
 
 async function mailContext(request: FastifyRequest) {

@@ -16,8 +16,7 @@ const apps = {
     displayName: "api",
     cwd: "apps/platform/api",
     envKey: "PLATFORM_API_PORT",
-    hostKey: "API_HOST",
-    fallbackHost: "127.0.0.1",
+    host: "127.0.0.1",
     command: process.execPath,
     args: [nodePackageBin("tsx", "dist/cli.mjs"), "watch", "src/server.ts"]
   },
@@ -25,10 +24,9 @@ const apps = {
     displayName: "web",
     cwd: "apps/platform/web",
     envKey: "PLATFORM_WEB_PORT",
-    hostKey: "PLATFORM_WEB_HOST",
-    fallbackHost: "127.0.0.1",
+    host: "127.0.0.1",
     command: process.execPath,
-    args: [nodePackageBin("vite", "bin/vite.js"), "--host", "127.0.0.1", "--strictPort"]
+    args: [nodePackageBin("vite", "bin/vite.js"), "--strictPort"]
   }
 };
 
@@ -43,7 +41,7 @@ const port = parseRequiredPort(
   requestedPort || process.env[config.envKey] || env[config.envKey],
   requestedPort ? `${config.envKey} command override` : config.envKey
 );
-const host = process.env[config.hostKey] || env[config.hostKey] || config.fallbackHost;
+const host = config.host;
 await freePort(port, host);
 
 if (app === "platform-api") {
@@ -52,7 +50,10 @@ if (app === "platform-api") {
 
 const child = spawn(
   config.command,
-  [...config.args, ...(app.endsWith("-web") ? ["--port", String(port)] : [])],
+  [
+    ...config.args,
+    ...(app.endsWith("-web") ? ["--host", host, "--port", String(port)] : [])
+  ],
   {
     cwd: resolve(root, config.cwd),
     env: {

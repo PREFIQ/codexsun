@@ -1,5 +1,13 @@
-import { billingTenantMigrations, migrateBillingTenantDatabase } from "@codexsun/billing-api";
-import { coreTenantMigrations, migrateCoreTenantDatabase } from "@codexsun/core-api";
+import {
+  billingTenantMigrations,
+  migrateBillingTenantDatabase,
+  seedBillingTenantDatabase
+} from "@codexsun/billing-api";
+import {
+  coreTenantMigrations,
+  migrateCoreTenantDatabase,
+  seedCoreTenantDatabase
+} from "@codexsun/core-api";
 import { mailMigration, migrateMailModule, seedMailModule } from "@codexsun/mail-api";
 import type { Kysely } from "kysely";
 import type { TenantDatabase } from "./schema.js";
@@ -31,10 +39,7 @@ export function tenantDatabaseMigrationsFor(tenant: Tenant) {
   ];
 }
 
-export async function provisionSelectedTenantApps(
-  database: Kysely<TenantDatabase>,
-  tenant: Tenant
-) {
+export async function migrateSelectedTenantApps(database: Kysely<TenantDatabase>, tenant: Tenant) {
   const enabled = new Set(tenant.enabledModuleKeys);
   const provisionedApps = ["application"];
 
@@ -46,7 +51,6 @@ export async function provisionSelectedTenantApps(
 
   if (enabled.has("mail")) {
     await migrateMailModule(database as never);
-    await seedMailModule(database as never);
     provisionedApps.push("mail");
   }
 
@@ -58,4 +62,32 @@ export async function provisionSelectedTenantApps(
     migrationOrder: tenantDatabaseMigrationsFor(tenant).map((migration) => migration.name),
     provisionedApps
   };
+}
+
+export async function seedSelectedTenantApps(database: Kysely<TenantDatabase>, tenant: Tenant) {
+  const enabled = new Set(tenant.enabledModuleKeys);
+  const seededApps = ["application"];
+
+  if (enabled.has("billing.sales")) {
+    await seedCoreTenantDatabase(tenant.dbName);
+    await seedBillingTenantDatabase(tenant.dbName);
+    seededApps.push("billing");
+  }
+
+  if (enabled.has("mail")) {
+    await seedMailModule(database as never);
+    seededApps.push("mail");
+  }
+
+  if (enabled.has("platform.task-manager")) seededApps.push("task-manager");
+  return { seededApps };
+}
+
+export async function provisionSelectedTenantApps(
+  database: Kysely<TenantDatabase>,
+  tenant: Tenant
+) {
+  const migrated = await migrateSelectedTenantApps(database, tenant);
+  const seeded = await seedSelectedTenantApps(database, tenant);
+  return { ...migrated, ...seeded };
 }

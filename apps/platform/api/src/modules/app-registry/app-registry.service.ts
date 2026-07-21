@@ -5,6 +5,8 @@ import type {
 } from "./app-registry.types.js";
 import { AppRegistryRepository } from "./app-registry.repository.js";
 
+export const defaultTenantModuleKeys = ["platform.application", "billing.sales", "mail"] as const;
+
 export const platformAppRegistry: PlatformAppDefinition[] = [
   {
     alwaysEnabled: true,

@@ -51,6 +51,7 @@ import {
 import type { AuditEventDTO, Tenant, TenantSavePayload } from "./tenant.types";
 import {
   defaultLandingApp,
+  defaultTenantModuleKeys,
   normalizeModuleKeys,
   platformAppRegistry,
   type PlatformAppId
@@ -1345,6 +1346,7 @@ function toSlug(value: string) {
 }
 
 function tenantAppAccessFromRegistry(apps: PlatformApp[] | undefined): TenantAppAccess[] {
+  const defaultEnabled = new Set<string>(defaultTenantModuleKeys);
   const source = apps?.length
     ? apps
     : platformAppRegistry.map((app, index) => ({
@@ -1376,7 +1378,7 @@ function tenantAppAccessFromRegistry(apps: PlatformApp[] | undefined): TenantApp
         alwaysEnabled: app.alwaysEnabled || app.moduleKey === "platform.application",
         appId: app.appId as PlatformAppId,
         description: app.description || local.description,
-        enabled: app.alwaysEnabled || app.moduleKey === "platform.application",
+        enabled: app.alwaysEnabled || defaultEnabled.has(app.moduleKey),
         moduleKey: app.moduleKey,
         name: app.label || local.label
       };

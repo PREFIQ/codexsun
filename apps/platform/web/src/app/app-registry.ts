@@ -44,6 +44,8 @@ export type PlatformAppDefinition = {
   stack: "platform" | "billing" | "mail";
 };
 
+export const defaultTenantModuleKeys = ["platform.application", "billing.sales", "mail"] as const;
+
 export const platformAppRegistry: PlatformAppDefinition[] = [
   {
     accentClass: "bg-slate-950",

@@ -22,7 +22,7 @@ services:
         fi
         exec redis-server --appendonly yes
     ports:
-      - "${CODEXSUN_BIND_ADDRESS:-127.0.0.1}:${REDIS_HOST_PORT:-6379}:6379"
+      - "${CODEXSUN_BIND_ADDRESS:?CODEXSUN_BIND_ADDRESS is required}:${REDIS_HOST_PORT:?REDIS_HOST_PORT is required}:6379"
     volumes:
       - redis-data:/data
     networks:

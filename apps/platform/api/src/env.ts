@@ -4,8 +4,8 @@ import { z } from "zod";
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "staging", "production"]).default("development"),
   AUTH_MODE: z.enum(["cookie", "jwt", "hybrid"]).default("jwt"),
-  API_HOST: z.string().default("127.0.0.1"),
   PLATFORM_API_PORT: z.coerce.number().int().positive(),
+  PLATFORM_API_URL: z.string().url("PLATFORM_API_URL must be a valid URL"),
   PLATFORM_WEB_ORIGIN: z.string().min(1, "PLATFORM_WEB_ORIGIN is required"),
   DB_HOST: z.string().default("127.0.0.1"),
   DB_PORT: z.coerce.number().int().positive(),
@@ -25,7 +25,7 @@ const envSchema = z.object({
   CODEXSUN_REDIS_URL: z.string().min(1, "CODEXSUN_REDIS_URL is required"),
   MAIL_ENABLED: z.enum(["0", "1"]).default("0"),
   MAIL_SMTP_HOST: z.string().default(""),
-  MAIL_SMTP_PORT: z.coerce.number().int().positive().default(587),
+  MAIL_SMTP_PORT: z.coerce.number().int().positive(),
   MAIL_SMTP_SECURE: z.enum(["0", "1"]).default("0"),
   MAIL_USERNAME: z.string().default(""),
   MAIL_PASSWORD: z.string().default(""),

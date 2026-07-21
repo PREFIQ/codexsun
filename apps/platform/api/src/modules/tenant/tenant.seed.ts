@@ -8,11 +8,15 @@ import {
 } from "../../database/tenant-database.js";
 import type { TenantDatabase } from "../../database/schema.js";
 import { env } from "../../env.js";
-import { provisionSelectedTenantApps } from "../../database/tenant-app-database.js";
+import {
+  migrateSelectedTenantApps,
+  seedSelectedTenantApps
+} from "../../database/tenant-app-database.js";
 import { migrateTenantRuntimeModule } from "./tenant.migration.js";
 import { TenantRepository } from "./tenant.repository.js";
 import { normalizeTenantDomain } from "../tenant-domain/tenant-domain.repository.js";
 import { EntitlementAccessService } from "../entitlement/entitlement.access.js";
+import { defaultTenantModuleKeys } from "../app-registry/index.js";
 import {
   ensureTenantStorage,
   tenantPrivateStorageRoot,
@@ -38,10 +42,35 @@ export async function provisionTenantDatabase(tenant: Tenant) {
   const database = getTenantDatabase(tenant);
   try {
     await migrateTenantRuntimeModule(database);
+    const migrated = await migrateSelectedTenantApps(database, tenant);
     await seedTenantRuntimeModule(database, tenant);
-    const result = await provisionSelectedTenantApps(database, tenant);
+    const seeded = await seedSelectedTenantApps(database, tenant);
     console.info(`[database] tenant database provisioned: "${tenant.dbName}"`);
-    return result;
+    return { ...migrated, ...seeded };
+  } finally {
+    await closeTenantDatabase(tenant);
+  }
+}
+
+export async function migrateTenantDatabase(tenant: Tenant) {
+  await createTenantDatabase(tenant);
+  const database = getTenantDatabase(tenant);
+  try {
+    await migrateTenantRuntimeModule(database);
+    return await migrateSelectedTenantApps(database, tenant);
+  } finally {
+    await closeTenantDatabase(tenant);
+  }
+}
+
+export async function seedTenantDatabase(tenant: Tenant) {
+  await createTenantDatabase(tenant);
+  const database = getTenantDatabase(tenant);
+  try {
+    await migrateTenantRuntimeModule(database);
+    await migrateSelectedTenantApps(database, tenant);
+    await seedTenantRuntimeModule(database, tenant);
+    return await seedSelectedTenantApps(database, tenant);
   } finally {
     await closeTenantDatabase(tenant);
   }
@@ -151,11 +180,11 @@ function defaultTenant(): TenantSavePayload {
     dbType: env.DB_DRIVER,
     dbUser: env.DB_USER,
     defaultLandingApp: "application",
-    enabledModuleKeys: ["platform.application", "billing.sales"],
+    enabledModuleKeys: [...defaultTenantModuleKeys],
     mobile: null,
     payloadSettings: {
       apps: {
-        enabled: ["platform.application", "billing.sales"]
+        enabled: [...defaultTenantModuleKeys]
       },
       landing: {
         app: "application",
@@ -185,8 +214,8 @@ async function reconcileDefaultTenantModules(repository: TenantRepository, tenan
   const apps = isRecord(tenant.payloadSettings.apps) ? tenant.payloadSettings.apps : {};
   const configuredApps = stringArray(apps.enabled);
   if (
-    tenant.enabledModuleKeys.includes("billing.sales") &&
-    configuredApps.includes("billing.sales")
+    defaultTenantModuleKeys.every((key) => tenant.enabledModuleKeys.includes(key)) &&
+    defaultTenantModuleKeys.every((key) => configuredApps.includes(key))
   ) {
     return tenant;
   }
@@ -195,15 +224,13 @@ async function reconcileDefaultTenantModules(repository: TenantRepository, tenan
     (await repository.update(String(tenant.id), {
       ...tenant,
       enabledModuleKeys: Array.from(
-        new Set(["platform.application", "billing.sales", ...tenant.enabledModuleKeys])
+        new Set([...defaultTenantModuleKeys, ...tenant.enabledModuleKeys])
       ).sort(),
       payloadSettings: {
         ...tenant.payloadSettings,
         apps: {
           ...apps,
-          enabled: Array.from(
-            new Set(["platform.application", "billing.sales", ...configuredApps])
-          ).sort()
+          enabled: Array.from(new Set([...defaultTenantModuleKeys, ...configuredApps])).sort()
         }
       }
     })) ?? tenant

@@ -56,6 +56,9 @@ export async function captureMailPdf(element: HTMLElement, fileName: string) {
     scale: 1.6,
     useCORS: true
   });
+  if (!canvas.width || !canvas.height || canvas.width * canvas.height > 20_000_000) {
+    throw new Error("The document is too large to export safely as a PDF.");
+  }
   const pdf = new jsPDF({ format: "a4", orientation: "portrait", unit: "mm" });
   const width = 190;
   const height = (canvas.height * width) / canvas.width;

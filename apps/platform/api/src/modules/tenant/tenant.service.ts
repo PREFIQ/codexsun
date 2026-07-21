@@ -7,7 +7,11 @@ import type {
   TenantPublicPortal,
   TenantSavePayload
 } from "./tenant.types.js";
-import { resolveEnabledApps, resolveLandingApp } from "../app-registry/index.js";
+import {
+  defaultTenantModuleKeys,
+  resolveEnabledApps,
+  resolveLandingApp
+} from "../app-registry/index.js";
 import { EntitlementAccessService } from "../entitlement/entitlement.access.js";
 import { provisionTenantStorage } from "./tenant.seed.js";
 import { DatabaseMaintenanceService } from "../database-maintenance/database-maintenance.service.js";
@@ -61,7 +65,7 @@ export class TenantService {
   }
 
   async createTenant(input: TenantSavePayload) {
-    const tenant = await this.repository.create(this.normalize(input));
+    const tenant = await this.repository.create(this.normalize(input, true));
     await provisionTenantStorage(tenant);
     await this.maintenance.setupTenant(tenant.id, {
       note: "Automatic provisioning after tenant creation."
@@ -92,13 +96,9 @@ export class TenantService {
     return this.repository.activity(id);
   }
 
-  private normalize(input: TenantSavePayload): TenantSavePayload {
+  private normalize(input: TenantSavePayload, includeDefaults = false): TenantSavePayload {
     const tenantCode = input.tenantCode.trim().toUpperCase();
     const slug = input.slug.trim().toLowerCase() || tenantCode.toLowerCase();
-    const legacyKeys = input.enabledModuleKeys.map((key) =>
-      key === "platform.tenant" ? "platform.application" : key
-    );
-    const enabledModuleKeys = Array.from(new Set(["platform.application", ...legacyKeys]));
     const incomingPayloadSettings = isRecord(input.payloadSettings) ? input.payloadSettings : {};
     const incomingLanding = isRecord(incomingPayloadSettings.landing)
       ? incomingPayloadSettings.landing
@@ -107,6 +107,13 @@ export class TenantService {
     const disabledModuleKeys = parseStringArray(incomingApps.disabled).filter(
       (key) => key !== "platform.application"
     );
+    const legacyKeys = input.enabledModuleKeys.map((key) =>
+      key === "platform.tenant" ? "platform.application" : key
+    );
+    const defaultKeys = includeDefaults
+      ? defaultTenantModuleKeys.filter((key) => !disabledModuleKeys.includes(key))
+      : ["platform.application"];
+    const enabledModuleKeys = Array.from(new Set([...defaultKeys, ...legacyKeys]));
     const defaultLandingApp = resolveLandingApp(
       input.defaultLandingApp ?? incomingLanding.app,
       enabledModuleKeys

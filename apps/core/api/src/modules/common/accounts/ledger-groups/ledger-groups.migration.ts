@@ -1,5 +1,11 @@
 import { sql, type Kysely } from "kysely";
 import type { CoreDatabase } from "../../../../database/core-database.js";
+
+export const ledgerGroupsMigration = {
+  description: "Ledger group master data.",
+  key: "core.common.accounts.ledger-groups"
+} as const;
+
 export async function migrateLedgerGroups(database: Kysely<CoreDatabase>) {
   await sql
     .raw(

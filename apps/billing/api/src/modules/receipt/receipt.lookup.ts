@@ -62,7 +62,7 @@ export class ReceiptLookupService {
     );
   }
   private request(path: string, headers: ReceiptLookupHeaders, init?: RequestInit) {
-    return fetch(`${env.CORE_API_URL}${path}`, {
+    return fetch(`${env.PLATFORM_API_URL}${path}`, {
       ...init,
       headers: {
         Accept: "application/json",

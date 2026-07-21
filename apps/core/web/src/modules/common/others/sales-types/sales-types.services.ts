@@ -6,7 +6,7 @@ import type {
   SalesTypesSavePayload
 } from "./sales-types.types";
 
-const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const coreApiBaseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 const salesTypesPath = "/core/common/others/sales-types";
 type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 

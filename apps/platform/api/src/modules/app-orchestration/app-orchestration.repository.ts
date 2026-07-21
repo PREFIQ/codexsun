@@ -1,14 +1,22 @@
 import { createConnection } from "node:net";
+import { env } from "../../env.js";
 import type { OrchestratedApp, OrchestratedService } from "./app-orchestration.types.js";
 
+const apiUrl = new URL(env.PLATFORM_API_URL);
+const webUrl = new URL(env.PLATFORM_WEB_ORIGIN);
 const platformDefinition = {
   id: "platform",
   label: "Platform",
   description: "The single CODEXSUN runtime with composed Core, Billing, and Mail packages.",
   managed: false,
   services: [
-    { id: "api", label: "API", port: 7010 },
-    { id: "web", label: "Web", port: 7020 }
+    { id: "api", label: "API", host: apiUrl.hostname, port: env.PLATFORM_API_PORT },
+    {
+      id: "web",
+      label: "Web",
+      host: webUrl.hostname,
+      port: Number(webUrl.port || (webUrl.protocol === "https:" ? 443 : 80))
+    }
   ]
 } as const;
 
@@ -38,7 +46,7 @@ async function probe(
 ): Promise<OrchestratedService> {
   const started = Date.now();
   const online = await new Promise<boolean>((resolve) => {
-    const socket = createConnection({ host: "127.0.0.1", port: input.port });
+    const socket = createConnection({ host: input.host, port: input.port });
     socket.setTimeout(700);
     socket.once("connect", () => {
       socket.destroy();

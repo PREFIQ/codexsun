@@ -1,17 +1,23 @@
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
-import { requireEnvNumber } from "@codexsun/framework/env";
+import { requireEnvNumber, requireEnvValue } from "@codexsun/framework/env";
 
 const configDir = fileURLToPath(new URL(".", import.meta.url));
 const rootPackage = JSON.parse(
   readFileSync(resolve(configDir, "../../../package.json"), "utf8")
 ) as { version: string };
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, mode }) => {
+  const runtimeEnv = {
+    ...loadEnv(mode, resolve(configDir, "../../.."), ""),
+    ...process.env
+  };
+
+  return {
   build: {
     chunkSizeWarningLimit: 900,
     emptyOutDir: true,
@@ -20,36 +26,46 @@ export default defineConfig(({ command }) => ({
   cacheDir: "../../../node_modules/.vite/platform-web",
   envDir: "../../..",
   define: {
-    __APP_VERSION__: JSON.stringify(rootPackage.version)
+    __APP_VERSION__: JSON.stringify(rootPackage.version),
+    "import.meta.env.VITE_DEV_AUTO_TENANT_LOGIN": JSON.stringify(
+      runtimeEnv.DEV_AUTO_TENANT_LOGIN ?? "0"
+    ),
+    "import.meta.env.VITE_PLATFORM_API_URL": JSON.stringify(
+      requireEnvValue(runtimeEnv.PLATFORM_API_URL, "PLATFORM_API_URL")
+    ),
+    "import.meta.env.VITE_TENANT_NAME": JSON.stringify(
+      runtimeEnv.DEFAULT_TENANT_NAME || "Codexsun"
+    )
   },
   plugins: [tailwindcss(), react()],
   ...(command === "serve"
     ? {
         server: {
           host: "127.0.0.1",
-          port: requireEnvNumber(process.env.PLATFORM_WEB_PORT, "PLATFORM_WEB_PORT"),
+          port: requireEnvNumber(runtimeEnv.PLATFORM_WEB_PORT, "PLATFORM_WEB_PORT"),
           proxy: {
             "/api/billing": {
               changeOrigin: false,
               rewrite: (path) => path.replace(/^\/api\/billing/u, "") || "/",
-              target: platformApiTarget()
+              target: platformApiTarget(runtimeEnv)
             },
             "/api/core": {
               changeOrigin: false,
               rewrite: (path) => path.replace(/^\/api\/core/u, "") || "/",
-              target: platformApiTarget()
+              target: platformApiTarget(runtimeEnv)
             },
             "/api/platform": {
               changeOrigin: false,
               rewrite: (path) => path.replace(/^\/api\/platform/u, "") || "/",
-              target: platformApiTarget()
+              target: platformApiTarget(runtimeEnv)
             }
           }
         }
       }
     : {})
-}));
+  };
+});
 
-function platformApiTarget() {
-  return `http://127.0.0.1:${requireEnvNumber(process.env.PLATFORM_API_PORT, "PLATFORM_API_PORT")}`;
+function platformApiTarget(runtimeEnv: Record<string, string | undefined>) {
+  return requireEnvValue(runtimeEnv.PLATFORM_API_URL, "PLATFORM_API_URL");
 }

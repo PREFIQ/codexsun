@@ -3,10 +3,16 @@ import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
 import { existsSync, writeFileSync } from "node:fs";
 import { env } from "../env.js";
-import { migrateAppRegistryModule } from "../modules/app-registry/app-registry.migration.js";
+import {
+  appRegistryMigration,
+  migrateAppRegistryModule
+} from "../modules/app-registry/app-registry.migration.js";
 import { seedAppRegistryModule } from "../modules/app-registry/app-registry.seed.js";
 import { migrateTenantDomainModule } from "../modules/tenant-domain/tenant-domain.migration.js";
-import { migrateTenantRegistryModule } from "../modules/tenant/tenant.migration.js";
+import {
+  migrateTenantRegistryModule,
+  tenantMigration
+} from "../modules/tenant/tenant.migration.js";
 import { migratePlanModule } from "../modules/plan/plan.migration.js";
 import { seedPlanModule } from "../modules/plan/plan.seed.js";
 import { migrateSubscriptionModule } from "../modules/subscription/subscription.migration.js";
@@ -25,11 +31,123 @@ import { migrateQueueManagerModule } from "../modules/queue-manager/queue-manage
 import { seedQueueManagerModule } from "../modules/queue-manager/queue-manager.seed.js";
 import { migrateStorageManagerModule } from "../modules/storage-manager/storage-manager.migration.js";
 import { seedStorageManagerModule } from "../modules/storage-manager/storage-manager.seed.js";
+import { migrateAppOrchestrationModule } from "../modules/app-orchestration/app-orchestration.migration.js";
+import { seedAppOrchestrationModule } from "../modules/app-orchestration/app-orchestration.seed.js";
+import { migrateProjectManagerModule } from "../modules/project-manager/project-manager.migration.js";
+import { seedProjectManagerModule } from "../modules/project-manager/project-manager.seed.js";
+import {
+  migrateTaskManagerModule,
+  taskManagerMigration
+} from "../modules/task-manager/task-manager.migration.js";
+import { seedTaskManagerModule } from "../modules/task-manager/task-manager.seed.js";
 import { assertDatabaseName, quoteIdentifier } from "./database-utils.js";
 import type { PlatformDatabase } from "./schema.js";
 
 let platformDatabase: Kysely<PlatformDatabase> | null = null;
 let bootstrapped = false;
+
+const platformMasterMigrationSteps = [
+  {
+    description: appRegistryMigration.description,
+    migrate: migrateAppRegistryModule,
+    name: appRegistryMigration.key
+  },
+  {
+    description: "Platform tenant registry and audit foundation.",
+    migrate: migrateTenantRegistryModule,
+    name: tenantMigration.key
+  },
+  {
+    description: "Tenant domain registry.",
+    migrate: migrateTenantDomainModule,
+    name: "platform.tenant-domain.foundation"
+  },
+  { description: "Platform plans.", migrate: migratePlanModule, name: "platform.plan.foundation" },
+  {
+    description: "Tenant subscriptions.",
+    migrate: migrateSubscriptionModule,
+    name: "platform.subscription.foundation"
+  },
+  {
+    description: "Industry registry.",
+    migrate: migrateIndustryModule,
+    name: "platform.industry.foundation"
+  },
+  {
+    description: "Plan and tenant entitlements.",
+    migrate: migrateEntitlementModule,
+    name: "platform.entitlement.foundation"
+  },
+  {
+    description: "Super Admin access control.",
+    migrate: migrateAccessControlModule,
+    name: "platform.access-control.foundation"
+  },
+  {
+    description: "Platform activity history.",
+    migrate: migratePlatformActivityModule,
+    name: "platform.activity.foundation"
+  },
+  {
+    description: "Database maintenance run lifecycle.",
+    migrate: migrateDatabaseMaintenanceModule,
+    name: "platform.database-maintenance.foundation"
+  },
+  {
+    description: "Database-backed queue jobs.",
+    migrate: migrateQueueManagerModule,
+    name: "platform.queue-manager.foundation"
+  },
+  {
+    description: "Storage objects and tenant storage roots.",
+    migrate: migrateStorageManagerModule,
+    name: "platform.storage-manager.foundation"
+  },
+  {
+    description: "Project Manager code-owned storage policy.",
+    migrate: async (_database: Kysely<PlatformDatabase>) => migrateProjectManagerModule(),
+    name: "platform.project-manager.store-policy"
+  },
+  {
+    description: taskManagerMigration.description,
+    migrate: async (_database: Kysely<PlatformDatabase>) => migrateTaskManagerModule(),
+    name: taskManagerMigration.key
+  },
+  {
+    description: "Application orchestration process-local state policy.",
+    migrate: async (_database: Kysely<PlatformDatabase>) => migrateAppOrchestrationModule(),
+    name: "platform.app-orchestration.runtime-policy"
+  }
+] as const;
+
+export const platformMasterMigrationOrder = platformMasterMigrationSteps.map(({ name }) => name);
+
+const platformMasterSeedSteps = [
+  { name: "platform.app-registry", seed: seedAppRegistryModule },
+  { name: "platform.plan", seed: seedPlanModule },
+  { name: "platform.subscription", seed: seedSubscriptionModule },
+  { name: "platform.industry", seed: seedIndustryModule },
+  { name: "platform.entitlement", seed: seedEntitlementModule },
+  { name: "platform.access-control", seed: seedAccessControlModule },
+  { name: "platform.activity", seed: seedPlatformActivityModule },
+  { name: "platform.database-maintenance", seed: seedDatabaseMaintenanceModule },
+  { name: "platform.queue-manager", seed: seedQueueManagerModule },
+  { name: "platform.storage-manager", seed: seedStorageManagerModule },
+  {
+    name: "platform.project-manager",
+    seed: async (_database: Kysely<PlatformDatabase>) => seedProjectManagerModule()
+  },
+  {
+    name: "platform.task-manager",
+    seed: async (_database: Kysely<PlatformDatabase>) => seedTaskManagerModule()
+  },
+  {
+    name: "platform.app-orchestration",
+    seed: async (_database: Kysely<PlatformDatabase>) => seedAppOrchestrationModule()
+  }
+] as const;
+
+export const platformMasterSeedOrder = platformMasterSeedSteps.map(({ name }) => name);
 
 export function platformDatabaseConfig() {
   return {
@@ -129,18 +247,11 @@ export async function migratePlatformDatabase() {
     .addColumn("applied_at", "datetime", (col) => col.notNull().defaultTo(sql`CURRENT_TIMESTAMP`))
     .execute();
 
-  await migrateAppRegistryModule(database);
-  await migrateTenantRegistryModule(database);
-  await migrateTenantDomainModule(database);
-  await migratePlanModule(database);
-  await migrateSubscriptionModule(database);
-  await migrateIndustryModule(database);
-  await migrateEntitlementModule(database);
-  await migrateAccessControlModule(database);
-  await migratePlatformActivityModule(database);
-  await migrateDatabaseMaintenanceModule(database);
-  await migrateQueueManagerModule(database);
-  await migrateStorageManagerModule(database);
+  for (const step of platformMasterMigrationSteps) {
+    await step.migrate(database);
+    await database.insertInto("codexsun_migrations").ignore().values({ name: step.name }).execute();
+    console.info(`[database] platform migration applied: ${step.name}`);
+  }
 
   await database
     .insertInto("codexsun_migrations")
@@ -155,16 +266,10 @@ export async function migratePlatformDatabase() {
 
 export async function seedPlatformDatabase() {
   const database = getPlatformDatabase();
-  await seedAppRegistryModule(database);
-  await seedPlanModule(database);
-  await seedSubscriptionModule(database);
-  await seedIndustryModule(database);
-  await seedEntitlementModule(database);
-  await seedAccessControlModule(database);
-  await seedPlatformActivityModule(database);
-  await seedDatabaseMaintenanceModule(database);
-  await seedQueueManagerModule(database);
-  await seedStorageManagerModule(database);
+  for (const step of platformMasterSeedSteps) {
+    await step.seed(database);
+    console.info(`[seeder] platform module seeded: ${step.name}`);
+  }
 }
 
 export async function resetPlatformDatabases() {

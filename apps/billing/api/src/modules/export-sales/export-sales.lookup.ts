@@ -150,7 +150,7 @@ export class ExportSaleLookupService {
     );
   }
   private request(path: string, headers: ExportSaleLookupHeaders, init?: RequestInit) {
-    return fetch(`${env.CORE_API_URL}${path}`, {
+    return fetch(`${env.PLATFORM_API_URL}${path}`, {
       ...init,
       headers: {
         Accept: "application/json",

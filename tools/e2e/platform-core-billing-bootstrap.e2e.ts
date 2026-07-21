@@ -25,6 +25,10 @@ const { bootstrapPlatformDatabase, closePlatformDatabase } =
   await import("../../apps/platform/api/src/database/platform-database.js");
 const { closeAllTenantDatabases } =
   await import("../../apps/platform/api/src/database/tenant-database.js");
+const { tenantDatabaseMigrationsFor } =
+  await import("../../apps/platform/api/src/database/tenant-app-database.js");
+const { migrateTenantDatabase, seedTenantDatabase } =
+  await import("../../apps/platform/api/src/modules/tenant/tenant.seed.js");
 const { TenantService } =
   await import("../../apps/platform/api/src/modules/tenant/tenant.service.js");
 const { DatabaseMaintenanceService } =
@@ -51,10 +55,10 @@ try {
     dbType: env.DB_DRIVER,
     dbUser: env.DB_USER,
     defaultLandingApp: "billing",
-    enabledModuleKeys: ["platform.application", "billing.sales"],
+    enabledModuleKeys: ["platform.application"],
     mobile: null,
     payloadSettings: {
-      apps: { enabled: ["platform.application", "billing.sales"] },
+      apps: { enabled: ["platform.application"] },
       landing: { app: "billing", mode: "tenant" },
       seed: { source: "tenant-selected-app-provisioning-e2e" }
     },
@@ -65,7 +69,14 @@ try {
     tenantName: "CODEXSUN Bootstrap E2E"
   });
 
+  assert.deepEqual(
+    [...tenant.enabledModuleKeys].sort(),
+    ["billing.sales", "mail", "platform.application"],
+    "New tenants should enable Billing and Mail by default."
+  );
+
   const initial = await loadState();
+  const expectedTenantMigrationCount = tenantDatabaseMigrationsFor(tenant).length;
   assert.equal(initial.platform.tenants, 1);
   assert.equal(initial.platform.tenantDomains, 1);
   assert.equal(initial.platform.subscriptions, 0);
@@ -73,7 +84,7 @@ try {
   assert.ok(initial.platform.plans > 0);
   assert.equal(initial.platform.completedRuns, 1);
   assert.equal(initial.platform.runningRuns, 0);
-  assert.equal(initial.tenant.moduleSettings, 2);
+  assert.equal(initial.tenant.moduleSettings, 3);
   assert.equal(initial.tenant.enabledBillingModules, 1);
   assert.equal(initial.tenant.companies, 1);
   assert.equal(initial.tenant.codexsunCompanies, 1);
@@ -82,8 +93,22 @@ try {
   assert.equal(initial.tenant.demoSuppliers, 1);
   assert.equal(initial.tenant.billingSettings, 1);
   assert.equal(initial.tenant.billingTables, 8);
-  assert.equal(initial.tenant.mailTables, 0);
-  assert.equal(initial.tenant.migrationCount, 20);
+  assert.equal(initial.tenant.mailTables, 4);
+  assert.equal(initial.tenant.migrationCount, expectedTenantMigrationCount);
+
+  await admin.changeUser({ database: masterDatabaseName });
+  await admin.query(`DROP DATABASE \`${tenantDatabaseName}\``);
+  await migrateTenantDatabase(tenant);
+  const migratedOnly = await loadState();
+  assert.equal(migratedOnly.tenant.migrationCount, expectedTenantMigrationCount);
+  assert.equal(migratedOnly.tenant.moduleSettings, 0);
+  assert.equal(migratedOnly.tenant.companies, 0);
+  assert.equal(migratedOnly.tenant.billingSettings, 0);
+  assert.equal(migratedOnly.tenant.mailTables, 4);
+
+  await seedTenantDatabase(tenant);
+  const separatelySeeded = await loadState();
+  assert.deepEqual(separatelySeeded.tenant, initial.tenant);
 
   await admin.changeUser({ database: masterDatabaseName });
   await admin.query(`DROP DATABASE \`${tenantDatabaseName}\``);
@@ -110,7 +135,7 @@ try {
   assert.deepEqual(withoutRunCounts(restarted.platform), withoutRunCounts(initial.platform));
   assert.equal(restarted.platform.completedRuns, 3);
   assert.equal(restarted.platform.runningRuns, 0);
-  console.log("Platform/Core/Billing bootstrap E2E passed", {
+  console.log("Platform/Core/Billing/Mail bootstrap E2E passed", {
     masterDatabaseName,
     state: restarted,
     tenantId: tenant.id,

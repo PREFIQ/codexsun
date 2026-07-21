@@ -2,9 +2,9 @@
 
 This directory provides one persistent infrastructure layer and the composed CODEXSUN Platform runtime.
 
-| Product  | Source composition                         | Runtime services          |
-| -------- | ------------------------------------------ | ------------------------- |
-| CODEXSUN | Framework + UI + Platform + Core + Billing | Platform API/Platform Web |
+| Product  | Source composition                                | Runtime services          |
+| -------- | ------------------------------------------------- | ------------------------- |
+| CODEXSUN | Framework + UI + Platform + Core + Billing + Mail | Platform API/Platform Web |
 
 MariaDB, Redis, and Media are installed once. Product deployment commands never recreate them and never delete their named volumes. Normal upgrades replace only versioned application containers, so databases, credentials, uploads, and application storage remain stable.
 
@@ -16,7 +16,27 @@ Docker Desktop or Docker Engine with Compose v2 is required. From the repository
 bash .container/setup.sh billing
 ```
 
-On first use, `prepare-env.sh` creates the ignored `.container/deploy.env`. `DB_USER`, `DB_PASSWORD`, and `DB_MASTER_NAME` are imported from the repository `.env`; missing infrastructure secrets are generated. Once created, deployment credentials are retained across subsequent setup and upgrade runs. Review the file before production use, especially public origins, registry, administrator values, and `CODEXSUN_VERIFIED_BACKUP_ID`.
+From Windows PowerShell with Git for Windows installed:
+
+```powershell
+& 'C:\Program Files\Git\bin\bash.exe' .container/setup.sh billing
+```
+
+After infrastructure installation and before starting the application images, refresh and verify the exact Node/npm toolchain declared by the development workspace:
+
+```bash
+bash .container/update-runtime.sh
+```
+
+`setup.sh` runs this command automatically. It updates `NODE_RUNTIME_VERSION` and `NPM_RUNTIME_VERSION` from `package.json`, pulls the matching Node base image, and verifies npm before the application build starts.
+
+On first use, `prepare-env.sh` creates the ignored `.container/deploy.env`. Database, super-admin, software-admin, and tenant-admin values are imported from the repository `.env`; missing infrastructure secrets are generated. The initial deployment enables the default `codexsun` tenant and provisions Billing and Mail. Once created, deployment credentials are retained across subsequent setup and upgrade runs. Review the file before production use, especially public origins, registry, administrator values, and `CODEXSUN_VERIFIED_BACKUP_ID`.
+
+Mail is available to the tenant by default. Configure `MAIL_ENABLED` and the `MAIL_SMTP_*`/`MAIL_FROM_*` values in `deploy.env` only when a verified SMTP provider is ready; tenant company Mail settings continue to take priority over this deployment fallback.
+
+`PLATFORM_API_PORT` and `PLATFORM_WEB_PORT` are the only published application port settings. `PLATFORM_API_URL` is the single API endpoint used by both server and browser builds. Core, Billing, Mail, and Platform all use that same composed API; there are no module-specific or `VITE_` URL aliases.
+
+`PLATFORM_WEB_ORIGIN` is the single canonical public Web origin and CORS source. For local development, the API automatically accepts the equivalent `localhost` or `127.0.0.1` origin with the same port.
 
 MariaDB listens inside Docker on `3306` and is exposed to the host at `127.0.0.1:3307` by default. Applications use the private `codexsun-mariadb:3306` address.
 
@@ -83,10 +103,10 @@ All published ports bind to `127.0.0.1` unless `CODEXSUN_BIND_ADDRESS` is change
 
 ## Verification
 
-With Billing running:
+With CODEXSUN running:
 
 ```bash
 bash .container/smoke-test.sh
 ```
 
-The smoke test checks every Billing HTTP service and MariaDB port/database initialization.
+The smoke test checks Platform API/Web, Media, authenticated Redis access, MariaDB, the Platform master database, and—when enabled—the default tenant database with Billing and Mail active.

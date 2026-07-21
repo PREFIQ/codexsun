@@ -1,5 +1,6 @@
 export { appRegistryModule } from "./app-registry.module.js";
 export {
+  defaultTenantModuleKeys,
   platformAppRegistry,
   resolveEnabledApps,
   resolveLandingApp

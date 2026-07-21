@@ -3,6 +3,7 @@ export type OrchestratedAppStatus = "online" | "partial" | "offline";
 export interface OrchestratedService {
   id: "api" | "web";
   label: string;
+  host: string;
   managedPid: number | null;
   port: number;
   online: boolean;

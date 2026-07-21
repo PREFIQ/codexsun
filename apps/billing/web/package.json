@@ -1,6 +1,6 @@
 {
   "name": "@codexsun/billing-web",
-  "version": "1.0.39",
+  "version": "1.0.40",
   "private": true,
   "type": "module",
   "exports": {
@@ -21,9 +21,9 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@codexsun/core-web": "^1.0.39",
-    "@codexsun/ui": "^1.0.39",
-    "@codexsun/mail-web": "^1.0.39",
+    "@codexsun/core-web": "^1.0.40",
+    "@codexsun/ui": "^1.0.40",
+    "@codexsun/mail-web": "^1.0.40",
     "@tanstack/react-query": "^5.100.10",
     "@tanstack/react-router": "^1.91.3",
     "lucide-react": "^1.22.0",

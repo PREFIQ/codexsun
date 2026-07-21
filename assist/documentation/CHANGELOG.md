@@ -2,11 +2,11 @@
 
 ## Version State
 
-Current version: 1.0.39
+Current version: 1.0.40
 
-Release tag: v-1.0.39
+Release tag: v-1.0.40
 
-Changelog label: v 1.0.39
+Changelog label: v 1.0.40
 
 This changelog starts fresh from the cleaned CODEXSUN foundation. Earlier copied application history was intentionally removed because it did not represent the current workspace.
 
@@ -20,6 +20,26 @@ Records schema, migration, seed, tenant provisioning, and data compatibility cha
 
 Records UI, API, service logic, tooling, packaging, and documentation changes.
 
+## v-1.0.40
+
+### [v 1.0.40] 2026-07-21 1:46 pm - Environment Contract Consolidation
+
+#### Database Changes
+
+- Database update: No (runtime configuration, application wiring, deployment, and documentation changes only).
+
+#### App Codebase Changes
+
+- Consolidated the development and deployment environment contracts so each runtime feature has one canonical variable.
+- Removed the duplicate `API_HOST`, `PLATFORM_WEB_ORIGINS`, `VITE_PLATFORM_API_URL`, `VITE_TENANT_NAME`, and `VITE_DEV_AUTO_TENANT_LOGIN` environment entries.
+- Made `PLATFORM_API_URL` the single API endpoint consumed by the Platform server, Vite proxy, browser build, Core, Billing, and Mail.
+- Reused `DEFAULT_TENANT_NAME` and `DEV_AUTO_TENANT_LOGIN` for browser build configuration instead of maintaining frontend-only aliases.
+- Reduced the primary runtime block to `NODE_ENV`, `PLATFORM_API_PORT`, `PLATFORM_WEB_PORT`, `PLATFORM_WEB_ORIGIN`, and `PLATFORM_API_URL`.
+- Derived local CORS compatibility for equivalent `localhost` and `127.0.0.1` origins from the single configured Web origin.
+- Required published application and infrastructure ports, public URLs, and GSP endpoints to come from deployment environment input while retaining fixed private container implementation ports.
+- Updated container build arguments, Compose wiring, preflight startup, smoke checks, examples, and deployment documentation for the consolidated contract.
+- Bumped workspace version to 1.0.40.
+
 ## v-1.0.39
 
 ### [v 1.0.39] 2026-07-21 10:18 am - Unified Platform Runtime and Package Manifests
@@ -27,6 +47,7 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
 #### Database Changes
 
 - Database update: No (runtime, tooling, packaging, deployment, and documentation changes only).
+- Enabled Billing and Mail by default for newly created tenants and reconciled default-tenant seeds, while retaining explicit per-tenant opt-out controls.
 
 #### App Codebase Changes
 
@@ -44,8 +65,26 @@ Records UI, API, service logic, tooling, packaging, and documentation changes.
   transferred UI-owned fonts and editor/style dependencies to `@codexsun/ui`, and regenerated the single root lockfile.
 - Added composed Platform runtime E2E coverage and updated persistence and live-mass harnesses to consume the Platform
   composition root instead of standalone product applications.
+- Consolidated Platform, tenant runtime, Core, Billing, and Mail migration/seed orchestration into one deterministic
+  dependency order while retaining every SQL migration and seeder inside its owning module.
+- Split tenant migration from seeding, repaired root database commands that referenced removed workspace scripts, and
+  made tenant setup/reinstall run all selected migrations before repeatable seeders.
+- Added per-leaf Core migration ledger entries, executed every Billing module seeder, included Platform lifecycle
+  policies previously skipped by master bootstrap, and expanded reinstall E2E coverage to verify Mail.
 - Updated startup, deployment, app-orchestration, package-management, inventory, and UI verification documentation to
   describe the two-port composed Platform runtime.
+- Validated the production container stack locally with Platform API/Web, MariaDB, Redis, Media, the default `codexsun`
+  tenant, Billing, Mail, and all administrator login paths; expanded the reusable smoke test to cover these dependencies.
+- Consolidated deploy environment preparation for database, super-admin, software-admin, tenant-admin, default tenant,
+  and Mail fallback values, while keeping the generated credential file ignored and persistent.
+- Fixed the container migration-state command after root manifest consolidation and upgraded jsPDF and Nodemailer to
+  patched releases with a zero-vulnerability production dependency audit.
+- Added a separate pre-start container runtime refresh command that synchronizes Node and npm from the development
+  workspace, pulls and verifies the matching base image, and installs the same npm release in the API runtime image.
+- Hardened PDF capture with a bounded render size and disabled Nodemailer filesystem/URL content access while retaining
+  the latest compatible jsPDF and Nodemailer releases.
+- Added an explicit multi-origin CORS allowlist so container Web access through both `localhost` and `127.0.0.1` can
+  authenticate against the Platform API while production deployments retain an exact origin list.
 - Bumped workspace version to 1.0.39.
 
 ## v-1.0.38

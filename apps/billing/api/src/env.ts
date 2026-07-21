@@ -2,7 +2,7 @@ import { loadEnv } from "@codexsun/framework/env";
 import { z } from "zod";
 
 const envSchema = z.object({
-  CORE_API_URL: z.string().url().default("http://127.0.0.1:7010"),
+  PLATFORM_API_URL: z.string().url("PLATFORM_API_URL must be a valid URL"),
   DB_HOST: z.string().default("127.0.0.1"),
   DB_MASTER_NAME: z.string().min(1, "DB_MASTER_NAME is required"),
   DB_PASSWORD: z.string(),
@@ -10,8 +10,8 @@ const envSchema = z.object({
   DB_USER: z.string().min(1, "DB_USER is required"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
   GSP_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
-  GSP_SANDBOX_BASE_URL: z.string().url().default("https://apisandbox.whitebooks.in"),
-  GSP_BASE_URL: z.string().url().default("https://api.whitebooks.in"),
+  GSP_SANDBOX_BASE_URL: z.string().url("GSP_SANDBOX_BASE_URL must be a valid URL"),
+  GSP_BASE_URL: z.string().url("GSP_BASE_URL must be a valid URL"),
   GSP_EMAIL: z.string().default(""),
   GSP_USERNAME: z.string().default(""),
   GSP_PASSWORD: z.string().default(""),

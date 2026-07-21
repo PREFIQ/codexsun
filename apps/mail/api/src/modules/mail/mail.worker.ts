@@ -127,6 +127,8 @@ async function deliver(
     })),
     bcc: message.bcc,
     cc: message.cc,
+    disableFileAccess: true,
+    disableUrlAccess: true,
     from: settings.fromName
       ? { address: settings.fromEmail, name: settings.fromName }
       : settings.fromEmail,

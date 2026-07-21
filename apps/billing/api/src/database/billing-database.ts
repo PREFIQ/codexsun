@@ -8,6 +8,7 @@ import {
   migrateQuotationModule,
   quotationMigration
 } from "../modules/quotation/quotation.migration.js";
+import { seedQuotationModule } from "../modules/quotation/quotation.seed.js";
 import {
   exportSalesMigration,
   migrateExportSalesModule
@@ -19,6 +20,7 @@ import {
   migratePurchaseModule,
   purchaseMigration
 } from "../modules/purchase/purchase.migration.js";
+import { seedPurchaseModule } from "../modules/purchase/purchase.seed.js";
 import { migrateSalesModule, salesMigration } from "../modules/sales/sales.migration.js";
 import { migrateReceiptModule, receiptMigration } from "../modules/receipt/receipt.migration.js";
 import { seedReceiptModule } from "../modules/receipt/receipt.seed.js";
@@ -27,6 +29,7 @@ import {
   billingSettingsMigration,
   migrateBillingSettingsModule
 } from "../modules/settings/settings.migration.js";
+import { seedBillingSettingsModule } from "../modules/settings/settings.seed.js";
 import { BillingSettingsRepository } from "../modules/settings/settings.repository.js";
 import {
   dashboardMigration,
@@ -81,25 +84,53 @@ const connectionIdleMs = 10 * 60 * 1000;
 const evictionTimer = setInterval(() => void evictIdleBillingDatabases(), 60_000);
 evictionTimer.unref();
 
-export const billingTenantMigrations = [
-  { description: "Billing sales documents and relational line items.", name: salesMigration.key },
+const billingMigrationSteps = [
+  {
+    description: "Company-owned Billing settings.",
+    key: billingSettingsMigration.key,
+    migrate: migrateBillingSettingsModule
+  },
+  {
+    description: "Billing sales documents and relational line items.",
+    key: salesMigration.key,
+    migrate: migrateSalesModule
+  },
   {
     description: "Billing purchase documents and relational line items.",
-    name: purchaseMigration.key
+    key: purchaseMigration.key,
+    migrate: migratePurchaseModule
   },
   {
     description: "Billing export-sales documents and relational line items.",
-    name: exportSalesMigration.key
+    key: exportSalesMigration.key,
+    migrate: migrateExportSalesModule
   },
   {
     description: "Billing quotations and relational line items.",
-    name: quotationMigration.key
+    key: quotationMigration.key,
+    migrate: migrateQuotationModule
   },
-  { description: "Billing payment documents.", name: paymentMigration.key },
-  { description: "Billing receipt documents.", name: receiptMigration.key },
-  { description: "Company-owned Billing settings.", name: billingSettingsMigration.key },
-  { description: "Billing dashboard snapshots.", name: dashboardMigration.key }
+  {
+    description: "Billing payment documents.",
+    key: paymentMigration.key,
+    migrate: migratePaymentModule
+  },
+  {
+    description: "Billing receipt documents.",
+    key: receiptMigration.key,
+    migrate: migrateReceiptModule
+  },
+  {
+    description: "Billing dashboard snapshots.",
+    key: dashboardMigration.key,
+    migrate: migrateDashboardModule
+  }
 ] as const;
+
+export const billingTenantMigrations = billingMigrationSteps.map(({ description, key }) => ({
+  description,
+  name: key
+}));
 
 export function resolveBillingDatabaseName(value: unknown) {
   const requested = typeof value === "string" ? value.trim() : "";
@@ -157,43 +188,57 @@ export async function migrateBillingTenantDatabase(databaseName: string) {
   if (active) await active.catch(() => undefined);
   await closeBillingDatabaseConnection(name);
   migrated.delete(name);
-  await bootstrapBillingDatabase(name);
+  await ensureDatabase(name);
+  await migrateBillingModules(openBillingDatabase(name));
+}
+
+export async function seedBillingTenantDatabase(databaseName: string) {
+  const name = assertDatabaseName(databaseName);
+  await ensureDatabase(name);
+  const database = openBillingDatabase(name);
+  await migrateBillingModules(database);
+  migrated.add(name);
+  try {
+    await seedBillingModules(database, name);
+  } catch (error) {
+    migrated.delete(name);
+    throw error;
+  }
 }
 
 async function bootstrapBillingDatabaseOnce(name: string) {
   await ensureDatabase(name);
   const db = openBillingDatabase(name);
-  await migrateSalesModule(db);
-  await recordBillingMigration(db, salesMigration.key);
-  await migratePurchaseModule(db);
-  await recordBillingMigration(db, purchaseMigration.key);
-  await migrateExportSalesModule(db);
-  await recordBillingMigration(db, exportSalesMigration.key);
-  await migrateQuotationModule(db);
-  await recordBillingMigration(db, quotationMigration.key);
-  await migratePaymentModule(db);
-  await recordBillingMigration(db, paymentMigration.key);
-  await migrateReceiptModule(db);
-  await recordBillingMigration(db, receiptMigration.key);
-  await migrateBillingSettingsModule(db);
-  await recordBillingMigration(db, billingSettingsMigration.key);
-  await migrateDashboardModule(db);
-  await recordBillingMigration(db, dashboardMigration.key);
-  await seedBillingTenantPermissions(db as unknown as Kysely<unknown>);
+  await migrateBillingModules(db);
   migrated.add(name);
   try {
-    await seedSalesModule(db);
-    await seedExportSalesModule(db);
-    await seedPaymentModule(db);
-    await seedReceiptModule(db);
-    await seedDashboardModule(name);
-    const settingsRepository = new BillingSettingsRepository();
-    const companyId = await settingsRepository.defaultCompanyId(name);
-    await settingsRepository.getBillingSettings(name, companyId);
+    await seedBillingModules(db, name);
   } catch (error) {
     migrated.delete(name);
     throw error;
   }
+}
+
+async function migrateBillingModules(database: Kysely<BillingDatabase>) {
+  for (const step of billingMigrationSteps) {
+    await step.migrate(database);
+    await recordBillingMigration(database, step.key);
+  }
+}
+
+async function seedBillingModules(database: Kysely<BillingDatabase>, databaseName: string) {
+  await seedBillingTenantPermissions(database as unknown as Kysely<unknown>);
+  await seedBillingSettingsModule();
+  const settingsRepository = new BillingSettingsRepository();
+  const companyId = await settingsRepository.defaultCompanyId(databaseName);
+  await settingsRepository.getBillingSettings(databaseName, companyId);
+  await seedSalesModule(database);
+  await seedPurchaseModule();
+  await seedExportSalesModule(database);
+  await seedQuotationModule();
+  await seedPaymentModule(database);
+  await seedReceiptModule(database);
+  await seedDashboardModule(databaseName);
 }
 
 async function recordBillingMigration(database: Kysely<BillingDatabase>, name: string) {

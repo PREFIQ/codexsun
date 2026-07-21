@@ -1,7 +1,8 @@
 export async function migrateProjectManagerModule() {
   return {
-    migrated: true,
+    migrated: false,
+    reason: "Project Manager records use the module-owned file store; no SQL schema is required.",
     source: "platform-project-manager",
-    tables: ["project_manager_records", "project_manager_registry"]
+    tables: []
   };
 }

@@ -13,7 +13,7 @@ import type {
   CompanyStateLookup
 } from "./company.types";
 
-const base = requiredClientEnv("VITE_CORE_API_URL");
+const base = requiredClientEnv("VITE_PLATFORM_API_URL");
 const platformBase = requiredClientEnv("VITE_PLATFORM_API_URL");
 const companyPath = "/core/organisation/companies";
 type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };

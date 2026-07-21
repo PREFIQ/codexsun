@@ -2,7 +2,7 @@ import { getTenantDbName, getTenantId, getToken } from "../../../../shared/api/t
 import { requiredClientEnv } from "../../../../shared/env/client-env";
 import type { ColoursListFilters, ColoursRecord, ColoursSavePayload } from "./colours.types";
 
-const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const coreApiBaseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 const coloursPath = "/core/common/products/colours";
 type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 

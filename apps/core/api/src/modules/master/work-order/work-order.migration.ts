@@ -1,5 +1,11 @@
 import { sql, type Kysely } from "kysely";
 import type { CoreDatabase } from "../../../database/core-database.js";
+
+export const workOrderMigration = {
+  description: "Work-order master data.",
+  key: "core.master.work-order"
+} as const;
+
 export async function migrateWorkOrderModule(database: Kysely<CoreDatabase>) {
   await sql
     .raw(

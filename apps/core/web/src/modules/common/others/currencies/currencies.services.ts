@@ -6,7 +6,7 @@ import type {
   CurrenciesSavePayload
 } from "./currencies.types";
 
-const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const coreApiBaseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 const currenciesPath = "/core/common/others/currencies";
 type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 

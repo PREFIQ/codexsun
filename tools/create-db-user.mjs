@@ -15,8 +15,8 @@ const client = process.env.MARIADB_CLIENT || "C:\\Program Files\\MariaDB 12.3\\b
 
 const adminUser = requiredEnv("DB_ADMIN_USER");
 const adminPassword = process.env.DB_ADMIN_PASSWORD || "";
-const host = process.env.DB_HOST || "127.0.0.1";
-const port = process.env.DB_PORT || "3306";
+const host = requiredEnv("DB_HOST");
+const port = requiredEnv("DB_PORT");
 const appUser = requiredEnv("DB_APP_USER");
 const appPassword = requiredEnv("DB_APP_PASSWORD");
 const masterDb = requiredEnv("DB_MASTER_NAME");

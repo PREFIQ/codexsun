@@ -1,6 +1,11 @@
 import { sql, type Kysely } from "kysely";
 import type { CoreDatabase } from "../../../database/core-database.js";
 
+export const productMigration = {
+  description: "Product master data.",
+  key: "core.master.product"
+} as const;
+
 export async function migrateProductModule(database: Kysely<CoreDatabase>) {
   await sql
     .raw(

@@ -22,7 +22,7 @@ services:
       - --database
       - /database/filebrowser.db
     ports:
-      - "${CODEXSUN_BIND_ADDRESS:-127.0.0.1}:${MEDIA_HOST_PORT:-7090}:80"
+      - "${CODEXSUN_BIND_ADDRESS:?CODEXSUN_BIND_ADDRESS is required}:${MEDIA_HOST_PORT:?MEDIA_HOST_PORT is required}:80"
     volumes:
       - media-data:/srv
       - media-db:/database

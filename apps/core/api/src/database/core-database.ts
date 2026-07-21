@@ -4,15 +4,16 @@ import { createPool, type PoolOptions } from "mysql2";
 import { createConnection } from "mysql2/promise";
 import { seedCoreTenantPermissions } from "../auth/tenant-permission.seed.js";
 import { env } from "../env.js";
-import { commonMigration, migrateCommonModule } from "../modules/common/common.migration.js";
+import { commonMigrationSteps, migrateCommonModule } from "../modules/common/common.migration.js";
 import { seedCommonModule } from "../modules/common/common.seed.js";
 import { removeUnknownCountrySeed } from "../modules/common/location/country/index.js";
-import { masterMigration, migrateMasterModule, seedMasterModule } from "../modules/master/index.js";
+import { migrateMasterModule, seedMasterModule } from "../modules/master/index.js";
+import { masterMigrationSteps } from "../modules/master/master.migration.js";
 import {
   migrateOrganisationModule,
-  organisationMigration,
   seedOrganisationModule
 } from "../modules/organisation/index.js";
+import { organisationMigrationSteps } from "../modules/organisation/organisation.migration.js";
 
 export type CoreDatabase = Record<string, unknown>;
 
@@ -31,9 +32,9 @@ export const coreTenantMigrations = [
     description: "Flatten legacy Core table names before module-owned migrations.",
     name: "003_flatten_core_table_names"
   },
-  { description: commonMigration.description, name: commonMigration.key },
-  { description: organisationMigration.description, name: organisationMigration.key },
-  { description: masterMigration.description, name: masterMigration.key }
+  ...commonMigrationSteps.map(({ description, key }) => ({ description, name: key })),
+  ...organisationMigrationSteps.map(({ description, key }) => ({ description, name: key })),
+  ...masterMigrationSteps.map(({ description, key }) => ({ description, name: key }))
 ] as const;
 
 export function resolveCoreDatabaseName(value: unknown) {
@@ -84,20 +85,8 @@ export async function bootstrapCoreDatabase(databaseName: string) {
   const promise = runWithCoreDatabase(name, async () => {
     await ensureDatabase(name);
     const database = getCoreDatabase(name);
-    await flattenLegacyCoreTableNames(database);
-    await migrateCommonModule(database);
-    await recordCoreMigration(database, commonMigration.key);
-    await migrateOrganisationModule(database);
-    await recordCoreMigration(database, organisationMigration.key);
-    await migrateMasterModule(database);
-    await recordCoreMigration(database, masterMigration.key);
-    // Seed dependency order mirrors the schema dependency order: shared lookup
-    // records first, tenant organisation defaults second, transactional masters last.
-    await seedCommonModule();
-    await seedOrganisationModule();
-    await seedMasterModule();
-    await removeUnknownCountrySeed();
-    await seedCoreTenantPermissions(database as unknown as Kysely<unknown>);
+    await migrateCoreModules(database);
+    await seedCoreModules(database);
     migrated.add(name);
   });
   bootstrapping.set(name, promise);
@@ -114,11 +103,45 @@ export async function migrateCoreTenantDatabase(databaseName: string) {
   if (active) await active.catch(() => undefined);
   await closeCoreDatabaseConnection(name);
   migrated.delete(name);
-  await bootstrapCoreDatabase(name);
+  await runWithCoreDatabase(name, async () => {
+    await ensureDatabase(name);
+    await migrateCoreModules(getCoreDatabase(name));
+  });
+}
+
+export async function seedCoreTenantDatabase(databaseName: string) {
+  const name = resolveCoreDatabaseName(databaseName);
+  await runWithCoreDatabase(name, async () => {
+    await ensureDatabase(name);
+    const database = getCoreDatabase(name);
+    await migrateCoreModules(database);
+    await seedCoreModules(database);
+    migrated.add(name);
+  });
 }
 
 async function recordCoreMigration(database: Kysely<CoreDatabase>, name: string) {
   await sql`INSERT IGNORE INTO schema_migrations (name) VALUES (${name})`.execute(database);
+}
+
+async function migrateCoreModules(database: Kysely<CoreDatabase>) {
+  await flattenLegacyCoreTableNames(database);
+  await migrateCommonModule(database);
+  for (const step of commonMigrationSteps) await recordCoreMigration(database, step.key);
+  await migrateOrganisationModule(database);
+  for (const step of organisationMigrationSteps) await recordCoreMigration(database, step.key);
+  await migrateMasterModule(database);
+  for (const step of masterMigrationSteps) await recordCoreMigration(database, step.key);
+}
+
+async function seedCoreModules(database: Kysely<CoreDatabase>) {
+  // Seed dependency order mirrors the schema dependency order: shared lookup
+  // records first, tenant organisation defaults second, transactional masters last.
+  await seedCommonModule();
+  await seedOrganisationModule();
+  await seedMasterModule();
+  await removeUnknownCountrySeed();
+  await seedCoreTenantPermissions(database as unknown as Kysely<unknown>);
 }
 
 async function flattenLegacyCoreTableNames(database: Kysely<CoreDatabase>) {

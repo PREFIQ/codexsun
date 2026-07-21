@@ -85,15 +85,17 @@ import_repo_value() {
 }
 
 prepare_deploy_env() {
-  deploy_env_created=0
   if [ ! -f "$DEPLOY_ENV" ]; then
     cp "$CONTAINER_DIR/deploy.env.example" "$DEPLOY_ENV"
-    deploy_env_created=1
     echo "Created $DEPLOY_ENV."
   fi
 
   version=$(grep -m1 '"version"' "$PROJECT_ROOT/package.json" | cut -d'"' -f4)
+  node_version=$(grep -m1 -E '"node"[[:space:]]*:' "$PROJECT_ROOT/package.json" | cut -d'"' -f4 | sed 's/^[^0-9]*//')
+  npm_version=$(grep -m1 '"packageManager"' "$PROJECT_ROOT/package.json" | cut -d'"' -f4 | sed 's/^npm@//')
   set_env_value CODEXSUN_VERSION "$version"
+  set_env_value NODE_RUNTIME_VERSION "$node_version"
+  set_env_value NPM_RUNTIME_VERSION "$npm_version"
   set_env_value MARIADB_IMAGE_TAG "11.8-codexsun-${version}"
   set_env_value REDIS_IMAGE_TAG "7.4-codexsun-${version}"
   set_env_value MEDIA_IMAGE_TAG "${version}-filebrowser2.63.5"
@@ -101,22 +103,27 @@ prepare_deploy_env() {
   set_env_value BILLING_STACK_WEB_IMAGE_TAG "$version"
   set_env_value BILLING_STACK_MIGRATIONS_IMAGE_TAG "$version"
 
-  if [ "$deploy_env_created" = "1" ]; then
-    for key in DB_USER DB_PASSWORD DB_MASTER_NAME; do
-      value=$(repo_env_value "$key")
-      if [ -n "$value" ]; then
-        set_env_value "$key" "$value"
-        echo "Initialized $key from repository .env."
-      fi
-    done
-  fi
-
   for key in \
-    DB_PASSWORD JWT_SECRET \
+    DB_USER DB_PASSWORD DB_MASTER_NAME JWT_SECRET \
     SUPER_ADMIN_NAME SUPER_ADMIN_EMAIL SUPER_ADMIN_PASSWORD \
-    SOFTWARE_ADMIN_NAME SOFTWARE_ADMIN_EMAIL SOFTWARE_ADMIN_PASSWORD; do
+    SOFTWARE_ADMIN_NAME SOFTWARE_ADMIN_EMAIL SOFTWARE_ADMIN_PASSWORD \
+    TENANT_ADMIN_NAME TENANT_ADMIN_EMAIL TENANT_ADMIN_PASSWORD \
+    DEFAULT_TENANT_ADMIN_NAME DEFAULT_TENANT_ADMIN_EMAIL DEFAULT_TENANT_ADMIN_PASSWORD \
+    MAIL_ENABLED MAIL_SMTP_HOST MAIL_SMTP_PORT MAIL_SMTP_SECURE \
+    MAIL_USERNAME MAIL_PASSWORD MAIL_FROM_EMAIL MAIL_FROM_NAME MAIL_REPLY_TO \
+    GSP_SANDBOX_BASE_URL GSP_BASE_URL; do
     import_repo_value "$key"
   done
+
+  set_default_if_empty MAIL_ENABLED 0
+  set_default_if_empty MAIL_SMTP_HOST ""
+  set_default_if_empty MAIL_SMTP_PORT 587
+  set_default_if_empty MAIL_SMTP_SECURE 0
+  set_default_if_empty MAIL_USERNAME ""
+  set_default_if_empty MAIL_PASSWORD ""
+  set_default_if_empty MAIL_FROM_EMAIL ""
+  set_default_if_empty MAIL_FROM_NAME CODEXSUN
+  set_default_if_empty MAIL_REPLY_TO ""
 
   ensure_secret DB_PASSWORD
   ensure_secret MARIADB_ROOT_PASSWORD
@@ -142,11 +149,11 @@ prepare_deploy_env() {
     set_default_if_empty DEFAULT_TENANT_CORPORATE_ID CODEXSUN
     set_default_if_empty DEFAULT_TENANT_DB_NAME codexsun_tenant_codexsun
     set_default_if_empty DEFAULT_TENANT_DOMAIN codexsun.localhost
-    set_default_if_empty DEFAULT_TENANT_NAME "$(env_value VITE_TENANT_NAME Codexsun)"
+    set_default_if_empty DEFAULT_TENANT_NAME Codexsun
     set_default_if_empty DEFAULT_TENANT_SLUG codexsun
-    set_default_if_empty DEFAULT_TENANT_ADMIN_NAME "$(env_value SUPER_ADMIN_NAME "CODEXSUN Admin")"
-    set_default_if_empty DEFAULT_TENANT_ADMIN_EMAIL "$(env_value SUPER_ADMIN_EMAIL "")"
-    set_default_if_empty DEFAULT_TENANT_ADMIN_PASSWORD "$(env_value SUPER_ADMIN_PASSWORD "")"
+    set_default_if_empty DEFAULT_TENANT_ADMIN_NAME "$(env_value TENANT_ADMIN_NAME "$(env_value SUPER_ADMIN_NAME "CODEXSUN Admin")")"
+    set_default_if_empty DEFAULT_TENANT_ADMIN_EMAIL "$(env_value TENANT_ADMIN_EMAIL "$(env_value SUPER_ADMIN_EMAIL "")")"
+    set_default_if_empty DEFAULT_TENANT_ADMIN_PASSWORD "$(env_value TENANT_ADMIN_PASSWORD "$(env_value SUPER_ADMIN_PASSWORD "")")"
     echo "Default tenant seed configuration prepared."
   fi
 

@@ -80,7 +80,9 @@ export function AppServiceList({ app }: { app: OrchestratedApp }) {
           >
             <div>
               <div className="font-medium">{service.label}</div>
-              <div className="text-sm text-muted-foreground">127.0.0.1:{service.port}</div>
+              <div className="text-sm text-muted-foreground">
+                {service.host}:{service.port}
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">

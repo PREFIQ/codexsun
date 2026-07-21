@@ -76,13 +76,14 @@ stack_compose database/mariadb build "${build_option[@]}"
 stack_compose database/mariadb up -d --no-build --wait --wait-timeout 180
 MSYS_NO_PATHCONV=1 docker exec codexsun-mariadb \
   bash /docker-entrypoint-initdb.d/10-codexsun-grants.sh >/dev/null
-echo "MariaDB application grants reconciled. Host access: 127.0.0.1:$(env_value MARIADB_HOST_PORT 3307)."
+echo "MariaDB application grants reconciled. Host access: $(env_value CODEXSUN_BIND_ADDRESS):$(env_value MARIADB_HOST_PORT)."
 
 stack_compose database/redis build "${build_option[@]}"
 stack_compose database/redis up -d --no-build --wait --wait-timeout 120
 
 stack_compose media build "${build_option[@]}"
 bash "$SCRIPT_DIR/setup-media.sh"
+bash "$SCRIPT_DIR/update-runtime.sh"
 
 deploy_target() {
   stack="$1"

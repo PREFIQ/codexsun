@@ -6,7 +6,7 @@ import type {
   PrioritiesSavePayload
 } from "./priorities.types";
 
-const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const coreApiBaseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 const prioritiesPath = "/core/common/others/priorities";
 type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 

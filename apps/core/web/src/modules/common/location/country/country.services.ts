@@ -2,7 +2,7 @@ import { getTenantDbName, getTenantId, getToken } from "../../../../shared/api/t
 import { requiredClientEnv } from "../../../../shared/env/client-env";
 import type { CountryListFilters, CountryRecord, CountrySavePayload } from "./country.types";
 
-const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const coreApiBaseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 const countryPath = "/core/common/location/countries";
 
 type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };

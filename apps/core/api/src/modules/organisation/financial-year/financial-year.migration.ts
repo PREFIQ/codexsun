@@ -1,6 +1,11 @@
 import { sql, type Kysely } from "kysely";
 import type { CoreDatabase } from "../../../database/core-database.js";
 
+export const financialYearMigration = {
+  description: "Tenant financial-year master data.",
+  key: "core.organisation.financial-year"
+} as const;
+
 export async function migrateFinancialYearModule(database: Kysely<CoreDatabase>) {
   await sql
     .raw(

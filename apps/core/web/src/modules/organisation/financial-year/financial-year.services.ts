@@ -1,7 +1,7 @@
 import { getTenantDbName, getTenantId, getToken } from "../../../shared/api/tenant-context";
 import { requiredClientEnv } from "../../../shared/env/client-env";
 import type { FinancialYearRecord, FinancialYearSavePayload } from "./financial-year.types";
-const base = requiredClientEnv("VITE_CORE_API_URL");
+const base = requiredClientEnv("VITE_PLATFORM_API_URL");
 const path = "/core/organisation/financial-years";
 type Envelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 async function request<T>(suffix = "", options: RequestInit = {}) {

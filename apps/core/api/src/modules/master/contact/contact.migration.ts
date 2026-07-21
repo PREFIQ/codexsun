@@ -1,6 +1,11 @@
 import { sql, type Kysely } from "kysely";
 import type { CoreDatabase } from "../../../database/core-database.js";
 
+export const contactMigration = {
+  description: "Contact master and contact-owned detail tables.",
+  key: "core.master.contact"
+} as const;
+
 export async function migrateContactModule(database: Kysely<CoreDatabase>) {
   await sql
     .raw(

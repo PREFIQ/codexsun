@@ -6,7 +6,7 @@ import type {
   BankNamesSavePayload
 } from "./bank-names.types";
 
-const coreApiBaseUrl = requiredClientEnv("VITE_CORE_API_URL");
+const coreApiBaseUrl = requiredClientEnv("VITE_PLATFORM_API_URL");
 const bankNamesPath = "/core/common/contacts/bank-names";
 type ApiEnvelope<T> = { data: T; success: true } | { error: { message: string }; success: false };
 

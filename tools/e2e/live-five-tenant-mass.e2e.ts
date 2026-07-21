@@ -9,6 +9,7 @@ import { TenantService } from "../../apps/platform/api/src/modules/tenant/tenant
 import type { Tenant } from "../../apps/platform/api/src/modules/tenant/tenant.types.js";
 import { signAuthToken } from "../../apps/platform/api/src/auth/jwt.js";
 import { createApp as createPlatformApp } from "../../apps/platform/api/src/app.js";
+import { tenantDatabaseMigrationsFor } from "../../apps/platform/api/src/database/tenant-app-database.js";
 import {
   bootstrapCoreDatabase,
   closeCoreDatabase,
@@ -80,7 +81,11 @@ try {
   let tenantSchema: SchemaColumn[] | null = null;
   for (const tenant of tenants) {
     const audit = await auditDatabase(admin, tenant.dbName);
-    assert.equal(audit.migrationCount, 20, `${tenant.tenantCode} migration ledger is incomplete.`);
+    assert.equal(
+      audit.migrationCount,
+      tenantDatabaseMigrationsFor(tenant).length,
+      `${tenant.tenantCode} migration ledger is incomplete.`
+    );
     tenantSchema ??= audit.schema;
     assert.deepEqual(audit.schema, tenantSchema, `${tenant.tenantCode} schema drift was detected.`);
     databaseAudits.push(audit);
