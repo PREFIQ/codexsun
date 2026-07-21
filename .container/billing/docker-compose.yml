@@ -13,6 +13,7 @@ x-api-env: &api-env
   DB_MASTER_NAME: ${DB_MASTER_NAME:-codexsun_master}
   JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
   PLATFORM_WEB_ORIGIN: ${PLATFORM_WEB_ORIGIN:?PLATFORM_WEB_ORIGIN is required}
+  PLATFORM_WEB_ORIGINS: ${PLATFORM_WEB_ORIGINS:-}
   PLATFORM_WEB_PORT: ${PLATFORM_WEB_PORT:?PLATFORM_WEB_PORT is required}
   PLATFORM_API_URL: ${PLATFORM_API_URL:?PLATFORM_API_URL is required}
   CODEXSUN_QUEUE_BACKEND: ${CODEXSUN_QUEUE_BACKEND:-bullmq-redis}
@@ -134,6 +135,21 @@ services:
         condition: service_healthy
     ports:
       - "${CODEXSUN_BIND_ADDRESS:?CODEXSUN_BIND_ADDRESS is required}:${PLATFORM_WEB_PORT:?PLATFORM_WEB_PORT is required}:80"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.codexsun-web.rule: "Host(`${CODEXSUN_WEB_HOST:?CODEXSUN_WEB_HOST is required}`) || Host(`${CODEXSUN_TENANT_HOST_SUKRAA:?CODEXSUN_TENANT_HOST_SUKRAA is required}`) || Host(`${CODEXSUN_TENANT_HOST_COTTON:?CODEXSUN_TENANT_HOST_COTTON is required}`) || Host(`${CODEXSUN_TENANT_HOST_GANAPATHI:?CODEXSUN_TENANT_HOST_GANAPATHI is required}`)"
+      traefik.http.routers.codexsun-web.entrypoints: websecure
+      traefik.http.routers.codexsun-web.tls: "true"
+      traefik.http.routers.codexsun-web.tls.certresolver: letsencrypt
+      traefik.http.services.codexsun-web.loadbalancer.server.port: "80"
+      traefik.http.routers.codexsun-web-www.rule: "Host(`${CODEXSUN_WEB_HOST_ALT:?CODEXSUN_WEB_HOST_ALT is required}`)"
+      traefik.http.routers.codexsun-web-www.entrypoints: websecure
+      traefik.http.routers.codexsun-web-www.tls: "true"
+      traefik.http.routers.codexsun-web-www.tls.certresolver: letsencrypt
+      traefik.http.routers.codexsun-web-www.middlewares: codexsun-www-redirect
+      traefik.http.middlewares.codexsun-www-redirect.redirectregex.regex: "^https://www\\.codexsun\\.com/(.*)"
+      traefik.http.middlewares.codexsun-www-redirect.redirectregex.replacement: "https://codexsun.com/$${1}"
+      traefik.http.middlewares.codexsun-www-redirect.redirectregex.permanent: "true"
 
   platform-migrate:
     build:

@@ -8,6 +8,7 @@ const envSchema = z.object({
   PLATFORM_API_URL: z.string().url("PLATFORM_API_URL must be a valid URL"),
   PLATFORM_WEB_PORT: z.coerce.number().int().positive().default(7020),
   PLATFORM_WEB_ORIGIN: z.string().url("PLATFORM_WEB_ORIGIN must be a valid URL"),
+  PLATFORM_WEB_ORIGINS: z.string().default(""),
   DB_HOST: z.string().default("127.0.0.1"),
   DB_PORT: z.coerce.number().int().positive(),
   DB_USER: z.string().min(1, "DB_USER is required"),

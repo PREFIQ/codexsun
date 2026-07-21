@@ -159,7 +159,10 @@ export async function createApp() {
 }
 
 function platformWebOrigins() {
-  const configuredOrigins = [env.PLATFORM_WEB_ORIGIN];
+  const configuredOrigins = [
+    env.PLATFORM_WEB_ORIGIN,
+    ...env.PLATFORM_WEB_ORIGINS.split(",")
+  ];
   if (env.NODE_ENV !== "production") {
     configuredOrigins.push(
       `http://127.0.0.1:${env.PLATFORM_WEB_PORT}`,

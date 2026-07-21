@@ -39,6 +39,11 @@ export default defineConfig(({ command, mode }) => {
     ...(command === "serve"
       ? {
           server: {
+            allowedHosts: [
+              "sukraa.codexsun.com",
+              "cotton.codexsun.com",
+              "ganapathi.codexsun.com"
+            ],
             headers: {
               "Permissions-Policy": "unload=*"
             },
